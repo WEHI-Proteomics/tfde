@@ -6,10 +6,10 @@ import pandas as pd
 
 FRAME_ID = 30000
 
-LOW_MZ = 560
-HIGH_MZ = 582
-LOW_SCAN = 300
-HIGH_SCAN = 650
+LOW_MZ = 565
+HIGH_MZ = 570
+LOW_SCAN = 500
+HIGH_SCAN = 600
 
 IMAGE_X_PIXELS = 1600
 IMAGE_Y_PIXELS = 900
@@ -33,7 +33,7 @@ dpi = fig.get_dpi()
 fig.set_size_inches(float(IMAGE_X_PIXELS)/float(dpi), float(IMAGE_Y_PIXELS)/float(dpi))
 axes = fig.add_subplot(111)
 
-axes.scatter(subset.mz, subset.scan)
+axes.scatter(x=subset.mz, y=subset.scan, c=subset.intensity, linewidth=0)
 ax = plt.gca()
 ax.set_ylim(ax.get_ylim()[::-1])
 ax.axis('tight')
