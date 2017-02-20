@@ -39,7 +39,7 @@ print("Analysis has {0} frames.".format(frame_count))
 filename = "frames-{:0>5}-{:0>5}.csv".format(FRAME_START, FRAME_END)
 with open(filename, 'wb') as csvfile:
 	writer = csv.writer(csvfile)
-	writer.writerow(["frame ID", "mz", "index", "scan", "intensity"])
+	writer.writerow(["frame", "mz", "index", "scan", "intensity"])
 
 	for frame_id in range(FRAME_START, FRAME_END+1):
 	    print("Frame {:0>5} of {}".format(frame_id, frame_count))
