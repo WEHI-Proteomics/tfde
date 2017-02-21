@@ -20,14 +20,6 @@ rows_df = pd.read_csv("frames-30000-30010.csv")
 # Create a subset
 subset = rows_df[(rows_df.frame == FRAME_ID) & (rows_df.mz >= LOW_MZ) & (rows_df.mz <= HIGH_MZ) & (rows_df.scan >= LOW_SCAN) & (rows_df.scan <= HIGH_SCAN)]
 
-x = subset.mz
-y = subset.scan
-subset_array = np.zeros((x.max()+1, y.max()+1))
-subset_array[x, y] = subset.intensity
-
-# Apply a Gaussian filter
-# frame_g = gaussian_filter(frame, sigma=(10,10), order=0)
-
 # Plot the frame
 fig = plt.figure()
 dpi = fig.get_dpi()
@@ -35,9 +27,10 @@ fig.set_size_inches(float(IMAGE_X_PIXELS)/float(dpi), float(IMAGE_Y_PIXELS)/floa
 
 axes = fig.add_subplot(111)
 axes.scatter(x=subset.mz, y=subset.scan, s=subset.intensity, linewidth=0)
+plt.xlim(subset.mz.min(), subset.mz.max())
+plt.ylim(subset.scan.max(), subset.scan.min())
 
 ax = plt.gca()
-ax.set_ylim(ax.get_ylim()[::-1])
 ax.axis('tight')
 plt.xlabel('m/z')
 plt.ylabel('scan')
