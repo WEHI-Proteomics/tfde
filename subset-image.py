@@ -34,10 +34,11 @@ dpi = fig.get_dpi()
 fig.set_size_inches(float(IMAGE_X_PIXELS)/float(dpi), float(IMAGE_Y_PIXELS)/float(dpi))
 
 axes = fig.add_subplot(111)
-axes.imshow(subset_i, interpolation='nearest', cmap='hot')
+axes.imshow(subset_i.T, interpolation='nearest', cmap='hot', extent=[subset.mz.min(), subset.mz.max(), subset.scan.max(), subset.scan.min()])
 
 ax = plt.gca()
-ax.set_ylim(ax.get_ylim()[::-1])
 ax.axis('tight')
+plt.xlabel('m/z')
+plt.ylabel('scan')
 plt.tight_layout()
 plt.show()
