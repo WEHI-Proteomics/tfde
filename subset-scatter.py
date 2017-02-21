@@ -26,7 +26,7 @@ dpi = fig.get_dpi()
 fig.set_size_inches(float(IMAGE_X_PIXELS)/float(dpi), float(IMAGE_Y_PIXELS)/float(dpi))
 
 axes = fig.add_subplot(111)
-axes.scatter(x=subset.mz, y=subset.scan, s=subset.intensity, linewidth=0)
+axes.scatter(x=subset.mz, y=subset.scan, c=subset.intensity, linewidth=0)
 plt.xlim(subset.mz.min(), subset.mz.max())
 plt.ylim(subset.scan.max(), subset.scan.min())
 
