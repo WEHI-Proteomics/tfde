@@ -24,19 +24,20 @@ z = subset.intensity
 subset_arr = subset[['mz','scan','intensity']].values
 
 # Estimate the density
-kde = stats.gaussian_kde(subset_arr)
-density = kde(subset_arr)
+kde = stats.gaussian_kde(subset_arr.T, bw_method='scott')
+density = kde(subset_arr.T)
 
 # Plot the density
 fig, ax = plt.subplots(subplot_kw=dict(projection='3d'))
-ax.scatter(x, y, z)
+ax.scatter(x, y, z, c=density)
+# ax.scatter(x, y, z, c=z)
+
+plt.xlim(subset.mz.min(), subset.mz.max())
+plt.ylim(subset.scan.max(), subset.scan.min())
 
 ax.set_xlabel('m/z')
 ax.set_ylabel('scan')
 ax.set_zlabel('intensity')
-
-# plt.xlabel('m/z')
-# plt.ylabel('scan')
-# plt.zlabel('intensity')
+fig.suptitle('Density Estimate', fontsize=20)
 
 plt.show()
