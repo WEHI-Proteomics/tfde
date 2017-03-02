@@ -2,7 +2,7 @@ import sys
 import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
-import scipy.stats as stats
+from sklearn.neighbors import KernelDensity
 import pandas as pd
 
 # Area of interest
@@ -21,14 +21,21 @@ subset = rows_df[(rows_df.frame == FRAME_ID) & (rows_df.mz >= LOW_MZ) & (rows_df
 x = subset.mz
 y = subset.scan
 z = subset.intensity
-subset_arr = subset[['mz','scan','intensity']].values
+subset_arr = subset[['mz','scan']].values
 
 # Estimate the density
+kde = KernelDensity(bandwidth=0.04, metric='haversine', kernel='gaussian', algorithm='ball_tree')
+kde.fit(Xtrain[ytrain == i])
+
+
+
 kde = stats.gaussian_kde(subset_arr.T, bw_method='scott')
 density = kde(subset_arr.T)
 
 # Plot the frame
 fig = plt.figure()
+fig.suptitle('Density Estimate', fontsize=20)
+
 # dpi = fig.get_dpi()
 # fig.set_size_inches(float(IMAGE_X_PIXELS)/float(dpi), float(IMAGE_Y_PIXELS)/float(dpi))
 
@@ -43,3 +50,4 @@ plt.xlabel('m/z')
 plt.ylabel('scan')
 plt.tight_layout()
 plt.show()
+plt.close('all')

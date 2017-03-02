@@ -19,6 +19,7 @@ rows_df = pd.read_csv("frames-30000-30010.csv")
 
 # Create a subset
 subset = rows_df[(rows_df.frame == FRAME_ID) & (rows_df.mz >= LOW_MZ) & (rows_df.mz <= HIGH_MZ) & (rows_df.scan >= LOW_SCAN) & (rows_df.scan <= HIGH_SCAN)]
+# subset = rows_df[(rows_df.frame == FRAME_ID)]
 
 # Plot the frame
 fig = plt.figure()
@@ -26,7 +27,9 @@ dpi = fig.get_dpi()
 fig.set_size_inches(float(IMAGE_X_PIXELS)/float(dpi), float(IMAGE_Y_PIXELS)/float(dpi))
 
 axes = fig.add_subplot(111)
-axes.scatter(x=subset.mz, y=subset.scan, c=subset.intensity, linewidth=0)
+sc = axes.scatter(x=subset.mz, y=subset.scan, c=subset.intensity, linewidth=0)
+cb = plt.colorbar(sc)
+cb.set_label('Intensity')
 plt.xlim(subset.mz.min(), subset.mz.max())
 plt.ylim(subset.scan.max(), subset.scan.min())
 
@@ -35,4 +38,5 @@ ax.axis('tight')
 plt.xlabel('m/z')
 plt.ylabel('scan')
 plt.tight_layout()
-plt.show()
+fig.savefig('./scatter-subset.png', pad_inches = 0.0, dpi='figure')
+plt.close('all')

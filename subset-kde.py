@@ -41,3 +41,4 @@ ax.set_zlabel('intensity')
 fig.suptitle('Density Estimate', fontsize=20)
 
 plt.show()
+plt.close('all')
