@@ -44,7 +44,6 @@ db = DBSCAN(eps=EPSILON, min_samples=MIN_POINTS_IN_CLUSTER).fit(X)
 core_samples_mask = np.zeros_like(db.labels_, dtype=bool)
 core_samples_mask[db.core_sample_indices_] = True
 labels = db.labels_
-print('labels {}'.format(np.shape(labels)))
 
 end = time.time()
 print("elapsed time = {} sec".format(end-start))
@@ -53,26 +52,16 @@ print("elapsed time = {} sec".format(end-start))
 n_clusters_ = len(set(labels)) - (1 if -1 in labels else 0)
 
 # Plot the area of interest
-# Black is removed and used for noise instead.
-unique_labels = set(labels)
-colors = plt.cm.Spectral(np.linspace(0, 1, len(unique_labels)))
 fig = plt.figure()
 axes = fig.add_subplot(111)
 
-for k, col in zip(unique_labels, colors):
-    if k == -1:
-        # Black used for noise.
-        col = 'k'
+xy = X_pretransform[core_samples_mask]
+# xy = X[class_member_mask & core_samples_mask]
+axes.plot(xy[:, 0], xy[:, 1], 'o', markerfacecolor='orange', markeredgecolor='black', markeredgewidth=0.0, markersize=4)
 
-    class_member_mask = (labels == k)
-
-    xy = X_pretransform[class_member_mask & core_samples_mask]
-    # xy = X[class_member_mask & core_samples_mask]
-    axes.plot(xy[:, 0], xy[:, 1], 'o', markerfacecolor=col, markeredgecolor='k', markeredgewidth=0.0, markersize=4)
-
-    xy = X_pretransform[class_member_mask & ~core_samples_mask]
-    # xy = X[class_member_mask & ~core_samples_mask]
-    axes.plot(xy[:, 0], xy[:, 1], 'o', markerfacecolor=col, markeredgecolor='k', markeredgewidth=0.0, markersize=2)
+xy = X_pretransform[~core_samples_mask]
+# xy = X[class_member_mask & ~core_samples_mask]
+axes.plot(xy[:, 0], xy[:, 1], 'o', markerfacecolor='black', markeredgecolor='black', markeredgewidth=0.0, markersize=2)
 
 
 # draw a bounding box around each cluster
