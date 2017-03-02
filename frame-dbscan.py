@@ -30,8 +30,8 @@ X_pretransform = frame[['mz','scan']].values
 
 start = time.time()
 X = np.copy(X_pretransform)
-X[:,0] = X[:,0]*500.0
-X[:,1] = X[:,1]*8.0
+X[:,0] = X[:,0]*2500.0/5.0 # scaling factors derived from manual inspection of good peak spacing in the subset pictures
+X[:,1] = X[:,1]*800.0/100.0
 
 # db = DBSCAN(eps=EPSILON, min_samples=MIN_SAMPLES, metric=mydistance).fit(X)
 db = DBSCAN(eps=EPSILON, min_samples=MIN_POINTS_IN_CLUSTER).fit(X)
