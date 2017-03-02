@@ -30,7 +30,7 @@ start = time.time()
 X = StandardScaler().fit_transform(X)
 
 # db = DBSCAN(eps=EPSILON, min_samples=MIN_SAMPLES, metric=mydistance).fit(X)
-db = DBSCAN(eps=EPSILON, min_samples=MIN_SAMPLES).fit(X)
+db = DBSCAN(eps=EPSILON, min_samples=MIN_SAMPLES, n_jobs=-1).fit(X)
 core_samples_mask = np.zeros_like(db.labels_, dtype=bool)
 core_samples_mask[db.core_sample_indices_] = True
 labels = db.labels_
