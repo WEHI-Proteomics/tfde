@@ -1,6 +1,7 @@
 import sys
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.patches as patches
 import pandas as pd
 from sklearn.cluster import DBSCAN
 from sklearn.preprocessing import StandardScaler
@@ -20,6 +21,12 @@ MIN_POINTS_IN_CLUSTER = 4
 
 SCALING_FACTOR = 20
 
+def bbox(points):
+    a = np.zeros((2,2))
+    a[:,0] = np.min(points, axis=0)
+    a[:,1] = np.max(points, axis=0)
+    return a
+
 # Read in the frames CSV
 rows_df = pd.read_csv("./data/frames-30000-30010.csv")
 
@@ -30,7 +37,7 @@ X_pretransform = frame[['mz','scan']].values
 
 start = time.time()
 X = np.copy(X_pretransform)
-X[:,0] = X[:,0]*2500.0/5.0 # scaling factors derived from manual inspection of good peak spacing in the subset pictures
+X[:,0] = X[:,0]*2500.0/5.0 # scaling factors derived from manual inspection of good peak spacing in the subset plots
 X[:,1] = X[:,1]*800.0/100.0
 
 # db = DBSCAN(eps=EPSILON, min_samples=MIN_SAMPLES, metric=mydistance).fit(X)
@@ -51,6 +58,8 @@ n_clusters_ = len(set(labels)) - (1 if -1 in labels else 0)
 unique_labels = set(labels)
 colors = plt.cm.Spectral(np.linspace(0, 1, len(unique_labels)))
 fig = plt.figure()
+axes = fig.add_subplot(111)
+
 for k, col in zip(unique_labels, colors):
     if k == -1:
         # Black used for noise.
@@ -60,17 +69,27 @@ for k, col in zip(unique_labels, colors):
 
     xy = X_pretransform[class_member_mask & core_samples_mask]
     # xy = X[class_member_mask & core_samples_mask]
-    plt.plot(xy[:, 0], xy[:, 1], 'o', markerfacecolor=col, markeredgecolor='k', markeredgewidth=0.0, markersize=4)
+    axes.plot(xy[:, 0], xy[:, 1], 'o', markerfacecolor=col, markeredgecolor='k', markeredgewidth=0.0, markersize=4)
 
     xy = X_pretransform[class_member_mask & ~core_samples_mask]
     # xy = X[class_member_mask & ~core_samples_mask]
-    plt.plot(xy[:, 0], xy[:, 1], 'o', markerfacecolor=col, markeredgecolor='k', markeredgewidth=0.0, markersize=2)
+    axes.plot(xy[:, 0], xy[:, 1], 'o', markerfacecolor=col, markeredgecolor='k', markeredgewidth=0.0, markersize=2)
+
+
+# draw a bounding box around each cluster
+clusters = [X_pretransform[labels == i] for i in xrange(n_clusters_)]
+for cluster in clusters:
+    bb = bbox(cluster)
+    x1 = bb[0,0]
+    y1 = bb[1,0]
+    x2 = bb[0,1]
+    y2 = bb[1,1]
+    # print("x1={}, y1={}, w={}, h={}".format(x1, y1, width, height))
+    p = patches.Rectangle((x1, y1), x2-x1, y2-y1, fc = 'none', ec = 'green', linewidth=2)
+    axes.add_patch(p)
+
 
 plt.title('Epsilon={}, samples={}, clusters={}'.format(EPSILON, MIN_POINTS_IN_CLUSTER, n_clusters_))
-
-# plt.xlim(LOW_MZ, HIGH_MZ)
-# plt.ylim(HIGH_SCAN, LOW_SCAN)
-
 ax = plt.gca()
 ax.axis('tight')
 ax.set_xlim(xmin=LOW_MZ, xmax=HIGH_MZ)
