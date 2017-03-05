@@ -12,10 +12,15 @@ import peakutils
 
 FRAME_ID = 30000
 
-LOW_MZ = 565
-HIGH_MZ = 570
-LOW_SCAN = 500
-HIGH_SCAN = 600
+# LOW_MZ = 565
+# HIGH_MZ = 570
+# LOW_SCAN = 500
+# HIGH_SCAN = 600
+
+LOW_MZ = 644.0
+HIGH_MZ = 646.4
+LOW_SCAN = 516.0
+HIGH_SCAN = 561.0
 
 EPSILON = 16.5
 MIN_POINTS_IN_CLUSTER = 4
@@ -59,6 +64,19 @@ n_clusters_ = len(set(labels)) - (1 if -1 in labels else 0)
 fig = plt.figure()
 plt.title('Epsilon={}, samples={}, clusters={}'.format(EPSILON, MIN_POINTS_IN_CLUSTER, n_clusters_))
 axes = fig.add_subplot(111)
+axes.set_xlim(xmin=LOW_MZ, xmax=HIGH_MZ)
+axes.set_ylim(ymin=HIGH_SCAN, ymax=LOW_SCAN)
+plt.xlabel('m/z')
+plt.ylabel('scan')
+
+# Plot the intensity profile
+fig2 = plt.figure()
+plt.title('Intensity profile')
+axes2 = fig2.add_subplot(111)
+# axes2.set_xlim(xmin=LOW_MZ, xmax=HIGH_MZ)
+axes2.set_ylim(ymin=HIGH_SCAN, ymax=LOW_SCAN)
+plt.xlabel('intensity')
+plt.ylabel('scan')
 
 xy = X_pretransform[core_samples_mask]
 axes.plot(xy[:, 0], xy[:, 1], 'o', markerfacecolor='orange', markeredgecolor='black', markeredgewidth=0.0, markersize=4)
@@ -87,7 +105,7 @@ for cluster in clusters:
     cluster_mz = cluster_df[['mz','scan']].values
 
     # filter the intensity with a Gaussian filter
-    window = signal.gaussian(100, std=2)
+    window = signal.gaussian(20, std=5)
     filtered = signal.convolve(cluster_intensity[:, 1], window, mode='same') / sum(window)
     indexes = peakutils.indexes(filtered, thres=0.2, min_dist=10)
     # Plot the maxmima for this cluster
@@ -98,13 +116,17 @@ for cluster in clusters:
         minimum_intensity_index = np.argmin(filtered[indexes[0]:indexes[1]+1])+indexes[0]
         axes.plot(cluster_mz[minimum_intensity_index,0], cluster_mz[minimum_intensity_index,1], 'o', markerfacecolor='green', markeredgecolor='black', markeredgewidth=0.0, markersize=6)
 
- 
+    # If this cluster is within the AOI, plot the intensity profile
+    if ((x1 >= LOW_MZ) & (x2 <= HIGH_MZ) & (y1 >= LOW_SCAN) & (y2 <= HIGH_SCAN)):
+        axes2.plot(filtered, cluster_mz[:,1], '-', color='orange', linewidth=1, markerfacecolor='orange', markeredgecolor='black', markeredgewidth=0.0, markersize=1)
+        for index in indexes:
+            axes2.plot(filtered[index], cluster_mz[index,1], 'o', markerfacecolor='red', markeredgecolor='black', markeredgewidth=0.0, markersize=6)
+        if len(indexes) == 2:
+            minimum_intensity_index = np.argmin(filtered[indexes[0]:indexes[1]+1])+indexes[0]
+            axes2.plot(filtered[minimum_intensity_index], cluster_mz[minimum_intensity_index,1], 'o', markerfacecolor='green', markeredgecolor='black', markeredgewidth=0.0, markersize=6)
+
 ax = plt.gca()
 ax.axis('tight')
-ax.set_xlim(xmin=LOW_MZ, xmax=HIGH_MZ)
-ax.set_ylim(ymin=HIGH_SCAN, ymax=LOW_SCAN)
-plt.xlabel('m/z')
-plt.ylabel('scan')
 plt.tight_layout()
 plt.show()
 # fig.savefig('./images/frame-dbscan-eps-{}-sam-{}.png'.format(EPSILON, MIN_POINTS_IN_CLUSTER), pad_inches = 0.0, dpi='figure')
