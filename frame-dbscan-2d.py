@@ -18,13 +18,16 @@ HIGH_SCAN = 600
 EPSILON = 16.5
 MIN_POINTS_IN_CLUSTER = 4
 
-SCALING_FACTOR = 20
+# scaling factors derived from manual inspection of good peak spacing in the subset plots
+SCALING_FACTOR_X = 2500.0/5.0
+SCALING_FACTOR_Y = 800.0/100.0
 
 def bbox(points):
     a = np.zeros((2,2))
     a[:,0] = np.min(points, axis=0)
     a[:,1] = np.max(points, axis=0)
     return a
+
 
 # Read in the frames CSV
 rows_df = pd.read_csv("./data/frames-30000-30010.csv")
@@ -36,10 +39,9 @@ X_pretransform = frame[['mz','scan']].values
 
 start = time.time()
 X = np.copy(X_pretransform)
-X[:,0] = X[:,0]*2500.0/5.0 # scaling factors derived from manual inspection of good peak spacing in the subset plots
-X[:,1] = X[:,1]*800.0/100.0
+X[:,0] = X[:,0]*SCALING_FACTOR_X
+X[:,1] = X[:,1]*SCALING_FACTOR_Y
 
-# db = DBSCAN(eps=EPSILON, min_samples=MIN_SAMPLES, metric=mydistance).fit(X)
 db = DBSCAN(eps=EPSILON, min_samples=MIN_POINTS_IN_CLUSTER).fit(X)
 core_samples_mask = np.zeros_like(db.labels_, dtype=bool)
 core_samples_mask[db.core_sample_indices_] = True
@@ -56,11 +58,9 @@ fig = plt.figure()
 axes = fig.add_subplot(111)
 
 xy = X_pretransform[core_samples_mask]
-# xy = X[class_member_mask & core_samples_mask]
 axes.plot(xy[:, 0], xy[:, 1], 'o', markerfacecolor='orange', markeredgecolor='black', markeredgewidth=0.0, markersize=4)
 
 xy = X_pretransform[~core_samples_mask]
-# xy = X[class_member_mask & ~core_samples_mask]
 axes.plot(xy[:, 0], xy[:, 1], 'o', markerfacecolor='black', markeredgecolor='black', markeredgewidth=0.0, markersize=2)
 
 
