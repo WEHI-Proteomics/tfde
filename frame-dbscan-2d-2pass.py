@@ -49,7 +49,7 @@ X = np.copy(X_pretransform)
 X[:,0] = X[:,0]*SCALING_FACTOR_X
 X[:,1] = X[:,1]*SCALING_FACTOR_Y
 
-db = DBSCAN(eps=EPSILON, min_samples=MIN_POINTS_IN_CLUSTER).fit(X)
+db = DBSCAN(eps=EPSILON, min_samples=MIN_POINTS_IN_CLUSTER, n_jobs=-1).fit(X)
 core_samples_mask = np.zeros_like(db.labels_, dtype=bool)
 core_samples_mask[db.core_sample_indices_] = True
 labels = db.labels_
