@@ -7,11 +7,9 @@ import csv
 
 MAX_INDEX = 3200
 MAX_SCANS = 814
-MAX_INTENSITY = 25000
 THRESHOLD = 100
-PEAK_THRESHOLD = 500
-FRAME_START = 30000
-FRAME_END = 30010
+FRAME_START = 1
+FRAME_END = 67843
 
 def threshold_scan_transform(threshold, indicies, intensities):
     np_mz = timsfile.indexToMz(frame_id, np.array(indicies, dtype=np.float64))
@@ -36,7 +34,7 @@ row = q.fetchone()
 frame_count = row[0]
 print("Analysis has {0} frames.".format(frame_count))
 
-filename = "frames-{:0>5}-{:0>5}.csv".format(FRAME_START, FRAME_END)
+filename = "/home/daryl/Downloads/frames-{:0>5}-{:0>5}.csv".format(FRAME_START, FRAME_END)
 with open(filename, 'wb') as csvfile:
 	writer = csv.writer(csvfile)
 	writer.writerow(["frame", "mz", "index", "scan", "intensity"])
