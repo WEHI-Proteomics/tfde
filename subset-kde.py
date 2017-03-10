@@ -2,43 +2,81 @@ import sys
 import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
-import scipy.stats as stats
+from sklearn.neighbors import KernelDensity
+from sklearn.model_selection import GridSearchCV
 import pandas as pd
 
-# Area of interest
-FRAME_ID = 30000
-LOW_MZ = 565
-HIGH_MZ = 570
-LOW_SCAN = 500
-HIGH_SCAN = 600
+# The frame of interest
+FRAME_ID = 708
+
+# Peak 1
+LOW_MZ = 921.0
+HIGH_MZ = 923.0
+LOW_SCAN = 205
+HIGH_SCAN = 230
 
 # Read in the frames CSV
-rows_df = pd.read_csv("frames-30000-30010.csv")
+rows_df = pd.read_csv("./data/tunemix/all-frames/frames-tune-mix-00001-01566.csv")
 
-# Create a subset
+# Create a subset, ordered by scan number and m/z
 subset = rows_df[(rows_df.frame == FRAME_ID) & (rows_df.mz >= LOW_MZ) & (rows_df.mz <= HIGH_MZ) & (rows_df.scan >= LOW_SCAN) & (rows_df.scan <= HIGH_SCAN)]
+mz_intensity_arr = subset[['mz','intensity']].sort_values(['mz'], ascending=[True]).values
+scan_intensity_arr = subset[['scan','intensity']].sort_values(['scan'], ascending=[True]).values
 
-x = subset.mz
-y = subset.scan
-z = subset.intensity
-subset_arr = subset[['mz','scan','intensity']].values
+temp = mz_intensity_arr[:,0]    # just the m/z values
+mz_arr = temp[:, np.newaxis]    # an Nx1 array of m/z values
+temp = scan_intensity_arr[:,0]  # just the scan number values
+scan_arr = temp[:, np.newaxis]  # an Nx1 array of scan number values
 
-# Estimate the density
-kde = stats.gaussian_kde(subset_arr.T, bw_method='scott')
-density = kde(subset_arr.T)
+# Generate the range of points to use in visualisation of the density
+mz_range_extend = (HIGH_MZ-LOW_MZ)
+scan_range_extend = (HIGH_SCAN-LOW_SCAN)
+xfit_mz = np.linspace(LOW_MZ-mz_range_extend, HIGH_MZ+mz_range_extend, 1000)
+xfit_scan = np.linspace(LOW_SCAN-scan_range_extend, HIGH_SCAN+scan_range_extend, 1000)
 
-# Plot the density
-fig, ax = plt.subplots(subplot_kw=dict(projection='3d'))
-ax.scatter(x, y, z, c=density)
-# ax.scatter(x, y, z, c=z)
+# Change to Nx1 array because that's what KDE wants
+Xfit_mz = xfit_mz[:, np.newaxis]
+Xfit_scan = xfit_scan[:, np.newaxis]
 
-plt.xlim(subset.mz.min(), subset.mz.max())
-plt.ylim(subset.scan.max(), subset.scan.min())
 
-ax.set_xlabel('m/z')
-ax.set_ylabel('scan')
-ax.set_zlabel('intensity')
-fig.suptitle('Density Estimate', fontsize=20)
+# # Use a grid search to find the optimal bandwidth for the mz axis
+# print("Estimating bandwidth in the m/z dimension")
+# grid_mz = GridSearchCV(KernelDensity(), {'bandwidth': np.linspace(0.01, HIGH_MZ, 1000)}, cv=20)
+# grid_mz.fit(mz_arr)
+# print grid_mz.best_params_
+
+# # Use a grid search to find the optimal bandwidth for the scan axis
+# print("Estimating bandwidth in the scan dimension")
+# grid_scan = GridSearchCV(KernelDensity(), {'bandwidth': np.linspace(0.01, HIGH_SCAN, 1000)}, cv=20)
+# grid_scan.fit(scan_arr)
+# print grid_scan.best_params_
+
+
+# Evaluate the density model on the data
+kde_mz = KernelDensity(kernel='gaussian', bandwidth=0.9339)  # bandwidth was determined from GridSearchCV
+kde_mz.fit(mz_arr)
+density_mz = np.exp(kde_mz.score_samples(Xfit_mz))
+
+kde_scan = KernelDensity(kernel='gaussian', bandwidth=2.7726) # bandwidth was determined from GridSearchCV
+kde_scan.fit(scan_arr)
+density_scan = np.exp(kde_scan.score_samples(Xfit_scan))
+
+# Plot two 2D graphs on a common intensity y-axis: scan & kde_scan, and mz & kde_mz
+f, (ax1, ax2) = plt.subplots(1, 2, sharey=True)
+
+ax1b = ax1.twinx()
+ax2b = ax2.twinx()
+
+# Plot the actual peaks
+ax1.plot(mz_intensity_arr[:, 0], mz_intensity_arr[:, 1], 'ok', markersize=2)
+ax2.plot(scan_intensity_arr[:, 0], scan_intensity_arr[:, 1], 'ok', markersize=2)
+
+# Plot the density estimates
+ax1b.plot(xfit_mz, density_mz, '-g', lw=1)
+ax2b.plot(xfit_scan, density_scan, '-g', lw=1)
+
+ax1.set_xlabel('m/z')
+ax2.set_xlabel('scan')
 
 plt.show()
 plt.close('all')
