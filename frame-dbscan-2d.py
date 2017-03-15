@@ -9,18 +9,24 @@ import time
 # Process a whole frame using DBSCAN, and then plot only the area of interest.
 
 FRAME_ID = 30000
-
 LOW_MZ = 565
 HIGH_MZ = 570
 LOW_SCAN = 500
 HIGH_SCAN = 600
 
-EPSILON = 16.5
+# FRAME_ID = 708
+# LOW_MZ = 000.0
+# HIGH_MZ = 3000.0
+# LOW_SCAN = 1
+# HIGH_SCAN = 350
+
+
+EPSILON = 2.5
 MIN_POINTS_IN_CLUSTER = 4
 
 # scaling factors derived from manual inspection of good peak spacing in the subset plots
-SCALING_FACTOR_X = 2500.0/5.0
-SCALING_FACTOR_Y = 800.0/100.0
+SCALING_FACTOR_X = 50.0
+SCALING_FACTOR_Y = 1.0
 
 def bbox(points):
     a = np.zeros((2,2))
@@ -28,12 +34,12 @@ def bbox(points):
     a[:,1] = np.max(points, axis=0)
     return a
 
-
 # Read in the frames CSV
 rows_df = pd.read_csv("./data/frames-30000-30010.csv")
+# rows_df = pd.read_csv("./data/tunemix/all-frames/frames-tune-mix-00001-01566.csv")
 
 # Create a subset
-frame = rows_df[(rows_df.frame == FRAME_ID)]
+frame = rows_df[(rows_df.frame == FRAME_ID)].sort_values(['scan','mz'], ascending=[True,True])
 
 X_pretransform = frame[['mz','scan']].values
 
