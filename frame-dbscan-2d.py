@@ -24,7 +24,7 @@ HIGH_SCAN = 600
 EPSILON = 2.5
 MIN_POINTS_IN_CLUSTER = 4
 
-# scaling factors derived from manual inspection of good peak spacing in the subset plots
+# Take the scan lines as the reference spacing - monoisotopic peaks are about 0.5 m/z apart, so need to apply more
 SCALING_FACTOR_X = 50.0
 SCALING_FACTOR_Y = 1.0
 
@@ -35,7 +35,7 @@ def bbox(points):
     return a
 
 # Read in the frames CSV
-rows_df = pd.read_csv("./data/frames-30000-30010.csv")
+rows_df = pd.read_csv("./data/frames-th-100-30000-30000.csv")
 # rows_df = pd.read_csv("./data/tunemix/all-frames/frames-tune-mix-00001-01566.csv")
 
 # Create a subset
@@ -71,17 +71,26 @@ axes.plot(xy[:, 0], xy[:, 1], 'o', markerfacecolor='black', markeredgecolor='bla
 
 
 # draw a bounding box around each cluster
+boxes_df = pd.DataFrame()
 clusters = [X_pretransform[labels == i] for i in xrange(n_clusters_)]
 for cluster in clusters:
+    # draw the bounding box
     bb = bbox(cluster)
     x1 = bb[0,0]
     y1 = bb[1,0]
     x2 = bb[0,1]
     y2 = bb[1,1]
-    # print("x1={}, y1={}, w={}, h={}".format(x1, y1, width, height))
     p = patches.Rectangle((x1, y1), x2-x1, y2-y1, fc = 'none', ec = 'green', linewidth=1)
     axes.add_patch(p)
+    # add it to the dataframe for writing out to the CSV
+    boxes_df = boxes_df.append({'frame_id':FRAME_ID,'low_mz':x1,'high_mz':x2,'low_scan':y1,'high_scan':y2,'cluster_id':1,'confidence':1.0}, ignore_index=True)
 
+# write out the boxes CSV
+boxes_df.frame_id = boxes_df.frame_id.astype(np.uint16)
+boxes_df.low_scan = boxes_df.low_scan.astype(np.uint16)
+boxes_df.high_scan = boxes_df.high_scan.astype(np.uint16)
+boxes_df.cluster_id = boxes_df.cluster_id.astype(np.uint16)
+boxes_df.to_csv("./data/frames-th-100-30000-30000-boxes.csv", sep=',', index=False)
 
 plt.title('Epsilon={}, samples={}, clusters={}'.format(EPSILON, MIN_POINTS_IN_CLUSTER, n_clusters_))
 ax = plt.gca()
