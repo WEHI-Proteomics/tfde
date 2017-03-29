@@ -7,16 +7,16 @@ from sklearn.model_selection import GridSearchCV
 import pandas as pd
 
 # The frame of interest
-FRAME_ID = 708
+FRAME_ID = 30000
 
 # Peak 1
-LOW_MZ = 921.0
-HIGH_MZ = 923.0
-LOW_SCAN = 205
-HIGH_SCAN = 230
+LOW_MZ = 566.7
+HIGH_MZ = 566.9
+LOW_SCAN = 517
+HIGH_SCAN = 549
 
 # Read in the frames CSV
-rows_df = pd.read_csv("./data/tunemix/all-frames/frames-tune-mix-00001-01566.csv")
+rows_df = pd.read_csv("./data/frames-th-100-30000-30000.csv")
 
 # Create a subset, ordered by scan number and m/z
 subset = rows_df[(rows_df.frame == FRAME_ID) & (rows_df.mz >= LOW_MZ) & (rows_df.mz <= HIGH_MZ) & (rows_df.scan >= LOW_SCAN) & (rows_df.scan <= HIGH_SCAN)]
@@ -53,11 +53,11 @@ Xfit_scan = xfit_scan[:, np.newaxis]
 
 
 # Evaluate the density model on the data
-kde_mz = KernelDensity(kernel='gaussian', bandwidth=0.9339)  # bandwidth was determined from GridSearchCV
+kde_mz = KernelDensity(kernel='gaussian', bandwidth=0.03)  # bandwidth was determined from GridSearchCV
 kde_mz.fit(mz_arr)
 density_mz = np.exp(kde_mz.score_samples(Xfit_mz))
 
-kde_scan = KernelDensity(kernel='gaussian', bandwidth=2.7726) # bandwidth was determined from GridSearchCV
+kde_scan = KernelDensity(kernel='gaussian', bandwidth=5.6) # bandwidth was determined from GridSearchCV
 kde_scan.fit(scan_arr)
 density_scan = np.exp(kde_scan.score_samples(Xfit_scan))
 
