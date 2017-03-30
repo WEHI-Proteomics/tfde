@@ -5,11 +5,9 @@ import timsdata
 import csv
 
 
-MAX_INDEX = 3200
-MAX_SCANS = 814
-THRESHOLD = 100
-FRAME_START = 1
-FRAME_END = 67843
+THRESHOLD = 85
+FRAME_START = 30000
+FRAME_END = 30000
 
 def threshold_scan_transform(threshold, indicies, intensities):
     np_mz = timsfile.indexToMz(frame_id, np.array(indicies, dtype=np.float64))
@@ -34,10 +32,10 @@ row = q.fetchone()
 frame_count = row[0]
 print("Analysis has {0} frames.".format(frame_count))
 
-filename = "/home/daryl/Downloads/frames-{:0>5}-{:0>5}.csv".format(FRAME_START, FRAME_END)
+filename = "./data/frames-th-{}-{:0>5}-{:0>5}.csv".format(THRESHOLD, FRAME_START, FRAME_END)
 with open(filename, 'wb') as csvfile:
 	writer = csv.writer(csvfile)
-	writer.writerow(["frame", "mz", "index", "scan", "intensity"])
+	writer.writerow(["frame", "mz", "scan", "intensity"])
 
 	for frame_id in range(FRAME_START, FRAME_END+1):
 	    print("Frame {:0>5} of {}".format(frame_id, frame_count))
@@ -48,8 +46,6 @@ with open(filename, 'wb') as csvfile:
 	    scan_begin = 0
 	    scan_end = num_scans
 
-	    frame = np.zeros((MAX_INDEX, MAX_SCANS))
-
 	    for i in range(scan_begin, scan_end):
 	        scan = scans[i]
 	        if len(scan[0]) > 0:
@@ -58,5 +54,5 @@ with open(filename, 'wb') as csvfile:
 	            peaks = len(mz)
 	            if peaks > 0:
 	            	for index in range(0,len(mz)):
-	            		#                frame ID  mz         index           scan  intensity
-	            		writer.writerow([frame_id, mz[index], indices[index], i,    intensities[index]])
+	            		#                frame ID  mz         scan  intensity
+	            		writer.writerow([frame_id, mz[index], i,    intensities[index]])

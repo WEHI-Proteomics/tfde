@@ -11,11 +11,10 @@ HIGH_MZ = 570
 LOW_SCAN = 500
 HIGH_SCAN = 600
 
-IMAGE_X_PIXELS = 1600
-IMAGE_Y_PIXELS = 900
+THRESHOLD = 85
 
 # Read in the frames CSV
-rows_df = pd.read_csv("frames-30000-30010.csv")
+rows_df = pd.read_csv("./data/frames-th-{}-30000-30000.csv".format(THRESHOLD))
 
 # Create a subset
 subset = rows_df[(rows_df.frame == FRAME_ID) & (rows_df.mz >= LOW_MZ) & (rows_df.mz <= HIGH_MZ) & (rows_df.scan >= LOW_SCAN) & (rows_df.scan <= HIGH_SCAN)]
@@ -23,20 +22,23 @@ subset = rows_df[(rows_df.frame == FRAME_ID) & (rows_df.mz >= LOW_MZ) & (rows_df
 
 # Plot the frame
 fig = plt.figure()
-dpi = fig.get_dpi()
-fig.set_size_inches(float(IMAGE_X_PIXELS)/float(dpi), float(IMAGE_Y_PIXELS)/float(dpi))
+colourmap = plt.get_cmap("brg")
 
 axes = fig.add_subplot(111)
-sc = axes.scatter(x=subset.mz, y=subset.scan, c=subset.intensity, linewidth=0)
+sc = axes.scatter(x=subset.mz, y=subset.scan, c=subset.intensity, linewidth=0, s=8, cmap=colourmap)
 cb = plt.colorbar(sc)
 cb.set_label('Intensity')
-plt.xlim(subset.mz.min(), subset.mz.max())
-plt.ylim(subset.scan.max(), subset.scan.min())
+# plt.xlim(LOW_MZ, HIGH_MZ)
+# plt.ylim(HIGH_SCAN, LOW_SCAN)
+plt.xlim([LOW_MZ,HIGH_MZ])
+plt.ylim([HIGH_SCAN,LOW_SCAN])
 
-ax = plt.gca()
-ax.axis('tight')
+# ax = plt.gca()
+# ax.axis('tight')
+
+plt.title('Frame {}, Noise Threshold = {}'.format(FRAME_ID, THRESHOLD))
 plt.xlabel('m/z')
 plt.ylabel('scan')
 plt.tight_layout()
-fig.savefig('./scatter-subset.png', pad_inches = 0.0, dpi='figure')
+plt.show()
 plt.close('all')
