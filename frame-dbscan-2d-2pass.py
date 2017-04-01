@@ -43,7 +43,10 @@ def split_bbox_y(bbox, y):
     return a, b
 
 def bbox_points(bbox):
-    return {'x1':bbox[0,0], 'y1':bbox[1,0], 'x2':bbox[0,1], 'y2':bbox[1,1]}    
+    return {'x1':bbox[0,0], 'y1':bbox[1,0], 'x2':bbox[0,1], 'y2':bbox[1,1]}
+
+def bbox_centroid(bbox):
+    return {'x':bbox[0,0]+(bbox[0,1]-bbox[0,0])/2, 'y':bbox[1,0]+(bbox[1,1]-bbox[1,0])/2}
 
 
 # Read in the frames CSV
@@ -138,12 +141,18 @@ for cluster in clusters:
         b_y2 = bbox_points(b_peak)['y2']
         p = patches.Rectangle((b_x1, b_y1), b_x2-b_x1, b_y2-b_y1, fc = 'none', ec = 'green', linewidth=1)
         ax1.add_patch(p)
+        # plot the centroids
+        ax1.plot(bbox_centroid(a_peak)['x'], bbox_centroid(a_peak)['y'], 'D', markerfacecolor='magenta', markeredgecolor='black', markeredgewidth=0.0, markersize=6)
+        ax1.plot(bbox_centroid(b_peak)['x'], bbox_centroid(b_peak)['y'], 'D', markerfacecolor='magenta', markeredgecolor='black', markeredgewidth=0.0, markersize=6)
         # add the peaks to the collection
         mono_peaks_df = mono_peaks_df.append(bbox_points(a_peak), ignore_index=True)
         mono_peaks_df = mono_peaks_df.append(bbox_points(b_peak), ignore_index=True)
     else:
         # draw a bounding box around the peak
         p = patches.Rectangle((x1, y1), x2-x1, y2-y1, fc = 'none', ec = 'green', linewidth=1)
+        ax1.add_patch(p)
+        # plot the centroid
+        ax1.plot(bbox_centroid(bb)['x'], bbox_centroid(bb)['y'], 'D', markerfacecolor='magenta', markeredgecolor='black', markeredgewidth=0.0, markersize=6)
         # add the peak to the collection
         mono_peaks_df = mono_peaks_df.append(bbox_points(bb), ignore_index=True)
 
