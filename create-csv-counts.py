@@ -8,7 +8,6 @@ import timsdata
 THRESHOLD = 85
 FRAME_START = 1
 FRAME_END = 67843
-# FRAME_END = 5
 
 def threshold_scan_transform(threshold, indicies, intensities):
     np_mz = timsfile.indexToMz(frame_id, np.array(indicies, dtype=np.float64))
@@ -56,6 +55,6 @@ for frame_id in range(FRAME_START, FRAME_END+1):
     count_df = count_df.append({'frame_id':frame_id,'points':count}, ignore_index=True)
 
 # write out the CSV
-count_df.frame_id = count_df.frame_id.astype(np.uint16)
-count_df.points = count_df.points.astype(np.uint16)
+count_df.frame_id = count_df.frame_id.astype(np.uint32)
+count_df.points = count_df.points.astype(np.uint32)
 count_df.to_csv("./data/frame_points.csv", sep=',', index=False)
