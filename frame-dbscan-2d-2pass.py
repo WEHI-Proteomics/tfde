@@ -7,17 +7,13 @@ from sklearn.cluster import DBSCAN
 import time
 from scipy import signal
 import peakutils
+import copy
 
 # Process a whole frame using DBSCAN, and then plot only the area of interest.
 
 FRAME_ID = 30000
 
-# LOW_MZ = 644.0
-# HIGH_MZ = 646.4
-# LOW_SCAN = 516.0
-# HIGH_SCAN = 561.0
-
-# Peak 1
+# Peak of interest
 LOW_MZ = 566.2
 HIGH_MZ = 566.44
 LOW_SCAN = 516
@@ -37,6 +33,17 @@ def bbox(points):
     a[:,0] = np.min(points, axis=0)
     a[:,1] = np.max(points, axis=0)
     return a
+
+# Split the provided bounding box at the given y point, and return two bounding boxes
+def split_bbox_y(bbox, y):
+    a = copy.deepcopy(bbox)
+    b = copy.deepcopy(bbox)
+    a[1,1] = y  # y2 = y (y becomes the lower limit for the top bbox)
+    b[1,0] = y  # y1 = y (y becomes the upper limit for the bottom bbox)
+    return a, b
+
+def bbox_points(bbox):
+    return {'x1':bbox[0,0], 'y1':bbox[1,0], 'x2':bbox[0,1], 'y2':bbox[1,1]}    
 
 
 # Read in the frames CSV
@@ -84,19 +91,16 @@ xy = X_pretransform[~core_samples_mask]
 ax1.plot(xy[:, 0], xy[:, 1], 'o', markerfacecolor='black', markeredgecolor='black', markeredgewidth=0.0, markersize=2)
 
 # Process the clusters
+mono_peaks_df = pd.DataFrame()  # where we record all the monoisotopic peaks we find
 clusters = [X_pretransform[labels == i] for i in xrange(n_clusters_)]
 for cluster in clusters:
 
     # find the bounding box of each cluster
     bb = bbox(cluster)
-    x1 = bb[0,0]
-    y1 = bb[1,0]
-    x2 = bb[0,1]
-    y2 = bb[1,1]
-
-    # draw a bounding box around each cluster
-    p = patches.Rectangle((x1, y1), x2-x1, y2-y1, fc = 'none', ec = 'green', linewidth=1)
-    ax1.add_patch(p)
+    x1 = bbox_points(bb)['x1']
+    y1 = bbox_points(bb)['y1']
+    x2 = bbox_points(bb)['x2']
+    y2 = bbox_points(bb)['y2']
 
     # get the intensity values by scan
     cluster_df = frame_df[(frame_df.mz >= x1) & (frame_df.mz <= x2) & (frame_df.scan >= y1) & (frame_df.scan <= y2)]
@@ -106,14 +110,42 @@ for cluster in clusters:
     # filter the intensity with a Gaussian filter
     window = signal.gaussian(20, std=5)
     filtered = signal.convolve(cluster_intensity[:, 1], window, mode='same') / sum(window)
+
+    # find the maxima
     indexes = peakutils.indexes(filtered, thres=0.1, min_dist=10)
-    # Plot the maxmima for this cluster
+
+    # ... and plot them
     for index in indexes:
         ax1.plot(cluster_mz[index,0], cluster_mz[index,1], 'o', markerfacecolor='red', markeredgecolor='black', markeredgewidth=0.0, markersize=6)
+
     # Find the minimum intensity between the maxima
     if len(indexes) == 2:
         minimum_intensity_index = np.argmin(filtered[indexes[0]:indexes[1]+1])+indexes[0]
         ax1.plot(cluster_mz[minimum_intensity_index,0], cluster_mz[minimum_intensity_index,1], 'o', markerfacecolor='green', markeredgecolor='black', markeredgewidth=0.0, markersize=6)
+        # split the bounding box at the minima
+        a_peak, b_peak = split_bbox_y(bbox=bb, y=cluster_mz[minimum_intensity_index,1])
+        # draw a bounding box around a_peak
+        a_x1 = bbox_points(a_peak)['x1']
+        a_y1 = bbox_points(a_peak)['y1']
+        a_x2 = bbox_points(a_peak)['x2']
+        a_y2 = bbox_points(a_peak)['y2']
+        p = patches.Rectangle((a_x1, a_y1), a_x2-a_x1, a_y2-a_y1, fc = 'none', ec = 'green', linewidth=1)
+        ax1.add_patch(p)
+        # draw a bounding box around b_peak
+        b_x1 = bbox_points(b_peak)['x1']
+        b_y1 = bbox_points(b_peak)['y1']
+        b_x2 = bbox_points(b_peak)['x2']
+        b_y2 = bbox_points(b_peak)['y2']
+        p = patches.Rectangle((b_x1, b_y1), b_x2-b_x1, b_y2-b_y1, fc = 'none', ec = 'green', linewidth=1)
+        ax1.add_patch(p)
+        # add the peaks to the collection
+        mono_peaks_df = mono_peaks_df.append(bbox_points(a_peak), ignore_index=True)
+        mono_peaks_df = mono_peaks_df.append(bbox_points(b_peak), ignore_index=True)
+    else:
+        # draw a bounding box around the peak
+        p = patches.Rectangle((x1, y1), x2-x1, y2-y1, fc = 'none', ec = 'green', linewidth=1)
+        # add the peak to the collection
+        mono_peaks_df = mono_peaks_df.append(bbox_points(bb), ignore_index=True)
 
     # If this cluster is within the AOI, plot the intensity profile
     if ((x1 >= LOW_MZ) & (x2 <= HIGH_MZ) & (y1 >= LOW_SCAN) & (y2 <= HIGH_SCAN)):
