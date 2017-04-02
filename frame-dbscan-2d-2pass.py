@@ -82,17 +82,15 @@ print("elapsed time = {} sec".format(end-start))
 n_clusters_ = len(set(labels)) - (1 if -1 in labels else 0)
 
 # Plot the area of interest
-f, (ax1, ax2) = plt.subplots(1, 2, sharey=True)
+# f, (ax1, ax2) = plt.subplots(1, 2, sharey=True)
+f = plt.figure()
+ax1 = f.add_subplot(111)
 
 plt.title('Epsilon={}, samples={}, clusters={}'.format(EPSILON_PEAK, MIN_POINTS_IN_PEAK, n_clusters_))
 
 ax1.set_xlim(xmin=LOW_MZ, xmax=HIGH_MZ)
 ax1.set_ylim(ymin=HIGH_SCAN, ymax=LOW_SCAN)
 plt.xlabel('m/z')
-plt.ylabel('scan')
-
-ax2.set_ylim(ymin=HIGH_SCAN, ymax=LOW_SCAN)
-plt.xlabel('intensity')
 plt.ylabel('scan')
 
 xy = X_pretransform[core_samples_mask]
@@ -163,15 +161,6 @@ for cluster in clusters:
         ax1.plot(bbox_centroid(bb)['x'], bbox_centroid(bb)['y'], 'D', markerfacecolor='magenta', markeredgecolor='black', markeredgewidth=0.0, markersize=6)
         # add the peak to the collection
         mono_peaks_df = mono_peaks_df.append({'peak':bbox_points(bb), 'centroid':(bbox_centroid(bb))}, ignore_index=True)
-
-    # If this cluster is within the AOI, plot the intensity profile
-    if ((x1 >= LOW_MZ) & (x2 <= HIGH_MZ) & (y1 >= LOW_SCAN) & (y2 <= HIGH_SCAN)):
-        ax2.plot(filtered, cluster_mz[:,1], '-', color='orange', linewidth=1, markerfacecolor='orange', markeredgecolor='black', markeredgewidth=0.0, markersize=1)
-        for index in indexes:
-            ax2.plot(filtered[index], cluster_mz[index,1], 'o', markerfacecolor='red', markeredgecolor='black', markeredgewidth=0.0, markersize=6)
-        if len(indexes) == 2:
-            minimum_intensity_index = np.argmin(filtered[indexes[0]:indexes[1]+1])+indexes[0]
-            ax2.plot(filtered[minimum_intensity_index], cluster_mz[minimum_intensity_index,1], 'o', markerfacecolor='green', markeredgecolor='black', markeredgewidth=0.0, markersize=6)
 
 # Cluster the peaks we found
 Y_pretransform = pd.concat([mono_peaks_df, pd.DataFrame((d for idx, d in mono_peaks_df['centroid'].iteritems()))], axis=1)[['x','y']].values
