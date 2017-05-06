@@ -4,10 +4,11 @@ from numpy import ix_
 import timsdata
 import sqlite3
 
+# Usage: python create-db.py D:\Bruker\Databases\Hela200ng100msMSonlyPP23pro_Slot1-5_01_57.d
 
 THRESHOLD = 85
-FRAME_START = 1
-FRAME_END = 67843
+FRAME_START = 29000
+FRAME_END = 31000
 
 def threshold_scan_transform(threshold, indicies, intensities):
     np_mz = timsfile.indexToMz(frame_id, np.array(indicies, dtype=np.float64))
@@ -33,13 +34,14 @@ frame_count = row[0]
 print("Analysis has {0} frames.".format(frame_count))
 
 # Connecting to the database file
-sqlite_file = "\\temp\\frames-th-{}.sqlite".format(THRESHOLD)
+sqlite_file = "\\temp\\frames-th-{}-{}-{}.sqlite".format(THRESHOLD, FRAME_START, FRAME_END)
 conn = sqlite3.connect(sqlite_file)
 c = conn.cursor()
 
 # Create the table
 c.execute('''DROP TABLE IF EXISTS frames''')
 c.execute('''CREATE TABLE frames (frame_id INTEGER, mz REAL, scan INTEGER, intensity INTEGER)''')
+c.execute('''CREATE INDEX idx_frames ON frames (frame_id)''')
 
 points = []
 for frame_id in range(FRAME_START, FRAME_END+1):
