@@ -7,8 +7,8 @@ import sqlite3
 # Usage: python create-db.py D:\Bruker\Databases\Hela200ng100msMSonlyPP23pro_Slot1-5_01_57.d
 
 THRESHOLD = 85
-FRAME_START = 29000
-FRAME_END = 31000
+FRAME_START = 29900
+FRAME_END = 30100
 
 def threshold_scan_transform(threshold, indicies, intensities):
     np_mz = timsfile.indexToMz(frame_id, np.array(indicies, dtype=np.float64))
