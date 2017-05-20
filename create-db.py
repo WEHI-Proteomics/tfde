@@ -40,7 +40,7 @@ c = conn.cursor()
 
 # Create the table
 c.execute('''DROP TABLE IF EXISTS frames''')
-c.execute('''CREATE TABLE frames (frame_id INTEGER, mz REAL, scan INTEGER, intensity INTEGER)''')
+c.execute('''CREATE TABLE frames (frame_id INTEGER, point_id INTEGER, mz REAL, scan INTEGER, intensity INTEGER)''')
 c.execute('''CREATE INDEX idx_frames ON frames (frame_id)''')
 
 points = []
@@ -52,6 +52,7 @@ for frame_id in range(FRAME_START, FRAME_END+1):
     scans = timsfile.readScans(frame_data_id, 0, num_scans)
     scan_begin = 0
     scan_end = num_scans
+    pointId = 0
 
     for i in range(scan_begin, scan_end):
         scan = scans[i]
@@ -61,15 +62,16 @@ for frame_id in range(FRAME_START, FRAME_END+1):
             peaks = len(mz)
             if peaks > 0:
             	for index in range(0,len(mz)):
-                    points.append((frame_id, mz[index], i, intensities[index]))
+                    pointId += 1
+                    points.append((frame_id, pointId, mz[index], i, intensities[index]))
     if frame_id % 1000 == 0:
         print("Writing 1000 frames...")
-        c.executemany("INSERT INTO frames VALUES (?, ?, ?, ?)", points)
+        c.executemany("INSERT INTO frames VALUES (?, ?, ?, ?, ?)", points)
         points = []
 
 # Write what we have left
 if len(points) > 0:
-    c.executemany("INSERT INTO frames VALUES (?, ?, ?, ?)", points)
+    c.executemany("INSERT INTO frames VALUES (?, ?, ?, ?, ?)", points)
 
 # Commit changes and close the connection
 conn.commit()
