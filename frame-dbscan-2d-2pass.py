@@ -162,32 +162,32 @@ for cluster in clusters:
         # add the peak to the collection
         mono_peaks_df = mono_peaks_df.append({'peak':bbox_points(bb), 'centroid':(bbox_centroid(bb))}, ignore_index=True)
 
-# Cluster the peaks we found
-Y_pretransform = pd.concat([mono_peaks_df, pd.DataFrame((d for idx, d in mono_peaks_df['centroid'].iteritems()))], axis=1)[['x','y']].values
-peak_bbs_tl = pd.concat([mono_peaks_df, pd.DataFrame((d['tl'] for idx, d in mono_peaks_df['peak'].iteritems()))], axis=1)[['x','y']].values
-peak_bbs_br = pd.concat([mono_peaks_df, pd.DataFrame((d['br'] for idx, d in mono_peaks_df['peak'].iteritems()))], axis=1)[['x','y']].values
+# # Cluster the peaks we found
+# Y_pretransform = pd.concat([mono_peaks_df, pd.DataFrame((d for idx, d in mono_peaks_df['centroid'].iteritems()))], axis=1)[['x','y']].values
+# peak_bbs_tl = pd.concat([mono_peaks_df, pd.DataFrame((d['tl'] for idx, d in mono_peaks_df['peak'].iteritems()))], axis=1)[['x','y']].values
+# peak_bbs_br = pd.concat([mono_peaks_df, pd.DataFrame((d['br'] for idx, d in mono_peaks_df['peak'].iteritems()))], axis=1)[['x','y']].values
 
-Y = np.copy(Y_pretransform)
-Y[:,0] = Y[:,0]*SCALING_FACTOR_CLUSTERS_X
-Y[:,1] = Y[:,1]*SCALING_FACTOR_CLUSTERS_Y
+# Y = np.copy(Y_pretransform)
+# Y[:,0] = Y[:,0]*SCALING_FACTOR_CLUSTERS_X
+# Y[:,1] = Y[:,1]*SCALING_FACTOR_CLUSTERS_Y
 
-db = DBSCAN(eps=EPSILON_CLUSTER, min_samples=MIN_POINTS_IN_CLUSTER, n_jobs=-1).fit(Y)
-labels = db.labels_
-n_clusters_ = len(set(labels)) - (1 if -1 in labels else 0)
-print("found {} clusters".format(n_clusters_))
-c1 = (peak_bbs_tl[labels == i] for i in xrange(n_clusters_))
-c2 = (peak_bbs_br[labels == i] for i in xrange(n_clusters_))
-clusters = [np.concatenate((e1, e2), axis=0) for e1, e2 in zip(c1, c2)]
-for cluster in clusters:
-    # find the bounding box of each cluster
-    bb = bbox(cluster)
-    x1 = bbox_points(bb)['tl']['x']
-    y1 = bbox_points(bb)['tl']['y']
-    x2 = bbox_points(bb)['br']['x']
-    y2 = bbox_points(bb)['br']['y']
-    # draw a bounding box around the cluster
-    p = patches.Rectangle((x1, y1), x2-x1, y2-y1, fc = 'none', ec = 'blue', linewidth=1)
-    ax1.add_patch(p)
+# db = DBSCAN(eps=EPSILON_CLUSTER, min_samples=MIN_POINTS_IN_CLUSTER, n_jobs=-1).fit(Y)
+# labels = db.labels_
+# n_clusters_ = len(set(labels)) - (1 if -1 in labels else 0)
+# print("found {} clusters".format(n_clusters_))
+# c1 = (peak_bbs_tl[labels == i] for i in xrange(n_clusters_))
+# c2 = (peak_bbs_br[labels == i] for i in xrange(n_clusters_))
+# clusters = [np.concatenate((e1, e2), axis=0) for e1, e2 in zip(c1, c2)]
+# for cluster in clusters:
+#     # find the bounding box of each cluster
+#     bb = bbox(cluster)
+#     x1 = bbox_points(bb)['tl']['x']
+#     y1 = bbox_points(bb)['tl']['y']
+#     x2 = bbox_points(bb)['br']['x']
+#     y2 = bbox_points(bb)['br']['y']
+#     # draw a bounding box around the cluster
+#     p = patches.Rectangle((x1, y1), x2-x1, y2-y1, fc = 'none', ec = 'blue', linewidth=1)
+#     ax1.add_patch(p)
 
 
 # Show the final plot
