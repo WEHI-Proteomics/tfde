@@ -60,13 +60,13 @@ c = conn.cursor()
 # Set up the table for detected peaks
 c.execute('''DROP TABLE IF EXISTS peaks''')
 c.execute('''DROP TABLE IF EXISTS peak_points''')
-c.execute('''CREATE TABLE peaks (frame_id INTEGER, peak_id INTEGER, state TEXT)''')
-c.execute('''CREATE TABLE peak_points (frame_id INTEGER, peak_id INTEGER, point_id INTEGER, PRIMARY KEY (frame_id, peak_id, point_id))''')
+c.execute('''CREATE TABLE peaks (frame_id INTEGER, peak_id INTEGER, state TEXT, centroid_mz REAL, centroid_scan INTEGER)''')
+c.execute('''CREATE TABLE peak_points (frame_id INTEGER, peak_id INTEGER, point_id INTEGER)''')
 # Indexes
 c.execute('''DROP INDEX IF EXISTS idx_peaks''')
 c.execute('''DROP INDEX IF EXISTS idx_peak_points''')
-c.execute('''CREATE INDEX idx_peaks ON peaks (frame_id, peak_id)''')
-c.execute('''CREATE INDEX idx_peak_points ON peak_points (frame_id, peak_id)''')
+c.execute('''CREATE INDEX idx_peaks ON peaks (frame_id)''')
+c.execute('''CREATE INDEX idx_peak_points ON peak_points (frame_id)''')
 
 for frame_id in range(FRAME_START, FRAME_END+1):
 
@@ -98,8 +98,9 @@ for frame_id in range(FRAME_START, FRAME_END+1):
     peak_id = 0
     for cluster in clusters:
         peak_id += 1
+        centroid = bbox_centroid(bbox(cluster))
         # add the peak to the collection
-        mono_peaks.append((frame_id, peak_id, ""))
+        mono_peaks.append((frame_id, peak_id, "", centroid['x'], int(centroid['y'])))
         # write out all the points in the cluster
         for point in cluster:
             # Find the point's pointID
@@ -107,7 +108,7 @@ for frame_id in range(FRAME_START, FRAME_END+1):
             point_id = int(row.point_id.values[0])
             peak_points.append((frame_id, peak_id, point_id))
     # Write out all the peaks to the database
-    c.executemany("INSERT INTO peaks VALUES (?, ?, ?)", mono_peaks)
+    c.executemany("INSERT INTO peaks VALUES (?, ?, ?, ?, ?)", mono_peaks)
     c.executemany("INSERT INTO peak_points VALUES (?, ?, ?)", peak_points)
     conn.commit()
 
