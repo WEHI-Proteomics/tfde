@@ -40,10 +40,11 @@ c = conn.cursor()
 
 # Create the table
 c.execute('''DROP TABLE IF EXISTS frames''')
-c.execute('''CREATE TABLE frames (frame_id INTEGER, point_id INTEGER, mz REAL, scan INTEGER, intensity INTEGER)''')
+c.execute('''CREATE TABLE frames (frame_id INTEGER, point_id INTEGER, mz REAL, scan INTEGER, intensity INTEGER, peak_id INTEGER)''')
 c.execute('''CREATE INDEX idx_frames ON frames (frame_id)''')
 
 points = []
+peak_id = 0
 for frame_id in range(FRAME_START, FRAME_END+1):
     print("Frame {:0>5} of {}".format(frame_id, frame_count))
 
@@ -63,15 +64,15 @@ for frame_id in range(FRAME_START, FRAME_END+1):
             if peaks > 0:
             	for index in range(0,len(mz)):
                     pointId += 1
-                    points.append((frame_id, pointId, mz[index], i, intensities[index]))
+                    points.append((frame_id, pointId, mz[index], i, intensities[index], peak_id))
     if frame_id % 1000 == 0:
         print("Writing 1000 frames...")
-        c.executemany("INSERT INTO frames VALUES (?, ?, ?, ?, ?)", points)
+        c.executemany("INSERT INTO frames VALUES (?, ?, ?, ?, ?, ?)", points)
         points = []
 
 # Write what we have left
 if len(points) > 0:
-    c.executemany("INSERT INTO frames VALUES (?, ?, ?, ?, ?)", points)
+    c.executemany("INSERT INTO frames VALUES (?, ?, ?, ?, ?, ?)", points)
 
 # Commit changes and close the connection
 conn.commit()

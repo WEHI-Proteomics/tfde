@@ -59,14 +59,19 @@ c = conn.cursor()
 
 # Set up the table for detected peaks
 c.execute('''DROP TABLE IF EXISTS peaks''')
-c.execute('''DROP TABLE IF EXISTS peak_points''')
 c.execute('''CREATE TABLE peaks (frame_id INTEGER, peak_id INTEGER, state TEXT, centroid_mz REAL, centroid_scan INTEGER)''')
+
+c.execute('''DROP TABLE IF EXISTS peak_points''')
 c.execute('''CREATE TABLE peak_points (frame_id INTEGER, peak_id INTEGER, point_id INTEGER)''')
 # Indexes
 c.execute('''DROP INDEX IF EXISTS idx_peaks''')
-c.execute('''DROP INDEX IF EXISTS idx_peak_points''')
 c.execute('''CREATE INDEX idx_peaks ON peaks (frame_id)''')
+
+c.execute('''DROP INDEX IF EXISTS idx_peak_points''')
 c.execute('''CREATE INDEX idx_peak_points ON peak_points (frame_id)''')
+
+c.execute('''DROP INDEX IF EXISTS idx_frame_point''')
+c.execute('''CREATE INDEX idx_frame_point ON frames (frame_id,point_id)''')
 
 for frame_id in range(FRAME_START, FRAME_END+1):
 
@@ -107,6 +112,9 @@ for frame_id in range(FRAME_START, FRAME_END+1):
             row = frame_df[(frame_df.mz == point[0]) & (frame_df.scan == point[1])]
             point_id = int(row.point_id.values[0])
             peak_points.append((frame_id, peak_id, point_id))
+            # Update the point's peak_id in the database
+            values = (peak_id, frame_id, point_id)
+            c.execute("update frames set peak_id=? where frame_id=? and point_id=?", values)
     # Write out all the peaks to the database
     c.executemany("INSERT INTO peaks VALUES (?, ?, ?, ?, ?)", mono_peaks)
     c.executemany("INSERT INTO peak_points VALUES (?, ?, ?)", peak_points)
