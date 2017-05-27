@@ -9,6 +9,7 @@ import copy
 import sqlite3
 
 # Process a set of frames using DBSCAN, and save the detected peaks to a database
+# Usage: python peak-detect.py
 
 FRAME_START = 29900
 FRAME_END = 30100
@@ -58,20 +59,21 @@ conn = sqlite3.connect(sqlite_file)
 c = conn.cursor()
 
 # Set up the table for detected peaks
+print("Setting up tables and indexes")
 c.execute('''DROP TABLE IF EXISTS peaks''')
-c.execute('''CREATE TABLE peaks (frame_id INTEGER, peak_id INTEGER, state TEXT, centroid_mz REAL, centroid_scan INTEGER)''')
+c.execute('''CREATE TABLE peaks (frame_id INTEGER, peak_id INTEGER, state TEXT, centroid_mz REAL, centroid_scan INTEGER, PRIMARY KEY (frame_id, peak_id))''')
 
-c.execute('''DROP TABLE IF EXISTS peak_points''')
-c.execute('''CREATE TABLE peak_points (frame_id INTEGER, peak_id INTEGER, point_id INTEGER)''')
+c.execute('''DROP TABLE IF EXISTS peak_log''')
+c.execute('''CREATE TABLE peak_log (frame_id INTEGER, peak_id INTEGER, entry_id INTEGER PRIMARY KEY AUTOINCREMENT, entry TEXT, date TEXT)''')
+
 # Indexes
 c.execute('''DROP INDEX IF EXISTS idx_peaks''')
-c.execute('''CREATE INDEX idx_peaks ON peaks (frame_id)''')
-
-c.execute('''DROP INDEX IF EXISTS idx_peak_points''')
-c.execute('''CREATE INDEX idx_peak_points ON peak_points (frame_id)''')
+c.execute('''CREATE INDEX idx_peaks ON peaks (frame_id,peak_id)''')
 
 c.execute('''DROP INDEX IF EXISTS idx_frame_point''')
 c.execute('''CREATE INDEX idx_frame_point ON frames (frame_id,point_id)''')
+
+c.execute("update frames set peak_id=0")
 
 for frame_id in range(FRAME_START, FRAME_END+1):
 
@@ -98,7 +100,6 @@ for frame_id in range(FRAME_START, FRAME_END+1):
 
     # Process the clusters
     mono_peaks = []  # where we record all the monoisotopic peaks we find
-    peak_points = []
     clusters = [X_pretransform[labels == i] for i in xrange(n_clusters_)]
     peak_id = 0
     for cluster in clusters:
@@ -111,13 +112,11 @@ for frame_id in range(FRAME_START, FRAME_END+1):
             # Find the point's pointID
             row = frame_df[(frame_df.mz == point[0]) & (frame_df.scan == point[1])]
             point_id = int(row.point_id.values[0])
-            peak_points.append((frame_id, peak_id, point_id))
             # Update the point's peak_id in the database
             values = (peak_id, frame_id, point_id)
             c.execute("update frames set peak_id=? where frame_id=? and point_id=?", values)
     # Write out all the peaks to the database
     c.executemany("INSERT INTO peaks VALUES (?, ?, ?, ?, ?)", mono_peaks)
-    c.executemany("INSERT INTO peak_points VALUES (?, ?, ?)", peak_points)
     conn.commit()
 
 conn.close()
