@@ -15,10 +15,10 @@ SCALING_FACTOR_CLUSTERS_Y = 0.2
 FRAME_START = 29900
 FRAME_END = 30100
 THRESHOLD = 85
-
+DB_VERSION = 4
 
 # Connect to the database file
-sqlite_file = "\\temp\\frames-th-{}-{}-{}.sqlite".format(THRESHOLD, FRAME_START, FRAME_END)
+sqlite_file = "\\temp\\frames-th-{}-{}-{}-V{}.sqlite".format(THRESHOLD, FRAME_START, FRAME_END, DB_VERSION)
 conn = sqlite3.connect(sqlite_file)
 c = conn.cursor()
 

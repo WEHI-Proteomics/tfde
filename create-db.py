@@ -9,6 +9,7 @@ import sqlite3
 THRESHOLD = 85
 FRAME_START = 29900
 FRAME_END = 30100
+DB_VERSION = 4
 
 def threshold_scan_transform(threshold, indicies, intensities):
     np_mz = timsfile.indexToMz(frame_id, np.array(indicies, dtype=np.float64))
@@ -34,7 +35,7 @@ frame_count = row[0]
 print("Analysis has {0} frames.".format(frame_count))
 
 # Connecting to the database file
-sqlite_file = "\\temp\\frames-th-{}-{}-{}.sqlite".format(THRESHOLD, FRAME_START, FRAME_END)
+sqlite_file = "\\temp\\frames-th-{}-{}-{}-V{}.sqlite".format(THRESHOLD, FRAME_START, FRAME_END, DB_VERSION)
 conn = sqlite3.connect(sqlite_file)
 c = conn.cursor()
 

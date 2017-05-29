@@ -3,8 +3,6 @@ import numpy as np
 import pandas as pd
 from sklearn.cluster import DBSCAN
 import time
-from scipy import signal
-import peakutils
 import copy
 import sqlite3
 
@@ -13,8 +11,8 @@ import sqlite3
 
 FRAME_START = 29900
 FRAME_END = 30100
-
 THRESHOLD = 85
+DB_VERSION = 4
 
 EPSILON_PEAK = 2.5
 MIN_POINTS_IN_PEAK = 4
@@ -54,14 +52,14 @@ def bbox_centroid(bbox):
 
 
 # Connect to the database file
-sqlite_file = "\\temp\\frames-th-{}-{}-{}.sqlite".format(THRESHOLD, FRAME_START, FRAME_END)
+sqlite_file = "\\temp\\frames-th-{}-{}-{}-V{}.sqlite".format(THRESHOLD, FRAME_START, FRAME_END, DB_VERSION)
 conn = sqlite3.connect(sqlite_file)
 c = conn.cursor()
 
 # Set up the table for detected peaks
 print("Setting up tables and indexes")
 c.execute('''DROP TABLE IF EXISTS peaks''')
-c.execute('''CREATE TABLE peaks (frame_id INTEGER, peak_id INTEGER, state TEXT, centroid_mz REAL, centroid_scan INTEGER, PRIMARY KEY (frame_id, peak_id))''')
+c.execute('''CREATE TABLE peaks (frame_id INTEGER, peak_id INTEGER, state TEXT, centroid_mz REAL, centroid_scan INTEGER, cluster_id INTEGER, PRIMARY KEY (frame_id, peak_id))''')
 
 c.execute('''DROP TABLE IF EXISTS peak_log''')
 c.execute('''CREATE TABLE peak_log (frame_id INTEGER, peak_id INTEGER, entry_id INTEGER PRIMARY KEY AUTOINCREMENT, entry TEXT, date TEXT)''')
@@ -116,7 +114,7 @@ for frame_id in range(FRAME_START, FRAME_END+1):
             values = (peak_id, frame_id, point_id)
             c.execute("update frames set peak_id=? where frame_id=? and point_id=?", values)
     # Write out all the peaks to the database
-    c.executemany("INSERT INTO peaks VALUES (?, ?, ?, ?, ?)", mono_peaks)
+    c.executemany("INSERT INTO peaks VALUES (?, ?, ?, ?, ?, 0)", mono_peaks)
     conn.commit()
 
 conn.close()
