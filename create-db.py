@@ -42,6 +42,7 @@ c = conn.cursor()
 # Create the table
 c.execute('''DROP TABLE IF EXISTS frames''')
 c.execute('''CREATE TABLE frames (frame_id INTEGER, point_id INTEGER, mz REAL, scan INTEGER, intensity INTEGER, peak_id INTEGER)''')
+c.execute('''DROP INDEX IF EXISTS idx_frames''')
 c.execute('''CREATE INDEX idx_frames ON frames (frame_id)''')
 
 points = []
