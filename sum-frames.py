@@ -60,6 +60,7 @@ for base_frame in range(FRAME_START, FRAME_END, FRAMES_TO_SUM):
     for scan in range(scan_min, scan_max+1):
         points = []
         print("  scan: {} of {}".format(scan, scan_max))
+        scan_start = time.time()
         for frame in range(base_frame, base_frame+FRAMES_TO_SUM):
             points_df = frame_df[(frame_df.scan == scan) & (frame_df.frame_id == frame)].sort_values('mz', ascending=True)
             print("    frame: {} ({} points on this scan)".format(frame, len(points_df)))
@@ -70,9 +71,10 @@ for base_frame in range(FRAME_START, FRAME_END, FRAMES_TO_SUM):
                 upper_index = find_mz_index(mz_min, point.mz+(4*stddev), vector_length)
                 for eval_index in range(lower_index, upper_index+1):
                     eval_vector[eval_index] = gaussian(mz_vector[eval_index], point.intensity, point.mz, stddev)
-                sum_vector += eval_vector
+                sum_vector[lower_index:upper_index+1] += eval_vector[lower_index:upper_index+1]
                 eval_vector.fill(0.0)
-
+        scan_end = time.time()
+        print("  summed scan in {} sec".format(scan_end-scan_start))
         # sum_vector now contains the summed gaussians for the set of 5 frames for this scan line
 
         # Find the maxima for this scan
