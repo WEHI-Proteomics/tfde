@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 
 
 FRAME_START = 700
-FRAME_END = 720
+FRAME_END = 705
 FRAMES_TO_SUM = 5
 INSTRUMENT_RESOLUTION = 40000.0
 MZ_INCREMENT = 0.00001
@@ -21,9 +21,13 @@ def gaussian(x, amplitude, peak, stddev):
     den = 2. * np.power(stddev, 2.)
     return amplitude * np.exp(-num/den)
 
-def find_mz_index(min_mz, mz):
-	idx = int((mz-min_mz)/MZ_INCREMENT)
-	return idx
+def find_mz_index(min_mz, mz, vector_length):
+    idx = int((mz-min_mz)/MZ_INCREMENT)
+    if idx < 0:
+        idx = 0
+    elif idx > vector_length-1:
+        idx = vector_length-1
+    return idx
 
 source_conn = sqlite3.connect(SOURCE_SQLITE_FILE)
 
@@ -52,7 +56,7 @@ summedFrameId = 1
 for base_frame in range(FRAME_START, FRAME_END, FRAMES_TO_SUM):
     print("base frame: {}".format(base_frame))
     # for scan in range(scan_min, scan_max+1):
-    pointId = 0
+    pointId = 1
     for scan in range(scan_min, scan_max+1):
         points = []
         print("  scan: {} of {}".format(scan, scan_max))
@@ -62,8 +66,8 @@ for base_frame in range(FRAME_START, FRAME_END, FRAMES_TO_SUM):
             for point_index in range(0,len(points_df)):
                 point = points_df.iloc[point_index]
                 stddev = (point.mz / INSTRUMENT_RESOLUTION) / 2.35482
-                lower_index = find_mz_index(mz_min, point.mz-(4*stddev))
-                upper_index = find_mz_index(mz_min, point.mz+(4*stddev))
+                lower_index = find_mz_index(mz_min, point.mz-(4*stddev), vector_length)
+                upper_index = find_mz_index(mz_min, point.mz+(4*stddev), vector_length)
                 for eval_index in range(lower_index, upper_index+1):
                     eval_vector[eval_index] = gaussian(mz_vector[eval_index], point.intensity, point.mz, stddev)
                 sum_vector += eval_vector
