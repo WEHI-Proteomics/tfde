@@ -21,12 +21,32 @@ def gaussian(x, amplitude, peak, stddev):
     den = 2. * np.power(stddev, 2.)
     return amplitude * np.exp(-num/den)
 
+# Find the index for the specified m/z value
 def find_mz_index(min_mz, mz, vector_length):
     idx = int((mz-min_mz)/MZ_INCREMENT)
     if idx < 0:
         idx = 0
     elif idx > vector_length-1:
         idx = vector_length-1
+    return idx
+
+# Find the m/z indexes either side of the peak where the value is 95% of the peak's intensity
+def find_peak_region_indexes(mz_vector, intensity_vector, peak_mz_index):
+    lower_mz_index = 0
+    upper_mz_index = len(mz_vector)
+    region_intensity_value = intensity_vector[peak_mz_index] * 0.95
+    for i in range(peak_mz_index, 0, -1):
+        if intensity_vector[i] <= region_intensity_value:
+            lower_mz_index = i
+            break
+    for i in range(peak_mz_index, len(mz_vector)):
+        if intensity_vector[i] <= region_intensity_value:
+            upper_mz_index = i
+            break
+    return (lower_mz_index, upper_mz_index)
+
+def get_near_pos(array, value):
+    idx = (np.abs(array-value)).argmin()
     return idx
 
 source_conn = sqlite3.connect(SOURCE_SQLITE_FILE)
@@ -59,6 +79,9 @@ for base_frame in range(FRAME_START, FRAME_END, FRAMES_TO_SUM):
     pointId = 1
     for scan in range(scan_min, scan_max+1):
         points = []
+        centroid_indexes = []
+        lower_indexes = []
+        upper_indexes = []
         print("  scan: {} of {}".format(scan, scan_max))
         scan_start = time.time()
         for frame in range(base_frame, base_frame+FRAMES_TO_SUM):
@@ -70,35 +93,46 @@ for base_frame in range(FRAME_START, FRAME_END, FRAMES_TO_SUM):
                 lower_index = find_mz_index(mz_min, point.mz-(4*stddev), vector_length)
                 upper_index = find_mz_index(mz_min, point.mz+(4*stddev), vector_length)
                 for eval_index in range(lower_index, upper_index+1):
-                    eval_vector[eval_index] = gaussian(mz_vector[eval_index], point.intensity, point.mz, stddev)
+                    eval_vector[eval_index] = peakutils.gaussian(mz_vector[eval_index], point.intensity, point.mz, stddev)
                 sum_vector[lower_index:upper_index+1] += eval_vector[lower_index:upper_index+1]
                 eval_vector.fill(0.0)
         scan_end = time.time()
-        print("  summed scan in {} sec".format(scan_end-scan_start))
+        print("    summed scan in {} sec".format(scan_end-scan_start))
         # sum_vector now contains the summed gaussians for the set of 5 frames for this scan line
 
-        # Find the maxima for this scan
+        # Find the peak centroids and write them out to the database
         signal_indices = np.where(sum_vector > 1)[0]
         truncated_sum_vector = sum_vector[signal_indices]
         if len(truncated_sum_vector) > 0:
             print("    {} points in the truncated sum vector".format(len(truncated_sum_vector)))
+            # Find the maxima for this scan
             indexes = peakutils.indexes(truncated_sum_vector, thres=0.01, min_dist=1000)
-
-            # Write out the maxima as points for this scan
             for i in range(0,len(indexes)):
-                points.append((summedFrameId, pointId, mz_vector[signal_indices[indexes[i]]], scan, int(sum_vector[signal_indices[indexes[i]]]), 0))
+                lower_peak_index, upper_peak_index = find_peak_region_indexes(mz_vector, sum_vector, signal_indices[indexes[i]])
+                centroid_mz = peakutils.centroid(mz_vector[lower_peak_index:upper_peak_index+1], sum_vector[lower_peak_index:upper_peak_index+1])
+                centroid_index = get_near_pos(mz_vector[lower_peak_index:upper_peak_index+1], centroid_mz)+lower_peak_index
+                # print("lower: {}, upper: {}, centroid: {}".format(lower_peak_index, upper_peak_index, centroid_index))
+                # add this point to the list
+                points.append((summedFrameId, pointId, centroid_mz, scan, int(sum_vector[centroid_index]), 0))
+                centroid_indexes.append(centroid_index)
+                lower_indexes.append(lower_peak_index)
+                upper_indexes.append(upper_peak_index)
                 pointId += 1
-
             print("    Writing scan {} of frame {} ({} points) to the database.".format(scan, summedFrameId, len(points)))
             dest_c.executemany("INSERT INTO frames VALUES (?, ?, ?, ?, ?, ?)", points)
             dest_conn.commit()
 
-        # f = plt.figure()
-        # ax1 = f.add_subplot(111)
-        # plt.xlim(1050, 1150)
-        # ax1.plot(mz_vector, sum_vector, 'o', markerfacecolor='orange', markeredgecolor='black', markeredgewidth=0.0, markersize=4)
-        # ax1.plot(mz_vector[signal_indices[indexes]], sum_vector[signal_indices[indexes]], 'o', markerfacecolor='red', markeredgecolor='black', markeredgewidth=0.0, markersize=6)
-        # plt.show()
+        # # Plot a scan
+        # if summedFrameId == 1 and scan == 5:
+        #     f = plt.figure()
+        #     ax1 = f.add_subplot(111)
+        #     plt.xlim(1050, 1150)
+        #     ax1.plot(mz_vector, sum_vector, 'o', markerfacecolor='orange', markeredgecolor='black', markeredgewidth=0.0, markersize=4)
+        #     ax1.plot(mz_vector[centroid_indexes], sum_vector[centroid_indexes], 'o', markerfacecolor='red', markeredgecolor='black', markeredgewidth=0.0, markersize=6)
+        #     ax1.plot(mz_vector[lower_indexes], sum_vector[lower_indexes], 'o', markerfacecolor='green', markeredgecolor='black', markeredgewidth=0.0, markersize=6)
+        #     ax1.plot(mz_vector[upper_indexes], sum_vector[upper_indexes], 'o', markerfacecolor='blue', markeredgecolor='black', markeredgewidth=0.0, markersize=6)
+        #     plt.show()
+        #     break
 
         # reset the sum vector for the next scan
         sum_vector.fill(0.0)
