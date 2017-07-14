@@ -84,7 +84,6 @@ elif args.cmd == 'process':
             intensity = int(frame_v[max_intensity_index][2])
             point_id = int(frame_v[max_intensity_index][3])
             peak_indices = np.append(peak_indices, max_intensity_index)
-            # print("intense point: scan {}".format(scan))
 
             # Look for other points belonging to this peak
             std_dev_window = standard_deviation(mz) * args.standard_deviations
@@ -94,11 +93,15 @@ elif args.cmd == 'process':
             while (missed_scans < args.empty_scans) and (scan-scan_offset >= args.scan_lower):
                 # print("looking in scan {}".format(scan-scan_offset))
                 nearby_indices_up = np.where((frame_v[:,1] == scan-scan_offset) & (frame_v[:,0] >= mz - std_dev_window) & (frame_v[:,0] <= mz + std_dev_window))[0]
+                nearby_points_up = frame_v[nearby_indices_up]
                 # print("nearby indices: {}".format(nearby_indices_up))
                 if len(nearby_indices_up) == 0:
                     missed_scans += 1
                     # print("found no points")
                 else:
+                    # Update the m/z window
+                    mz = nearby_points_up[np.argsort(nearby_points_up[:,2])[::-1]][0][0] # find the m/z of the most intense
+                    std_dev_window = standard_deviation(mz) * args.standard_deviations
                     missed_scans = 0
                     # print("found {} points".format(len(nearby_indices_up)))
                     peak_indices = np.append(peak_indices, nearby_indices_up)
@@ -106,13 +109,19 @@ elif args.cmd == 'process':
             # Look in the 'down' direction
             scan_offset = 1
             missed_scans = 0
+            mz = frame_v[max_intensity_index][0]
+            std_dev_window = standard_deviation(mz) * args.standard_deviations
             while (missed_scans < args.empty_scans) and (scan+scan_offset <= args.scan_upper):
                 # print("looking in scan {}".format(scan+scan_offset))
                 nearby_indices_down = np.where((frame_v[:,1] == scan+scan_offset) & (frame_v[:,0] >= mz - std_dev_window) & (frame_v[:,0] <= mz + std_dev_window))[0]
+                nearby_points_down = frame_v[nearby_indices_down]
                 if len(nearby_indices_down) == 0:
                     missed_scans += 1
                     # print("found no points")
                 else:
+                    # Update the m/z window
+                    mz = nearby_points_down[np.argsort(nearby_points_down[:,2])[::-1]][0][0] # find the m/z of the most intense
+                    std_dev_window = standard_deviation(mz) * args.standard_deviations
                     missed_scans = 0
                     # print("found {} points".format(len(nearby_indices_down)))
                     peak_indices = np.append(peak_indices, nearby_indices_down)
