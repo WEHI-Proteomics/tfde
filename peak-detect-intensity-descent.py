@@ -47,57 +47,96 @@ if args.cmd == 'query':
     print("frames {}-{}, scans {}-{}, m/z {}-{}, intensity {}-{}".format(frame_min, frame_max, scan_min, scan_max, mz_min, mz_max, intensity_min, intensity_max))
 
 elif args.cmd == 'process':
-    dest_conn = sqlite3.connect(args.destination_database_name)
-    dest_c = dest_conn.cursor()
+    c = source_conn.cursor()
 
-    dest_c.execute('''DROP TABLE IF EXISTS frames''')
-    dest_c.execute('''CREATE TABLE frames (frame_id INTEGER, point_id INTEGER, mz REAL, scan INTEGER, intensity INTEGER, peak_id INTEGER)''')
-    dest_c.execute('''DROP INDEX IF EXISTS idx_frames''')
-    dest_c.execute('''CREATE INDEX idx_frames ON frames (frame_id)''')
+    # Set up the table for detected peaks
+    print("Setting up tables and indexes")
+    c.execute('''DROP TABLE IF EXISTS peaks''')
+    c.execute('''CREATE TABLE peaks (frame_id INTEGER, peak_id INTEGER, state TEXT, centroid_mz REAL, centroid_scan INTEGER, cluster_id INTEGER, PRIMARY KEY (frame_id, peak_id))''')
+
+    c.execute('''DROP TABLE IF EXISTS peak_log''')
+    c.execute('''CREATE TABLE peak_log (frame_id INTEGER, peak_id INTEGER, entry_id INTEGER PRIMARY KEY AUTOINCREMENT, entry TEXT, date TEXT)''')
+
+    # Indexes
+    c.execute('''DROP INDEX IF EXISTS idx_peaks''')
+    c.execute('''CREATE INDEX idx_peaks ON peaks (frame_id,peak_id)''')
+
+    c.execute('''DROP INDEX IF EXISTS idx_frame_point''')
+    c.execute('''CREATE INDEX idx_frame_point ON frames (frame_id,point_id)''')
+
+    c.execute("update frames set peak_id=0")
 
     summedFrameId = 1
     peak_id = 1
-    for frame in range(args.frame_lower, args.frame_upper+1):
+    mono_peaks = []
+    for frame_id in range(args.frame_lower, args.frame_upper+1):
         frame_df = pd.read_sql_query("select mz,scan,intensity,point_id,peak_id,frame_id from frames where frame_id={} order by mz, scan asc;"
-            .format(frame), source_conn)
+            .format(frame_id), source_conn)
+        print("Processing frame {}".format(frame_id))
         start_frame = time.time()
-        while frame_df.count()[0] > 0:
-            peak_df = pd.DataFrame()
-            max_p_df = frame_df[frame_df.intensity == frame_df.intensity.max()]
-            peak_df = pd.concat([peak_df, max_p_df])
-            mz = max_p_df.mz.values[0]
-            scan = max_p_df.scan.values[0]
+        frame_v = frame_df.values
+        while len(frame_v) > 0:
+            peak_indices = np.empty(0)
+
+            max_intensity_index = frame_v.argmax(axis=0)[2]
+            mz = frame_v[max_intensity_index][0]
+            scan = int(frame_v[max_intensity_index][1])
+            intensity = int(frame_v[max_intensity_index][2])
+            point_id = int(frame_v[max_intensity_index][3])
+            peak_indices = np.append(peak_indices, max_intensity_index)
+            # print("intense point: scan {}".format(scan))
+
+            # Look for other points belonging to this peak
             std_dev_window = standard_deviation(mz) * args.standard_deviations
             # Look in the 'up' direction
             scan_offset = 1
             missed_scans = 0
-            while missed_scans <= args.empty_scans:
-                nearby_df = frame_df[(frame_df.scan == scan-scan_offset) & (frame_df.mz >= mz - std_dev_window) & 
-                (frame_df.mz <= mz + std_dev_window)]
-                if nearby_df.count()[0] == 0:
+            while (missed_scans < args.empty_scans) and (scan-scan_offset >= args.scan_lower):
+                # print("looking in scan {}".format(scan-scan_offset))
+                nearby_indices_up = np.where((frame_v[:,1] == scan-scan_offset) & (frame_v[:,0] >= mz - std_dev_window) & (frame_v[:,0] <= mz + std_dev_window))[0]
+                # print("nearby indices: {}".format(nearby_indices_up))
+                if len(nearby_indices_up) == 0:
                     missed_scans += 1
+                    # print("found no points")
                 else:
-                    peak_df = pd.concat([peak_df, nearby_df])
                     missed_scans = 0
+                    # print("found {} points".format(len(nearby_indices_up)))
+                    peak_indices = np.append(peak_indices, nearby_indices_up)
                 scan_offset += 1
             # Look in the 'down' direction
             scan_offset = 1
             missed_scans = 0
-            while missed_scans <= args.empty_scans:
-                nearby_df = frame_df[(frame_df.scan == scan+scan_offset) & (frame_df.mz >= mz - std_dev_window) & 
-                (frame_df.mz <= mz + std_dev_window)]
-                if nearby_df.count()[0] == 0:
+            while (missed_scans < args.empty_scans) and (scan+scan_offset <= args.scan_upper):
+                # print("looking in scan {}".format(scan+scan_offset))
+                nearby_indices_down = np.where((frame_v[:,1] == scan+scan_offset) & (frame_v[:,0] >= mz - std_dev_window) & (frame_v[:,0] <= mz + std_dev_window))[0]
+                if len(nearby_indices_down) == 0:
                     missed_scans += 1
+                    # print("found no points")
                 else:
-                    peak_df = pd.concat([peak_df, nearby_df])
                     missed_scans = 0
+                    # print("found {} points".format(len(nearby_indices_down)))
+                    peak_indices = np.append(peak_indices, nearby_indices_down)
                 scan_offset += 1
-            
-            # Remove the points in this peak
-            frame_df = frame_df[-frame_df.index.isin(peak_df.index)]
-            peak_df.peak_id = peak_id
-            # Update database
-            peak_df.to_sql(con=dest_conn, name='frames', index=False, if_exists='append')
-            peak_id += 1
+
+            # print("peak indices: {}".format(peak_indices))
+            if len(peak_indices) > 1:
+                # Add the peak to the collection
+                mono_peaks.append((frame_id, peak_id, "", mz, scan))
+
+                # Update database
+                for p in peak_indices:
+                    values = (peak_id, frame_id, frame_v[int(p)][3])
+                    c.execute("update frames set peak_id=? where frame_id=? and point_id=?", values)
+    
+                peak_id += 1
+
+            # remove the points we've processed from the frame
+            frame_v = np.delete(frame_v, peak_indices, 0)
+
         stop_frame = time.time()
         print("{} seconds to process frame - {} peaks".format(stop_frame-start_frame, peak_id))
+
+    # Write out all the peaks to the database
+    c.executemany("INSERT INTO peaks VALUES (?, ?, ?, ?, ?, 0)", mono_peaks)
+    source_conn.commit()
+    source_conn.close()
