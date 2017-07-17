@@ -75,7 +75,7 @@ elif args.cmd == 'process':
         start_frame = time.time()
         frame_v = frame_df.values
         while len(frame_v) > 0:
-            peak_indices = np.empty(0)
+            peak_indices = np.empty(0, dtype=int)
 
             max_intensity_index = frame_v.argmax(axis=0)[2]
             mz = frame_v[max_intensity_index][0]
@@ -129,12 +129,22 @@ elif args.cmd == 'process':
             # print("peak indices: {}".format(peak_indices))
             if len(peak_indices) > 1:
                 # Add the peak to the collection
-                mono_peaks.append((frame_id, peak_id, "", mz, scan))
+                peak_mz = []
+                peak_scan = []
+                peak_intensity = []
 
                 # Update database
                 for p in peak_indices:
+                    peak_mz.append(frame_v[p][0])
+                    peak_scan.append(frame_v[p][1])
+                    peak_intensity.append(frame_v[p][2])
+
                     values = (peak_id, frame_id, frame_v[int(p)][3])
                     c.execute("update frames set peak_id=? where frame_id=? and point_id=?", values)
+
+                peak_mz_centroid = np.average(peak_mz, weights=peak_intensity)
+                peak_scan_centroid = np.average(peak_scan, weights=peak_intensity)
+                mono_peaks.append((frame_id, peak_id, "", peak_mz_centroid, peak_scan_centroid))
     
                 peak_id += 1
 
