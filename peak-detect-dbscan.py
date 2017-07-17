@@ -9,10 +9,10 @@ import sqlite3
 # Process a set of frames using DBSCAN, and save the detected peaks to a database
 # Usage: python peak-detect.py
 
-FRAME_START = 29900
-FRAME_END = 30100
-THRESHOLD = 85
-DB_VERSION = 4
+FRAME_START = 1
+FRAME_END = 1
+# THRESHOLD = 85
+# DB_VERSION = 4
 
 EPSILON_PEAK = 2.5
 MIN_POINTS_IN_PEAK = 4
@@ -52,7 +52,7 @@ def bbox_centroid(bbox):
 
 
 # Connect to the database file
-sqlite_file = "\\temp\\frames-th-{}-{}-{}-V{}.sqlite".format(THRESHOLD, FRAME_START, FRAME_END, DB_VERSION)
+sqlite_file = "\\temp\\cdt-137000-137200-p6-nt2.sqlite"
 conn = sqlite3.connect(sqlite_file)
 c = conn.cursor()
 
@@ -78,9 +78,9 @@ for frame_id in range(FRAME_START, FRAME_END+1):
     print("Reading frame {} from database {}...".format(frame_id, sqlite_file))
     frame_df = pd.read_sql_query("select * from frames where frame_id={} ORDER BY MZ, SCAN ASC;".format(frame_id), conn)
 
+    start_frame = time.time()
     X_pretransform = frame_df[['mz','scan']].values
 
-    start = time.time()
     X = np.copy(X_pretransform)
     X[:,0] = X[:,0]*SCALING_FACTOR_PEAKS_X
     X[:,1] = X[:,1]*SCALING_FACTOR_PEAKS_Y
@@ -92,9 +92,6 @@ for frame_id in range(FRAME_START, FRAME_END+1):
 
     # Number of clusters in labels, ignoring noise if present.
     n_clusters_ = len(set(labels)) - (1 if -1 in labels else 0)
-
-    end = time.time()
-    print("found {} peaks in frame {} in {} seconds.".format(n_clusters_, frame_id, end-start))
 
     # Process the clusters
     mono_peaks = []  # where we record all the monoisotopic peaks we find
@@ -113,6 +110,8 @@ for frame_id in range(FRAME_START, FRAME_END+1):
             # Update the point's peak_id in the database
             values = (peak_id, frame_id, point_id)
             c.execute("update frames set peak_id=? where frame_id=? and point_id=?", values)
+    stop_frame = time.time()
+    print("{} seconds to process frame - {} peaks".format(stop_frame-start_frame, peak_id))
     # Write out all the peaks to the database
     c.executemany("INSERT INTO peaks VALUES (?, ?, ?, ?, ?, 0)", mono_peaks)
     conn.commit()

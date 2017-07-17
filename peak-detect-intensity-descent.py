@@ -13,7 +13,7 @@ def standard_deviation(mz):
 
 
 parser = argparse.ArgumentParser(description='A tree descent method for peak detection.')
-parser.add_argument('-sdb','--source_database_name', type=str, help='The name of the source database.', required=True)
+parser.add_argument('-db','--database_name', type=str, help='The name of the source database.', required=True)
 subparsers = parser.add_subparsers(dest='cmd', help='help for subcommand')
 
 # create the parser for the "query" command
@@ -21,7 +21,6 @@ parser_a = subparsers.add_parser('query', help='Display the attributes of the fr
 
 # create the parser for the "process" command
 parser_b = subparsers.add_parser('process', help='Process the database.')
-parser_b.add_argument('-ddb','--destination_database_name', type=str, help='The name of the destination database.', required=True)
 parser_b.add_argument('-fl','--frame_lower', type=int, help='The lower frame number.', required=True)
 parser_b.add_argument('-fu','--frame_upper', type=int, help='The upper frame number.', required=True)
 parser_b.add_argument('-sl','--scan_lower', type=int, help='The lower scan number.', required=True)
@@ -32,7 +31,7 @@ parser_b.add_argument('-sd','--standard_deviations', type=int, default=4, help='
 args = parser.parse_args()
 print args
 
-source_conn = sqlite3.connect(args.source_database_name)
+source_conn = sqlite3.connect(args.database_name)
 
 if args.cmd == 'query':
     frame_df = pd.read_sql_query("select frame_id,scan,mz,intensity from frames;", source_conn)
@@ -66,10 +65,10 @@ elif args.cmd == 'process':
 
     c.execute("update frames set peak_id=0")
 
-    summedFrameId = 1
-    peak_id = 1
     mono_peaks = []
+    start_run = time.time()
     for frame_id in range(args.frame_lower, args.frame_upper+1):
+        peak_id = 1
         frame_df = pd.read_sql_query("select mz,scan,intensity,point_id,peak_id,frame_id from frames where frame_id={} order by mz, scan asc;"
             .format(frame_id), source_conn)
         print("Processing frame {}".format(frame_id))
@@ -149,3 +148,5 @@ elif args.cmd == 'process':
     c.executemany("INSERT INTO peaks VALUES (?, ?, ?, ?, ?, 0)", mono_peaks)
     source_conn.commit()
     source_conn.close()
+    stop_run = time.time()
+    print("{} seconds to process run".format(stop_run-start_run))
