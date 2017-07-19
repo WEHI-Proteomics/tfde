@@ -26,9 +26,8 @@ parser_b.add_argument('-fl','--frame_lower', type=int, help='The lower frame num
 parser_b.add_argument('-fu','--frame_upper', type=int, help='The upper frame number.', required=True)
 parser_b.add_argument('-sl','--scan_lower', type=int, help='The lower scan number.', required=True)
 parser_b.add_argument('-su','--scan_upper', type=int, help='The upper scan number.', required=True)
-parser_b.add_argument('-p','--points', type=int, default=6, help='Maximum number of points to sum per feature.', required=False)
 parser_b.add_argument('-fts','--frames_to_sum', type=int, default=5, help='Number of frames to sum.', required=False)
-parser_b.add_argument('-nt','--noise_threshold', type=int, default=4, help='Minimum number of neighbours for a point to be included.', required=False)
+parser_b.add_argument('-nt','--noise_threshold', type=int, default=2, help='Minimum number of frames a point must appear in to be processed.', required=False)
 parser_b.add_argument('-bf','--base_frame', type=int, default=1, help='Base frame number.', required=False)
 
 args = parser.parse_args()
@@ -52,9 +51,7 @@ elif args.cmd == 'process':
     frame_upper = args.frame_upper
     scan_lower = args.scan_lower
     scan_upper = args.scan_upper
-    max_points_per_feature = args.points
     frames_to_sum = args.frames_to_sum
-    noise_threshold = args.noise_threshold
 
     dest_conn = sqlite3.connect(args.destination_database_name)
     dest_c = dest_conn.cursor()
@@ -84,15 +81,15 @@ elif args.cmd == 'process':
                 point_mz = points_v[max_intensity_index, 1]
                 # print("m/z {}, intensity {}".format(point_mz, points_v[max_intensity_index, 3]))
                 delta_mz = standard_deviation(point_mz) * 4.0
+                # Find all the points in this point's std dev window
                 nearby_point_indices = np.where((points_v[:,1] >= point_mz-delta_mz) & (points_v[:,1] <= point_mz+delta_mz))[0]
-                if len(nearby_point_indices) > noise_threshold:
-                    nearby_points = points_v[nearby_point_indices]
-                    # take the most intense nearby points
-                    most_intense_nearby_point_indices = np.argsort(nearby_points[:,3])[::-1][:min(len(nearby_points),max_points_per_feature)]
-                    most_intense_points = nearby_points[most_intense_nearby_point_indices]
+                nearby_points = points_v[nearby_point_indices]
+                # How many distinct frames do the points come from?
+                unique_frames = np.unique(nearby_points[:,0])
+                if len(unique_frames) >= args.noise_threshold:
                     # find the total intensity and centroid m/z
-                    centroid_intensity = most_intense_points[:,3].sum()
-                    centroid_mz = peakutils.centroid(most_intense_points[:,1], most_intense_points[:,3])
+                    centroid_intensity = nearby_points[:,3].sum()
+                    centroid_mz = peakutils.centroid(nearby_points[:,1], nearby_points[:,3])
                     points.append((summedFrameId, pointId, centroid_mz, scan, int(round(centroid_intensity)), 0))
                     pointId += 1
 
@@ -115,7 +112,7 @@ elif args.cmd == 'process':
                     # plt.show()
 
                     # remove the points we've processed
-                    points_v = np.delete(points_v, nearby_point_indices[most_intense_nearby_point_indices], 0)
+                    points_v = np.delete(points_v, nearby_point_indices, 0)
                 else:
                     # remove this point because it doesn't have enough neighbours
                     points_v = np.delete(points_v, max_intensity_index, 0)
