@@ -3,13 +3,15 @@ import numpy as np
 from numpy import ix_
 import timsdata
 import sqlite3
+import os
 
 # Usage: python create-db.py D:\Bruker\Databases\Hela200ng100msMSonlyPP23pro_Slot1-5_01_57.d
 
-THRESHOLD = 85
-FRAME_START = 29900
-FRAME_END = 30100
-DB_VERSION = 4
+THRESHOLD = 0
+FRAME_START = 160000
+FRAME_END = 160100
+DB_VERSION = 5
+COLLISION_ENERGY_PROPERTY = 1454
 
 def threshold_scan_transform(threshold, indicies, intensities):
     np_mz = timsfile.indexToMz(frame_id, np.array(indicies, dtype=np.float64))
@@ -35,7 +37,7 @@ frame_count = row[0]
 print("Analysis has {0} frames.".format(frame_count))
 
 # Connecting to the database file
-sqlite_file = "\\temp\\frames-th-{}-{}-{}-V{}.sqlite".format(THRESHOLD, FRAME_START, FRAME_END, DB_VERSION)
+sqlite_file = "\\temp\\{}-frames-th-{}-{}-{}-V{}.sqlite".format(os.path.basename(analysis_dir).split('.')[0], THRESHOLD, FRAME_START, FRAME_END, DB_VERSION)
 conn = sqlite3.connect(sqlite_file)
 c = conn.cursor()
 
@@ -44,8 +46,13 @@ c.execute('''DROP TABLE IF EXISTS frames''')
 c.execute('''CREATE TABLE frames (frame_id INTEGER, point_id INTEGER, mz REAL, scan INTEGER, intensity INTEGER, peak_id INTEGER)''')
 c.execute('''DROP INDEX IF EXISTS idx_frames''')
 c.execute('''CREATE INDEX idx_frames ON frames (frame_id)''')
+c.execute('''DROP TABLE IF EXISTS frame_properties''')
+c.execute('''CREATE TABLE frame_properties (frame_id INTEGER, collision_energy REAL)''')
+c.execute('''DROP INDEX IF EXISTS idx_frame_properties''')
+c.execute('''CREATE INDEX idx_frame_properties ON frame_properties (frame_id)''')
 
 points = []
+frame_properties = []
 peak_id = 0
 for frame_id in range(FRAME_START, FRAME_END+1):
     print("Frame {:0>5} of {}".format(frame_id, frame_count))
@@ -56,6 +63,10 @@ for frame_id in range(FRAME_START, FRAME_END+1):
     scan_begin = 0
     scan_end = num_scans
     pointId = 0
+
+    (collision_energy,) = timsfile.conn.execute(
+          "SELECT Value FROM FrameProperties WHERE Frame={} AND Property={}".format(frame_id, COLLISION_ENERGY_PROPERTY)).fetchone()
+    frame_properties.append((frame_id, collision_energy))
 
     for i in range(scan_begin, scan_end):
         scan = scans[i]
@@ -75,6 +86,9 @@ for frame_id in range(FRAME_START, FRAME_END+1):
 # Write what we have left
 if len(points) > 0:
     c.executemany("INSERT INTO frames VALUES (?, ?, ?, ?, ?, ?)", points)
+
+print frame_properties
+c.executemany("INSERT INTO frame_properties VALUES (?, ?)", frame_properties)
 
 # Commit changes and close the connection
 conn.commit()
