@@ -35,14 +35,17 @@ c = source_conn.cursor()
 # Set up the table for detected peaks
 print("Setting up tables and indexes")
 c.execute('''DROP TABLE IF EXISTS peaks''')
-c.execute('''CREATE TABLE peaks (frame_id INTEGER, peak_id INTEGER, state TEXT, centroid_mz REAL, centroid_scan INTEGER, cluster_id INTEGER, PRIMARY KEY (frame_id, peak_id))''')
+c.execute('''CREATE TABLE peaks (frame_id INTEGER, peak_id INTEGER, centroid_mz REAL, centroid_scan REAL, intensity_sum INTEGER, scan_upper INTEGER, scan_lower INTEGER, cluster_id INTEGER, PRIMARY KEY (frame_id, peak_id))''')
 
 c.execute('''DROP TABLE IF EXISTS peak_log''')
 c.execute('''CREATE TABLE peak_log (frame_id INTEGER, peak_id INTEGER, entry_id INTEGER PRIMARY KEY AUTOINCREMENT, entry TEXT, date TEXT)''')
 
 # Indexes
-c.execute('''DROP INDEX IF EXISTS idx_peaks''')
-c.execute('''CREATE INDEX idx_peaks ON peaks (frame_id,peak_id)''')
+c.execute('''DROP INDEX IF EXISTS idx_frame_peak''')
+c.execute('''CREATE INDEX idx_frame_peak ON peaks (frame_id,peak_id)''')
+
+c.execute('''DROP INDEX IF EXISTS idx_frame''')
+c.execute('''CREATE INDEX idx_frame ON peaks (frame_id)''')
 
 c.execute('''DROP INDEX IF EXISTS idx_frame_point''')
 c.execute('''CREATE INDEX idx_frame_point ON frames (frame_id,point_id)''')
@@ -125,14 +128,17 @@ for frame_id in range(args.frame_lower, args.frame_upper+1):
             for p in peak_indices:
                 peak_mz.append(frame_v[p][0])
                 peak_scan.append(frame_v[p][1])
-                peak_intensity.append(frame_v[p][2])
+                peak_intensity.append(int(frame_v[p][2]))
 
                 values = (peak_id, frame_id, frame_v[int(p)][3])
                 c.execute("update frames set peak_id=? where frame_id=? and point_id=?", values)
 
             peak_mz_centroid = np.average(peak_mz, weights=peak_intensity)
             peak_scan_centroid = np.average(peak_scan, weights=peak_intensity)
-            mono_peaks.append((frame_id, peak_id, "", peak_mz_centroid, peak_scan_centroid))
+            peak_intensity_sum = np.sum(peak_intensity)
+            peak_scan_upper = np.max(peak_scan)
+            peak_scan_lower = np.min(peak_scan)
+            mono_peaks.append((frame_id, peak_id, peak_mz_centroid, peak_scan_centroid, peak_intensity_sum, peak_scan_upper, peak_scan_lower))
 
             peak_id += 1
 
@@ -143,7 +149,7 @@ for frame_id in range(args.frame_lower, args.frame_upper+1):
     print("{} seconds to process frame - {} peaks".format(stop_frame-start_frame, peak_id))
 
 # Write out all the peaks to the database
-c.executemany("INSERT INTO peaks VALUES (?, ?, ?, ?, ?, 0)", mono_peaks)
+c.executemany("INSERT INTO peaks VALUES (?, ?, ?, ?, ?, ?, ?, 0)", mono_peaks)
 source_conn.commit()
 stop_run = time.time()
 print("{} seconds to process run".format(stop_run-start_run))
