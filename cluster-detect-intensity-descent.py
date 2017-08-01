@@ -24,10 +24,9 @@ parser.add_argument('-il','--isotope_number_left', type=int, default=5, help='Is
 args = parser.parse_args()
 
 # Store the arguments as metadata in the database for later reference
-cluster_info = []
+cluster_detect_info = []
 for arg in vars(args):
-    cluster_info.append((arg, getattr(args, arg)))
-
+    cluster_detect_info.append((arg, getattr(args, arg)))
 
 # Connect to the database file
 source_conn = sqlite3.connect(args.database_name)
@@ -39,8 +38,8 @@ c.execute('''CREATE TABLE `clusters` ( `frame_id` INTEGER, `cluster_id` INTEGER,
 c.execute('''DROP INDEX IF EXISTS idx_clusters''')
 c.execute('''CREATE INDEX idx_clusters ON clusters (frame_id,cluster_id)''')
 c.execute("update peaks set cluster_id=0")
-c.execute('''DROP TABLE IF EXISTS cluster_info''')
-c.execute('''CREATE TABLE cluster_info (item TEXT, value TEXT)''')
+c.execute('''DROP TABLE IF EXISTS cluster_detect_info''')
+c.execute('''CREATE TABLE cluster_detect_info (item TEXT, value TEXT)''')
 
 DELTA_MZ = 1.003355
 MZ_COMPARISON_TOLERANCE = 0.01
@@ -118,17 +117,19 @@ for frame_id in range(args.frame_lower, args.frame_upper+1):
         if found:
             # Pick out the peaks belonging to this cluster from the peaks nearby
             # To the right...
-            search_increment = DELTA_MZ/charge
-            for mz in np.arange(base_isotope_peak,analysis_window_max+search_increment,search_increment):
-                # print("looking at m/z: {}".format(mz))
-                cluster_peak_indices_up = np.where((abs(peaks_nearby[:,1] - mz) < MZ_COMPARISON_TOLERANCE))[0]
-                if len(cluster_peak_indices_up) > 0:
-                    cluster_peak_indices = np.append(cluster_peak_indices, peak_indices[cluster_peak_indices_up])
+            for isotope_number in range(1,args.isotope_number_right+1):
+                mz = peak_mz + (isotope_number*DELTA_MZ/charge)
+                if mz <= analysis_window_max:
+                    cluster_peak_indices_up = np.where((abs(peaks_nearby[:,1] - mz) < MZ_COMPARISON_TOLERANCE))[0]
+                    if len(cluster_peak_indices_up) > 0:
+                        cluster_peak_indices = np.append(cluster_peak_indices, peak_indices[cluster_peak_indices_up])
             # To the left...
-            for mz in np.arange(base_isotope_peak,analysis_window_min-search_increment,-search_increment):
-                cluster_peak_indices_down = np.where((abs(peaks_nearby[:,1] - mz) < MZ_COMPARISON_TOLERANCE))[0]
-                if len(cluster_peak_indices_down) > 0:
-                    cluster_peak_indices = np.append(cluster_peak_indices, peak_indices[cluster_peak_indices_down])
+            for isotope_number in range(1,args.isotope_number_left+1):
+                mz = peak_mz - (isotope_number*DELTA_MZ/charge)
+                if mz >= analysis_window_min:
+                    cluster_peak_indices_down = np.where((abs(peaks_nearby[:,1] - mz) < MZ_COMPARISON_TOLERANCE))[0]
+                    if len(cluster_peak_indices_down) > 0:
+                        cluster_peak_indices = np.append(cluster_peak_indices, peak_indices[cluster_peak_indices_down])
             # Reflect the clusters in the peak table of the database
             cluster_peak_indices = np.unique(cluster_peak_indices)
             for p in cluster_peak_indices:
@@ -151,5 +152,11 @@ for frame_id in range(args.frame_lower, args.frame_upper+1):
 
 # Write out all the peaks to the database
 c.executemany("INSERT INTO clusters VALUES (?, ?, ?, ?)", clusters)
+stop_run = time.time()
+
+cluster_detect_info.append(("run processing time (sec)", stop_run-start_run))
+cluster_detect_info.append(("processed", time.ctime()))
+c.executemany("INSERT INTO cluster_detect_info VALUES (?, ?)", cluster_detect_info)
+
 source_conn.commit()
 source_conn.close()
