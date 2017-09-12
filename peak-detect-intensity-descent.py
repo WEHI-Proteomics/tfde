@@ -6,11 +6,22 @@ import numpy as np
 import matplotlib.pyplot as plt
 import peakutils
 import time
+import math
 
 def standard_deviation(mz):
     instrument_resolution = 40000.0
     return (mz / instrument_resolution) / 2.35482
 
+# Source: https://stackoverflow.com/questions/2413522/weighted-standard-deviation-in-numpy/2415343
+def weighted_avg_and_std(values, weights):
+    """
+    Return the weighted average and standard deviation.
+
+    values, weights -- Numpy ndarrays with the same shape.
+    """
+    average = np.average(values, weights=weights)
+    variance = np.average((values-average)**2, weights=weights)  # Fast and numerically precise
+    return (average, math.sqrt(variance))
 
 parser = argparse.ArgumentParser(description='A tree descent method for peak detection.')
 parser.add_argument('-db','--database_name', type=str, help='The name of the source database.', required=True)
@@ -35,10 +46,7 @@ c = source_conn.cursor()
 # Set up the table for detected peaks
 print("Setting up tables and indexes")
 c.execute('''DROP TABLE IF EXISTS peaks''')
-c.execute('''CREATE TABLE peaks (frame_id INTEGER, peak_id INTEGER, centroid_mz REAL, centroid_scan REAL, intensity_sum INTEGER, scan_upper INTEGER, scan_lower INTEGER, cluster_id INTEGER, PRIMARY KEY (frame_id, peak_id))''')
-
-c.execute('''DROP TABLE IF EXISTS peak_log''')
-c.execute('''CREATE TABLE peak_log (frame_id INTEGER, peak_id INTEGER, entry_id INTEGER PRIMARY KEY AUTOINCREMENT, entry TEXT, date TEXT)''')
+c.execute('''CREATE TABLE peaks (frame_id INTEGER, peak_id INTEGER, centroid_mz REAL, centroid_scan REAL, intensity_sum INTEGER, scan_upper INTEGER, scan_lower INTEGER, std_dev_mz REAL, std_dev_scan REAL, cluster_id INTEGER, PRIMARY KEY (frame_id, peak_id))''')
 
 # Indexes
 c.execute('''DROP INDEX IF EXISTS idx_frame_peak''')
@@ -133,12 +141,12 @@ for frame_id in range(args.frame_lower, args.frame_upper+1):
                 values = (peak_id, frame_id, frame_v[int(p)][3])
                 c.execute("update frames set peak_id=? where frame_id=? and point_id=?", values)
 
-            peak_mz_centroid = np.average(peak_mz, weights=peak_intensity)
-            peak_scan_centroid = np.average(peak_scan, weights=peak_intensity)
             peak_intensity_sum = np.sum(peak_intensity)
             peak_scan_upper = np.max(peak_scan)
             peak_scan_lower = np.min(peak_scan)
-            mono_peaks.append((frame_id, peak_id, peak_mz_centroid, peak_scan_centroid, peak_intensity_sum, peak_scan_upper, peak_scan_lower))
+            peak_mz_centroid, peak_std_dev_mz = weighted_avg_and_std(values=peak_mz, weights=peak_intensity)
+            peak_scan_centroid, peak_std_dev_scan = weighted_avg_and_std(values=peak_scan, weights=peak_intensity)
+            mono_peaks.append((frame_id, peak_id, peak_mz_centroid, peak_scan_centroid, peak_intensity_sum, peak_scan_upper, peak_scan_lower, peak_std_dev_mz, peak_std_dev_scan))
 
             peak_id += 1
 
@@ -149,7 +157,7 @@ for frame_id in range(args.frame_lower, args.frame_upper+1):
     print("{} seconds to process frame - {} peaks".format(stop_frame-start_frame, peak_id))
 
 # Write out all the peaks to the database
-c.executemany("INSERT INTO peaks VALUES (?, ?, ?, ?, ?, ?, ?, 0)", mono_peaks)
+c.executemany("INSERT INTO peaks VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0)", mono_peaks)
 source_conn.commit()
 stop_run = time.time()
 print("{} seconds to process run".format(stop_run-start_run))
