@@ -21,6 +21,8 @@ parser.add_argument('-fts','--frames_to_sum', type=int, default=5, help='The num
 parser.add_argument('-mf','--noise_threshold', type=int, default=2, help='Minimum number of frames a point must appear in to be processed.', required=False)
 parser.add_argument('-bf','--base_summed_frame_number', type=int, default=1, help='The base frame number of the summed frames.', required=False)
 parser.add_argument('-ce','--collision_energy', type=int, default=10, help='Collision energy, in eV. Use 10 for MS1, 35 for MS2', required=False)
+parser.add_argument('-sl','--scan_lower', type=int, default=0, help='The lower scan number.', required=False)
+parser.add_argument('-su','--scan_upper', type=int, default=183, help='The upper scan number.', required=False)
 
 args = parser.parse_args()
 
@@ -42,8 +44,6 @@ dest_c.execute('''CREATE TABLE summing_info (item TEXT, value TEXT)''')
 number_of_source_frames = args.number_of_summed_frames_required*args.frames_to_sum
 frame_ids_df = pd.read_sql_query("select frame_id from frame_properties where collision_energy={} AND frame_id>={} order by frame_id ASC LIMIT {};".format(args.collision_energy, args.base_source_frame_number, number_of_source_frames), source_conn)
 frame_ids = tuple(frame_ids_df.values[:,0])
-scan_lower = 0
-scan_upper = 138
 
 
 start_run = time.time()
@@ -59,14 +59,10 @@ for summedFrameId in range(args.base_summed_frame_number,args.base_summed_frame_
     frame_start = time.time()
     pointId = 1
     points = []
-    for scan in range(scan_lower, scan_upper+1):
-        # mz = []
-        # intensity = []
+    for scan in range(args.scan_lower, args.scan_upper+1):
         scan_start_time = time.time()
         points_v = frame_v[np.where(frame_v[:,2] == scan)]
         points_to_process = len(points_v)
-        low_intensity = 10000
-        high_intensity = 0
         while len(points_v) > 0:
             max_intensity_index = np.argmax(points_v[:,3])
             point_mz = points_v[max_intensity_index, 1]
@@ -116,8 +112,8 @@ for summedFrameId in range(args.base_summed_frame_number,args.base_summed_frame_
 stop_run = time.time()
 print("{} seconds to process run".format(stop_run-start_run))
 
-summing_info.append(("scan lower", scan_lower))
-summing_info.append(("scan upper", scan_upper))
+summing_info.append(("scan lower", args.scan_lower))
+summing_info.append(("scan upper", args.scan_upper))
 summing_info.append(("run processing time (sec)", stop_run-start_run))
 summing_info.append(("processed", time.ctime()))
 dest_c.executemany("INSERT INTO summing_info VALUES (?, ?)", summing_info)

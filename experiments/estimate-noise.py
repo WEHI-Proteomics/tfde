@@ -4,13 +4,11 @@ import pandas as pd
 import sqlite3
 from matplotlib import pyplot as plt
 
-FRAME_START = 137000
-FRAME_END = 137020
-SQLITE_FILE = "\\temp\\frames-20ms-th-0-137000-138000-V4.sqlite"
+SQLITE_FILE = "\\temp\\summed-frames-20ms-th-0-137000-137004-V4.sqlite"
 
 conn = sqlite3.connect(SQLITE_FILE)
 
-intensity_df = pd.read_sql_query("select * from frames where frame_id=={};".format(137010), conn)
+intensity_df = pd.read_sql_query("select * from frames where frame_id=={};".format(1), conn)
 conn.close()
 
 x = np.sort(intensity_df.intensity.values)
