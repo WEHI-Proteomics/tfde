@@ -10,7 +10,7 @@ import os
 THRESHOLD = 0
 FRAME_START = 160000
 FRAME_END = 160100
-DB_VERSION = 5
+DB_VERSION = 6
 COLLISION_ENERGY_PROPERTY = 1454
 
 def threshold_scan_transform(threshold, indicies, intensities):
@@ -37,7 +37,7 @@ frame_count = row[0]
 print("Analysis has {0} frames.".format(frame_count))
 
 # Connecting to the database file
-sqlite_file = "\\temp\\{}-frames-th-{}-{}-{}-V{}.sqlite".format(os.path.basename(analysis_dir).split('.')[0], THRESHOLD, FRAME_START, FRAME_END, DB_VERSION)
+sqlite_file = "\\temp\\{}-frames-{}-{}-V{}.sqlite".format(os.path.basename(analysis_dir).split('.')[0], THRESHOLD, FRAME_START, FRAME_END, DB_VERSION)
 conn = sqlite3.connect(sqlite_file)
 c = conn.cursor()
 
@@ -87,7 +87,6 @@ for frame_id in range(FRAME_START, FRAME_END+1):
 if len(points) > 0:
     c.executemany("INSERT INTO frames VALUES (?, ?, ?, ?, ?, ?)", points)
 
-print frame_properties
 c.executemany("INSERT INTO frame_properties VALUES (?, ?)", frame_properties)
 
 # Commit changes and close the connection
