@@ -73,13 +73,13 @@ parser.add_argument('-db','--database_name', type=str, help='The name of the sou
 parser.add_argument('-fl','--frame_lower', type=int, help='The lower frame number to process.', required=True)
 parser.add_argument('-fu','--frame_upper', type=int, help='The upper frame number to process.', required=True)
 parser.add_argument('-sl','--scan_lower', type=int, default=0, help='The lower scan number to process.', required=False)
-parser.add_argument('-su','--scan_upper', type=int, default=138, help='The upper scan number to process.', required=False)
+parser.add_argument('-su','--scan_upper', type=int, default=183, help='The upper scan number to process.', required=False)
 parser.add_argument('-ir','--isotope_number_right', type=int, default=5, help='Isotope numbers to look on the right.', required=False)
 parser.add_argument('-il','--isotope_number_left', type=int, default=2, help='Isotope numbers to look on the left.', required=False)
 parser.add_argument('-mi','--minimum_peak_intensity', type=int, default=250, help='Minimum peak intensity to process.', required=False)
 parser.add_argument('-mp','--minimum_peaks_nearby', type=int, default=3, help='A peak must have more peaks in its neighbourhood for processing.', required=False)
 parser.add_argument('-cs','--maximum_charge_state', type=int, default=5, help='Maximum charge state to look for.', required=False)
-parser.add_argument('-sd','--scan_std_dev', type=int, default=2, help='Number of weighted standard deviations to look either side of the intense peak, in the scan dimension.', required=False)
+parser.add_argument('-sd','--scan_std_dev', type=int, default=1, help='Number of weighted standard deviations to look either side of the intense peak, in the scan dimension.', required=False)
 parser.add_argument('-md','--mz_std_dev', type=int, default=2, help='Number of weighted standard deviations to look either side of the intense peak, in the m/z dimension.', required=False)
 
 args = parser.parse_args()
@@ -95,7 +95,7 @@ c = source_conn.cursor()
 
 print("Setting up tables and indexes")
 c.execute('''DROP TABLE IF EXISTS clusters''')
-c.execute('''CREATE TABLE `clusters` ( `frame_id` INTEGER, `cluster_id` INTEGER, `charge_state` INTEGER, 'base_isotope_peak_id' INTEGER, 'monoisotopic_peak_id' INTEGER, 'sulphides' INTEGER, 'fit_error' REAL, 'rationale' TEXT, PRIMARY KEY(`cluster_id`,`frame_id`) )''')
+c.execute('''CREATE TABLE `clusters` ( `frame_id` INTEGER, `cluster_id` INTEGER, `charge_state` INTEGER, 'base_isotope_peak_id' INTEGER, 'monoisotopic_peak_id' INTEGER, 'sulphides' INTEGER, 'fit_error' REAL, 'rationale' TEXT, 'state' TEXT, PRIMARY KEY(`cluster_id`,`frame_id`) )''')
 c.execute('''DROP INDEX IF EXISTS idx_clusters''')
 c.execute('''CREATE INDEX idx_clusters ON clusters (frame_id,cluster_id)''')
 c.execute("update peaks set cluster_id=0")
@@ -112,10 +112,10 @@ for frame_id in range(args.frame_lower, args.frame_upper+1):
     start_frame = time.time()
     cluster_id = 1
     # Get all the peaks for this frame
-    peaks_df = pd.read_sql_query("select peak_id,centroid_mz,centroid_scan,intensity_sum,scan_upper,scan_lower,std_dev_mz,std_dev_scan from peaks where frame_id={} order by peak_id asc;"
+    peaks_df = pd.read_sql_query("select peak_id,centroid_mz,centroid_scan,intensity_sum,scan_upper,scan_lower,std_dev_mz,std_dev_scan,intensity_max from peaks where frame_id={} order by peak_id asc;"
         .format(frame_id), source_conn)
     peaks_v = peaks_df.values
-    # for i in range(1,2):
+    # for i in range(1,6):
     while len(peaks_v) > 0:
 
         max_intensity_index = peaks_v.argmax(axis=0)[3]
@@ -198,13 +198,14 @@ for frame_id in range(args.frame_lower, args.frame_upper+1):
                 # print("mono peak id {}, mono mz {}, mono mass {}".format(monoisotopic_peak_id, monoisotopic_mz, monoisotopic_mass))
                 # Find the base peak (maximum intensity)
                 # print "peak intensity (before trimming) {}".format(cluster_peaks[:,3])
-                rationale["peak intensity before trimming"] = cluster_peaks[:,3].astype(int).tolist()
-                base_peak_index = cluster_peaks[:,3].argmax()
+                rationale["peak intensity before trimming"] = cluster_peaks[:,8].astype(int).tolist()
+                base_peak_index = cluster_peaks[:,8].argmax()
                 # print "base peak position within cluster {}".format(base_peak_index)
                 # Determine the measured height ratios
                 observed_height_ratio = np.zeros(len(cluster_peaks))
                 for peak_index in range(1, len(cluster_peaks)):
-                    observed_height_ratio[peak_index] = cluster_peaks[peak_index,3] / cluster_peaks[peak_index-1,3]
+                    # observed_height_ratio[peak_index] = cluster_peaks[peak_index,3] / cluster_peaks[peak_index-1,3]  # summed intensity
+                    observed_height_ratio[peak_index] = cluster_peaks[peak_index,8] / cluster_peaks[peak_index-1,8]  # max intensity
                 # print "observed peak ratios {}".format(observed_height_ratio)
                 # rationale["observed peak ratios"] = observed_height_ratio.tolist()
                 # Trim any peaks off the end of the cluster that don't belong (height ratio to the right of the base peak should be less than 1)
@@ -232,7 +233,8 @@ for frame_id in range(args.frame_lower, args.frame_upper+1):
                 # Need to determine the measured height ratios again
                 observed_height_ratio = np.zeros(len(cluster_peaks))
                 for peak_index in range(1, len(cluster_peaks)):
-                    observed_height_ratio[peak_index] = cluster_peaks[peak_index,3] / cluster_peaks[peak_index-1,3]
+                    # observed_height_ratio[peak_index] = cluster_peaks[peak_index,3] / cluster_peaks[peak_index-1,3]  # using summed intensity
+                    observed_height_ratio[peak_index] = cluster_peaks[peak_index,8] / cluster_peaks[peak_index-1,8]  # using max intensity
                 # print "updated observed peak ratios {}".format(observed_height_ratio)
                 # rationale["updated observed peak ratios"] = observed_height_ratio.tolist()
 
@@ -244,11 +246,7 @@ for frame_id in range(args.frame_lower, args.frame_upper+1):
                 # rationale["predicted peak ratios"] = predicted_height_ratio.tolist()
                 # Work out the error for different monoisotopic peaks
                 base_peak_index = cluster_peaks[:,3].argmax()
-                last_test_mono_index = 0
-                if len(cluster_peaks) > base_peak_index+1:
-                    last_test_mono_index = base_peak_index
-                else:
-                    last_test_mono_index = base_peak_index-1
+                last_test_mono_index = base_peak_index
                 # print "base peak index {}, last mono index {}".format(base_peak_index, last_test_mono_index)
                 error = np.zeros((last_test_mono_index+1, NUMBER_OF_SULPHUR_ATOMS))
                 for test_mono_index in range(0,last_test_mono_index+1):
@@ -260,9 +258,21 @@ for frame_id in range(args.frame_lower, args.frame_upper+1):
                             predicted_index = cluster_peak_index - test_mono_index + 1
                             error[test_mono_index][sulphur] += (predicted_height_ratio[sulphur][predicted_index] - observed_height_ratio[observed_index])**2 / \
                                 predicted_height_ratio[sulphur][predicted_index]
-                # print "error {}".format(error)
-                # rationale["peak height error"] = error.tolist()
-                (best_monoisotopic_peak_index, number_of_sulphur) = np.unravel_index(error.argmin(), error.shape)
+                print "error {}".format(error)
+                rationale["peak height error"] = error.tolist()
+                # Check how good is the first candidate peak
+                if (min(error[0,:]) > 2):
+                    # find the best-fit monoisotopic
+                    (best_monoisotopic_peak_index, number_of_sulphur) = np.unravel_index(error.argmin(), error.shape)
+                    rationale["shift monoisotopic"] = "yes"
+                else:
+                    # only consider the first peak as the monoisotopic
+                    best_monoisotopic_peak_index = 0
+                    number_of_sulphur = error[0,:].argmin()
+                    rationale["shift monoisotopic"] = "no"
+                # number_of_sulphur = 0  # only test for zero sulphur
+                # best_monoisotopic_peak_index = error[:,0].argmin()
+                # print "best mono index {}, sulphur {}".format(best_monoisotopic_peak_index, number_of_sulphur)
                 fit_error = error[best_monoisotopic_peak_index,number_of_sulphur]
                 if fit_error > 0:
                     monoisotopic_peak_id = cluster_peaks[best_monoisotopic_peak_index,0].astype(int)
@@ -279,7 +289,7 @@ for frame_id in range(args.frame_lower, args.frame_upper+1):
                         # Update the peaks in the peaks table with their cluster ID
                         values = (cluster_id, frame_id, p_id)
                         c.execute("update peaks set cluster_id=? where frame_id=? and peak_id=?", values)
-                    clusters.append((frame_id, cluster_id, charge, base_peak_id, monoisotopic_peak_id, int(number_of_sulphur), fit_error, json.dumps(rationale)))
+                    clusters.append((frame_id, cluster_id, charge, base_peak_id, monoisotopic_peak_id, int(number_of_sulphur), fit_error, json.dumps(rationale), ' '))
                     cluster_id += 1
                 else:
                     print "Bad fit - disregarding the peak"
@@ -297,7 +307,7 @@ for frame_id in range(args.frame_lower, args.frame_upper+1):
     print("{} seconds to process frame - found {} clusters".format(stop_frame-start_frame, cluster_id))
 
 # Write out all the peaks to the database
-c.executemany("INSERT INTO clusters VALUES (?, ?, ?, ?, ?, ?, ?, ?)", clusters)
+c.executemany("INSERT INTO clusters VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)", clusters)
 stop_run = time.time()
 
 cluster_detect_info.append(("run processing time (sec)", stop_run-start_run))
