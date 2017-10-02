@@ -11,6 +11,8 @@ import math
 import collections
 import json
 
+MIN_POINTS_IN_PEAK_TO_CHECK_FOR_TROUGHS = 10
+
 def standard_deviation(mz):
     instrument_resolution = 40000.0
     return (mz / instrument_resolution) / 2.35482
@@ -154,7 +156,7 @@ for frame_id in range(args.frame_lower, args.frame_upper+1):
             scan_offset += 1
 
         if len(peak_indices) > 1:
-            if len(peak_indices) > 20:
+            if len(peak_indices) > MIN_POINTS_IN_PEAK_TO_CHECK_FOR_TROUGHS:
                 # Check whether it has more than one peak
                 # filter the intensity with a Gaussian filter
                 sorted_peaks_indexes = np.argsort(frame_v[peak_indices][:,1])
