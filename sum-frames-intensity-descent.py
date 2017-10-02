@@ -37,6 +37,10 @@ dest_c = dest_conn.cursor()
 
 dest_c.execute('''CREATE TABLE IF NOT EXISTS frames (frame_id INTEGER, point_id INTEGER, mz REAL, scan INTEGER, intensity INTEGER, peak_id INTEGER)''')
 dest_c.execute('''CREATE INDEX IF NOT EXISTS idx_frames ON frames (frame_id)''')
+dest_c.execute('''DROP TABLE IF EXISTS elution_profile''')
+dest_c.execute('''CREATE TABLE elution_profile (frame_id INTEGER, intensity INTEGER)''')
+dest_c.execute('''DROP INDEX IF EXISTS idx_elution_profile''')
+dest_c.execute('''CREATE INDEX idx_elution_profile ON elution_profile (frame_id)''')
 dest_c.execute('''DROP TABLE IF EXISTS summing_info''')
 dest_c.execute('''CREATE TABLE summing_info (item TEXT, value TEXT)''')
 
@@ -106,6 +110,9 @@ for summedFrameId in range(args.base_summed_frame_number,args.base_summed_frame_
         scan_stop_time = time.time()
 
     dest_c.executemany("INSERT INTO frames VALUES (?, ?, ?, ?, ?, ?)", points)
+    dest_conn.commit()
+    # add the elution profile
+    dest_c.executemany("INSERT INTO elution_profile VALUES (?, ?)", [(summedFrameId, sum(zip(*points)[4]))])
     dest_conn.commit()
     frame_end = time.time()
     print("{} sec for frame {}".format(frame_end-frame_start, summedFrameId))
