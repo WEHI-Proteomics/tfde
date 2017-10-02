@@ -8,8 +8,8 @@ import os
 # Usage: python create-db.py D:\Bruker\Databases\Hela200ng100msMSonlyPP23pro_Slot1-5_01_57.d
 
 THRESHOLD = 0
-FRAME_START = 160000
-FRAME_END = 160100
+FRAME_START = 1
+FRAME_END = 283906
 DB_VERSION = 6
 COLLISION_ENERGY_PROPERTY = 1454
 
@@ -37,7 +37,7 @@ frame_count = row[0]
 print("Analysis has {0} frames.".format(frame_count))
 
 # Connecting to the database file
-sqlite_file = "\\temp\\{}-frames-{}-{}-V{}.sqlite".format(os.path.basename(analysis_dir).split('.')[0], THRESHOLD, FRAME_START, FRAME_END, DB_VERSION)
+sqlite_file = "S:\\data\\Projects\\ProtemicsLab\\Bruker timsTOF\\extracts\\{}-frames-{}-{}-V{}.sqlite".format(os.path.basename(analysis_dir).split('.')[0], THRESHOLD, FRAME_START, FRAME_END, DB_VERSION)
 conn = sqlite3.connect(sqlite_file)
 c = conn.cursor()
 
@@ -81,6 +81,7 @@ for frame_id in range(FRAME_START, FRAME_END+1):
     if frame_id % 1000 == 0:
         print("Writing 1000 frames...")
         c.executemany("INSERT INTO frames VALUES (?, ?, ?, ?, ?, ?)", points)
+        conn.commit()
         points = []
 
 # Write what we have left
