@@ -95,7 +95,9 @@ c = source_conn.cursor()
 
 print("Setting up tables and indexes")
 c.execute('''DROP TABLE IF EXISTS clusters''')
-c.execute('''CREATE TABLE `clusters` ( `frame_id` INTEGER, `cluster_id` INTEGER, `charge_state` INTEGER, 'base_isotope_peak_id' INTEGER, 'monoisotopic_peak_id' INTEGER, 'sulphides' INTEGER, 'fit_error' REAL, 'rationale' TEXT, 'state' TEXT, PRIMARY KEY(`cluster_id`,`frame_id`) )''')
+c.execute('''CREATE TABLE `clusters` ( `frame_id` INTEGER, `cluster_id` INTEGER, `charge_state` INTEGER, 'base_isotope_peak_id' INTEGER, 'base_peak_mz' REAL, 'monoisotopic_peak_id' INTEGER, 'monoisotopic_mz' REAL, 
+    'sulphides' INTEGER, 'fit_error' REAL, 'rationale' TEXT, 'state' TEXT, 'scan_upper' INTEGER, 'scan_lower' INTEGER, 'mz_upper' REAL, 'mz_lower' REAL, 'centroid_mz' REAL, 'centroid_scan' REAL, 'intensity_sum' INTEGER, 
+    'feature_id' INTEGER, PRIMARY KEY(`cluster_id`,`frame_id`) )''')
 c.execute('''DROP INDEX IF EXISTS idx_clusters''')
 c.execute('''CREATE INDEX idx_clusters ON clusters (frame_id,cluster_id)''')
 c.execute("update peaks set cluster_id=0")
@@ -109,6 +111,7 @@ PROTON_MASS = 1.007276  # mass of a proton in unified atomic mass units, or Da
 clusters = []
 start_run = time.time()
 for frame_id in range(args.frame_lower, args.frame_upper+1):
+    print "Processing frame {}".format(frame_id)
     start_frame = time.time()
     cluster_id = 1
     # Get all the peaks for this frame
@@ -120,7 +123,7 @@ for frame_id in range(args.frame_lower, args.frame_upper+1):
 
         max_intensity_index = peaks_v.argmax(axis=0)[3]
         base_peak_id = int(peaks_v[max_intensity_index][0])
-        print("maximum peak id {}".format(base_peak_id))
+        # print("maximum peak id {}".format(base_peak_id))
         rationale = collections.OrderedDict()
         rationale["maximum peak id"] = base_peak_id
 
@@ -134,7 +137,7 @@ for frame_id in range(args.frame_lower, args.frame_upper+1):
         rationale["m/z tolerance"] = mz_comparison_tolerance
 
         if peak_intensity < args.minimum_peak_intensity:
-            print "Reached minimum peak intensity - exiting."
+            # print "Reached minimum peak intensity - exiting."
             break
         peaks_nearby_indices = np.where((peaks_v[:,1] <= peak_mz + DELTA_MZ*args.isotope_number_right) & (peaks_v[:,1] >= peak_mz - DELTA_MZ*args.isotope_number_left) & (peaks_v[:,2] >= peak_scan_lower) & (peaks_v[:,2] <= peak_scan_upper))[0]
         peaks_nearby = peaks_v[peaks_nearby_indices]
@@ -258,25 +261,28 @@ for frame_id in range(args.frame_lower, args.frame_upper+1):
                             predicted_index = cluster_peak_index - test_mono_index + 1
                             error[test_mono_index][sulphur] += (predicted_height_ratio[sulphur][predicted_index] - observed_height_ratio[observed_index])**2 / \
                                 predicted_height_ratio[sulphur][predicted_index]
-                print "error {}".format(error)
+                # print "error {}".format(error)
                 rationale["peak height error"] = error.tolist()
-                # Check how good is the first candidate peak
-                if (min(error[0,:]) > 2):
-                    # find the best-fit monoisotopic
-                    (best_monoisotopic_peak_index, number_of_sulphur) = np.unravel_index(error.argmin(), error.shape)
+                # Find the best monoisotopic peak, preferring to move it only if the fit is poor
+                found_good_mono_index = False
+                best_monoisotopic_peak_index = 0
+                number_of_sulphur = 0
+                for test_mono_index in range(0,last_test_mono_index+1):
+                    if (min(error[test_mono_index,:]) <= 2):
+                        best_monoisotopic_peak_index = test_mono_index
+                        number_of_sulphur = error[test_mono_index,:].argmin()
+                        found_good_mono_index = True
+                        break
+
+                if test_mono_index > 0:
                     rationale["shift monoisotopic"] = "yes"
                 else:
-                    # only consider the first peak as the monoisotopic
-                    best_monoisotopic_peak_index = 0
-                    number_of_sulphur = error[0,:].argmin()
                     rationale["shift monoisotopic"] = "no"
-                # number_of_sulphur = 0  # only test for zero sulphur
-                # best_monoisotopic_peak_index = error[:,0].argmin()
-                # print "best mono index {}, sulphur {}".format(best_monoisotopic_peak_index, number_of_sulphur)
+
                 fit_error = error[best_monoisotopic_peak_index,number_of_sulphur]
-                if fit_error > 0:
+
+                if ((found_good_mono_index == True) and (fit_error > 0)):
                     monoisotopic_peak_id = cluster_peaks[best_monoisotopic_peak_index,0].astype(int)
-                    # print "best monoisotopic peak index: {} ({} sulphur atoms, error {})".format(best_monoisotopic_peak_index, number_of_sulphur, fit_error)
                     rationale["best monoisotopic peak ID"] = monoisotopic_peak_id
                     rationale["number of sulphur"] = int(number_of_sulphur)
                     rationale["final height ratio error"] = fit_error
@@ -289,25 +295,38 @@ for frame_id in range(args.frame_lower, args.frame_upper+1):
                         # Update the peaks in the peaks table with their cluster ID
                         values = (cluster_id, frame_id, p_id)
                         c.execute("update peaks set cluster_id=? where frame_id=? and peak_id=?", values)
-                    clusters.append((frame_id, cluster_id, charge, base_peak_id, monoisotopic_peak_id, int(number_of_sulphur), fit_error, json.dumps(rationale), ' '))
+                    # determine some other cluster characteristics before writing it to the database
+                    cluster_scan_upper = max(cluster_peaks[:,4])
+                    cluster_scan_lower = min(cluster_peaks[:,5])
+                    cluster_mz_upper = max(cluster_peaks[:,1])
+                    cluster_mz_lower = min(cluster_peaks[:,1])
+                    cluster_centroid_mz = cluster_mz_lower+(cluster_mz_upper-cluster_mz_lower)/2.
+                    cluster_centroid_scan = cluster_scan_lower+(cluster_scan_upper-cluster_scan_lower)/2.
+                    cluster_intensity_sum = sum(cluster_peaks[:,3])
+                    monoisotopic_mz = cluster_peaks[0][1]
+                    base_peak_mz = cluster_peaks[cluster_peaks[:,3].argmax()][1]
+                    cluster_feature_id = 0
+                    # add the cluster to the list
+                    clusters.append((frame_id, cluster_id, charge, base_peak_id, base_peak_mz, monoisotopic_peak_id, monoisotopic_mz, int(number_of_sulphur), fit_error, json.dumps(rationale), ' ', cluster_scan_upper, cluster_scan_lower, 
+                        cluster_mz_upper, cluster_mz_lower, cluster_centroid_mz, cluster_centroid_scan, cluster_intensity_sum, cluster_feature_id))
                     cluster_id += 1
-                else:
-                    print "Bad fit - disregarding the peak"
-            else:
-                print "Found no isotopic peaks either side of this peak."
-        else:
-            print "Found less than {} peaks nearby - skipping peak search.".format(args.minimum_peaks_nearby)
+                # else:
+                    # print "Bad fit - disregarding the peak"
+            # else:
+                # print "Found no isotopic peaks either side of this peak."
+        # else:
+            # print "Found less than {} peaks nearby - skipping peak search.".format(args.minimum_peaks_nearby)
 
         # remove the peaks we've processed from the frame
         peaks_v_indices = np.searchsorted(peaks_v[:,0], cluster_peaks[:,0])
         peaks_v = np.delete(peaks_v, peaks_v_indices, 0)
-        print("removed peak ids {} - {} peaks remaining\n".format(cluster_peaks[:,0].astype(int), len(peaks_v)))
+        # print("removed peak ids {} - {} peaks remaining\n".format(cluster_peaks[:,0].astype(int), len(peaks_v)))
 
     stop_frame = time.time()
     print("{} seconds to process frame - found {} clusters".format(stop_frame-start_frame, cluster_id))
 
 # Write out all the peaks to the database
-c.executemany("INSERT INTO clusters VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)", clusters)
+c.executemany("INSERT INTO clusters VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", clusters)
 stop_run = time.time()
 
 cluster_detect_info.append(("run processing time (sec)", stop_run-start_run))
