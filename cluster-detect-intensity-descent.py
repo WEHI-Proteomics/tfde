@@ -95,9 +95,26 @@ c = source_conn.cursor()
 
 print("Setting up tables and indexes")
 c.execute('''DROP TABLE IF EXISTS clusters''')
-c.execute('''CREATE TABLE `clusters` ( `frame_id` INTEGER, `cluster_id` INTEGER, `charge_state` INTEGER, 'base_isotope_peak_id' INTEGER, 'base_peak_mz' REAL, 'monoisotopic_peak_id' INTEGER, 'monoisotopic_mz' REAL, 
-    'sulphides' INTEGER, 'fit_error' REAL, 'rationale' TEXT, 'state' TEXT, 'scan_upper' INTEGER, 'scan_lower' INTEGER, 'mz_upper' REAL, 'mz_lower' REAL, 'centroid_mz' REAL, 'centroid_scan' REAL, 'intensity_sum' INTEGER, 
-    'feature_id' INTEGER, PRIMARY KEY(`cluster_id`,`frame_id`) )''')
+c.execute('''CREATE TABLE `clusters` ( `frame_id` INTEGER, 
+                                        `cluster_id` INTEGER, 
+                                        `charge_state` INTEGER, 
+                                        'base_isotope_peak_id' INTEGER, 
+                                        'base_peak_mz_centroid' REAL, 
+                                        'base_peak_mz_std_dev' REAL, 
+                                        'base_peak_scan_centroid' REAL, 
+                                        'base_peak_scan_std_dev' REAL, 
+                                        'monoisotopic_peak_id' INTEGER, 
+                                        'mono_peak_mz_centroid' REAL, 
+                                        'mono_peak_mz_std_dev' REAL, 
+                                        'mono_peak_scan_centroid' REAL, 
+                                        'mono_peak_scan_std_dev' REAL, 
+                                        'sulphides' INTEGER, 
+                                        'fit_error' REAL, 
+                                        'rationale' TEXT, 
+                                        'state' TEXT, 
+                                        'intensity_sum' INTEGER, 
+                                        'feature_id' INTEGER, 
+                                        PRIMARY KEY(`cluster_id`,`frame_id`) )''')
 c.execute('''DROP INDEX IF EXISTS idx_clusters''')
 c.execute('''CREATE INDEX idx_clusters ON clusters (frame_id,cluster_id)''')
 c.execute("update peaks set cluster_id=0")
@@ -296,19 +313,43 @@ for frame_id in range(args.frame_lower, args.frame_upper+1):
                         values = (cluster_id, frame_id, p_id)
                         c.execute("update peaks set cluster_id=? where frame_id=? and peak_id=?", values)
                     # determine some other cluster characteristics before writing it to the database
-                    cluster_scan_upper = max(cluster_peaks[:,4])
-                    cluster_scan_lower = min(cluster_peaks[:,5])
-                    cluster_mz_upper = max(cluster_peaks[:,1])
-                    cluster_mz_lower = min(cluster_peaks[:,1])
-                    cluster_centroid_mz = cluster_mz_lower+(cluster_mz_upper-cluster_mz_lower)/2.
-                    cluster_centroid_scan = cluster_scan_lower+(cluster_scan_upper-cluster_scan_lower)/2.
                     cluster_intensity_sum = sum(cluster_peaks[:,3])
-                    monoisotopic_mz = cluster_peaks[0][1]
-                    base_peak_mz = cluster_peaks[cluster_peaks[:,3].argmax()][1]
+
+                    base_peak_df = pd.read_sql_query("select centroid_mz,centroid_scan,std_dev_mz,std_dev_scan from peaks where frame_id={} and peak_id={};".format(frame_id, base_peak_id), source_conn)
+                    base_peak_v = base_peak_df.values
+                    base_peak_mz_centroid = base_peak_v[0][0]
+                    base_peak_scan_centroid = base_peak_v[0][1]
+                    base_peak_mz_std_dev = base_peak_v[0][2]
+                    base_peak_scan_std_dev = base_peak_v[0][3]
+
+                    mono_peak_df = pd.read_sql_query("select centroid_mz,centroid_scan,std_dev_mz,std_dev_scan from peaks where frame_id={} and peak_id={};".format(frame_id, monoisotopic_peak_id), source_conn)
+                    mono_peak_v = mono_peak_df.values
+                    mono_peak_mz_centroid = mono_peak_v[0][0]
+                    mono_peak_scan_centroid = mono_peak_v[0][1]
+                    mono_peak_mz_std_dev = mono_peak_v[0][2]
+                    mono_peak_scan_std_dev = mono_peak_v[0][3]
+
                     cluster_feature_id = 0
                     # add the cluster to the list
-                    clusters.append((frame_id, cluster_id, charge, base_peak_id, base_peak_mz, monoisotopic_peak_id, monoisotopic_mz, int(number_of_sulphur), fit_error, json.dumps(rationale), ' ', cluster_scan_upper, cluster_scan_lower, 
-                        cluster_mz_upper, cluster_mz_lower, cluster_centroid_mz, cluster_centroid_scan, cluster_intensity_sum, cluster_feature_id))
+                    clusters.append((frame_id, 
+                                        cluster_id, 
+                                        charge, 
+                                        base_peak_id, 
+                                        base_peak_mz_centroid, 
+                                        base_peak_mz_std_dev, 
+                                        base_peak_scan_centroid, 
+                                        base_peak_scan_std_dev, 
+                                        monoisotopic_peak_id, 
+                                        mono_peak_mz_centroid, 
+                                        mono_peak_mz_std_dev, 
+                                        mono_peak_scan_centroid, 
+                                        mono_peak_scan_std_dev, 
+                                        int(number_of_sulphur), 
+                                        fit_error, 
+                                        json.dumps(rationale), 
+                                        ' ', 
+                                        cluster_intensity_sum, 
+                                        cluster_feature_id))
                     cluster_id += 1
                 # else:
                     # print "Bad fit - disregarding the peak"
