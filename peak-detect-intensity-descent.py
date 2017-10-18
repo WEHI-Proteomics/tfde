@@ -59,29 +59,12 @@ for arg in vars(args):
 source_conn = sqlite3.connect(args.database_name)
 
 c = source_conn.cursor()
-
-# Set up the table for detected peaks
-print("Setting up tables and indexes")
-c.execute('''DROP TABLE IF EXISTS peaks''')
-c.execute('''CREATE TABLE peaks (frame_id INTEGER, peak_id INTEGER, centroid_mz REAL, centroid_scan REAL, intensity_sum INTEGER, scan_upper INTEGER, scan_lower INTEGER, std_dev_mz REAL, std_dev_scan REAL, cluster_id INTEGER, 'rationale' TEXT, 'state' TEXT, intensity_max INTEGER, PRIMARY KEY (frame_id, peak_id))''')
-
-# Indexes
-c.execute('''DROP INDEX IF EXISTS idx_frame_peak''')
-c.execute('''CREATE INDEX idx_frame_peak ON peaks (frame_id,peak_id)''')
-
-c.execute('''DROP INDEX IF EXISTS idx_frame''')
-c.execute('''CREATE INDEX idx_frame ON peaks (frame_id)''')
-
-c.execute('''DROP INDEX IF EXISTS idx_frame_point''')
-c.execute('''CREATE INDEX idx_frame_point ON frames (frame_id,point_id)''')
-
-c.execute("update frames set peak_id=0")
-
-c.execute('''DROP TABLE IF EXISTS peak_detect_info''')
-c.execute('''CREATE TABLE peak_detect_info (item TEXT, value TEXT)''')
-
+c.execute("PRAGMA temp_store = 2") # store temporary data in memory
+c.execute("PRAGMA journal_mode=WAL") # enable write-ahead logging mode
+print("WAL mode status: {}".format(c.fetchone()))
 
 mono_peaks = []
+point_updates = []
 start_run = time.time()
 for frame_id in range(args.frame_lower, args.frame_upper+1):
     peak_id = 1
@@ -217,8 +200,7 @@ for frame_id in range(args.frame_lower, args.frame_upper+1):
                 peak_intensity.append(int(frame_v[p][2]))
 
                 # Assign this peak ID to all the points in the peak
-                values = (peak_id, frame_id, frame_v[int(p)][3])
-                c.execute("update frames set peak_id=? where frame_id=? and point_id=?", values)
+                point_updates.append((peak_id, frame_id, frame_v[int(p)][3]))
 
             # Add the peak's details to the collection
             peak_intensity_sum = np.sum(peak_intensity)
@@ -235,14 +217,20 @@ for frame_id in range(args.frame_lower, args.frame_upper+1):
         frame_v = np.delete(frame_v, peak_indices, 0)
 
     stop_frame = time.time()
-    print("{} seconds to process frame - {} peaks".format(stop_frame-start_frame, peak_id))
+    print("{} seconds to process frame {} - {} peaks".format(stop_frame-start_frame, frame_id, peak_id))
 
 # Write out all the peaks to the database
+c.execute("DELETE FROM peaks WHERE frame_id>={} AND frame_id<={}".format(args.frame_lower, args.frame_upper))
 c.executemany("INSERT INTO peaks VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?)", mono_peaks)
 source_conn.commit()
 stop_run = time.time()
-print("{} seconds to process run".format(stop_run-start_run))
+print("{} seconds to process frames {} to {}".format(stop_run-start_run, args.frame_lower, args.frame_upper))
 
+# Update the points in the frame table
+c.execute("UPDATE frames SET peak_id=0 WHERE frame_id>={} AND frame_id<={}".format(args.frame_lower, args.frame_upper))
+c.executemany("UPDATE frames SET peak_id=? WHERE frame_id=? AND point_id=?", point_updates)
+
+# write out the processing info
 peak_detect_info.append(("run processing time (sec)", stop_run-start_run))
 peak_detect_info.append(("processed", time.ctime()))
 c.executemany("INSERT INTO peak_detect_info VALUES (?, ?)", peak_detect_info)
