@@ -80,7 +80,7 @@ parser.add_argument('-mi','--minimum_peak_intensity', type=int, default=250, hel
 parser.add_argument('-mp','--minimum_peaks_nearby', type=int, default=3, help='A peak must have more peaks in its neighbourhood for processing.', required=False)
 parser.add_argument('-cs','--maximum_charge_state', type=int, default=5, help='Maximum charge state to look for.', required=False)
 parser.add_argument('-sd','--scan_std_dev', type=int, default=1, help='Number of weighted standard deviations to look either side of the intense peak, in the scan dimension.', required=False)
-parser.add_argument('-md','--mz_std_dev', type=int, default=2, help='Number of weighted standard deviations to look either side of the intense peak, in the m/z dimension.', required=False)
+parser.add_argument('-md','--mz_std_dev', type=int, default=3, help='Number of weighted standard deviations to look either side of the intense peak, in the m/z dimension.', required=False)
 
 args = parser.parse_args()
 
