@@ -103,11 +103,15 @@ c.execute('''CREATE TABLE `clusters` ( `frame_id` INTEGER,
                                         'base_peak_mz_std_dev' REAL, 
                                         'base_peak_scan_centroid' REAL, 
                                         'base_peak_scan_std_dev' REAL, 
+                                        'base_peak_max_point_mz' REAL, 
+                                        'base_peak_max_point_scan' INTEGER, 
                                         'monoisotopic_peak_id' INTEGER, 
                                         'mono_peak_mz_centroid' REAL, 
                                         'mono_peak_mz_std_dev' REAL, 
                                         'mono_peak_scan_centroid' REAL, 
                                         'mono_peak_scan_std_dev' REAL, 
+                                        'mono_peak_max_point_mz' REAL, 
+                                        'mono_peak_max_point_scan' INTEGER, 
                                         'sulphides' INTEGER, 
                                         'fit_error' REAL, 
                                         'rationale' TEXT, 
@@ -328,19 +332,25 @@ for frame_id in range(args.frame_lower, args.frame_upper+1):
                     # determine some other cluster characteristics before writing it to the database
                     cluster_intensity_sum = sum(cluster_peaks[:,PEAK_INTENSITY_SUM_IDX])
 
-                    base_peak_df = pd.read_sql_query("select centroid_mz,centroid_scan,std_dev_mz,std_dev_scan from peaks where frame_id={} and peak_id={};".format(frame_id, base_peak_id), source_conn)
+                    #                                            0            1             2          3           4            5
+                    base_peak_df = pd.read_sql_query("select centroid_mz,centroid_scan,std_dev_mz,std_dev_scan,peak_max_mz,peak_max_scan from peaks where frame_id={} and peak_id={};".format(frame_id, base_peak_id), source_conn)
                     base_peak_v = base_peak_df.values
                     base_peak_mz_centroid = base_peak_v[0][0]
                     base_peak_scan_centroid = base_peak_v[0][1]
                     base_peak_mz_std_dev = base_peak_v[0][2]
                     base_peak_scan_std_dev = base_peak_v[0][3]
+                    base_peak_max_point_mz = base_peak_v[0][4]
+                    base_peak_max_point_scan = base_peak_v[0][5]
 
-                    mono_peak_df = pd.read_sql_query("select centroid_mz,centroid_scan,std_dev_mz,std_dev_scan from peaks where frame_id={} and peak_id={};".format(frame_id, monoisotopic_peak_id), source_conn)
+                    #                                            0            1             2          3           4            5
+                    mono_peak_df = pd.read_sql_query("select centroid_mz,centroid_scan,std_dev_mz,std_dev_scan,peak_max_mz,peak_max_scan from peaks where frame_id={} and peak_id={};".format(frame_id, monoisotopic_peak_id), source_conn)
                     mono_peak_v = mono_peak_df.values
                     mono_peak_mz_centroid = mono_peak_v[0][0]
                     mono_peak_scan_centroid = mono_peak_v[0][1]
                     mono_peak_mz_std_dev = mono_peak_v[0][2]
                     mono_peak_scan_std_dev = mono_peak_v[0][3]
+                    mono_peak_max_point_mz = mono_peak_v[0][4]
+                    mono_peak_max_point_scan = mono_peak_v[0][5]
 
                     cluster_feature_id = 0
                     # add the cluster to the list
@@ -352,11 +362,15 @@ for frame_id in range(args.frame_lower, args.frame_upper+1):
                                         base_peak_mz_std_dev, 
                                         base_peak_scan_centroid, 
                                         base_peak_scan_std_dev, 
+                                        base_peak_max_point_mz,
+                                        base_peak_max_point_scan,
                                         monoisotopic_peak_id, 
                                         mono_peak_mz_centroid, 
                                         mono_peak_mz_std_dev, 
                                         mono_peak_scan_centroid, 
                                         mono_peak_scan_std_dev, 
+                                        mono_peak_max_point_mz,
+                                        mono_peak_max_point_scan,
                                         int(number_of_sulphur), 
                                         fit_error, 
                                         json.dumps(rationale), 
@@ -380,7 +394,7 @@ for frame_id in range(args.frame_lower, args.frame_upper+1):
     print("{} seconds to process frame - found {} clusters".format(stop_frame-start_frame, cluster_id))
 
 # Write out all the peaks to the database
-c.executemany("INSERT INTO clusters VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", clusters)
+c.executemany("INSERT INTO clusters VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", clusters)
 stop_run = time.time()
 
 cluster_detect_info.append(("run processing time (sec)", stop_run-start_run))
