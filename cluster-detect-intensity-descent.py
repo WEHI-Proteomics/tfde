@@ -125,6 +125,18 @@ source_conn.commit()
 DELTA_MZ = 1.003355     # mass difference between Carbon-12 and Carbon-13 isotopes, in Da
 PROTON_MASS = 1.007276  # mass of a proton in unified atomic mass units, or Da
 
+# Peak array indices
+PEAK_ID_IDX = 0
+PEAK_CENTROID_MZ_IDX = 1
+PEAK_CENTROID_SCAN_IDX = 2
+PEAK_INTENSITY_SUM_IDX = 3
+PEAK_SCAN_UPPER_IDX = 4
+PEAK_SCAN_LOWER_IDX = 5
+PEAK_STD_DEV_MZ_IDX = 6
+PEAK_STD_DEV_SCAN_IDX = 7
+PEAK_INTENSITY_MAX_IDX = 8
+
+
 clusters = []
 start_run = time.time()
 for frame_id in range(args.frame_lower, args.frame_upper+1):
@@ -132,33 +144,34 @@ for frame_id in range(args.frame_lower, args.frame_upper+1):
     start_frame = time.time()
     cluster_id = 1
     # Get all the peaks for this frame
+    #                                       0        1           2               3           4          5          6          7            8
     peaks_df = pd.read_sql_query("select peak_id,centroid_mz,centroid_scan,intensity_sum,scan_upper,scan_lower,std_dev_mz,std_dev_scan,intensity_max from peaks where frame_id={} order by peak_id asc;"
         .format(frame_id), source_conn)
     peaks_v = peaks_df.values
     # for i in range(1,6):
     while len(peaks_v) > 0:
 
-        max_intensity_index = peaks_v.argmax(axis=0)[3]
-        base_peak_id = int(peaks_v[max_intensity_index][0])
+        max_intensity_index = peaks_v.argmax(axis=0)[PEAK_INTENSITY_SUM_IDX]
+        base_peak_id = int(peaks_v[max_intensity_index][PEAK_ID_IDX])
         # print("maximum peak id {}".format(base_peak_id))
         rationale = collections.OrderedDict()
         rationale["maximum peak id"] = base_peak_id
 
-        peak_mz = peaks_v[max_intensity_index][1]
-        peak_scan = peaks_v[max_intensity_index][2]
-        peak_intensity = int(peaks_v[max_intensity_index][3])
-        peak_scan_lower = peak_scan - args.scan_std_dev*peaks_v[max_intensity_index][7]
-        peak_scan_upper = peak_scan + args.scan_std_dev*peaks_v[max_intensity_index][7]
-        mz_comparison_tolerance = args.mz_std_dev*peaks_v[max_intensity_index][6]
+        peak_mz = peaks_v[max_intensity_index][PEAK_CENTROID_MZ_IDX]
+        peak_scan = peaks_v[max_intensity_index][PEAK_CENTROID_SCAN_IDX]
+        peak_intensity = int(peaks_v[max_intensity_index][PEAK_INTENSITY_SUM_IDX])
+        peak_scan_lower = peak_scan - args.scan_std_dev*peaks_v[max_intensity_index][PEAK_STD_DEV_SCAN_IDX]
+        peak_scan_upper = peak_scan + args.scan_std_dev*peaks_v[max_intensity_index][PEAK_STD_DEV_SCAN_IDX]
+        mz_comparison_tolerance = args.mz_std_dev*peaks_v[max_intensity_index][PEAK_STD_DEV_MZ_IDX]
         # print("m/z tolerance: +/- {}".format(mz_comparison_tolerance))
         rationale["m/z tolerance"] = mz_comparison_tolerance
 
         if peak_intensity < args.minimum_peak_intensity:
             # print "Reached minimum peak intensity - exiting."
             break
-        peaks_nearby_indices = np.where((peaks_v[:,1] <= peak_mz + DELTA_MZ*args.isotope_number_right) & (peaks_v[:,1] >= peak_mz - DELTA_MZ*args.isotope_number_left) & (peaks_v[:,2] >= peak_scan_lower) & (peaks_v[:,2] <= peak_scan_upper))[0]
+        peaks_nearby_indices = np.where((peaks_v[:,PEAK_CENTROID_MZ_IDX] <= peak_mz + DELTA_MZ*args.isotope_number_right) & (peaks_v[:,PEAK_CENTROID_MZ_IDX] >= peak_mz - DELTA_MZ*args.isotope_number_left) & (peaks_v[:,PEAK_CENTROID_SCAN_IDX] >= peak_scan_lower) & (peaks_v[:,PEAK_CENTROID_SCAN_IDX] <= peak_scan_upper))[0]
         peaks_nearby = peaks_v[peaks_nearby_indices]
-        peaks_nearby_sorted = peaks_nearby[np.argsort(peaks_nearby[:,1])]
+        peaks_nearby_sorted = peaks_nearby[np.argsort(peaks_nearby[:,PEAK_CENTROID_MZ_IDX])]
         # print("found {} peaks nearby".format(len(peaks_nearby_indices)))
         rationale["peaks nearby"] = len(peaks_nearby_indices)
         cluster_indices = np.empty(0, dtype=int)
@@ -172,10 +185,10 @@ for frame_id in range(args.frame_lower, args.frame_upper+1):
                 # To the right...
                 for isotope_number in range(1,args.isotope_number_right+1):
                     mz = peak_mz + (isotope_number*DELTA_MZ/charge_state)
-                    cluster_peak_indices_right = np.where((abs(peaks_nearby[:,1] - mz) < mz_comparison_tolerance))[0]
+                    cluster_peak_indices_right = np.where((abs(peaks_nearby[:,PEAK_CENTROID_MZ_IDX] - mz) < mz_comparison_tolerance))[0]
                     if len(cluster_peak_indices_right) > 0:
                         # Add the sum of the peak(s) intensity to this charge state in the matrix
-                        isotope_search_results[charge_state][0] += np.sum(peaks_nearby[cluster_peak_indices_right][:,3])
+                        isotope_search_results[charge_state][0] += np.sum(peaks_nearby[cluster_peak_indices_right][:,PEAK_INTENSITY_SUM_IDX])
                         # Add the indices of the peak(s) to this charge state in the matrix
                         isotope_search_results[charge_state][1] = np.append(isotope_search_results[charge_state][1], peaks_nearby_indices[cluster_peak_indices_right])
                     else:
@@ -184,10 +197,10 @@ for frame_id in range(args.frame_lower, args.frame_upper+1):
                 # To the left...
                 for isotope_number in range(1,args.isotope_number_left+1):
                     mz = peak_mz - (isotope_number*DELTA_MZ/charge_state)
-                    cluster_peak_indices_left = np.where((abs(peaks_nearby[:,1] - mz) < mz_comparison_tolerance))[0]
+                    cluster_peak_indices_left = np.where((abs(peaks_nearby[:,PEAK_CENTROID_MZ_IDX] - mz) < mz_comparison_tolerance))[0]
                     if len(cluster_peak_indices_left) > 0:
                         # Add the sum of the peak(s) intensity to this charge state in the matrix
-                        isotope_search_results[charge_state][0] += np.sum(peaks_nearby[cluster_peak_indices_left][:,3])
+                        isotope_search_results[charge_state][0] += np.sum(peaks_nearby[cluster_peak_indices_left][:,PEAK_INTENSITY_SUM_IDX])
                         # Add the indices of the peak(s) to this charge state in the matrix
                         isotope_search_results[charge_state][1] = np.append(isotope_search_results[charge_state][1], peaks_nearby_indices[cluster_peak_indices_left])
                     else:
@@ -208,24 +221,24 @@ for frame_id in range(args.frame_lower, args.frame_upper+1):
                 cluster_indices = np.unique(cluster_indices)
                 cluster_peaks = peaks_v[cluster_indices]
                 # Find the monoisotopic peak - sort by m/z
-                cluster_peaks = cluster_peaks[cluster_peaks[:,1].argsort()] # sorted by m/z
+                cluster_peaks = cluster_peaks[cluster_peaks[:,PEAK_CENTROID_MZ_IDX].argsort()] # sorted by m/z
                 monoisotopic_peak_id = int(cluster_peaks[0][0])
                 monoisotopic_mz = cluster_peaks[0][1]
                 # print "cluster peak IDs (sorted by m/z): {}".format(cluster_peaks[:,0].astype(int))
-                rationale["initial cluster peak IDs"] = cluster_peaks[:,0].astype(int).tolist()
+                rationale["initial cluster peak IDs"] = cluster_peaks[:,PEAK_ID_IDX].astype(int).tolist()
                 # Determine the monoisotopic mass in Da
                 monoisotopic_mass = monoisotopic_mz*charge - PROTON_MASS*charge
                 # print("mono peak id {}, mono mz {}, mono mass {}".format(monoisotopic_peak_id, monoisotopic_mz, monoisotopic_mass))
                 # Find the base peak (maximum intensity)
                 # print "peak intensity (before trimming) {}".format(cluster_peaks[:,3])
-                rationale["peak intensity before trimming"] = cluster_peaks[:,8].astype(int).tolist()
-                base_peak_index = cluster_peaks[:,8].argmax()
+                rationale["peak intensity before trimming"] = cluster_peaks[:,PEAK_INTENSITY_MAX_IDX].astype(int).tolist()
+                base_peak_index = cluster_peaks[:,PEAK_INTENSITY_MAX_IDX].argmax()
                 # print "base peak position within cluster {}".format(base_peak_index)
                 # Determine the measured height ratios
                 observed_height_ratio = np.zeros(len(cluster_peaks))
                 for peak_index in range(1, len(cluster_peaks)):
                     # observed_height_ratio[peak_index] = cluster_peaks[peak_index,3] / cluster_peaks[peak_index-1,3]  # summed intensity
-                    observed_height_ratio[peak_index] = cluster_peaks[peak_index,8] / cluster_peaks[peak_index-1,8]  # max intensity
+                    observed_height_ratio[peak_index] = cluster_peaks[peak_index,PEAK_INTENSITY_MAX_IDX] / cluster_peaks[peak_index-1,PEAK_INTENSITY_MAX_IDX]  # max intensity
                 # print "observed peak ratios {}".format(observed_height_ratio)
                 # rationale["observed peak ratios"] = observed_height_ratio.tolist()
                 # Trim any peaks off the end of the cluster that don't belong (height ratio to the right of the base peak should be less than 1)
@@ -249,12 +262,12 @@ for frame_id in range(args.frame_lower, args.frame_upper+1):
                 # Now delete the peaks to be trimmed
                 cluster_peaks = np.delete(cluster_peaks, trim_cluster_indices, 0)
                 # print "peak intensity (after trimming) {}".format(cluster_peaks[:,3])
-                rationale["peak IDs before height ratio error check"] = cluster_peaks[:,0].astype(int).tolist()
+                rationale["peak IDs before height ratio error check"] = cluster_peaks[:,PEAK_ID_IDX].astype(int).tolist()
                 # Need to determine the measured height ratios again
                 observed_height_ratio = np.zeros(len(cluster_peaks))
                 for peak_index in range(1, len(cluster_peaks)):
                     # observed_height_ratio[peak_index] = cluster_peaks[peak_index,3] / cluster_peaks[peak_index-1,3]  # using summed intensity
-                    observed_height_ratio[peak_index] = cluster_peaks[peak_index,8] / cluster_peaks[peak_index-1,8]  # using max intensity
+                    observed_height_ratio[peak_index] = cluster_peaks[peak_index,PEAK_INTENSITY_MAX_IDX] / cluster_peaks[peak_index-1,PEAK_INTENSITY_MAX_IDX]  # using max intensity
                 # print "updated observed peak ratios {}".format(observed_height_ratio)
                 # rationale["updated observed peak ratios"] = observed_height_ratio.tolist()
 
@@ -265,7 +278,7 @@ for frame_id in range(args.frame_lower, args.frame_upper+1):
                         predicted_height_ratio[sulphur][peak_number] = peak_ratio(monoisotopic_mass, peak_number=peak_number, number_of_sulphur=sulphur)
                 # rationale["predicted peak ratios"] = predicted_height_ratio.tolist()
                 # Work out the error for different monoisotopic peaks
-                base_peak_index = cluster_peaks[:,3].argmax()
+                base_peak_index = cluster_peaks[:,PEAK_INTENSITY_SUM_IDX].argmax()
                 last_test_mono_index = base_peak_index
                 # print "base peak index {}, last mono index {}".format(base_peak_index, last_test_mono_index)
                 error = np.zeros((last_test_mono_index+1, NUMBER_OF_SULPHUR_ATOMS))
@@ -299,21 +312,21 @@ for frame_id in range(args.frame_lower, args.frame_upper+1):
                 fit_error = error[best_monoisotopic_peak_index,number_of_sulphur]
 
                 if ((found_good_mono_index == True) and (fit_error > 0)):
-                    monoisotopic_peak_id = cluster_peaks[best_monoisotopic_peak_index,0].astype(int)
+                    monoisotopic_peak_id = cluster_peaks[best_monoisotopic_peak_index,PEAK_ID_IDX].astype(int)
                     rationale["best monoisotopic peak ID"] = monoisotopic_peak_id
                     rationale["number of sulphur"] = int(number_of_sulphur)
                     rationale["final height ratio error"] = fit_error
                     # Trim the peaks before the best monoisotopic
                     cluster_peaks = np.delete(cluster_peaks, np.arange(best_monoisotopic_peak_index), 0)
-                    rationale["final peak IDs"] = cluster_peaks[:,0].astype(int).tolist()
+                    rationale["final peak IDs"] = cluster_peaks[:,PEAK_ID_IDX].astype(int).tolist()
                     # Update the cluster indices so we can remove them from the frame
                     for p in cluster_peaks:
-                        p_id = int(p[0])
+                        p_id = int(p[PEAK_ID_IDX])
                         # Update the peaks in the peaks table with their cluster ID
                         values = (cluster_id, frame_id, p_id)
                         c.execute("update peaks set cluster_id=? where frame_id=? and peak_id=?", values)
                     # determine some other cluster characteristics before writing it to the database
-                    cluster_intensity_sum = sum(cluster_peaks[:,3])
+                    cluster_intensity_sum = sum(cluster_peaks[:,PEAK_INTENSITY_SUM_IDX])
 
                     base_peak_df = pd.read_sql_query("select centroid_mz,centroid_scan,std_dev_mz,std_dev_scan from peaks where frame_id={} and peak_id={};".format(frame_id, base_peak_id), source_conn)
                     base_peak_v = base_peak_df.values
@@ -359,7 +372,7 @@ for frame_id in range(args.frame_lower, args.frame_upper+1):
             # print "Found less than {} peaks nearby - skipping peak search.".format(args.minimum_peaks_nearby)
 
         # remove the peaks we've processed from the frame
-        peaks_v_indices = np.searchsorted(peaks_v[:,0], cluster_peaks[:,0])
+        peaks_v_indices = np.searchsorted(peaks_v[:,PEAK_ID_IDX], cluster_peaks[:,PEAK_ID_IDX])
         peaks_v = np.delete(peaks_v, peaks_v_indices, 0)
         # print("removed peak ids {} - {} peaks remaining\n".format(cluster_peaks[:,0].astype(int), len(peaks_v)))
 
