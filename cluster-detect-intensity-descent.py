@@ -297,93 +297,85 @@ for frame_id in range(args.frame_lower, args.frame_upper+1):
                                 predicted_height_ratio[sulphur][predicted_index]
                 # print "error {}".format(error)
                 rationale["peak height error"] = error.tolist()
-                # Find the best monoisotopic peak, preferring to move it only if the fit is poor
-                found_good_mono_index = False
+
+                # impose friction on moving the mono index - only move it if the error is high
                 best_monoisotopic_peak_index = 0
                 number_of_sulphur = 0
                 for test_mono_index in range(0,last_test_mono_index+1):
-                    if (min(error[test_mono_index,:]) <= 2):
+                    if (min(error[test_mono_index,:]) <= 10.):
                         best_monoisotopic_peak_index = test_mono_index
                         number_of_sulphur = error[test_mono_index,:].argmin()
-                        found_good_mono_index = True
                         break
 
-                if test_mono_index > 0:
+                if best_monoisotopic_peak_index > 0:
                     rationale["shift monoisotopic"] = "yes"
                 else:
                     rationale["shift monoisotopic"] = "no"
 
                 fit_error = error[best_monoisotopic_peak_index,number_of_sulphur]
 
-                if ((found_good_mono_index == True) and (fit_error > 0)):
-                    monoisotopic_peak_id = cluster_peaks[best_monoisotopic_peak_index,PEAK_ID_IDX].astype(int)
-                    rationale["best monoisotopic peak ID"] = monoisotopic_peak_id
-                    rationale["number of sulphur"] = int(number_of_sulphur)
-                    rationale["final height ratio error"] = fit_error
-                    # Trim the peaks before the best monoisotopic
-                    cluster_peaks = np.delete(cluster_peaks, np.arange(best_monoisotopic_peak_index), 0)
-                    rationale["final peak IDs"] = cluster_peaks[:,PEAK_ID_IDX].astype(int).tolist()
-                    # Update the cluster indices so we can remove them from the frame
-                    for p in cluster_peaks:
-                        p_id = int(p[PEAK_ID_IDX])
-                        # Update the peaks in the peaks table with their cluster ID
-                        values = (cluster_id, frame_id, p_id)
-                        c.execute("update peaks set cluster_id=? where frame_id=? and peak_id=?", values)
-                    # determine some other cluster characteristics before writing it to the database
-                    cluster_intensity_sum = sum(cluster_peaks[:,PEAK_INTENSITY_SUM_IDX])
+                monoisotopic_peak_id = cluster_peaks[best_monoisotopic_peak_index,PEAK_ID_IDX].astype(int)
+                rationale["best monoisotopic peak ID"] = monoisotopic_peak_id
+                rationale["number of sulphur"] = int(number_of_sulphur)
+                rationale["final height ratio error"] = fit_error
+                # Trim the peaks before the best monoisotopic
+                cluster_peaks = np.delete(cluster_peaks, np.arange(best_monoisotopic_peak_index), 0)
+                rationale["final peak IDs"] = cluster_peaks[:,PEAK_ID_IDX].astype(int).tolist()
+                # Update the cluster indices so we can remove them from the frame
+                for p in cluster_peaks:
+                    p_id = int(p[PEAK_ID_IDX])
+                    # Update the peaks in the peaks table with their cluster ID
+                    values = (cluster_id, frame_id, p_id)
+                    c.execute("update peaks set cluster_id=? where frame_id=? and peak_id=?", values)
+                # determine some other cluster characteristics before writing it to the database
+                cluster_intensity_sum = sum(cluster_peaks[:,PEAK_INTENSITY_SUM_IDX])
 
-                    #                                            0            1             2          3           4            5
-                    base_peak_df = pd.read_sql_query("select centroid_mz,centroid_scan,std_dev_mz,std_dev_scan,peak_max_mz,peak_max_scan from peaks where frame_id={} and peak_id={};".format(frame_id, base_peak_id), source_conn)
-                    base_peak_v = base_peak_df.values
-                    base_peak_mz_centroid = base_peak_v[0][0]
-                    base_peak_scan_centroid = base_peak_v[0][1]
-                    base_peak_mz_std_dev = base_peak_v[0][2]
-                    base_peak_scan_std_dev = base_peak_v[0][3]
-                    base_peak_max_point_mz = base_peak_v[0][4]
-                    base_peak_max_point_scan = base_peak_v[0][5]
+                #                                            0            1             2          3           4            5
+                base_peak_df = pd.read_sql_query("select centroid_mz,centroid_scan,std_dev_mz,std_dev_scan,peak_max_mz,peak_max_scan from peaks where frame_id={} and peak_id={};".format(frame_id, base_peak_id), source_conn)
+                base_peak_v = base_peak_df.values
+                base_peak_mz_centroid = base_peak_v[0][0]
+                base_peak_scan_centroid = base_peak_v[0][1]
+                base_peak_mz_std_dev = base_peak_v[0][2]
+                base_peak_scan_std_dev = base_peak_v[0][3]
+                base_peak_max_point_mz = base_peak_v[0][4]
+                base_peak_max_point_scan = base_peak_v[0][5]
 
-                    #                                            0            1             2          3           4            5
-                    mono_peak_df = pd.read_sql_query("select centroid_mz,centroid_scan,std_dev_mz,std_dev_scan,peak_max_mz,peak_max_scan from peaks where frame_id={} and peak_id={};".format(frame_id, monoisotopic_peak_id), source_conn)
-                    mono_peak_v = mono_peak_df.values
-                    mono_peak_mz_centroid = mono_peak_v[0][0]
-                    mono_peak_scan_centroid = mono_peak_v[0][1]
-                    mono_peak_mz_std_dev = mono_peak_v[0][2]
-                    mono_peak_scan_std_dev = mono_peak_v[0][3]
-                    mono_peak_max_point_mz = mono_peak_v[0][4]
-                    mono_peak_max_point_scan = mono_peak_v[0][5]
+                #                                            0            1             2          3           4            5
+                mono_peak_df = pd.read_sql_query("select centroid_mz,centroid_scan,std_dev_mz,std_dev_scan,peak_max_mz,peak_max_scan from peaks where frame_id={} and peak_id={};".format(frame_id, monoisotopic_peak_id), source_conn)
+                mono_peak_v = mono_peak_df.values
+                mono_peak_mz_centroid = mono_peak_v[0][0]
+                mono_peak_scan_centroid = mono_peak_v[0][1]
+                mono_peak_mz_std_dev = mono_peak_v[0][2]
+                mono_peak_scan_std_dev = mono_peak_v[0][3]
+                mono_peak_max_point_mz = mono_peak_v[0][4]
+                mono_peak_max_point_scan = mono_peak_v[0][5]
 
-                    cluster_feature_id = 0
-                    # add the cluster to the list
-                    clusters.append((frame_id, 
-                                        cluster_id, 
-                                        charge, 
-                                        base_peak_id, 
-                                        base_peak_mz_centroid, 
-                                        base_peak_mz_std_dev, 
-                                        base_peak_scan_centroid, 
-                                        base_peak_scan_std_dev, 
-                                        base_peak_max_point_mz,
-                                        base_peak_max_point_scan,
-                                        monoisotopic_peak_id, 
-                                        mono_peak_mz_centroid, 
-                                        mono_peak_mz_std_dev, 
-                                        mono_peak_scan_centroid, 
-                                        mono_peak_scan_std_dev, 
-                                        mono_peak_max_point_mz,
-                                        mono_peak_max_point_scan,
-                                        int(number_of_sulphur), 
-                                        fit_error, 
-                                        json.dumps(rationale), 
-                                        ' ', 
-                                        cluster_intensity_sum, 
-                                        cluster_feature_id))
-                    cluster_id += 1
-                # else:
-                    # print "Bad fit - disregarding the peak"
-            # else:
-                # print "Found no isotopic peaks either side of this peak."
-        # else:
-            # print "Found less than {} peaks nearby - skipping peak search.".format(args.minimum_peaks_nearby)
+                cluster_feature_id = 0
+                # add the cluster to the list
+                clusters.append((frame_id, 
+                                    cluster_id, 
+                                    charge, 
+                                    base_peak_id, 
+                                    base_peak_mz_centroid, 
+                                    base_peak_mz_std_dev, 
+                                    base_peak_scan_centroid, 
+                                    base_peak_scan_std_dev, 
+                                    base_peak_max_point_mz,
+                                    base_peak_max_point_scan,
+                                    monoisotopic_peak_id, 
+                                    mono_peak_mz_centroid, 
+                                    mono_peak_mz_std_dev, 
+                                    mono_peak_scan_centroid, 
+                                    mono_peak_scan_std_dev, 
+                                    mono_peak_max_point_mz,
+                                    mono_peak_max_point_scan,
+                                    int(number_of_sulphur), 
+                                    fit_error, 
+                                    json.dumps(rationale), 
+                                    ' ', 
+                                    cluster_intensity_sum, 
+                                    cluster_feature_id))
+                cluster_id += 1
 
         # remove the peaks we've processed from the frame
         peaks_v_indices = np.searchsorted(peaks_v[:,PEAK_ID_IDX], cluster_peaks[:,PEAK_ID_IDX])
