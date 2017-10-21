@@ -209,7 +209,11 @@ for frame_id in range(args.frame_lower, args.frame_upper+1):
             peak_scan_lower = np.min(peak_scan)
             peak_mz_centroid, peak_std_dev_mz = weighted_avg_and_std(values=peak_mz, weights=peak_intensity)
             peak_scan_centroid, peak_std_dev_scan = weighted_avg_and_std(values=peak_scan, weights=peak_intensity)
-            mono_peaks.append((frame_id, peak_id, peak_mz_centroid, peak_scan_centroid, peak_intensity_sum, peak_scan_upper, peak_scan_lower, peak_std_dev_mz, peak_std_dev_scan, json.dumps(rationale), ' ', peak_intensity_max))
+            peak_points = frame_v[peak_indices]
+            peak_max_index = peak_points[:,2].argmax()
+            peak_max_mz = peak_points[peak_max_index][0]
+            peak_max_scan = peak_points[peak_max_index][1].astype(int)
+            mono_peaks.append((frame_id, peak_id, peak_mz_centroid, peak_scan_centroid, peak_intensity_sum, peak_scan_upper, peak_scan_lower, peak_std_dev_mz, peak_std_dev_scan, json.dumps(rationale), ' ', peak_intensity_max, peak_max_mz, peak_max_scan))
 
             peak_id += 1
 
@@ -221,7 +225,7 @@ for frame_id in range(args.frame_lower, args.frame_upper+1):
 
 # Write out all the peaks to the database
 c.execute("DELETE FROM peaks WHERE frame_id>={} AND frame_id<={}".format(args.frame_lower, args.frame_upper))
-c.executemany("INSERT INTO peaks VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?)", mono_peaks)
+c.executemany("INSERT INTO peaks VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?)", mono_peaks)
 source_conn.commit()
 stop_run = time.time()
 print("{} seconds to process frames {} to {}".format(stop_run-start_run, args.frame_lower, args.frame_upper))
