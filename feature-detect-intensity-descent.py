@@ -124,8 +124,8 @@ while len(clusters_v) > 0:
     frame_offset = 1
     missed_frames = 0
     while (missed_frames < args.empty_frames) and (frame_id+frame_offset <= args.frame_upper):
-        # mono_matches = np.logical_and((abs(clusters_v[:,CLUSTER_MONO_MAX_POINT_MZ_IDX] - mono_max_point_mz) <= mono_mz_std_dev_offset), 
-        #     (abs(clusters_v[:,CLUSTER_MONO_MAX_POINT_SCAN_IDX] - mono_max_point_scan) <= mono_scan_std_dev_offset))
+        mono_matches = np.logical_and((abs(clusters_v[:,CLUSTER_MONO_MAX_POINT_MZ_IDX] - mono_max_point_mz) <= mono_mz_std_dev_offset), 
+            (abs(clusters_v[:,CLUSTER_MONO_MAX_POINT_SCAN_IDX] - mono_max_point_scan) <= mono_scan_std_dev_offset))
         base_matches = np.logical_and((abs(clusters_v[:,CLUSTER_BASE_MAX_POINT_MZ_IDX] - base_max_point_mz) <= base_mz_std_dev_offset), 
             (abs(clusters_v[:,CLUSTER_BASE_MAX_POINT_SCAN_IDX] - base_max_point_scan) <= base_scan_std_dev_offset))
         # cluster_matches = np.logical_or(mono_matches, base_matches)
@@ -154,6 +154,8 @@ while len(clusters_v) > 0:
             # base_mz_std_dev_offset = base_mz_std_dev * args.mz_std_dev
             # base_scan_std_dev_offset = base_scan_std_dev * args.scan_std_dev
 
+            mono_max_point_mz = clusters_v[clusters_v_index_to_use,CLUSTER_MONO_MAX_POINT_MZ_IDX]
+            mono_max_point_scan = clusters_v[clusters_v_index_to_use,CLUSTER_MONO_MAX_POINT_SCAN_IDX]
             base_max_point_mz = clusters_v[clusters_v_index_to_use,CLUSTER_BASE_MAX_POINT_MZ_IDX]
             base_max_point_scan = clusters_v[clusters_v_index_to_use,CLUSTER_BASE_MAX_POINT_SCAN_IDX]
 
@@ -167,8 +169,8 @@ while len(clusters_v) > 0:
     missed_frames = 0
 
     while (missed_frames < args.empty_frames) and (frame_id-frame_offset >= args.frame_lower):
-        # mono_matches = np.logical_and((abs(clusters_v[:,CLUSTER_MONO_MAX_POINT_MZ_IDX] - mono_max_point_mz) <= mono_mz_std_dev_offset), 
-        #     (abs(clusters_v[:,CLUSTER_MONO_MAX_POINT_SCAN_IDX] - mono_max_point_scan) <= mono_scan_std_dev_offset))
+        mono_matches = np.logical_and((abs(clusters_v[:,CLUSTER_MONO_MAX_POINT_MZ_IDX] - mono_max_point_mz) <= mono_mz_std_dev_offset), 
+            (abs(clusters_v[:,CLUSTER_MONO_MAX_POINT_SCAN_IDX] - mono_max_point_scan) <= mono_scan_std_dev_offset))
         base_matches = np.logical_and((abs(clusters_v[:,CLUSTER_BASE_MAX_POINT_MZ_IDX] - base_max_point_mz) <= base_mz_std_dev_offset), 
             (abs(clusters_v[:,CLUSTER_BASE_MAX_POINT_SCAN_IDX] - base_max_point_scan) <= base_scan_std_dev_offset))
         # cluster_matches = np.logical_or(mono_matches, base_matches)
@@ -197,6 +199,8 @@ while len(clusters_v) > 0:
             # base_mz_std_dev_offset = base_mz_std_dev * args.mz_std_dev
             # base_scan_std_dev_offset = base_scan_std_dev * args.scan_std_dev
 
+            mono_max_point_mz = clusters_v[clusters_v_index_to_use,CLUSTER_MONO_MAX_POINT_MZ_IDX]
+            mono_max_point_scan = clusters_v[clusters_v_index_to_use,CLUSTER_MONO_MAX_POINT_SCAN_IDX]
             base_max_point_mz = clusters_v[clusters_v_index_to_use,CLUSTER_BASE_MAX_POINT_MZ_IDX]
             base_max_point_scan = clusters_v[clusters_v_index_to_use,CLUSTER_BASE_MAX_POINT_SCAN_IDX]
 
