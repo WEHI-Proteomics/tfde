@@ -19,6 +19,10 @@ def weighted_avg_and_std(values, weights):
     variance = np.average((values-average)**2, weights=weights)  # Fast and numerically precise
     return (average, math.sqrt(variance))
 
+def standard_deviation(mz):
+    instrument_resolution = 40000.0
+    return (mz / instrument_resolution) / 2.35482
+
 # cluster array indices
 CLUSTER_FRAME_ID_IDX = 0
 CLUSTER_ID_IDX = 1
@@ -27,11 +31,15 @@ CLUSTER_BASE_MZ_CENTROID_IDX = 3
 CLUSTER_BASE_MZ_STD_DEV_IDX = 4
 CLUSTER_BASE_SCAN_CENTROID_IDX = 5
 CLUSTER_BASE_SCAN_STD_DEV_IDX = 6
-CLUSTER_MONO_MZ_CENTROID_IDX = 7
-CLUSTER_MONO_MZ_STD_DEV_IDX = 8
-CLUSTER_MONO_SCAN_CENTROID_IDX = 9
-CLUSTER_MONO_SCAN_STD_DEV_IDX = 10
-CLUSTER_INTENSITY_SUM_IDX = 11
+CLUSTER_BASE_MAX_POINT_MZ_IDX = 7
+CLUSTER_BASE_MAX_POINT_SCAN_IDX = 8
+CLUSTER_MONO_MZ_CENTROID_IDX = 9
+CLUSTER_MONO_MZ_STD_DEV_IDX = 10
+CLUSTER_MONO_SCAN_CENTROID_IDX = 11
+CLUSTER_MONO_SCAN_STD_DEV_IDX = 12
+CLUSTER_MONO_MAX_POINT_MZ_IDX = 13
+CLUSTER_MONO_MAX_POINT_SCAN_IDX = 14
+CLUSTER_INTENSITY_SUM_IDX = 15
 
 
 parser = argparse.ArgumentParser(description='A method for tracking features through frames.')
@@ -76,7 +84,8 @@ start_run = time.time()
 print("Finding features")
 
 # Get all the clusters
-clusters_df = pd.read_sql_query("select frame_id, cluster_id, charge_state, base_peak_mz_centroid, base_peak_mz_std_dev, base_peak_scan_centroid, base_peak_scan_std_dev, mono_peak_mz_centroid, mono_peak_mz_std_dev, mono_peak_scan_centroid, mono_peak_scan_std_dev, intensity_sum from clusters order by frame_id, cluster_id asc;", source_conn)
+#                                          0          1           2              3                       4                       5                         6                      7                   8                     9                      10                    11                      12                     13                  14               15
+clusters_df = pd.read_sql_query("select frame_id, cluster_id, charge_state, base_peak_mz_centroid, base_peak_mz_std_dev, base_peak_scan_centroid, base_peak_scan_std_dev, base_peak_max_point_mz, base_peak_max_point_scan, mono_peak_mz_centroid, mono_peak_mz_std_dev, mono_peak_scan_centroid, mono_peak_scan_std_dev, mono_peak_max_point_mz, mono_peak_max_point_scan, intensity_sum from clusters order by frame_id, cluster_id asc;", source_conn)
 clusters_v = clusters_df.values
 
 # go through each cluster and see whether it belongs to an existing feature
@@ -111,11 +120,12 @@ while len(clusters_v) > 0:
     frame_offset = 1
     missed_frames = 0
     while (missed_frames < args.empty_frames) and (frame_id+frame_offset <= args.frame_upper):
-        mono_matches = np.logical_and((abs(clusters_v[:,CLUSTER_MONO_MZ_CENTROID_IDX] - mono_mz_centroid) <= mono_mz_std_dev_offset), 
-            (abs(clusters_v[:,CLUSTER_MONO_SCAN_CENTROID_IDX] - mono_scan_centroid) <= mono_scan_std_dev_offset))
-        base_matches = np.logical_and((abs(clusters_v[:,CLUSTER_BASE_MZ_CENTROID_IDX] - base_mz_centroid) <= base_mz_std_dev_offset), 
-            (abs(clusters_v[:,CLUSTER_BASE_SCAN_CENTROID_IDX] - base_scan_centroid) <= base_scan_std_dev_offset))
-        cluster_matches = np.logical_or(mono_matches, base_matches)
+        mono_matches = np.logical_and((abs(clusters_v[:,CLUSTER_MONO_MAX_POINT_MZ_IDX] - mono_mz_centroid) <= mono_mz_std_dev_offset), 
+            (abs(clusters_v[:,CLUSTER_MONO_MAX_POINT_SCAN_IDX] - mono_scan_centroid) <= mono_scan_std_dev_offset))
+        base_matches = np.logical_and((abs(clusters_v[:,CLUSTER_BASE_MAX_POINT_MZ_IDX] - base_mz_centroid) <= base_mz_std_dev_offset), 
+            (abs(clusters_v[:,CLUSTER_BASE_MAX_POINT_SCAN_IDX] - base_scan_centroid) <= base_scan_std_dev_offset))
+        # cluster_matches = np.logical_or(mono_matches, base_matches)
+        cluster_matches = base_matches
         next_frame_matches = (clusters_v[:,CLUSTER_FRAME_ID_IDX] == (frame_id+frame_offset))
         charge_state_matches = (clusters_v[:,CLUSTER_CHARGE_STATE_IDX] == charge_state)
         nearby_indices_forward = np.where(np.logical_and(np.logical_and(next_frame_matches, charge_state_matches), cluster_matches))[0]
@@ -148,11 +158,12 @@ while len(clusters_v) > 0:
     missed_frames = 0
 
     while (missed_frames < args.empty_frames) and (frame_id-frame_offset >= args.frame_lower):
-        mono_matches = np.logical_and((abs(clusters_v[:,CLUSTER_MONO_MZ_CENTROID_IDX] - mono_mz_centroid) <= mono_mz_std_dev_offset), 
-            (abs(clusters_v[:,CLUSTER_MONO_SCAN_CENTROID_IDX] - mono_scan_centroid) <= mono_scan_std_dev_offset))
-        base_matches = np.logical_and((abs(clusters_v[:,CLUSTER_BASE_MZ_CENTROID_IDX] - base_mz_centroid) <= base_mz_std_dev_offset), 
-            (abs(clusters_v[:,CLUSTER_BASE_SCAN_CENTROID_IDX] - base_scan_centroid) <= base_scan_std_dev_offset))
-        cluster_matches = np.logical_or(mono_matches, base_matches)
+        mono_matches = np.logical_and((abs(clusters_v[:,CLUSTER_MONO_MAX_POINT_MZ_IDX] - mono_mz_centroid) <= mono_mz_std_dev_offset), 
+            (abs(clusters_v[:,CLUSTER_MONO_MAX_POINT_SCAN_IDX] - mono_scan_centroid) <= mono_scan_std_dev_offset))
+        base_matches = np.logical_and((abs(clusters_v[:,CLUSTER_BASE_MAX_POINT_MZ_IDX] - base_mz_centroid) <= base_mz_std_dev_offset), 
+            (abs(clusters_v[:,CLUSTER_BASE_MAX_POINT_SCAN_IDX] - base_scan_centroid) <= base_scan_std_dev_offset))
+        # cluster_matches = np.logical_or(mono_matches, base_matches)
+        cluster_matches = base_matches
         previous_frame_matches = (clusters_v[:,CLUSTER_FRAME_ID_IDX] == (frame_id-frame_offset))
         charge_state_matches = (clusters_v[:,CLUSTER_CHARGE_STATE_IDX] == charge_state)
         nearby_indices_backward = np.where(np.logical_and(np.logical_and(previous_frame_matches, charge_state_matches), cluster_matches))[0]
@@ -166,11 +177,11 @@ while len(clusters_v) > 0:
             else:
                 clusters_v_index_to_use = nearby_indices_backward[0]
             # Update the m/z window with the weighted average and standard deviation of the clusters found so far
-            mono_mz_centroid, mono_mz_std_dev = weighted_avg_and_std(clusters_v[cluster_indices,CLUSTER_MONO_MZ_CENTROID_IDX], clusters_v[cluster_indices,CLUSTER_INTENSITY_SUM_IDX])
-            mono_scan_centroid, mono_scan_std_dev = weighted_avg_and_std(clusters_v[cluster_indices,CLUSTER_MONO_SCAN_CENTROID_IDX], clusters_v[cluster_indices,CLUSTER_INTENSITY_SUM_IDX])
+            mono_mz_centroid, mono_mz_std_dev = weighted_avg_and_std(clusters_v[cluster_indices,CLUSTER_MONO_MAX_POINT_MZ_IDX], clusters_v[cluster_indices,CLUSTER_INTENSITY_SUM_IDX])
+            mono_scan_centroid, mono_scan_std_dev = weighted_avg_and_std(clusters_v[cluster_indices,CLUSTER_MONO_MAX_POINT_SCAN_IDX], clusters_v[cluster_indices,CLUSTER_INTENSITY_SUM_IDX])
 
-            base_mz_centroid, base_mz_std_dev = weighted_avg_and_std(clusters_v[cluster_indices,CLUSTER_BASE_MZ_CENTROID_IDX], clusters_v[cluster_indices,CLUSTER_INTENSITY_SUM_IDX])
-            base_scan_centroid, base_scan_std_dev = weighted_avg_and_std(clusters_v[cluster_indices,CLUSTER_BASE_SCAN_CENTROID_IDX], clusters_v[cluster_indices,CLUSTER_INTENSITY_SUM_IDX])
+            base_mz_centroid, base_mz_std_dev = weighted_avg_and_std(clusters_v[cluster_indices,CLUSTER_BASE_MAX_POINT_MZ_IDX], clusters_v[cluster_indices,CLUSTER_INTENSITY_SUM_IDX])
+            base_scan_centroid, base_scan_std_dev = weighted_avg_and_std(clusters_v[cluster_indices,CLUSTER_BASE_MAX_POINT_SCAN_IDX], clusters_v[cluster_indices,CLUSTER_INTENSITY_SUM_IDX])
 
             mono_mz_std_dev_offset = mono_mz_std_dev * args.mz_std_dev
             mono_scan_std_dev_offset = mono_scan_std_dev * args.scan_std_dev
