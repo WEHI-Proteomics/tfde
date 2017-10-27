@@ -10,6 +10,7 @@ import time
 import math
 import collections
 import json
+import os
 
 MIN_POINTS_IN_PEAK_TO_CHECK_FOR_TROUGHS = 10
 
@@ -48,6 +49,7 @@ parser.add_argument('-sl','--scan_lower', type=int, default=0, help='The lower s
 parser.add_argument('-su','--scan_upper', type=int, default=183, help='The upper scan number.', required=False)
 parser.add_argument('-es','--empty_scans', type=int, default=2, help='Maximum number of empty scans to tolerate.', required=False)
 parser.add_argument('-sd','--standard_deviations', type=int, default=4, help='Number of standard deviations to look either side of a point.', required=False)
+parser.add_argument('-ts','--temp_store', type=str, help='Name of the temporary database for the output.', required=True)
 
 args = parser.parse_args()
 
@@ -56,12 +58,13 @@ peak_detect_info = []
 for arg in vars(args):
     peak_detect_info.append((arg, getattr(args, arg)))
 
-source_conn = sqlite3.connect(args.database_name)
+source_conn = sqlite3.connect(database=args.database_name, timeout=60)
 
 c = source_conn.cursor()
-c.execute("PRAGMA temp_store = 2") # store temporary data in memory
-c.execute("PRAGMA journal_mode=WAL") # enable write-ahead logging mode
-print("WAL mode status: {}".format(c.fetchone()))
+c.execute("PRAGMA temp_store = MEMORY") # store temporary data in memory
+# c.execute("PRAGMA synchronous = OFF") # https://www.sqlite.org/pragma.html#pragma_synchronous
+# c.execute("PRAGMA journal_mode = WAL") # enable write-ahead logging mode
+# print("WAL mode status: {}".format(c.fetchone()))
 
 mono_peaks = []
 point_updates = []
@@ -73,6 +76,7 @@ for frame_id in range(args.frame_lower, args.frame_upper+1):
     print("Processing frame {}".format(frame_id))
     start_frame = time.time()
     frame_v = frame_df.values
+    print("frame occupies {} bytes".format(frame_v.nbytes))
     # for i in range(1,61):
     while len(frame_v) > 0:
         peak_indices = np.empty(0, dtype=int)
@@ -223,22 +227,31 @@ for frame_id in range(args.frame_lower, args.frame_upper+1):
     stop_frame = time.time()
     print("{} seconds to process frame {} - {} peaks".format(stop_frame-start_frame, frame_id, peak_id))
 
+source_conn.close()
+
 # Write out all the peaks to the database
-c.execute("DELETE FROM peaks WHERE frame_id>={} AND frame_id<={}".format(args.frame_lower, args.frame_upper))
-c.executemany("INSERT INTO peaks VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?)", mono_peaks)
-source_conn.commit()
-stop_run = time.time()
-print("{} seconds to process frames {} to {}".format(stop_run-start_run, args.frame_lower, args.frame_upper))
+if os.path.isfile(args.temp_store):
+    os.remove(args.temp_store)
+
+dest_conn = sqlite3.connect(database=args.temp_store)
+d = dest_conn.cursor()
+d.execute('''CREATE TABLE peaks (frame_id INTEGER, peak_id INTEGER, centroid_mz REAL, centroid_scan REAL, intensity_sum INTEGER, scan_upper INTEGER, scan_lower INTEGER, std_dev_mz REAL, std_dev_scan REAL, cluster_id INTEGER, 'rationale' TEXT, 'state' TEXT, intensity_max INTEGER, peak_max_mz REAL, peak_max_scan INTEGER, PRIMARY KEY (frame_id, peak_id))''')
+d.execute('''CREATE TABLE peak_detect_info (item TEXT, value TEXT)''')
+d.execute('''CREATE TABLE frames_updates (peak_id INTEGER, frame_id INTEGER, point_id INTEGER)''')
+
+d.executemany("INSERT INTO peaks VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?)", mono_peaks)
 
 # Update the points in the frame table
-c.execute("UPDATE frames SET peak_id=0 WHERE frame_id>={} AND frame_id<={}".format(args.frame_lower, args.frame_upper))
-c.executemany("UPDATE frames SET peak_id=? WHERE frame_id=? AND point_id=?", point_updates)
+d.executemany("INSERT INTO frames_updates VALUES (?, ?, ?)", point_updates)
+
+stop_run = time.time()
+print("{} seconds to process frames {} to {}".format(stop_run-start_run, args.frame_lower, args.frame_upper))
 
 # write out the processing info
 peak_detect_info.append(("run processing time (sec)", stop_run-start_run))
 peak_detect_info.append(("processed", time.ctime()))
-c.executemany("INSERT INTO peak_detect_info VALUES (?, ?)", peak_detect_info)
-source_conn.commit()
-source_conn.close()
+d.executemany("INSERT INTO peak_detect_info VALUES (?, ?)", peak_detect_info)
+dest_conn.commit()
+dest_conn.close()
 
 # plt.close('all')
