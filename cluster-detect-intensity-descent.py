@@ -142,6 +142,8 @@ PEAK_INTENSITY_MAX_IDX = 8
 
 
 clusters = []
+peak_updates = []
+
 start_run = time.time()
 for frame_id in range(args.frame_lower, args.frame_upper+1):
     print "Processing frame {}".format(frame_id)
@@ -321,12 +323,10 @@ for frame_id in range(args.frame_lower, args.frame_upper+1):
                 # Trim the peaks before the best monoisotopic
                 cluster_peaks = np.delete(cluster_peaks, np.arange(best_monoisotopic_peak_index), 0)
                 rationale["final peak IDs"] = cluster_peaks[:,PEAK_ID_IDX].astype(int).tolist()
-                # Update the cluster indices so we can remove them from the frame
+                # Assign the cluster ID to the peaks
                 for p in cluster_peaks:
                     p_id = int(p[PEAK_ID_IDX])
-                    # Update the peaks in the peaks table with their cluster ID
-                    values = (cluster_id, frame_id, p_id)
-                    c.execute("update peaks set cluster_id=? where frame_id=? and peak_id=?", values)
+                    peak_updates.append((cluster_id, frame_id, p_id))
                 # determine some other cluster characteristics before writing it to the database
                 cluster_intensity_sum = sum(cluster_peaks[:,PEAK_INTENSITY_SUM_IDX])
 
@@ -385,10 +385,15 @@ for frame_id in range(args.frame_lower, args.frame_upper+1):
     stop_frame = time.time()
     print("{} seconds to process frame - found {} clusters".format(stop_frame-start_frame, cluster_id))
 
-# Write out all the peaks to the database
+# Write out all the clusters to the database
 c.executemany("INSERT INTO clusters VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", clusters)
+
+# Update the peaks with their cluster IDs
+c.executemany("UPDATE peaks SET cluster_id=? WHERE frame_id=? AND peak_id=?", peak_updates)
+
 stop_run = time.time()
 
+# Store some metadata about clustering
 cluster_detect_info.append(("run processing time (sec)", stop_run-start_run))
 cluster_detect_info.append(("processed", time.ctime()))
 c.executemany("INSERT INTO cluster_detect_info VALUES (?, ?)", cluster_detect_info)
