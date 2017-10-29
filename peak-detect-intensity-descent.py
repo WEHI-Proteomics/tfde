@@ -88,7 +88,7 @@ for frame_id in range(args.frame_lower, args.frame_upper+1):
     frame_v = frame_df.values
     print("frame occupies {} bytes".format(frame_v.nbytes))
     # for i in range(1,61):
-    while len(frame_v) > 0:
+    while len(np.where((frame_v[:,2] > -1))[0]) > 0:
         peak_indices = np.empty(0, dtype=int)
 
         rationale = collections.OrderedDict()
@@ -107,7 +107,7 @@ for frame_id in range(args.frame_lower, args.frame_upper+1):
         missed_scans = 0
         while (missed_scans < args.empty_scans) and (scan-scan_offset >= args.scan_lower):
             # print("looking in scan {}".format(scan-scan_offset))
-            nearby_indices_up = np.where((frame_v[:,1] == scan-scan_offset) & (frame_v[:,0] >= mz - std_dev_window) & (frame_v[:,0] <= mz + std_dev_window))[0]
+            nearby_indices_up = np.where((frame_v[:,2] > -1) & (frame_v[:,1] == scan-scan_offset) & (frame_v[:,0] >= mz - std_dev_window) & (frame_v[:,0] <= mz + std_dev_window))[0]
             nearby_points_up = frame_v[nearby_indices_up]
             # print("nearby indices: {}".format(nearby_indices_up))
             if len(nearby_indices_up) == 0:
@@ -133,7 +133,7 @@ for frame_id in range(args.frame_lower, args.frame_upper+1):
         std_dev_window = standard_deviation(mz) * args.standard_deviations
         while (missed_scans < args.empty_scans) and (scan+scan_offset <= args.scan_upper):
             # print("looking in scan {}".format(scan+scan_offset))
-            nearby_indices_down = np.where((frame_v[:,1] == scan+scan_offset) & (frame_v[:,0] >= mz - std_dev_window) & (frame_v[:,0] <= mz + std_dev_window))[0]
+            nearby_indices_down = np.where((frame_v[:,2] > -1) & (frame_v[:,1] == scan+scan_offset) & (frame_v[:,0] >= mz - std_dev_window) & (frame_v[:,0] <= mz + std_dev_window))[0]
             nearby_points_down = frame_v[nearby_indices_down]
             if len(nearby_indices_down) == 0:
                 missed_scans += 1
@@ -232,7 +232,8 @@ for frame_id in range(args.frame_lower, args.frame_upper+1):
             peak_id += 1
 
         # remove the points we've processed from the frame
-        frame_v = np.delete(frame_v, peak_indices, 0)
+        # frame_v = np.delete(frame_v, peak_indices, 0)
+        frame_v[peak_indices,2] = -1
 
     # Write out the peaks we found in this frame
     d.executemany("INSERT INTO peaks VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?)", mono_peaks)
