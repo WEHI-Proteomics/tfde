@@ -3,7 +3,7 @@ import sqlite3
 import pandas as pd
 import argparse
 import numpy as np
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 from scipy import signal
 import peakutils
 import time
@@ -61,10 +61,20 @@ for arg in vars(args):
 source_conn = sqlite3.connect(database=args.database_name, timeout=60)
 
 c = source_conn.cursor()
-c.execute("PRAGMA temp_store = MEMORY") # store temporary data in memory
+# c.execute("PRAGMA temp_store = MEMORY") # store temporary data in memory
 # c.execute("PRAGMA synchronous = OFF") # https://www.sqlite.org/pragma.html#pragma_synchronous
 # c.execute("PRAGMA journal_mode = WAL") # enable write-ahead logging mode
 # print("WAL mode status: {}".format(c.fetchone()))
+
+# Write out all the peaks to the database
+if os.path.isfile(args.temp_store):
+    os.remove(args.temp_store)
+
+dest_conn = sqlite3.connect(database=args.temp_store)
+d = dest_conn.cursor()
+d.execute('''CREATE TABLE peaks (frame_id INTEGER, peak_id INTEGER, centroid_mz REAL, centroid_scan REAL, intensity_sum INTEGER, scan_upper INTEGER, scan_lower INTEGER, std_dev_mz REAL, std_dev_scan REAL, cluster_id INTEGER, 'rationale' TEXT, 'state' TEXT, intensity_max INTEGER, peak_max_mz REAL, peak_max_scan INTEGER, PRIMARY KEY (frame_id, peak_id))''')
+d.execute('''CREATE TABLE peak_detect_info (item TEXT, value TEXT)''')
+d.execute('''CREATE TABLE frames_updates (peak_id INTEGER, frame_id INTEGER, point_id INTEGER)''')
 
 mono_peaks = []
 point_updates = []
@@ -224,25 +234,18 @@ for frame_id in range(args.frame_lower, args.frame_upper+1):
         # remove the points we've processed from the frame
         frame_v = np.delete(frame_v, peak_indices, 0)
 
+    # Write out the peaks we found in this frame
+    d.executemany("INSERT INTO peaks VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?)", mono_peaks)
+    mono_peaks = []
+
+    # Update the points in the frame table
+    d.executemany("INSERT INTO frames_updates VALUES (?, ?, ?)", point_updates)
+    point_updates = []
+
     stop_frame = time.time()
     print("{} seconds to process frame {} - {} peaks".format(stop_frame-start_frame, frame_id, peak_id))
 
 source_conn.close()
-
-# Write out all the peaks to the database
-if os.path.isfile(args.temp_store):
-    os.remove(args.temp_store)
-
-dest_conn = sqlite3.connect(database=args.temp_store)
-d = dest_conn.cursor()
-d.execute('''CREATE TABLE peaks (frame_id INTEGER, peak_id INTEGER, centroid_mz REAL, centroid_scan REAL, intensity_sum INTEGER, scan_upper INTEGER, scan_lower INTEGER, std_dev_mz REAL, std_dev_scan REAL, cluster_id INTEGER, 'rationale' TEXT, 'state' TEXT, intensity_max INTEGER, peak_max_mz REAL, peak_max_scan INTEGER, PRIMARY KEY (frame_id, peak_id))''')
-d.execute('''CREATE TABLE peak_detect_info (item TEXT, value TEXT)''')
-d.execute('''CREATE TABLE frames_updates (peak_id INTEGER, frame_id INTEGER, point_id INTEGER)''')
-
-d.executemany("INSERT INTO peaks VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?)", mono_peaks)
-
-# Update the points in the frame table
-d.executemany("INSERT INTO frames_updates VALUES (?, ?, ?)", point_updates)
 
 stop_run = time.time()
 print("{} seconds to process frames {} to {}".format(stop_run-start_run, args.frame_lower, args.frame_upper))
