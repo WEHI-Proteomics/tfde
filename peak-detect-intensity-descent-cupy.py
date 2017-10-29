@@ -27,8 +27,8 @@ def weighted_avg_and_std(values, weights):
 
     values, weights -- Numpy ndarrays with the same shape.
     """
-    average = cp.average(values, weights=weights)
-    variance = cp.average((values-average)**2, weights=weights)  # Fast and numerically precise
+    average = np.average(values, weights=weights)
+    variance = np.average((values-average)**2, weights=weights)  # Fast and numerically precise
     return (average, math.sqrt(variance))
 
 def findNearestGreaterThan(searchVal, inputData):
@@ -87,19 +87,19 @@ for frame_id in range(args.frame_lower, args.frame_upper+1):
         .format(frame_id), source_conn)
     print("Processing frame {}".format(frame_id))
     start_frame = time.time()
-    frame_v = frame_df.values
+    frame_v = cp.array(frame_df.values)
     print("frame occupies {} bytes".format(frame_v.nbytes))
     # for i in range(1,61):
     while len(frame_v) > 0:
-        peak_indices = cp.empty(0, dtype=int)
+        peak_indices = np.empty(0, dtype=int)
 
         rationale = collections.OrderedDict()
-        max_intensity_index = frame_v.argmax(axis=0)[2]
+        max_intensity_index = int(frame_v.argmax(axis=0)[2])
         mz = frame_v[max_intensity_index][0]
         scan = int(frame_v[max_intensity_index][1])
         intensity = int(frame_v[max_intensity_index][2])
         point_id = int(frame_v[max_intensity_index][3])
-        peak_indices = cp.append(peak_indices, max_intensity_index)
+        peak_indices = np.append(peak_indices, max_intensity_index)
         rationale["highest intensity point id"] = point_id
 
         # Look for other points belonging to this peak
@@ -118,9 +118,9 @@ for frame_id in range(args.frame_lower, args.frame_upper+1):
             else:
                 if len(nearby_indices_up) > 1:
                     # take the most intense point if there's more than one point found on this scan
-                    frame_v_index_to_use = nearby_indices_up[cp.argmax(nearby_points_up[:,2])]
+                    frame_v_index_to_use = int(nearby_indices_up[cp.argmax(nearby_points_up[:,2])])
                 else:
-                    frame_v_index_to_use = nearby_indices_up[0]
+                    frame_v_index_to_use = int(nearby_indices_up[0])
                 # Update the m/z window
                 mz = frame_v[frame_v_index_to_use][0]
                 std_dev_window = standard_deviation(mz) * args.standard_deviations
@@ -143,26 +143,26 @@ for frame_id in range(args.frame_lower, args.frame_upper+1):
             else:
                 if len(nearby_indices_down) > 1:
                     # take the most intense point if there's more than one point found on this scan
-                    frame_v_index_to_use = nearby_indices_down[cp.argmax(nearby_points_down[:,2])]
+                    frame_v_index_to_use = int(nearby_indices_down[cp.argmax(nearby_points_down[:,2])])
                 else:
-                    frame_v_index_to_use = nearby_indices_down[0]
+                    frame_v_index_to_use = int(nearby_indices_down[0])
                 
                 # Update the m/z window
                 mz = frame_v[frame_v_index_to_use][0]
                 std_dev_window = standard_deviation(mz) * args.standard_deviations
                 missed_scans = 0
-                peak_indices = cp.append(peak_indices, frame_v_index_to_use)
+                peak_indices = np.append(peak_indices, frame_v_index_to_use)
             scan_offset += 1
 
         if len(peak_indices) > 1:
             if len(peak_indices) > MIN_POINTS_IN_PEAK_TO_CHECK_FOR_TROUGHS:
                 # Check whether it has more than one peak
                 # filter the intensity with a Gaussian filter
-                sorted_peaks_indexes = cp.argsort(frame_v[peak_indices][:,1])
-                peaks_sorted = frame_v[peak_indices[sorted_peaks_indexes]]
+                sorted_peaks_indexes = cp.asnumpy(cp.argsort(frame_v[peak_indices][:,1]))
+                peaks_sorted = cp.asnumpy(frame_v[cp.array(peak_indices[sorted_peaks_indexes])])
                 rationale["point ids"] = peaks_sorted[:,3].astype(int).tolist()
                 filtered = signal.savgol_filter(peaks_sorted[:,2], 9, 5)
-                max_index = cp.argmax(peaks_sorted[:,2])
+                max_index = int(np.argmax(peaks_sorted[:,2]))
 
                 # f = plt.figure()
                 # ax1 = f.add_subplot(111)
@@ -176,7 +176,7 @@ for frame_id in range(args.frame_lower, args.frame_upper+1):
                         # ax1.plot(peaks_sorted[peak_maxima_index,1], peaks_sorted[peak_maxima_index,2], 'o', markerfacecolor='red', markeredgecolor='black', markeredgewidth=0.0, markersize=10, alpha=0.5)
                         if idx>0:
                             intensities_between_maxima = filtered[peak_maxima_indexes[idx-1]:peak_maxima_indexes[idx]+1]
-                            minimum_intensity_index = cp.argmin(intensities_between_maxima)+peak_maxima_indexes[idx-1]
+                            minimum_intensity_index = int(cp.argmin(intensities_between_maxima)+peak_maxima_indexes[idx-1])
                             peak_minima_indexes.append(minimum_intensity_index)
                             # ax1.plot(peaks_sorted[minimum_intensity_index,1], peaks_sorted[minimum_intensity_index,2], 'x', markerfacecolor='purple', markeredgecolor='black', markeredgewidth=6.0, markersize=10, alpha=0.5)
                 # print("peak maximum: {}".format(max_index))
@@ -211,18 +211,18 @@ for frame_id in range(args.frame_lower, args.frame_upper+1):
             # Update database
             for p in peak_indices:
                 # Collect all the points in the peak
-                peak_mz.append(frame_v[p][0])
-                peak_scan.append(frame_v[p][1])
+                peak_mz.append(float(frame_v[p][0]))
+                peak_scan.append(int(frame_v[p][1]))
                 peak_intensity.append(int(frame_v[p][2]))
 
                 # Assign this peak ID to all the points in the peak
-                point_updates.append((peak_id, frame_id, frame_v[int(p)][3]))
+                point_updates.append((peak_id, frame_id, int(frame_v[int(p)][3])))
 
             # Add the peak's details to the collection
-            peak_intensity_sum = cp.sum(peak_intensity)
-            peak_intensity_max = cp.max(peak_intensity)
-            peak_scan_upper = cp.max(peak_scan)
-            peak_scan_lower = cp.min(peak_scan)
+            peak_intensity_sum = np.sum(peak_intensity)
+            peak_intensity_max = np.max(peak_intensity)
+            peak_scan_upper = np.max(peak_scan)
+            peak_scan_lower = np.min(peak_scan)
             peak_mz_centroid, peak_std_dev_mz = weighted_avg_and_std(values=peak_mz, weights=peak_intensity)
             peak_scan_centroid, peak_std_dev_scan = weighted_avg_and_std(values=peak_scan, weights=peak_intensity)
             peak_points = frame_v[peak_indices]
