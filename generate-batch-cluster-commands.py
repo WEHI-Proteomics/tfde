@@ -1,7 +1,6 @@
 import argparse
 
 parser = argparse.ArgumentParser(description='Generates the commands to run peak detection in parallel.')
-parser.add_argument('-db','--database_name', type=str, help='The name of the source database.', required=True)
 parser.add_argument('-bs','--batch_size', type=int, default=2000, help='The batch size.', required=False)
 parser.add_argument('-fr','--number_of_frames', type=int, default=56780, help='The number of frames.', required=False)
 args = parser.parse_args()
@@ -12,5 +11,4 @@ for i in range(NUMBER_OF_BATCHES):
     start_frame = i*args.batch_size+1
     end_frame = (i+1)*args.batch_size
     range_str = "{}-{}".format(start_frame, end_frame)
-    # print "python ./src/peak-detect-intensity-descent.py -db {} -fl {} -fu {} -ts {}.sqlite &".format(args.database_name, start_frame, end_frame, range_str, range_str)
-    print "python ./src/cluster-detect-intensity-descent.py -db {}.sqlite -fl {} -fu {} &".format(range_str, start_frame, end_frame)
+    print("nohup python -u ./otf-peak-detect/cluster-detect-intensity-descent.py -db {}.sqlite -fl {} -fu {} >/efs/{}.log &".format(range_str, start_frame, end_frame, range_str))
