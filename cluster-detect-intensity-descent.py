@@ -155,7 +155,7 @@ for frame_id in range(args.frame_lower, args.frame_upper+1):
         .format(frame_id), source_conn)
     peaks_v = peaks_df.values
     # for i in range(1,6):
-    while len(peaks_v) > 0:
+    while len(np.where((peaks_v[:,PEAK_INTENSITY_SUM_IDX] > -1))[0]) > 0:
 
         max_intensity_index = peaks_v.argmax(axis=0)[PEAK_INTENSITY_SUM_IDX]
         base_peak_id = int(peaks_v[max_intensity_index][PEAK_ID_IDX])
@@ -175,7 +175,7 @@ for frame_id in range(args.frame_lower, args.frame_upper+1):
         if peak_intensity < args.minimum_peak_intensity:
             # print "Reached minimum peak intensity - exiting."
             break
-        peaks_nearby_indices = np.where((peaks_v[:,PEAK_CENTROID_MZ_IDX] <= peak_mz + DELTA_MZ*args.isotope_number_right) & (peaks_v[:,PEAK_CENTROID_MZ_IDX] >= peak_mz - DELTA_MZ*args.isotope_number_left) & (peaks_v[:,PEAK_CENTROID_SCAN_IDX] >= peak_scan_lower) & (peaks_v[:,PEAK_CENTROID_SCAN_IDX] <= peak_scan_upper))[0]
+        peaks_nearby_indices = np.where((peaks_v[:,PEAK_INTENSITY_SUM_IDX] > -1) & (peaks_v[:,PEAK_CENTROID_MZ_IDX] <= peak_mz + DELTA_MZ*args.isotope_number_right) & (peaks_v[:,PEAK_CENTROID_MZ_IDX] >= peak_mz - DELTA_MZ*args.isotope_number_left) & (peaks_v[:,PEAK_CENTROID_SCAN_IDX] >= peak_scan_lower) & (peaks_v[:,PEAK_CENTROID_SCAN_IDX] <= peak_scan_upper))[0]
         peaks_nearby = peaks_v[peaks_nearby_indices]
         peaks_nearby_sorted = peaks_nearby[np.argsort(peaks_nearby[:,PEAK_CENTROID_MZ_IDX])]
         # print("found {} peaks nearby".format(len(peaks_nearby_indices)))
@@ -379,8 +379,9 @@ for frame_id in range(args.frame_lower, args.frame_upper+1):
 
         # remove the peaks we've processed from the frame
         peaks_v_indices = np.searchsorted(peaks_v[:,PEAK_ID_IDX], cluster_peaks[:,PEAK_ID_IDX])
-        peaks_v = np.delete(peaks_v, peaks_v_indices, 0)
-        # print("removed peak ids {} - {} peaks remaining\n".format(cluster_peaks[:,0].astype(int), len(peaks_v)))
+        # peaks_v = np.delete(peaks_v, peaks_v_indices, 0)
+        peaks_v[peaks_v_indices,PEAK_INTENSITY_SUM_IDX] = -1
+        # print("removed peak ids {} - {} peaks remaining\n".format(cluster_peaks[:,0].astype(int), len(np.where((peaks_v[:,PEAK_INTENSITY_SUM_IDX] > -1))[0])))
 
     stop_frame = time.time()
     print("{} seconds to process frame - found {} clusters".format(stop_frame-start_frame, cluster_id))
