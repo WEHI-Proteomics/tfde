@@ -12,4 +12,4 @@ for i in range(NUMBER_OF_BATCHES):
     start_frame = i*args.batch_size+1
     end_frame = (i+1)*args.batch_size
     range_str = "{}-{}".format(start_frame, end_frame)
-    print("nohup python -u ./otf-peak-detect/peak-detect-intensity-descent.py -db {} -fl {} -fu {} -ts /efs/{}.sqlite >/efs/{}.log &".format(args.database_name, start_frame, end_frame, range_str, range_str))
+    print("nohup python -u ./otf-peak-detect/peak-detect-intensity-descent.py -db {} -fl {} -fu {} -ts /efs/{}.sqlite >/efs/peak-{}.log &".format(args.database_name, start_frame, end_frame, range_str, range_str))
