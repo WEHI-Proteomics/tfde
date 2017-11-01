@@ -12,5 +12,6 @@ for i in range(NUMBER_OF_BATCHES):
     end_frame = (i+1)*args.batch_size
     range_str = "{}-{}".format(start_frame, end_frame)
     print("sqlite3 databases/{}.sqlite '.dump' >> /efs/combined.dump".format(range_str))
-print("sqlite3 /efs/combined.sqlite '.import /efs/combined.dump'")
+print("rm /efs/combined.sqlite")
+print("sqlite3 /efs/combined.sqlite '.read /efs/combined.dump'")
 
