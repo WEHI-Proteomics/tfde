@@ -23,23 +23,6 @@ def standard_deviation(mz):
     instrument_resolution = 40000.0
     return (mz / instrument_resolution) / 2.35482
 
-# cluster array indices
-CLUSTER_FRAME_ID_IDX = 0
-CLUSTER_ID_IDX = 1
-CLUSTER_CHARGE_STATE_IDX = 2
-CLUSTER_BASE_MZ_CENTROID_IDX = 3
-CLUSTER_BASE_MZ_STD_DEV_IDX = 4
-CLUSTER_BASE_SCAN_CENTROID_IDX = 5
-CLUSTER_BASE_SCAN_STD_DEV_IDX = 6
-CLUSTER_BASE_MAX_POINT_MZ_IDX = 7
-CLUSTER_BASE_MAX_POINT_SCAN_IDX = 8
-CLUSTER_MONO_MZ_CENTROID_IDX = 9
-CLUSTER_MONO_MZ_STD_DEV_IDX = 10
-CLUSTER_MONO_SCAN_CENTROID_IDX = 11
-CLUSTER_MONO_SCAN_STD_DEV_IDX = 12
-CLUSTER_MONO_MAX_POINT_MZ_IDX = 13
-CLUSTER_MONO_MAX_POINT_SCAN_IDX = 14
-CLUSTER_INTENSITY_SUM_IDX = 15
 
 
 parser = argparse.ArgumentParser(description='A method for tracking features through frames.')
@@ -83,13 +66,32 @@ start_run = time.time()
 
 print("Finding features")
 
+# cluster array indices
+CLUSTER_FRAME_ID_IDX = 0
+CLUSTER_ID_IDX = 1
+CLUSTER_CHARGE_STATE_IDX = 2
+CLUSTER_BASE_MZ_CENTROID_IDX = 3
+CLUSTER_BASE_MZ_STD_DEV_IDX = 4
+CLUSTER_BASE_SCAN_CENTROID_IDX = 5
+CLUSTER_BASE_SCAN_STD_DEV_IDX = 6
+CLUSTER_BASE_MAX_POINT_MZ_IDX = 7
+CLUSTER_BASE_MAX_POINT_SCAN_IDX = 8
+CLUSTER_MONO_MZ_CENTROID_IDX = 9
+CLUSTER_MONO_MZ_STD_DEV_IDX = 10
+CLUSTER_MONO_SCAN_CENTROID_IDX = 11
+CLUSTER_MONO_SCAN_STD_DEV_IDX = 12
+CLUSTER_MONO_MAX_POINT_MZ_IDX = 13
+CLUSTER_MONO_MAX_POINT_SCAN_IDX = 14
+CLUSTER_INTENSITY_SUM_IDX = 15
+
 # Get all the clusters
-#                                          0          1           2              3                       4                       5                         6                      7                   8                     9                      10                    11                      12                     13                  14               15
+#                                          0          1           2              3                       4                       5                         6                      7                        8                          9                      10                    11                      12                     13                       14                    15
 clusters_df = pd.read_sql_query("select frame_id, cluster_id, charge_state, base_peak_mz_centroid, base_peak_mz_std_dev, base_peak_scan_centroid, base_peak_scan_std_dev, base_peak_max_point_mz, base_peak_max_point_scan, mono_peak_mz_centroid, mono_peak_mz_std_dev, mono_peak_scan_centroid, mono_peak_scan_std_dev, mono_peak_max_point_mz, mono_peak_max_point_scan, intensity_sum from clusters order by frame_id, cluster_id asc;", source_conn)
 clusters_v = clusters_df.values
+print("clusters array occupies {} bytes".format(clusters_v.nbytes))
 
 # go through each cluster and see whether it belongs to an existing feature
-while len(clusters_v) > 0:
+while len(np.where((clusters_v[:,CLUSTER_INTENSITY_SUM_IDX] > -1))[0]) > 0:
     cluster_indices = np.empty(0, dtype=int)
 
     # find the most intense cluster
@@ -104,7 +106,7 @@ while len(clusters_v) > 0:
     feature_start_frame = frame_id
     feature_end_frame = frame_id
 
-    # See the search bounds by the properties of the base peaks
+    # Seed the search bounds by the properties of the base peaks
     mono_mz_centroid = cluster[CLUSTER_MONO_MZ_CENTROID_IDX]
     mono_scan_centroid = cluster[CLUSTER_MONO_SCAN_CENTROID_IDX]
     mono_max_point_mz = cluster[CLUSTER_MONO_MAX_POINT_MZ_IDX]
@@ -211,9 +213,11 @@ while len(clusters_v) > 0:
 
     if feature_end_frame-feature_start_frame > 1:
         # Assign this feature ID to all the clusters in the feature
+        cluster_updates = []
         for cluster_idx in cluster_indices:
             values = (feature_id, int(clusters_v[cluster_idx][CLUSTER_FRAME_ID_IDX]), int(clusters_v[cluster_idx][CLUSTER_ID_IDX]))
-            c.execute("UPDATE clusters SET feature_id=? WHERE frame_id=? AND cluster_id=?", values)
+            cluster_updates.append(values)
+        c.executemany("UPDATE clusters SET feature_id=? WHERE frame_id=? AND cluster_id=?", cluster_updates)
 
         # Add the feature's details to the collection
         values = (feature_id, charge_state, feature_start_frame, feature_end_frame)
@@ -222,8 +226,8 @@ while len(clusters_v) > 0:
         feature_id += 1
 
     # remove the features we've processed from the run
-    clusters_v = np.delete(clusters_v, cluster_indices, 0)
-
+    # clusters_v = np.delete(clusters_v, cluster_indices, 0)
+    clusters_v[cluster_indices, CLUSTER_INTENSITY_SUM_IDX] = -1
 
 stop_run = time.time()
 feature_info.append(("run processing time (sec)", stop_run-start_run))
