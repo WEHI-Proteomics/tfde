@@ -144,17 +144,6 @@ while len(np.where((clusters_v[:,CLUSTER_INTENSITY_SUM_IDX] > -1))[0]) > 0:
                 clusters_v_index_to_use = nearby_indices_forward[np.argmax(nearby_clusters_forward[:,CLUSTER_INTENSITY_SUM_IDX])]
             else:
                 clusters_v_index_to_use = nearby_indices_forward[0]
-            # Update the m/z window with the weighted average and standard deviation of the clusters found so far
-            # mono_mz_centroid, mono_mz_std_dev = weighted_avg_and_std(clusters_v[cluster_indices,CLUSTER_MONO_MZ_CENTROID_IDX], clusters_v[cluster_indices,CLUSTER_INTENSITY_SUM_IDX])
-            # mono_scan_centroid, mono_scan_std_dev = weighted_avg_and_std(clusters_v[cluster_indices,CLUSTER_MONO_SCAN_CENTROID_IDX], clusters_v[cluster_indices,CLUSTER_INTENSITY_SUM_IDX])
-
-            # base_mz_centroid, base_mz_std_dev = weighted_avg_and_std(clusters_v[cluster_indices,CLUSTER_BASE_MZ_CENTROID_IDX], clusters_v[cluster_indices,CLUSTER_INTENSITY_SUM_IDX])
-            # base_scan_centroid, base_scan_std_dev = weighted_avg_and_std(clusters_v[cluster_indices,CLUSTER_BASE_SCAN_CENTROID_IDX], clusters_v[cluster_indices,CLUSTER_INTENSITY_SUM_IDX])
-
-            # mono_mz_std_dev_offset = mono_mz_std_dev * args.mz_std_dev
-            # mono_scan_std_dev_offset = mono_scan_std_dev * args.scan_std_dev
-            # base_mz_std_dev_offset = base_mz_std_dev * args.mz_std_dev
-            # base_scan_std_dev_offset = base_scan_std_dev * args.scan_std_dev
 
             mono_max_point_mz = clusters_v[clusters_v_index_to_use,CLUSTER_MONO_MAX_POINT_MZ_IDX]
             mono_max_point_scan = clusters_v[clusters_v_index_to_use,CLUSTER_MONO_MAX_POINT_SCAN_IDX]
@@ -189,17 +178,6 @@ while len(np.where((clusters_v[:,CLUSTER_INTENSITY_SUM_IDX] > -1))[0]) > 0:
                 clusters_v_index_to_use = nearby_indices_backward[np.argmax(nearby_clusters_backward[:,CLUSTER_INTENSITY_SUM_IDX])]
             else:
                 clusters_v_index_to_use = nearby_indices_backward[0]
-            # Update the m/z window with the weighted average and standard deviation of the clusters found so far
-            # mono_mz_centroid, mono_mz_std_dev = weighted_avg_and_std(clusters_v[cluster_indices,CLUSTER_MONO_MAX_POINT_MZ_IDX], clusters_v[cluster_indices,CLUSTER_INTENSITY_SUM_IDX])
-            # mono_scan_centroid, mono_scan_std_dev = weighted_avg_and_std(clusters_v[cluster_indices,CLUSTER_MONO_MAX_POINT_SCAN_IDX], clusters_v[cluster_indices,CLUSTER_INTENSITY_SUM_IDX])
-
-            # base_mz_centroid, base_mz_std_dev = weighted_avg_and_std(clusters_v[cluster_indices,CLUSTER_BASE_MAX_POINT_MZ_IDX], clusters_v[cluster_indices,CLUSTER_INTENSITY_SUM_IDX])
-            # base_scan_centroid, base_scan_std_dev = weighted_avg_and_std(clusters_v[cluster_indices,CLUSTER_BASE_MAX_POINT_SCAN_IDX], clusters_v[cluster_indices,CLUSTER_INTENSITY_SUM_IDX])
-
-            # mono_mz_std_dev_offset = mono_mz_std_dev * args.mz_std_dev
-            # mono_scan_std_dev_offset = mono_scan_std_dev * args.scan_std_dev
-            # base_mz_std_dev_offset = base_mz_std_dev * args.mz_std_dev
-            # base_scan_std_dev_offset = base_scan_std_dev * args.scan_std_dev
 
             mono_max_point_mz = clusters_v[clusters_v_index_to_use,CLUSTER_MONO_MAX_POINT_MZ_IDX]
             mono_max_point_scan = clusters_v[clusters_v_index_to_use,CLUSTER_MONO_MAX_POINT_SCAN_IDX]
@@ -226,7 +204,6 @@ while len(np.where((clusters_v[:,CLUSTER_INTENSITY_SUM_IDX] > -1))[0]) > 0:
         feature_id += 1
 
     # remove the features we've processed from the run
-    # clusters_v = np.delete(clusters_v, cluster_indices, 0)
     clusters_v[cluster_indices, CLUSTER_INTENSITY_SUM_IDX] = -1
 
 stop_run = time.time()
