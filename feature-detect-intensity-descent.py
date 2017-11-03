@@ -54,8 +54,6 @@ c.execute('''CREATE TABLE `features` ( `feature_id` INTEGER,
 c.execute('''DROP INDEX IF EXISTS idx_features''')
 c.execute('''CREATE INDEX idx_features ON features (feature_id)''')
 
-c.execute("update clusters set feature_id=0")
-
 c.execute('''DROP TABLE IF EXISTS feature_info''')
 c.execute('''CREATE TABLE feature_info (item TEXT, value TEXT)''')
 
@@ -86,12 +84,21 @@ CLUSTER_INTENSITY_SUM_IDX = 15
 
 # Get all the clusters
 #                                          0          1           2              3                       4                       5                         6                      7                        8                          9                      10                    11                      12                     13                       14                    15
-clusters_df = pd.read_sql_query("select frame_id, cluster_id, charge_state, base_peak_mz_centroid, base_peak_mz_std_dev, base_peak_scan_centroid, base_peak_scan_std_dev, base_peak_max_point_mz, base_peak_max_point_scan, mono_peak_mz_centroid, mono_peak_mz_std_dev, mono_peak_scan_centroid, mono_peak_scan_std_dev, mono_peak_max_point_mz, mono_peak_max_point_scan, intensity_sum from clusters order by frame_id, cluster_id asc;", source_conn)
-clusters_v = clusters_df.values
+# clusters_df = pd.read_sql_query("select frame_id, cluster_id, charge_state, base_peak_mz_centroid, base_peak_mz_std_dev, base_peak_scan_centroid, base_peak_scan_std_dev, base_peak_max_point_mz, base_peak_max_point_scan, mono_peak_mz_centroid, mono_peak_mz_std_dev, mono_peak_scan_centroid, mono_peak_scan_std_dev, mono_peak_max_point_mz, mono_peak_max_point_scan, intensity_sum from clusters order by frame_id, cluster_id asc;", source_conn)
+# clusters_v = clusters_df.values
+
+c.execute("select frame_id, cluster_id, charge_state, base_peak_mz_centroid, base_peak_mz_std_dev, base_peak_scan_centroid, base_peak_scan_std_dev, base_peak_max_point_mz, base_peak_max_point_scan, mono_peak_mz_centroid, mono_peak_mz_std_dev, mono_peak_scan_centroid, mono_peak_scan_std_dev, mono_peak_max_point_mz, mono_peak_max_point_scan, intensity_sum from clusters order by frame_id, cluster_id asc;")
+clusters_l = c.fetchall()
+clusters_v = np.array(clusters_l, dtype=np.float32)
+
 print("clusters array occupies {} bytes".format(clusters_v.nbytes))
+progress_counter = 0
 
 # go through each cluster and see whether it belongs to an existing feature
 while len(np.where((clusters_v[:,CLUSTER_INTENSITY_SUM_IDX] > -1))[0]) > 0:
+    progress_counter += 1
+    if progress_counter % 1000 == 0:
+        print("remaining: {}".format(len(np.where((clusters_v[:,CLUSTER_INTENSITY_SUM_IDX] > -1))[0])))
     cluster_indices = np.empty(0, dtype=int)
 
     # find the most intense cluster
