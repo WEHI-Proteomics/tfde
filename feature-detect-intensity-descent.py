@@ -87,9 +87,8 @@ CLUSTER_INTENSITY_SUM_IDX = 15
 # clusters_df = pd.read_sql_query("select frame_id, cluster_id, charge_state, base_peak_mz_centroid, base_peak_mz_std_dev, base_peak_scan_centroid, base_peak_scan_std_dev, base_peak_max_point_mz, base_peak_max_point_scan, mono_peak_mz_centroid, mono_peak_mz_std_dev, mono_peak_scan_centroid, mono_peak_scan_std_dev, mono_peak_max_point_mz, mono_peak_max_point_scan, intensity_sum from clusters order by frame_id, cluster_id asc;", source_conn)
 # clusters_v = clusters_df.values
 
-c.execute("select frame_id, cluster_id, charge_state, base_peak_mz_centroid, base_peak_mz_std_dev, base_peak_scan_centroid, base_peak_scan_std_dev, base_peak_max_point_mz, base_peak_max_point_scan, mono_peak_mz_centroid, mono_peak_mz_std_dev, mono_peak_scan_centroid, mono_peak_scan_std_dev, mono_peak_max_point_mz, mono_peak_max_point_scan, intensity_sum from clusters order by frame_id, cluster_id asc;")
-clusters_l = c.fetchall()
-clusters_v = np.array(clusters_l, dtype=np.float32)
+c.execute("select frame_id, cluster_id, charge_state, base_peak_mz_centroid, base_peak_mz_std_dev, base_peak_scan_centroid, base_peak_scan_std_dev, base_peak_max_point_mz, base_peak_max_point_scan, mono_peak_mz_centroid, mono_peak_mz_std_dev, mono_peak_scan_centroid, mono_peak_scan_std_dev, mono_peak_max_point_mz, mono_peak_max_point_scan, intensity_sum from clusters order by frame_id, cluster_id asc where frame_id<10000;")
+clusters_v = np.array(c.fetchall(), dtype=np.float16)
 
 print("clusters array occupies {} bytes".format(clusters_v.nbytes))
 progress_counter = 0
