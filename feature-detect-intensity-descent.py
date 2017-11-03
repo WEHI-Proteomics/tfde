@@ -68,26 +68,27 @@ print("Finding features")
 CLUSTER_FRAME_ID_IDX = 0
 CLUSTER_ID_IDX = 1
 CLUSTER_CHARGE_STATE_IDX = 2
-CLUSTER_BASE_MZ_CENTROID_IDX = 3
-CLUSTER_BASE_MZ_STD_DEV_IDX = 4
-CLUSTER_BASE_SCAN_CENTROID_IDX = 5
-CLUSTER_BASE_SCAN_STD_DEV_IDX = 6
-CLUSTER_BASE_MAX_POINT_MZ_IDX = 7
-CLUSTER_BASE_MAX_POINT_SCAN_IDX = 8
-CLUSTER_MONO_MZ_CENTROID_IDX = 9
-CLUSTER_MONO_MZ_STD_DEV_IDX = 10
-CLUSTER_MONO_SCAN_CENTROID_IDX = 11
-CLUSTER_MONO_SCAN_STD_DEV_IDX = 12
-CLUSTER_MONO_MAX_POINT_MZ_IDX = 13
-CLUSTER_MONO_MAX_POINT_SCAN_IDX = 14
-CLUSTER_INTENSITY_SUM_IDX = 15
+# CLUSTER_BASE_MZ_CENTROID_IDX = 3
+# CLUSTER_BASE_MZ_STD_DEV_IDX = 4
+# CLUSTER_BASE_SCAN_CENTROID_IDX = 3
+CLUSTER_BASE_SCAN_STD_DEV_IDX = 3
+CLUSTER_BASE_MAX_POINT_MZ_IDX = 4
+CLUSTER_BASE_MAX_POINT_SCAN_IDX = 5
+# CLUSTER_MONO_MZ_CENTROID_IDX = 9
+# CLUSTER_MONO_MZ_STD_DEV_IDX = 10
+# CLUSTER_MONO_SCAN_CENTROID_IDX = 11
+# CLUSTER_MONO_SCAN_STD_DEV_IDX = 12
+# CLUSTER_MONO_MAX_POINT_MZ_IDX = 13
+# CLUSTER_MONO_MAX_POINT_SCAN_IDX = 14
+CLUSTER_INTENSITY_SUM_IDX = 6
 
 # Get all the clusters
 #                                          0          1           2              3                       4                       5                         6                      7                        8                          9                      10                    11                      12                     13                       14                    15
 # clusters_df = pd.read_sql_query("select frame_id, cluster_id, charge_state, base_peak_mz_centroid, base_peak_mz_std_dev, base_peak_scan_centroid, base_peak_scan_std_dev, base_peak_max_point_mz, base_peak_max_point_scan, mono_peak_mz_centroid, mono_peak_mz_std_dev, mono_peak_scan_centroid, mono_peak_scan_std_dev, mono_peak_max_point_mz, mono_peak_max_point_scan, intensity_sum from clusters order by frame_id, cluster_id asc;", source_conn)
 # clusters_v = clusters_df.values
 
-c.execute("select frame_id, cluster_id, charge_state, base_peak_mz_centroid, base_peak_mz_std_dev, base_peak_scan_centroid, base_peak_scan_std_dev, base_peak_max_point_mz, base_peak_max_point_scan, mono_peak_mz_centroid, mono_peak_mz_std_dev, mono_peak_scan_centroid, mono_peak_scan_std_dev, mono_peak_max_point_mz, mono_peak_max_point_scan, intensity_sum from clusters order by frame_id, cluster_id asc where frame_id<10000;")
+# c.execute("select frame_id, cluster_id, charge_state, base_peak_mz_centroid, base_peak_mz_std_dev, base_peak_scan_centroid, base_peak_scan_std_dev, base_peak_max_point_mz, base_peak_max_point_scan, mono_peak_mz_centroid, mono_peak_mz_std_dev, mono_peak_scan_centroid, mono_peak_scan_std_dev, mono_peak_max_point_mz, mono_peak_max_point_scan, intensity_sum from clusters order by frame_id, cluster_id asc;")
+c.execute("select frame_id, cluster_id, charge_state, base_peak_scan_std_dev, base_peak_max_point_mz, base_peak_max_point_scan, intensity_sum from clusters order by frame_id, cluster_id asc;")
 clusters_v = np.array(c.fetchall(), dtype=np.float16)
 
 print("clusters array occupies {} bytes".format(clusters_v.nbytes))
@@ -113,15 +114,15 @@ while len(np.where((clusters_v[:,CLUSTER_INTENSITY_SUM_IDX] > -1))[0]) > 0:
     feature_end_frame = frame_id
 
     # Seed the search bounds by the properties of the base peaks
-    mono_mz_centroid = cluster[CLUSTER_MONO_MZ_CENTROID_IDX]
-    mono_scan_centroid = cluster[CLUSTER_MONO_SCAN_CENTROID_IDX]
-    mono_max_point_mz = cluster[CLUSTER_MONO_MAX_POINT_MZ_IDX]
-    mono_max_point_scan = cluster[CLUSTER_MONO_MAX_POINT_SCAN_IDX]
-    mono_mz_std_dev_offset = standard_deviation(mono_max_point_mz) * args.mz_std_dev
-    mono_scan_std_dev_offset = cluster[CLUSTER_MONO_SCAN_STD_DEV_IDX] * args.scan_std_dev
+    # mono_mz_centroid = cluster[CLUSTER_MONO_MZ_CENTROID_IDX]
+    # mono_scan_centroid = cluster[CLUSTER_MONO_SCAN_CENTROID_IDX]
+    # mono_max_point_mz = cluster[CLUSTER_MONO_MAX_POINT_MZ_IDX]
+    # mono_max_point_scan = cluster[CLUSTER_MONO_MAX_POINT_SCAN_IDX]
+    # mono_mz_std_dev_offset = standard_deviation(mono_max_point_mz) * args.mz_std_dev
+    # mono_scan_std_dev_offset = cluster[CLUSTER_MONO_SCAN_STD_DEV_IDX] * args.scan_std_dev
 
-    base_mz_centroid = cluster[CLUSTER_BASE_MZ_CENTROID_IDX]
-    base_scan_centroid = cluster[CLUSTER_BASE_SCAN_CENTROID_IDX]
+    # base_mz_centroid = cluster[CLUSTER_BASE_MZ_CENTROID_IDX]
+    # base_scan_centroid = cluster[CLUSTER_BASE_SCAN_CENTROID_IDX]
     base_max_point_mz = cluster[CLUSTER_BASE_MAX_POINT_MZ_IDX]
     base_max_point_scan = cluster[CLUSTER_BASE_MAX_POINT_SCAN_IDX]
     base_mz_std_dev_offset = standard_deviation(base_max_point_mz) * args.mz_std_dev
@@ -132,8 +133,8 @@ while len(np.where((clusters_v[:,CLUSTER_INTENSITY_SUM_IDX] > -1))[0]) > 0:
     frame_offset = 1
     missed_frames = 0
     while (missed_frames < args.empty_frames) and (frame_id+frame_offset <= args.frame_upper):
-        mono_matches = np.logical_and((abs(clusters_v[:,CLUSTER_MONO_MAX_POINT_MZ_IDX] - mono_max_point_mz) <= mono_mz_std_dev_offset), 
-            (abs(clusters_v[:,CLUSTER_MONO_MAX_POINT_SCAN_IDX] - mono_max_point_scan) <= mono_scan_std_dev_offset))
+        # mono_matches = np.logical_and((abs(clusters_v[:,CLUSTER_MONO_MAX_POINT_MZ_IDX] - mono_max_point_mz) <= mono_mz_std_dev_offset), 
+            # (abs(clusters_v[:,CLUSTER_MONO_MAX_POINT_SCAN_IDX] - mono_max_point_scan) <= mono_scan_std_dev_offset))
         base_matches = np.logical_and((abs(clusters_v[:,CLUSTER_BASE_MAX_POINT_MZ_IDX] - base_max_point_mz) <= base_mz_std_dev_offset), 
             (abs(clusters_v[:,CLUSTER_BASE_MAX_POINT_SCAN_IDX] - base_max_point_scan) <= base_scan_std_dev_offset))
         # cluster_matches = np.logical_or(mono_matches, base_matches)
@@ -151,8 +152,8 @@ while len(np.where((clusters_v[:,CLUSTER_INTENSITY_SUM_IDX] > -1))[0]) > 0:
             else:
                 clusters_v_index_to_use = nearby_indices_forward[0]
 
-            mono_max_point_mz = clusters_v[clusters_v_index_to_use,CLUSTER_MONO_MAX_POINT_MZ_IDX]
-            mono_max_point_scan = clusters_v[clusters_v_index_to_use,CLUSTER_MONO_MAX_POINT_SCAN_IDX]
+            # mono_max_point_mz = clusters_v[clusters_v_index_to_use,CLUSTER_MONO_MAX_POINT_MZ_IDX]
+            # mono_max_point_scan = clusters_v[clusters_v_index_to_use,CLUSTER_MONO_MAX_POINT_SCAN_IDX]
             base_max_point_mz = clusters_v[clusters_v_index_to_use,CLUSTER_BASE_MAX_POINT_MZ_IDX]
             base_max_point_scan = clusters_v[clusters_v_index_to_use,CLUSTER_BASE_MAX_POINT_SCAN_IDX]
 
@@ -166,8 +167,8 @@ while len(np.where((clusters_v[:,CLUSTER_INTENSITY_SUM_IDX] > -1))[0]) > 0:
     missed_frames = 0
 
     while (missed_frames < args.empty_frames) and (frame_id-frame_offset >= args.frame_lower):
-        mono_matches = np.logical_and((abs(clusters_v[:,CLUSTER_MONO_MAX_POINT_MZ_IDX] - mono_max_point_mz) <= mono_mz_std_dev_offset), 
-            (abs(clusters_v[:,CLUSTER_MONO_MAX_POINT_SCAN_IDX] - mono_max_point_scan) <= mono_scan_std_dev_offset))
+        # mono_matches = np.logical_and((abs(clusters_v[:,CLUSTER_MONO_MAX_POINT_MZ_IDX] - mono_max_point_mz) <= mono_mz_std_dev_offset), 
+            # (abs(clusters_v[:,CLUSTER_MONO_MAX_POINT_SCAN_IDX] - mono_max_point_scan) <= mono_scan_std_dev_offset))
         base_matches = np.logical_and((abs(clusters_v[:,CLUSTER_BASE_MAX_POINT_MZ_IDX] - base_max_point_mz) <= base_mz_std_dev_offset), 
             (abs(clusters_v[:,CLUSTER_BASE_MAX_POINT_SCAN_IDX] - base_max_point_scan) <= base_scan_std_dev_offset))
         # cluster_matches = np.logical_or(mono_matches, base_matches)
@@ -185,8 +186,8 @@ while len(np.where((clusters_v[:,CLUSTER_INTENSITY_SUM_IDX] > -1))[0]) > 0:
             else:
                 clusters_v_index_to_use = nearby_indices_backward[0]
 
-            mono_max_point_mz = clusters_v[clusters_v_index_to_use,CLUSTER_MONO_MAX_POINT_MZ_IDX]
-            mono_max_point_scan = clusters_v[clusters_v_index_to_use,CLUSTER_MONO_MAX_POINT_SCAN_IDX]
+            # mono_max_point_mz = clusters_v[clusters_v_index_to_use,CLUSTER_MONO_MAX_POINT_MZ_IDX]
+            # mono_max_point_scan = clusters_v[clusters_v_index_to_use,CLUSTER_MONO_MAX_POINT_SCAN_IDX]
             base_max_point_mz = clusters_v[clusters_v_index_to_use,CLUSTER_BASE_MAX_POINT_MZ_IDX]
             base_max_point_scan = clusters_v[clusters_v_index_to_use,CLUSTER_BASE_MAX_POINT_SCAN_IDX]
 
