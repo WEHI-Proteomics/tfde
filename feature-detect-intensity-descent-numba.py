@@ -129,7 +129,8 @@ parser.add_argument('-fl','--frame_lower', type=int, help='The lower frame numbe
 parser.add_argument('-fu','--frame_upper', type=int, help='The upper frame number to process.', required=True)
 parser.add_argument('-md','--mz_std_dev', type=int, default=2, help='Number of standard deviations to look either side of the base peak, in the m/z dimension.', required=False)
 parser.add_argument('-sd','--scan_std_dev', type=int, default=2, help='Number of standard deviations to look either side of the base peak, in the scan dimension.', required=False)
-parser.add_argument('-ef','--empty_frames', type=int, default=2, help='Maximum number of empty frames to tolerate.', required=False)
+parser.add_argument('-ef','--empty_frames', type=int, default=10, help='Maximum number of empty frames to tolerate.', required=False)
+parser.add_argument('-nf','--number_of_features', type=int, help='Maximum number of features to find.', required=False)
 args = parser.parse_args()
 
 # Store the arguments as metadata in the database for later reference
@@ -208,6 +209,9 @@ while len(np.where((clusters_v[:,CLUSTER_INTENSITY_SUM_IDX] > -1))[0]) > 0:
         c.execute("INSERT INTO features VALUES (?, ?, ?, ?)", values)
 
         print("found feature {}: charge state {}, frames {} - {}".format(feature_id, charge_state, feature_start_frame, feature_end_frame))
+        if args.number_of_features is not None:
+            if feature_id == args.number_of_features:
+                break
 
         feature_id += 1
 
