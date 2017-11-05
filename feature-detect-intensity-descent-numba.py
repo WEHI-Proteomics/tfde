@@ -10,22 +10,12 @@ import os.path
 import numba
 from numba import jit
 
-# Source: https://stackoverflow.com/questions/2413522/weighted-standard-deviation-in-numpy/2415343
-def weighted_avg_and_std(values, weights):
-    """
-    Return the weighted average and standard deviation.
-
-    values, weights -- Numpy ndarrays with the same shape.
-    """
-    average = np.average(values, weights=weights)
-    variance = np.average((values-average)**2, weights=weights)  # Fast and numerically precise
-    return (average, math.sqrt(variance))
-
+@jit
 def standard_deviation(mz):
     instrument_resolution = 40000.0
     return (mz / instrument_resolution) / 2.35482
 
-@jit(parallel=True)
+@jit(cache=True, parallel=True)
 def find_features():
 
     cluster_indices = np.empty(0, dtype=int)
@@ -170,8 +160,6 @@ feature_id = 1
 feature_cluster_mapping = []
 start_run = time.time()
 
-print("Finding features")
-
 # cluster array indices
 CLUSTER_FRAME_ID_IDX = 0
 CLUSTER_ID_IDX = 1
@@ -191,10 +179,13 @@ CLUSTER_BASE_MAX_POINT_SCAN_IDX = 5
 CLUSTER_INTENSITY_SUM_IDX = 6
 
 
+print("Loading the clusters information")
+
 c.execute("select frame_id, cluster_id, charge_state, base_peak_scan_std_dev, base_peak_max_point_mz, base_peak_max_point_scan, intensity_sum from clusters order by frame_id, cluster_id asc;")
 clusters_v = np.array(c.fetchall(), dtype=np.float16)
 
 print("clusters array occupies {} bytes".format(clusters_v.nbytes))
+print("Finding features")
 
 # go through each cluster and see whether it belongs to an existing feature
 while len(np.where((clusters_v[:,CLUSTER_INTENSITY_SUM_IDX] > -1))[0]) > 0:
