@@ -7,31 +7,101 @@ import sqlite3
 import copy
 import argparse
 import os.path
+import csv
+# import numba
+# from numba import jit
 
-# Source: https://stackoverflow.com/questions/2413522/weighted-standard-deviation-in-numpy/2415343
-def weighted_avg_and_std(values, weights):
-    """
-    Return the weighted average and standard deviation.
-
-    values, weights -- Numpy ndarrays with the same shape.
-    """
-    average = np.average(values, weights=weights)
-    variance = np.average((values-average)**2, weights=weights)  # Fast and numerically precise
-    return (average, math.sqrt(variance))
-
+# @jit
 def standard_deviation(mz):
     instrument_resolution = 40000.0
     return (mz / instrument_resolution) / 2.35482
 
+# @jit
+def find_feature(base_index):
+
+    cluster = clusters_v[base_index]
+
+    frame_id = int(cluster[CLUSTER_FRAME_ID_IDX])
+    charge_state = int(cluster[CLUSTER_CHARGE_STATE_IDX])
+
+    search_start_frame = max(frame_id-NUMBER_OF_FRAMES_TO_LOOK, args.frame_lower)
+    search_end_frame = min(frame_id+NUMBER_OF_FRAMES_TO_LOOK, args.frame_upper)
+
+    # Seed the search bounds by the properties of the base peaks
+    base_max_point_mz = cluster[CLUSTER_BASE_MAX_POINT_MZ_IDX]
+    base_max_point_scan = cluster[CLUSTER_BASE_MAX_POINT_SCAN_IDX]
+    base_mz_std_dev_offset = standard_deviation(base_max_point_mz) * args.mz_std_dev
+    base_scan_std_dev_offset = cluster[CLUSTER_BASE_SCAN_STD_DEV_IDX] * args.scan_std_dev
+
+    start_frame_indices = np.where(clusters_v[:,CLUSTER_FRAME_ID_IDX] == search_start_frame)[0]
+    end_frame_indices = np.where(clusters_v[:,CLUSTER_FRAME_ID_IDX] == search_end_frame)[0]
+    first_start_frame_index = start_frame_indices[0]  # first index of the start frame
+    last_end_frame_index = end_frame_indices[len(end_frame_indices)-1]  # last index of the end frame
+
+    # look for other clusters that belong to this feature
+    clusters_v_subset = clusters_v[first_start_frame_index:last_end_frame_index]
+    nearby_indices = np.where(
+        (clusters_v_subset[:, CLUSTER_INTENSITY_SUM_IDX] >= 0) &
+        (clusters_v_subset[:, CLUSTER_CHARGE_STATE_IDX] == charge_state) &
+        (abs(clusters_v_subset[:, CLUSTER_BASE_MAX_POINT_MZ_IDX] - base_max_point_mz) <= base_mz_std_dev_offset) &
+        (abs(clusters_v_subset[:, CLUSTER_BASE_MAX_POINT_SCAN_IDX] - base_max_point_scan) <= base_scan_std_dev_offset))[0]
+    nearby_indices_adjusted = nearby_indices+first_start_frame_index
+    nearby_clusters = clusters_v[nearby_indices_adjusted]
+    # print("\nbase index {}, nearby_indices_adjusted {}".format(base_index, nearby_indices_adjusted.astype(int)))
+
+    # make sure there is not more than one cluster from each frame
+    frame_ids = nearby_clusters[:, CLUSTER_FRAME_ID_IDX]
+    if len(np.unique(frame_ids)) > 1:
+        frame_change_indices = np.where(np.roll(frame_ids,1)!=frame_ids)[0]     # for when there is more than one cluster found in a frame, the first cluster will be the most intense
+        cluster_indices = nearby_indices_adjusted[frame_change_indices]
+    else:
+        cluster_indices = nearby_indices_adjusted[0]
+
+    # check the candidate feature's quality
+    # tolerate up to 10% frames missing +/- 3 seconds
+    # tolerate up to 20% frames missing +/- 6 seconds
+    # tolerate up to 50% frames missing +/- 10 seconds
+    unique_frame_ids = clusters_v[cluster_indices, CLUSTER_FRAME_ID_IDX]
+    # print("clusters {}, unique frames {}".format(len(cluster_indices), len(unique_frame_ids)))
+    # count the number of frames the clusters represent
+    three_second_clusters_count = len(np.where(abs(unique_frame_ids-frame_id) < 3/NUMBER_OF_SECONDS_PER_FRAME)[0])
+    six_second_clusters_count = len(np.where(abs(unique_frame_ids-frame_id) < 6/NUMBER_OF_SECONDS_PER_FRAME)[0]) - three_second_clusters_count
+    ten_second_clusters_count = len(np.where(abs(unique_frame_ids-frame_id) < 10/NUMBER_OF_SECONDS_PER_FRAME)[0]) - three_second_clusters_count - six_second_clusters_count
+    # calculate the total number of frames
+    three_second_frame_count = int(2*3/NUMBER_OF_SECONDS_PER_FRAME)
+    six_second_frame_count = int(2*6/NUMBER_OF_SECONDS_PER_FRAME) - three_second_frame_count
+    ten_second_frame_count = int(2*10/NUMBER_OF_SECONDS_PER_FRAME) - three_second_frame_count - six_second_frame_count
+    # determine the quality of the feature
+    band_3s = float(three_second_clusters_count) / three_second_frame_count
+    band_6s = float(six_second_clusters_count) / six_second_frame_count
+    band_10s = float(ten_second_clusters_count) / ten_second_frame_count
+    # print("{}/{}, {}/{}, {}/{}".format(three_second_clusters_count, three_second_frame_count, six_second_clusters_count, six_second_frame_count, ten_second_clusters_count, ten_second_frame_count))
+
+    good_quality_feature = ((band_3s >= 0.9) and (band_6s >= 0.8) and (band_10s >= 0.5))
+
+    results = {}
+    results['base_cluster_frame_id'] = int(cluster[CLUSTER_FRAME_ID_IDX])
+    results['base_cluster_id'] = int(cluster[CLUSTER_ID_IDX])
+    results['search_start_frame'] = search_start_frame
+    results['search_end_frame'] = search_end_frame
+    results['cluster_indices'] = cluster_indices
+    results['charge_state'] = charge_state
+    results['quality'] = good_quality_feature
+    results['band_3s'] = band_3s
+    results['band_6s'] = band_6s
+    results['band_10s'] = band_10s
+    return results
 
 
 parser = argparse.ArgumentParser(description='A method for tracking features through frames.')
 parser.add_argument('-db','--database_name', type=str, help='The name of the source database.', required=True)
 parser.add_argument('-fl','--frame_lower', type=int, help='The lower frame number to process.', required=True)
 parser.add_argument('-fu','--frame_upper', type=int, help='The upper frame number to process.', required=True)
-parser.add_argument('-md','--mz_std_dev', type=int, default=2, help='Number of standard deviations to look either side of the base peak, in the m/z dimension.', required=False)
-parser.add_argument('-sd','--scan_std_dev', type=int, default=2, help='Number of standard deviations to look either side of the base peak, in the scan dimension.', required=False)
-parser.add_argument('-ef','--empty_frames', type=int, default=2, help='Maximum number of empty frames to tolerate.', required=False)
+parser.add_argument('-md','--mz_std_dev', type=int, default=4, help='Number of standard deviations to look either side of the base peak, in the m/z dimension.', required=False)
+parser.add_argument('-sd','--scan_std_dev', type=int, default=4, help='Number of standard deviations to look either side of the base peak, in the scan dimension.', required=False)
+parser.add_argument('-ef','--empty_frames', type=int, default=10, help='Maximum number of empty frames to tolerate.', required=False)
+parser.add_argument('-nf','--number_of_features', type=int, help='Maximum number of features to find.', required=False)
+parser.add_argument('-ns','--number_of_seconds', type=int, default=10, help='Number of seconds to look either side of the maximum cluster.', required=False)
 args = parser.parse_args()
 
 # Store the arguments as metadata in the database for later reference
@@ -47,9 +117,13 @@ print("Setting up tables and indexes")
 
 c.execute('''DROP TABLE IF EXISTS features''')
 c.execute('''CREATE TABLE `features` ( `feature_id` INTEGER, 
+                                        `base_cluster_id` INTEGER, 
                                         `charge_state` INTEGER, 
                                         `start_frame` INTEGER, 
                                         `end_frame` INTEGER, 
+                                        `band_3s` REAL, 
+                                        `band_6s` REAL, 
+                                        `band_10s` REAL, 
                                         PRIMARY KEY(`feature_id`) )''')
 c.execute('''DROP INDEX IF EXISTS idx_features''')
 c.execute('''CREATE INDEX idx_features ON features (feature_id)''')
@@ -57,166 +131,85 @@ c.execute('''CREATE INDEX idx_features ON features (feature_id)''')
 c.execute('''DROP TABLE IF EXISTS feature_info''')
 c.execute('''CREATE TABLE feature_info (item TEXT, value TEXT)''')
 
-features = np.empty((0,11), float)
 feature_id = 1
-feature_cluster_mapping = []
 start_run = time.time()
-
-print("Finding features")
 
 # cluster array indices
 CLUSTER_FRAME_ID_IDX = 0
 CLUSTER_ID_IDX = 1
 CLUSTER_CHARGE_STATE_IDX = 2
-# CLUSTER_BASE_MZ_CENTROID_IDX = 3
-# CLUSTER_BASE_MZ_STD_DEV_IDX = 4
-# CLUSTER_BASE_SCAN_CENTROID_IDX = 3
 CLUSTER_BASE_SCAN_STD_DEV_IDX = 3
 CLUSTER_BASE_MAX_POINT_MZ_IDX = 4
 CLUSTER_BASE_MAX_POINT_SCAN_IDX = 5
-# CLUSTER_MONO_MZ_CENTROID_IDX = 9
-# CLUSTER_MONO_MZ_STD_DEV_IDX = 10
-# CLUSTER_MONO_SCAN_CENTROID_IDX = 11
-# CLUSTER_MONO_SCAN_STD_DEV_IDX = 12
-# CLUSTER_MONO_MAX_POINT_MZ_IDX = 13
-# CLUSTER_MONO_MAX_POINT_SCAN_IDX = 14
 CLUSTER_INTENSITY_SUM_IDX = 6
 
-# Get all the clusters
-#                                          0          1           2              3                       4                       5                         6                      7                        8                          9                      10                    11                      12                     13                       14                    15
-# clusters_df = pd.read_sql_query("select frame_id, cluster_id, charge_state, base_peak_mz_centroid, base_peak_mz_std_dev, base_peak_scan_centroid, base_peak_scan_std_dev, base_peak_max_point_mz, base_peak_max_point_scan, mono_peak_mz_centroid, mono_peak_mz_std_dev, mono_peak_scan_centroid, mono_peak_scan_std_dev, mono_peak_max_point_mz, mono_peak_max_point_scan, intensity_sum from clusters order by frame_id, cluster_id asc;", source_conn)
-# clusters_v = clusters_df.values
+NUMBER_OF_SECONDS_PER_FRAME = 0.1
+NUMBER_OF_FRAMES_TO_LOOK = int(args.number_of_seconds / NUMBER_OF_SECONDS_PER_FRAME)
 
-# c.execute("select frame_id, cluster_id, charge_state, base_peak_mz_centroid, base_peak_mz_std_dev, base_peak_scan_centroid, base_peak_scan_std_dev, base_peak_max_point_mz, base_peak_max_point_scan, mono_peak_mz_centroid, mono_peak_mz_std_dev, mono_peak_scan_centroid, mono_peak_scan_std_dev, mono_peak_max_point_mz, mono_peak_max_point_scan, intensity_sum from clusters order by frame_id, cluster_id asc;")
+print("Loading the clusters information")
+
 c.execute("select frame_id, cluster_id, charge_state, base_peak_scan_std_dev, base_peak_max_point_mz, base_peak_max_point_scan, intensity_sum from clusters order by frame_id, cluster_id asc;")
-clusters_v = np.array(c.fetchall(), dtype=np.float16)
+clusters_v = np.array(c.fetchall(), dtype=np.float32)
 
 print("clusters array occupies {} bytes".format(clusters_v.nbytes))
-progress_counter = 0
+print("Finding features")
 
-# go through each cluster and see whether it belongs to an existing feature
-while len(np.where((clusters_v[:,CLUSTER_INTENSITY_SUM_IDX] > -1))[0]) > 0:
-    progress_counter += 1
-    if progress_counter % 1000 == 0:
-        print("remaining: {}".format(len(np.where((clusters_v[:,CLUSTER_INTENSITY_SUM_IDX] > -1))[0])))
-    cluster_indices = np.empty(0, dtype=int)
+clusters_searched = 0
 
-    # find the most intense cluster
-    cluster_max_index = clusters_v.argmax(axis=0)[CLUSTER_INTENSITY_SUM_IDX]
-    cluster = clusters_v[cluster_max_index]
-    cluster_indices = np.append(cluster_indices, cluster_max_index)
+with open('discovery_rate.csv','wb') as discovery_rate_file:
+    writer=csv.writer(discovery_rate_file, delimiter=',')
 
-    frame_id = int(cluster[CLUSTER_FRAME_ID_IDX])
-    cluster_id = int(cluster[CLUSTER_ID_IDX])
-    charge_state = int(cluster[CLUSTER_CHARGE_STATE_IDX])
+    # go through each cluster and see whether it belongs to an existing feature
+    while len(np.where((clusters_v[:,CLUSTER_INTENSITY_SUM_IDX] > -1))[0]) > 0:
+        # find the most intense cluster
+        cluster_max_index = clusters_v.argmax(axis=0)[CLUSTER_INTENSITY_SUM_IDX]
+        cluster = clusters_v[cluster_max_index]
 
-    feature_start_frame = frame_id
-    feature_end_frame = frame_id
+        feature = find_feature(base_index=cluster_max_index)
+        base_cluster_frame_id = feature['base_cluster_frame_id']
+        base_cluster_id = feature['base_cluster_id']
+        search_start_frame = feature['search_start_frame']
+        search_end_frame = feature['search_end_frame']
+        cluster_indices = feature['cluster_indices']
+        charge_state = feature['charge_state']
+        feature_quality = feature['quality']
+        band_3s = feature['band_3s']
+        band_6s = feature['band_6s']
+        band_10s = feature['band_10s']
+        # print("clusters remaining {}, max intensity {}, feature {}".format(len(np.where((clusters_v[:,CLUSTER_INTENSITY_SUM_IDX] > -1))[0]), int(cluster[CLUSTER_INTENSITY_SUM_IDX]), feature))
 
-    # Seed the search bounds by the properties of the base peaks
-    # mono_mz_centroid = cluster[CLUSTER_MONO_MZ_CENTROID_IDX]
-    # mono_scan_centroid = cluster[CLUSTER_MONO_SCAN_CENTROID_IDX]
-    # mono_max_point_mz = cluster[CLUSTER_MONO_MAX_POINT_MZ_IDX]
-    # mono_max_point_scan = cluster[CLUSTER_MONO_MAX_POINT_SCAN_IDX]
-    # mono_mz_std_dev_offset = standard_deviation(mono_max_point_mz) * args.mz_std_dev
-    # mono_scan_std_dev_offset = cluster[CLUSTER_MONO_SCAN_STD_DEV_IDX] * args.scan_std_dev
+        if feature_quality:
+            print("feature {}, frames searched {}-{}, 3s {:.2f}, 6s {:.2f}, 10s {:.2f}".format(feature_id, search_start_frame, search_end_frame, band_3s, band_6s, band_10s))
+            # Assign this feature ID to all the clusters in the feature
+            cluster_updates = []
+            for cluster_idx in cluster_indices:
+                values = (feature_id, int(clusters_v[cluster_idx][CLUSTER_FRAME_ID_IDX]), int(clusters_v[cluster_idx][CLUSTER_ID_IDX]))
+                cluster_updates.append(values)
+                # print("\tframe {}, {} m/z, {} scan".format(int(clusters_v[cluster_idx][CLUSTER_FRAME_ID_IDX]), clusters_v[cluster_idx][CLUSTER_BASE_MAX_POINT_MZ_IDX], int(clusters_v[cluster_idx][CLUSTER_BASE_MAX_POINT_SCAN_IDX])))
+            c.executemany("UPDATE clusters SET feature_id=? WHERE frame_id=? AND cluster_id=?", cluster_updates)
 
-    # base_mz_centroid = cluster[CLUSTER_BASE_MZ_CENTROID_IDX]
-    # base_scan_centroid = cluster[CLUSTER_BASE_SCAN_CENTROID_IDX]
-    base_max_point_mz = cluster[CLUSTER_BASE_MAX_POINT_MZ_IDX]
-    base_max_point_scan = cluster[CLUSTER_BASE_MAX_POINT_SCAN_IDX]
-    base_mz_std_dev_offset = standard_deviation(base_max_point_mz) * args.mz_std_dev
-    base_scan_std_dev_offset = cluster[CLUSTER_BASE_SCAN_STD_DEV_IDX] * args.scan_std_dev
+            # Add the feature's details to the collection
+            values = (feature_id, base_cluster_id, charge_state, search_start_frame, search_end_frame, band_3s, band_6s, band_10s)
+            c.execute("INSERT INTO features VALUES (?, ?, ?, ?, ?, ?, ?, ?)", values)
 
-    # look for other clusters that belong to this feature
-    # Look in the 'forward' direction
-    frame_offset = 1
-    missed_frames = 0
-    while (missed_frames < args.empty_frames) and (frame_id+frame_offset <= args.frame_upper):
-        # mono_matches = np.logical_and((abs(clusters_v[:,CLUSTER_MONO_MAX_POINT_MZ_IDX] - mono_max_point_mz) <= mono_mz_std_dev_offset), 
-            # (abs(clusters_v[:,CLUSTER_MONO_MAX_POINT_SCAN_IDX] - mono_max_point_scan) <= mono_scan_std_dev_offset))
-        base_matches = np.logical_and((abs(clusters_v[:,CLUSTER_BASE_MAX_POINT_MZ_IDX] - base_max_point_mz) <= base_mz_std_dev_offset), 
-            (abs(clusters_v[:,CLUSTER_BASE_MAX_POINT_SCAN_IDX] - base_max_point_scan) <= base_scan_std_dev_offset))
-        # cluster_matches = np.logical_or(mono_matches, base_matches)
-        cluster_matches = base_matches
-        charge_state_matches = (clusters_v[:,CLUSTER_CHARGE_STATE_IDX] == charge_state)
-        next_frame_matches = (clusters_v[:,CLUSTER_FRAME_ID_IDX] == (frame_id+frame_offset))
-        nearby_indices_forward = np.where(np.logical_and(np.logical_and(next_frame_matches, charge_state_matches), cluster_matches))[0]
-        nearby_clusters_forward = clusters_v[nearby_indices_forward]
-        if len(nearby_indices_forward) == 0:
-            missed_frames += 1
-        else:
-            if len(nearby_indices_forward) > 1:
-                # take the most intense cluster
-                clusters_v_index_to_use = nearby_indices_forward[np.argmax(nearby_clusters_forward[:,CLUSTER_INTENSITY_SUM_IDX])]
-            else:
-                clusters_v_index_to_use = nearby_indices_forward[0]
+            if args.number_of_features is not None:
+                if feature_id == args.number_of_features:
+                    break
 
-            # mono_max_point_mz = clusters_v[clusters_v_index_to_use,CLUSTER_MONO_MAX_POINT_MZ_IDX]
-            # mono_max_point_scan = clusters_v[clusters_v_index_to_use,CLUSTER_MONO_MAX_POINT_SCAN_IDX]
-            base_max_point_mz = clusters_v[clusters_v_index_to_use,CLUSTER_BASE_MAX_POINT_MZ_IDX]
-            base_max_point_scan = clusters_v[clusters_v_index_to_use,CLUSTER_BASE_MAX_POINT_SCAN_IDX]
+            feature_id += 1
 
-            missed_frames = 0
-            feature_end_frame = frame_id+frame_offset
-            cluster_indices = np.append(cluster_indices, clusters_v_index_to_use)
-        frame_offset += 1
+        clusters_searched += 1
+        writer.writerow([clusters_searched, feature_id-1, int(cluster[CLUSTER_INTENSITY_SUM_IDX])])
+        discovery_rate_file.flush()
+        # remove the features we've processed from the run
+        clusters_v[cluster_indices, CLUSTER_INTENSITY_SUM_IDX] = -1
+        if feature_id == 263:   # temporary
+            break
 
-    # Look in the 'backward' direction
-    frame_offset = 1
-    missed_frames = 0
+    stop_run = time.time()
+    feature_info.append(("run processing time (sec)", stop_run-start_run))
+    feature_info.append(("processed", time.ctime()))
+    c.executemany("INSERT INTO feature_info VALUES (?, ?)", feature_info)
 
-    while (missed_frames < args.empty_frames) and (frame_id-frame_offset >= args.frame_lower):
-        # mono_matches = np.logical_and((abs(clusters_v[:,CLUSTER_MONO_MAX_POINT_MZ_IDX] - mono_max_point_mz) <= mono_mz_std_dev_offset), 
-            # (abs(clusters_v[:,CLUSTER_MONO_MAX_POINT_SCAN_IDX] - mono_max_point_scan) <= mono_scan_std_dev_offset))
-        base_matches = np.logical_and((abs(clusters_v[:,CLUSTER_BASE_MAX_POINT_MZ_IDX] - base_max_point_mz) <= base_mz_std_dev_offset), 
-            (abs(clusters_v[:,CLUSTER_BASE_MAX_POINT_SCAN_IDX] - base_max_point_scan) <= base_scan_std_dev_offset))
-        # cluster_matches = np.logical_or(mono_matches, base_matches)
-        cluster_matches = base_matches
-        charge_state_matches = (clusters_v[:,CLUSTER_CHARGE_STATE_IDX] == charge_state)
-        previous_frame_matches = (clusters_v[:,CLUSTER_FRAME_ID_IDX] == (frame_id-frame_offset))
-        nearby_indices_backward = np.where(np.logical_and(np.logical_and(previous_frame_matches, charge_state_matches), cluster_matches))[0]
-        nearby_clusters_backward = clusters_v[nearby_indices_backward]
-        if len(nearby_indices_backward) == 0:
-            missed_frames += 1
-        else:
-            if len(nearby_indices_backward) > 1:
-                # take the most intense cluster
-                clusters_v_index_to_use = nearby_indices_backward[np.argmax(nearby_clusters_backward[:,CLUSTER_INTENSITY_SUM_IDX])]
-            else:
-                clusters_v_index_to_use = nearby_indices_backward[0]
-
-            # mono_max_point_mz = clusters_v[clusters_v_index_to_use,CLUSTER_MONO_MAX_POINT_MZ_IDX]
-            # mono_max_point_scan = clusters_v[clusters_v_index_to_use,CLUSTER_MONO_MAX_POINT_SCAN_IDX]
-            base_max_point_mz = clusters_v[clusters_v_index_to_use,CLUSTER_BASE_MAX_POINT_MZ_IDX]
-            base_max_point_scan = clusters_v[clusters_v_index_to_use,CLUSTER_BASE_MAX_POINT_SCAN_IDX]
-
-            missed_frames = 0
-            feature_start_frame = frame_id-frame_offset
-            cluster_indices = np.append(cluster_indices, clusters_v_index_to_use)
-        frame_offset += 1
-
-    if feature_end_frame-feature_start_frame > 1:
-        # Assign this feature ID to all the clusters in the feature
-        cluster_updates = []
-        for cluster_idx in cluster_indices:
-            values = (feature_id, int(clusters_v[cluster_idx][CLUSTER_FRAME_ID_IDX]), int(clusters_v[cluster_idx][CLUSTER_ID_IDX]))
-            cluster_updates.append(values)
-        c.executemany("UPDATE clusters SET feature_id=? WHERE frame_id=? AND cluster_id=?", cluster_updates)
-
-        # Add the feature's details to the collection
-        values = (feature_id, charge_state, feature_start_frame, feature_end_frame)
-        c.execute("INSERT INTO features VALUES (?, ?, ?, ?)", values)
-
-        feature_id += 1
-
-    # remove the features we've processed from the run
-    clusters_v[cluster_indices, CLUSTER_INTENSITY_SUM_IDX] = -1
-
-stop_run = time.time()
-feature_info.append(("run processing time (sec)", stop_run-start_run))
-feature_info.append(("processed", time.ctime()))
-c.executemany("INSERT INTO feature_info VALUES (?, ?)", feature_info)
-
-source_conn.commit()
-source_conn.close()
+    source_conn.commit()
+    source_conn.close()
