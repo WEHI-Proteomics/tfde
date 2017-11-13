@@ -10,6 +10,7 @@ import os.path
 import csv
 # import numba
 # from numba import jit
+import scipy.stats as stats
 
 # @jit
 def standard_deviation(mz):
@@ -22,6 +23,7 @@ def find_feature(base_index):
     cluster = clusters_v[base_index]
 
     frame_id = int(cluster[CLUSTER_FRAME_ID_IDX])
+    cluster_id = int(cluster[CLUSTER_ID_IDX])
     charge_state = int(cluster[CLUSTER_CHARGE_STATE_IDX])
 
     search_start_frame = max(frame_id-NUMBER_OF_FRAMES_TO_LOOK, min(clusters_v[:,CLUSTER_FRAME_ID_IDX].astype(int)))
@@ -49,23 +51,34 @@ def find_feature(base_index):
     nearby_clusters = clusters_v[nearby_indices_adjusted]
 
     # make sure there is not more than one cluster from each frame
-    frame_ids = nearby_clusters[:, CLUSTER_FRAME_ID_IDX]
-    if len(np.unique(frame_ids)) > 1:
-        frame_change_indices = np.where(np.roll(frame_ids,1)!=frame_ids)[0]     # for when there is more than one cluster found in a frame, the first cluster will be the most intense
-        cluster_indices = nearby_indices_adjusted[frame_change_indices]
-    else:
-        cluster_indices = nearby_indices_adjusted[0]
+    # frame_ids = nearby_clusters[:, CLUSTER_FRAME_ID_IDX]
+    # if len(np.unique(frame_ids)) > 1:
+    #     frame_change_indices = np.where(np.roll(frame_ids,1)!=frame_ids)[0]     # for when there is more than one cluster found in a frame, the first cluster will be the most intense
+    #     cluster_indices = nearby_indices_adjusted[frame_change_indices]
+    # else:
+    #     cluster_indices = nearby_indices_adjusted[0]
+    cluster_indices = nearby_indices_adjusted
 
-    good_quality_feature = (len(np.unique(frame_ids)) > NUMBER_OF_FRAMES_TO_LOOK)     # for now
+    # score the feature's quality
+    total_score = 0.0
+    left_score = 0.0
+    right_score = 0.0
+    bse_idx = np.where(cluster_indices == base_index)[0][0]
+    if bse_idx > 0:
+        left_score = (len(np.where(np.diff(clusters_v[cluster_indices[:bse_idx],CLUSTER_INTENSITY_SUM_IDX]) > 0)[0]) - len(np.where(np.diff(clusters_v[cluster_indices[:bse_idx],CLUSTER_INTENSITY_SUM_IDX]) < 0)[0])) / float(len(cluster_indices[:bse_idx]))
+    if bse_idx < (len(cluster_indices)-1):
+        right_score = (len(np.where(np.diff(clusters_v[cluster_indices[bse_idx:],CLUSTER_INTENSITY_SUM_IDX]) < 0)[0]) - len(np.where(np.diff(clusters_v[cluster_indices[bse_idx:],CLUSTER_INTENSITY_SUM_IDX]) > 0)[0])) / float(len(cluster_indices[bse_idx:]))
+    total_score = (left_score+right_score) / 2
 
     results = {}
-    results['base_cluster_frame_id'] = int(cluster[CLUSTER_FRAME_ID_IDX])
-    results['base_cluster_id'] = int(cluster[CLUSTER_ID_IDX])
+    results['base_index'] = base_index
+    results['base_cluster_frame_id'] = frame_id
+    results['base_cluster_id'] = cluster_id
     results['search_start_frame'] = search_start_frame
     results['search_end_frame'] = search_end_frame
     results['cluster_indices'] = cluster_indices
     results['charge_state'] = charge_state
-    results['quality'] = good_quality_feature
+    results['quality'] = total_score
     return results
 
 
@@ -96,6 +109,7 @@ c.execute('''CREATE TABLE `features` ( `feature_id` INTEGER,
                                         `charge_state` INTEGER, 
                                         `start_frame` INTEGER, 
                                         `end_frame` INTEGER, 
+                                        `quality_score` REAL, 
                                         PRIMARY KEY(`feature_id`) )''')
 c.execute('''DROP INDEX IF EXISTS idx_features''')
 c.execute('''CREATE INDEX idx_features ON features (feature_id)''')
@@ -148,11 +162,12 @@ with open('discovery_rate.csv','wb') as discovery_rate_file:
         charge_state = feature['charge_state']
         feature_quality = feature['quality']
         clusters_searched += 1
+        # print(feature)
 
-        if feature_quality:
+        if len(cluster_indices) > 10:
             features_found += 1
             discovery_rate = float(features_found)/clusters_searched
-            print("feature {}, frames searched {}-{}, discovery rate {:.4f}".format(feature_id, search_start_frame, search_end_frame, discovery_rate))
+            print("feature {}, score {:.4f}".format(feature_id, feature_quality))
             # Assign this feature ID to all the clusters in the feature
             cluster_updates = []
             for cluster_idx in cluster_indices:
@@ -161,8 +176,8 @@ with open('discovery_rate.csv','wb') as discovery_rate_file:
             c.executemany("UPDATE clusters SET feature_id=? WHERE frame_id=? AND cluster_id=?", cluster_updates)
 
             # Add the feature's details to the collection
-            values = (feature_id, base_cluster_frame_id, base_cluster_id, charge_state, search_start_frame, search_end_frame)
-            c.execute("INSERT INTO features VALUES (?, ?, ?, ?, ?, ?)", values)
+            values = (feature_id, base_cluster_frame_id, base_cluster_id, charge_state, search_start_frame, search_end_frame, feature_quality)
+            c.execute("INSERT INTO features VALUES (?, ?, ?, ?, ?, ?, ?)", values)
 
             if args.number_of_features is not None:
                 if feature_id == args.number_of_features:
