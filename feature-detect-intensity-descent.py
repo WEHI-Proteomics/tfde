@@ -10,7 +10,6 @@ import os.path
 import csv
 # import numba
 # from numba import jit
-import scipy.stats as stats
 
 # @jit
 def standard_deviation(mz):
@@ -59,17 +58,6 @@ def find_feature(base_index):
     #     cluster_indices = nearby_indices_adjusted[0]
     cluster_indices = nearby_indices_adjusted
 
-    # score the feature's quality
-    total_score = 0.0
-    left_score = 0.0
-    right_score = 0.0
-    bse_idx = np.where(cluster_indices == base_index)[0][0]
-    if bse_idx > 0:
-        left_score = (len(np.where(np.diff(clusters_v[cluster_indices[:bse_idx],CLUSTER_INTENSITY_SUM_IDX]) > 0)[0]) - len(np.where(np.diff(clusters_v[cluster_indices[:bse_idx],CLUSTER_INTENSITY_SUM_IDX]) < 0)[0])) / float(len(cluster_indices[:bse_idx]))
-    if bse_idx < (len(cluster_indices)-1):
-        right_score = (len(np.where(np.diff(clusters_v[cluster_indices[bse_idx:],CLUSTER_INTENSITY_SUM_IDX]) < 0)[0]) - len(np.where(np.diff(clusters_v[cluster_indices[bse_idx:],CLUSTER_INTENSITY_SUM_IDX]) > 0)[0])) / float(len(cluster_indices[bse_idx:]))
-    total_score = (left_score+right_score) / 2
-
     results = {}
     results['base_index'] = base_index
     results['base_cluster_frame_id'] = frame_id
@@ -78,7 +66,7 @@ def find_feature(base_index):
     results['search_end_frame'] = search_end_frame
     results['cluster_indices'] = cluster_indices
     results['charge_state'] = charge_state
-    results['quality'] = total_score
+    results['quality'] = 1.0
     return results
 
 
