@@ -70,41 +70,6 @@ def find_feature(base_index):
     results['charge_state'] = charge_state
     return results
 
-def find_features():
-    global feature_id
-    global clusters_v
-    global feature_updates
-    global cluster_updates
-
-    # go through each cluster and see whether it belongs to an existing feature
-    while feature_id <= args.number_of_features:
-        # find the most intense cluster
-        cluster_max_index = np.argmax(clusters_v[:,CLUSTER_INTENSITY_SUM_IDX])
-        cluster = clusters_v[cluster_max_index]
-
-        feature = find_feature(base_index=cluster_max_index)
-        base_cluster_frame_id = feature['base_cluster_frame_id']
-        base_cluster_id = feature['base_cluster_id']
-        search_start_frame = feature['search_start_frame']
-        search_end_frame = feature['search_end_frame']
-        cluster_indices = feature['cluster_indices']
-        charge_state = feature['charge_state']
-
-        if len(cluster_indices) > 10:
-            print("feature {}, search frames {}-{}, intensity {}".format(feature_id, search_start_frame, search_end_frame, int(cluster[CLUSTER_INTENSITY_SUM_IDX])))
-            # Assign this feature ID to all the clusters in the feature
-            for cluster_idx in cluster_indices:
-                values = (feature_id, int(clusters_v[cluster_idx][CLUSTER_FRAME_ID_IDX]), int(clusters_v[cluster_idx][CLUSTER_ID_IDX]))
-                cluster_updates.append(values)
-
-            # Add the feature's details to the collection
-            values = (feature_id, base_cluster_frame_id, base_cluster_id, charge_state, search_start_frame, search_end_frame, 1.0)
-            feature_updates.append(values)
-
-            feature_id += 1
-
-        # remove the features we've processed from the run
-        clusters_v[cluster_indices, CLUSTER_INTENSITY_SUM_IDX] = -1
 
 parser = argparse.ArgumentParser(description='A method for tracking features through frames.')
 parser.add_argument('-db','--database_name', type=str, help='The name of the source database.', required=True)
@@ -113,6 +78,8 @@ parser.add_argument('-sd','--scan_std_dev', type=int, default=4, help='Number of
 parser.add_argument('-ef','--empty_frames', type=int, default=10, help='Maximum number of empty frames to tolerate.', required=False)
 parser.add_argument('-nf','--number_of_features', type=int, default=50, help='Maximum number of features to find.', required=False)
 parser.add_argument('-ns','--number_of_seconds', type=int, default=6, help='Number of seconds to look either side of the maximum cluster.', required=False)
+parser.add_argument('-mi','--minimum_intensity', type=int, default=10000, help='Maximum cluster intensity.', required=False)
+parser.add_argument('-ml','--minimum_length', type=int, default=10, help='Minimum feature length, in frames.', required=False)
 args = parser.parse_args()
 
 NUMBER_OF_FRAMES_TO_LOOK = int(args.number_of_seconds / NUMBER_OF_SECONDS_PER_FRAME)
@@ -152,7 +119,40 @@ print("clusters array occupies {} bytes".format(clusters_v.nbytes))
 print("Finding features")
 
 start_run = time.time()
-find_features()
+
+# go through each cluster and see whether it belongs to an existing feature
+while feature_id <= args.number_of_features:
+    # find the most intense cluster
+    cluster_max_index = np.argmax(clusters_v[:,CLUSTER_INTENSITY_SUM_IDX])
+    cluster = clusters_v[cluster_max_index]
+    cluster_intensity = int(cluster[CLUSTER_INTENSITY_SUM_IDX])
+
+    feature = find_feature(base_index=cluster_max_index)
+    base_cluster_frame_id = feature['base_cluster_frame_id']
+    base_cluster_id = feature['base_cluster_id']
+    search_start_frame = feature['search_start_frame']
+    search_end_frame = feature['search_end_frame']
+    cluster_indices = feature['cluster_indices']
+    charge_state = feature['charge_state']
+
+    if len(cluster_indices) > args.minimum_length:
+        print("feature {}, search frames {}-{}, intensity {}, length {}".format(feature_id, search_start_frame, search_end_frame, cluster_intensity, len(cluster_indices)))
+        # Assign this feature ID to all the clusters in the feature
+        for cluster_idx in cluster_indices:
+            values = (feature_id, int(clusters_v[cluster_idx][CLUSTER_FRAME_ID_IDX]), int(clusters_v[cluster_idx][CLUSTER_ID_IDX]))
+            cluster_updates.append(values)
+
+        # Add the feature's details to the collection
+        values = (feature_id, base_cluster_frame_id, base_cluster_id, charge_state, search_start_frame, search_end_frame, 1.0)
+        feature_updates.append(values)
+
+        feature_id += 1
+
+    # remove the features we've processed from the run
+    clusters_v[cluster_indices, CLUSTER_INTENSITY_SUM_IDX] = -1
+    if cluster_intensity < args.minimum_intensity:
+        break
+
 stop_run = time.time()
 
 print("updating the clusters table")
