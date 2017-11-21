@@ -54,11 +54,17 @@ def find_feature(base_index):
     # look for other clusters that belong to this feature
     clusters_v_subset = clusters_v[first_start_frame_index:last_end_frame_index]
     nearby_indices = np.where(
-        (clusters_v_subset[:, CLUSTER_INTENSITY_SUM_IDX] >= 0) &
         (clusters_v_subset[:, CLUSTER_CHARGE_STATE_IDX] == charge_state) &
         (abs(clusters_v_subset[:, CLUSTER_BASE_MAX_POINT_MZ_IDX] - base_max_point_mz) <= base_mz_std_dev_offset) &
         (abs(clusters_v_subset[:, CLUSTER_BASE_MAX_POINT_SCAN_IDX] - base_max_point_scan) <= base_scan_std_dev_offset))[0]
     nearby_indices_adjusted = nearby_indices+first_start_frame_index
+
+    truncated_feature_remnants = len(np.where(clusters_v_subset[nearby_indices, CLUSTER_INTENSITY_SUM_IDX] == -1)[0])
+
+    if (len(nearby_indices) > args.minimum_length) and (truncated_feature_remnants == 0):
+        quality = 1.0
+    else
+        quality = 0.0
 
     results = {}
     results['base_index'] = base_index
@@ -68,6 +74,7 @@ def find_feature(base_index):
     results['search_end_frame'] = search_end_frame
     results['cluster_indices'] = nearby_indices_adjusted
     results['charge_state'] = charge_state
+    results['quality'] = quality
     return results
 
 
@@ -134,8 +141,9 @@ while feature_id <= args.number_of_features:
     search_end_frame = feature['search_end_frame']
     cluster_indices = feature['cluster_indices']
     charge_state = feature['charge_state']
+    quality = feature['quality']
 
-    if len(cluster_indices) > args.minimum_length:
+    if quality > 0.5:
         print("feature {}, search frames {}-{}, intensity {}, length {}".format(feature_id, search_start_frame, search_end_frame, cluster_intensity, len(cluster_indices)))
         # Assign this feature ID to all the clusters in the feature
         for cluster_idx in cluster_indices:
@@ -143,7 +151,7 @@ while feature_id <= args.number_of_features:
             cluster_updates.append(values)
 
         # Add the feature's details to the collection
-        values = (feature_id, base_cluster_frame_id, base_cluster_id, charge_state, search_start_frame, search_end_frame, 1.0)
+        values = (feature_id, base_cluster_frame_id, base_cluster_id, charge_state, search_start_frame, search_end_frame, quality)
         feature_updates.append(values)
 
         feature_id += 1
