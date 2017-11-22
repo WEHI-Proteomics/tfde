@@ -63,7 +63,7 @@ def find_feature(base_index):
 
     if (len(nearby_indices) > args.minimum_length) and (truncated_feature_remnants == 0):
         quality = 1.0
-    else
+    else:
         quality = 0.0
 
     results = {}
