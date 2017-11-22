@@ -117,8 +117,10 @@ c.execute('''CREATE INDEX idx_features ON features (feature_id)''')
 c.execute('''DROP TABLE IF EXISTS feature_info''')
 c.execute('''CREATE TABLE feature_info (item TEXT, value TEXT)''')
 
-print("Loading the clusters information")
+print("Resetting the feature IDs in the cluster table.")
+c.execute("update clusters set feature_id=0 where feature_id!=0;")
 
+print("Loading the clusters information")
 c.execute("select frame_id, cluster_id, charge_state, base_peak_scan_std_dev, base_peak_max_point_mz, base_peak_max_point_scan, intensity_sum from clusters order by frame_id, cluster_id asc;")
 clusters_v = np.array(c.fetchall(), dtype=np.float32)
 
