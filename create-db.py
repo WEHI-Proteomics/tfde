@@ -4,6 +4,7 @@ from numpy import ix_
 import timsdata
 import sqlite3
 import os
+import argparse
 
 # Usage: python create-db.py D:\Bruker\Databases\Hela200ng100msMSonlyPP23pro_Slot1-5_01_57.d
 
@@ -21,10 +22,12 @@ def threshold_scan_transform(threshold, indicies, intensities):
     np_int = np.delete(np_int, low_indices)
     return np_mz, np_int
 
-if len(sys.argv) < 2:
-    raise RuntimeError("need arguments: tdf_directory")
+parser = argparse.ArgumentParser(description='Convert the Bruker database to a detection database.')
+parser.add_argument('-sdb','--source_database_name', type=str, help='The name of the source database.', required=True)
+parser.add_argument('-ddb','--destination_database_name', type=str, help='The name of the destination database.', required=True)
+args = parser.parse_args()
 
-analysis_dir = sys.argv[1]
+analysis_dir = args.source_database_name
 if sys.version_info.major == 2:
     analysis_dir = unicode(analysis_dir)
 
@@ -34,11 +37,16 @@ timsfile = timsdata.TimsData(analysis_dir)
 q = timsfile.conn.execute("SELECT COUNT(*) FROM Frames")
 row = q.fetchone()
 frame_count = row[0]
-print("Analysis has {0} frames.".format(frame_count))
+q = timsfile.conn.execute("SELECT MAX(Id) FROM Frames")
+row = q.fetchone()
+max_frame_id = row[0]
+q = timsfile.conn.execute("SELECT MIN(Id) FROM Frames")
+row = q.fetchone()
+min_frame_id = row[0]
+print("Analysis has {0} frames. Frame IDs {}-{}".format(frame_count, min_frame_id, max_frame_id))
 
 # Connecting to the database file
-sqlite_file = "S:\\data\\Projects\\ProtemicsLab\\Bruker timsTOF\\extracts\\{}-frames-{}-{}-V{}.sqlite".format(os.path.basename(analysis_dir).split('.')[0], THRESHOLD, FRAME_START, FRAME_END, DB_VERSION)
-conn = sqlite3.connect(sqlite_file)
+conn = sqlite3.connect(args.destination_database_name)
 c = conn.cursor()
 
 # Create the table
