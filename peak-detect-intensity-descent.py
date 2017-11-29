@@ -43,8 +43,8 @@ def findNearestLessThan(searchVal, inputData):
 
 parser = argparse.ArgumentParser(description='A tree descent method for peak detection.')
 parser.add_argument('-db','--database_name', type=str, help='The name of the source database.', required=True)
-parser.add_argument('-fl','--frame_lower', type=int, help='The lower frame number.', required=True)
-parser.add_argument('-fu','--frame_upper', type=int, help='The upper frame number.', required=True)
+parser.add_argument('-fl','--frame_lower', type=int, help='The lower frame number.', required=False)
+parser.add_argument('-fu','--frame_upper', type=int, help='The upper frame number.', required=False)
 parser.add_argument('-sl','--scan_lower', type=int, default=0, help='The lower scan number.', required=False)
 parser.add_argument('-su','--scan_upper', type=int, default=183, help='The upper scan number.', required=False)
 parser.add_argument('-es','--empty_scans', type=int, default=2, help='Maximum number of empty scans to tolerate.', required=False)
@@ -80,6 +80,18 @@ c.execute('''CREATE INDEX idx_frame_point ON frames (frame_id,point_id)''')
 
 print("Resetting peak IDs")
 c.execute("update frames set peak_id=0 where peak_id!=0")
+
+if args.frame_lower is None:
+    q = timsfile.conn.execute("SELECT MIN(frame_id) FROM frames")
+    row = q.fetchone()
+    args.frame_lower = int(row[0])
+    print("lower frame_id set to {} from the data".format(args.frame_lower))
+
+if args.frame_upper is None:
+    q = timsfile.conn.execute("SELECT MAX(frame_id) FROM frames")
+    row = q.fetchone()
+    args.frame_upper = int(row[0])
+    print("upper frame_id set to {} from the data".format(args.frame_upper))
 
 mono_peaks = []
 point_updates = []
