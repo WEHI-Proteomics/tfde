@@ -9,9 +9,6 @@ import argparse
 # Usage: python create-db.py D:\Bruker\Databases\Hela200ng100msMSonlyPP23pro_Slot1-5_01_57.d
 
 THRESHOLD = 0
-FRAME_START = 1
-FRAME_END = 283906
-DB_VERSION = 6
 COLLISION_ENERGY_PROPERTY = 1454
 
 def threshold_scan_transform(threshold, indicies, intensities):
@@ -43,7 +40,7 @@ max_frame_id = row[0]
 q = timsfile.conn.execute("SELECT MIN(Id) FROM Frames")
 row = q.fetchone()
 min_frame_id = row[0]
-print("Analysis has {0} frames. Frame IDs {}-{}".format(frame_count, min_frame_id, max_frame_id))
+print("Analysis has {} frames. Frame IDs {}-{}".format(frame_count, min_frame_id, max_frame_id))
 
 # Connecting to the database file
 conn = sqlite3.connect(args.destination_database_name)
@@ -62,7 +59,7 @@ c.execute('''CREATE INDEX idx_frame_properties ON frame_properties (frame_id)'''
 points = []
 frame_properties = []
 peak_id = 0
-for frame_id in range(FRAME_START, FRAME_END+1):
+for frame_id in range(min_frame_id, max_frame_id+1):
     print("Frame {:0>5} of {}".format(frame_id, frame_count))
 
     (frame_data_id, num_scans) = timsfile.conn.execute(
