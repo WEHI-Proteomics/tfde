@@ -49,7 +49,6 @@ parser.add_argument('-sl','--scan_lower', type=int, default=0, help='The lower s
 parser.add_argument('-su','--scan_upper', type=int, default=183, help='The upper scan number.', required=False)
 parser.add_argument('-es','--empty_scans', type=int, default=2, help='Maximum number of empty scans to tolerate.', required=False)
 parser.add_argument('-sd','--standard_deviations', type=int, default=4, help='Number of standard deviations to look either side of a point.', required=False)
-parser.add_argument('-ts','--temp_store', type=str, help='Name of the temporary database for the output.', required=True)
 
 args = parser.parse_args()
 
@@ -61,20 +60,26 @@ for arg in vars(args):
 source_conn = sqlite3.connect(database=args.database_name, timeout=60)
 
 c = source_conn.cursor()
-# c.execute("PRAGMA temp_store = MEMORY") # store temporary data in memory
-# c.execute("PRAGMA synchronous = OFF") # https://www.sqlite.org/pragma.html#pragma_synchronous
-# c.execute("PRAGMA journal_mode = WAL") # enable write-ahead logging mode
-# print("WAL mode status: {}".format(c.fetchone()))
+print("Setting up tables and indexes")
 
-# Write out all the peaks to the database
-if os.path.isfile(args.temp_store):
-    os.remove(args.temp_store)
+c.execute('''DROP TABLE IF EXISTS peaks''')
+c.execute('''CREATE TABLE peaks (frame_id INTEGER, peak_id INTEGER, centroid_mz REAL, centroid_scan REAL, intensity_sum INTEGER, scan_upper INTEGER, scan_lower INTEGER, std_dev_mz REAL, std_dev_scan REAL, cluster_id INTEGER, 'rationale' TEXT, 'state' TEXT, intensity_max INTEGER, peak_max_mz REAL, peak_max_scan INTEGER, PRIMARY KEY (frame_id, peak_id))''')
 
-dest_conn = sqlite3.connect(database=args.temp_store)
-d = dest_conn.cursor()
-d.execute('''CREATE TABLE peaks (frame_id INTEGER, peak_id INTEGER, centroid_mz REAL, centroid_scan REAL, intensity_sum INTEGER, scan_upper INTEGER, scan_lower INTEGER, std_dev_mz REAL, std_dev_scan REAL, cluster_id INTEGER, 'rationale' TEXT, 'state' TEXT, intensity_max INTEGER, peak_max_mz REAL, peak_max_scan INTEGER, PRIMARY KEY (frame_id, peak_id))''')
-d.execute('''CREATE TABLE peak_detect_info (item TEXT, value TEXT)''')
-d.execute('''CREATE TABLE frames_updates (peak_id INTEGER, frame_id INTEGER, point_id INTEGER)''')
+c.execute('''DROP TABLE IF EXISTS peak_detect_info''')
+c.execute('''CREATE TABLE peak_detect_info (item TEXT, value TEXT)''')
+
+# Indexes
+c.execute('''DROP INDEX IF EXISTS idx_frame_peak''')
+c.execute('''CREATE INDEX idx_frame_peak ON peaks (frame_id,peak_id)''')
+
+c.execute('''DROP INDEX IF EXISTS idx_frame''')
+c.execute('''CREATE INDEX idx_frame ON peaks (frame_id)''')
+
+c.execute('''DROP INDEX IF EXISTS idx_frame_point''')
+c.execute('''CREATE INDEX idx_frame_point ON frames (frame_id,point_id)''')
+
+print("Resetting peak IDs")
+c.execute("update frames set peak_id=0 where peak_id!=0")
 
 mono_peaks = []
 point_updates = []
@@ -240,13 +245,11 @@ for frame_id in range(args.frame_lower, args.frame_upper+1):
     mono_peaks = []
 
     # Update the points in the frame table
-    d.executemany("INSERT INTO frames_updates VALUES (?, ?, ?)", point_updates)
+    c.executemany("UPDATE frames SET peak_id=? WHERE frame_id=? AND point_id=?", point_updates)
     point_updates = []
 
     stop_frame = time.time()
     print("{} seconds to process frame {} - {} peaks".format(stop_frame-start_frame, frame_id, peak_id))
-
-source_conn.close()
 
 stop_run = time.time()
 print("{} seconds to process frames {} to {}".format(stop_run-start_run, args.frame_lower, args.frame_upper))
@@ -254,8 +257,8 @@ print("{} seconds to process frames {} to {}".format(stop_run-start_run, args.fr
 # write out the processing info
 peak_detect_info.append(("run processing time (sec)", stop_run-start_run))
 peak_detect_info.append(("processed", time.ctime()))
-d.executemany("INSERT INTO peak_detect_info VALUES (?, ?)", peak_detect_info)
-dest_conn.commit()
-dest_conn.close()
+c.executemany("INSERT INTO peak_detect_info VALUES (?, ?)", peak_detect_info)
+source_conn.commit()
+source_conn.close()
 
 # plt.close('all')
