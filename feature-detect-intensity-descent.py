@@ -19,6 +19,8 @@ CLUSTER_INTENSITY_SUM_IDX = 6
 
 NUMBER_OF_SECONDS_PER_FRAME = 0.1
 
+DELTA_MZ = 1.003355     # mass difference between Carbon-12 and Carbon-13 isotopes, in Da
+
 feature_id = 1
 feature_updates = []
 cluster_updates = []
@@ -37,8 +39,8 @@ def find_feature(base_index):
     cluster_id = int(cluster[CLUSTER_ID_IDX])
     charge_state = int(cluster[CLUSTER_CHARGE_STATE_IDX])
 
-    search_start_frame = max(frame_id-NUMBER_OF_FRAMES_TO_LOOK, int(np.min(clusters_v[:,CLUSTER_FRAME_ID_IDX])))
-    search_end_frame = min(frame_id+NUMBER_OF_FRAMES_TO_LOOK, int(np.max(clusters_v[:,CLUSTER_FRAME_ID_IDX])))
+    search_start_frame = int(np.min(clusters_v[:,CLUSTER_FRAME_ID_IDX]))
+    search_end_frame = int(np.max(clusters_v[:,CLUSTER_FRAME_ID_IDX]))
 
     # Seed the search bounds by the properties of the base peaks
     base_max_point_mz = cluster[CLUSTER_BASE_MAX_POINT_MZ_IDX]
@@ -46,35 +48,43 @@ def find_feature(base_index):
     base_mz_std_dev_offset = standard_deviation(base_max_point_mz) * args.mz_std_dev
     base_scan_std_dev_offset = cluster[CLUSTER_BASE_SCAN_STD_DEV_IDX] * args.scan_std_dev
 
-    start_frame_indices = np.where(clusters_v[:,CLUSTER_FRAME_ID_IDX] == search_start_frame)[0]
-    end_frame_indices = np.where(clusters_v[:,CLUSTER_FRAME_ID_IDX] == search_end_frame)[0]
-    first_start_frame_index = start_frame_indices[0]  # first index of the start frame
-    last_end_frame_index = end_frame_indices[len(end_frame_indices)-1]  # last index of the end frame
+    lower_isotope_mz = base_max_point_mz - (DELTA_MZ/charge_state)
+    upper_isotope_mz = base_max_point_mz + (DELTA_MZ/charge_state)
 
     # look for other clusters that belong to this feature
-    clusters_v_subset = clusters_v[first_start_frame_index:last_end_frame_index]
     nearby_indices = np.where(
-        (clusters_v_subset[:, CLUSTER_CHARGE_STATE_IDX] == charge_state) &
-        (abs(clusters_v_subset[:, CLUSTER_BASE_MAX_POINT_MZ_IDX] - base_max_point_mz) <= base_mz_std_dev_offset) &
-        (abs(clusters_v_subset[:, CLUSTER_BASE_MAX_POINT_SCAN_IDX] - base_max_point_scan) <= base_scan_std_dev_offset))[0]
-    nearby_indices_adjusted = nearby_indices+first_start_frame_index
+        (clusters_v[:, CLUSTER_CHARGE_STATE_IDX] == charge_state) &
+        (abs(clusters_v[:, CLUSTER_BASE_MAX_POINT_MZ_IDX] - base_max_point_mz) <= base_mz_std_dev_offset) &
+        (abs(clusters_v[:, CLUSTER_BASE_MAX_POINT_SCAN_IDX] - base_max_point_scan) <= base_scan_std_dev_offset))[0]
 
-    truncated_feature_remnants = len(np.where(clusters_v_subset[nearby_indices, CLUSTER_INTENSITY_SUM_IDX] == -1)[0])
+    # look for other clusters one isotope number down that belong to this feature
+    nearby_lower_indices = np.where(
+        (clusters_v[:, CLUSTER_CHARGE_STATE_IDX] == charge_state) &
+        (abs(clusters_v[:, CLUSTER_BASE_MAX_POINT_MZ_IDX] - lower_isotope_mz) <= base_mz_std_dev_offset) &
+        (abs(clusters_v[:, CLUSTER_BASE_MAX_POINT_SCAN_IDX] - base_max_point_scan) <= base_scan_std_dev_offset))[0]
 
-    if (len(nearby_indices) > args.minimum_length) and (truncated_feature_remnants == 0):
-        quality = 1.0
-    else:
-        quality = 0.0
+    # look for other clusters one isotope number up that belong to this feature
+    nearby_upper_indices = np.where(
+        (clusters_v[:, CLUSTER_CHARGE_STATE_IDX] == charge_state) &
+        (abs(clusters_v[:, CLUSTER_BASE_MAX_POINT_MZ_IDX] - upper_isotope_mz) <= base_mz_std_dev_offset) &
+        (abs(clusters_v[:, CLUSTER_BASE_MAX_POINT_SCAN_IDX] - base_max_point_scan) <= base_scan_std_dev_offset))[0]
 
+    # join them all together. From https://stackoverflow.com/questions/12427146/combine-two-arrays-and-sort
+    c = np.concatenate((nearby_indices, nearby_lower_indices, nearby_upper_indices))
+    c.sort(kind='mergesort')
+    flag = np.ones(len(c), dtype=bool)
+    np.not_equal(c[1:], c[:-1], out=flag[1:])
+
+    # package the result
     results = {}
     results['base_index'] = base_index
     results['base_cluster_frame_id'] = frame_id
     results['base_cluster_id'] = cluster_id
     results['search_start_frame'] = search_start_frame
     results['search_end_frame'] = search_end_frame
-    results['cluster_indices'] = nearby_indices_adjusted
+    results['cluster_indices'] = c[flag]
     results['charge_state'] = charge_state
-    results['quality'] = quality
+    results['quality'] = 1.0
     return results
 
 
