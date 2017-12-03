@@ -7,6 +7,8 @@ import sqlite3
 import copy
 import argparse
 import os.path
+import matplotlib.pyplot as plt
+from scipy import signal
 
 # cluster array indices
 CLUSTER_FRAME_ID_IDX = 0
@@ -161,17 +163,17 @@ def find_feature(base_index):
     else:
         quality = 0.0
 
-    # snip the feature where it crosses the threshold
-    # indices_to_delete = np.empty(0)
-    # if len(feature_indices) > 0:
-    #     lower_idx = find_nearest_low_index_below_threshold(base_index, NOISE_THRESHOLD, feature_indices)
-    #     upper_idx = find_nearest_high_index_below_threshold(base_index, NOISE_THRESHOLD, feature_indices)
-    #     print("feature indices {}, lower idx {}, upper idx {}".format(feature_indices, lower_idx, upper_idx))
-    #     if lower_idx is not None:
-    #         indices_to_delete = np.concatenate((indices_to_delete,np.arange(lower_idx)))
-    #     if upper_idx is not None:
-    #         indices_to_delete = np.concatenate((indices_to_delete,np.arange(upper_idx+1,len(feature_indices))))
-    #     feature_indices = np.delete(feature_indices, indices_to_delete, 0)
+    filtered = signal.savgol_filter(clusters_v[feature_indices, CLUSTER_INTENSITY_SUM_IDX], window_length=21, polyorder=9)
+
+    f = plt.figure()
+    ax1 = f.add_subplot(111)
+    ax1.plot(clusters_v[feature_indices, CLUSTER_FRAME_ID_IDX], clusters_v[feature_indices, CLUSTER_INTENSITY_SUM_IDX], 'o', markerfacecolor='green', markeredgecolor='black', markeredgewidth=0.0, markersize=6)
+    ax1.plot(clusters_v[feature_indices, CLUSTER_FRAME_ID_IDX], filtered, '-', markerfacecolor='blue', markeredgecolor='black', markeredgewidth=0.0, markersize=6)
+    plt.title("Feature {}".format(feature_id))
+    plt.xlabel('frame')
+    plt.ylabel('intensity')
+    plt.margins(0.02)
+    plt.show()
 
     # package the result
     results = {}
