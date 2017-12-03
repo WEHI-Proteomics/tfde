@@ -70,8 +70,8 @@ def peak_ratio(monoisotopic_mass, peak_number, number_of_sulphur):
 
 parser = argparse.ArgumentParser(description='A tree descent method for clustering peaks.')
 parser.add_argument('-db','--database_name', type=str, help='The name of the source database.', required=True)
-parser.add_argument('-fl','--frame_lower', type=int, help='The lower frame number to process.', required=True)
-parser.add_argument('-fu','--frame_upper', type=int, help='The upper frame number to process.', required=True)
+parser.add_argument('-fl','--frame_lower', type=int, help='The lower frame number to process.', required=False)
+parser.add_argument('-fu','--frame_upper', type=int, help='The upper frame number to process.', required=False)
 parser.add_argument('-sl','--scan_lower', type=int, default=0, help='The lower scan number to process.', required=False)
 parser.add_argument('-su','--scan_upper', type=int, default=183, help='The upper scan number to process.', required=False)
 parser.add_argument('-ir','--isotope_number_right', type=int, default=5, help='Isotope numbers to look on the right.', required=False)
@@ -84,14 +84,26 @@ parser.add_argument('-md','--mz_std_dev', type=int, default=3, help='Number of w
 
 args = parser.parse_args()
 
+# Connect to the database file
+source_conn = sqlite3.connect(args.database_name)
+c = source_conn.cursor()
+
+if args.frame_lower is None:
+    q = c.execute("SELECT MIN(frame_id) FROM peaks")
+    row = q.fetchone()
+    args.frame_lower = int(row[0])
+    print("lower frame_id set to {} from the data".format(args.frame_lower))
+
+if args.frame_upper is None:
+    q = c.execute("SELECT MAX(frame_id) FROM peaks")
+    row = q.fetchone()
+    args.frame_upper = int(row[0])
+    print("upper frame_id set to {} from the data".format(args.frame_upper))
+
 # Store the arguments as metadata in the database for later reference
 cluster_detect_info = []
 for arg in vars(args):
     cluster_detect_info.append((arg, getattr(args, arg)))
-
-# Connect to the database file
-source_conn = sqlite3.connect(args.database_name)
-c = source_conn.cursor()
 
 print("Setting up tables and indexes")
 c.execute('''DROP TABLE IF EXISTS clusters''')
@@ -121,10 +133,12 @@ c.execute('''CREATE TABLE `clusters` ( `frame_id` INTEGER,
                                         PRIMARY KEY(`cluster_id`,`frame_id`) )''')
 c.execute('''DROP INDEX IF EXISTS idx_clusters''')
 c.execute('''CREATE INDEX idx_clusters ON clusters (frame_id,cluster_id)''')
-c.execute("update peaks set cluster_id=0")
 c.execute('''DROP TABLE IF EXISTS cluster_detect_info''')
 c.execute('''CREATE TABLE cluster_detect_info (item TEXT, value TEXT)''')
 source_conn.commit()
+
+print("Resetting cluster IDs")
+c.execute("update peaks set cluster_id=0 where cluster_id!=0")
 
 DELTA_MZ = 1.003355     # mass difference between Carbon-12 and Carbon-13 isotopes, in Da
 PROTON_MASS = 1.007276  # mass of a proton in unified atomic mass units, or Da
