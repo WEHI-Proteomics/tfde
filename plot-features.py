@@ -3,6 +3,8 @@ import argparse
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib import cm
+from scipy import signal
+import sys
 
 # cluster array indices
 CLUSTER_FRAME_ID_IDX = 0
@@ -13,6 +15,30 @@ CLUSTER_BASE_MAX_POINT_MZ_IDX = 4
 CLUSTER_BASE_MAX_POINT_SCAN_IDX = 5
 CLUSTER_INTENSITY_SUM_IDX = 6
 CLUSTER_FEATURE_ID_IDX = 7
+
+def find_nearest_low_index_below_threshold(values, threshold):
+    max_index = np.argmax(values)
+    values_below_threshold = (values - threshold) < 0
+    change_indices = np.where(np.roll(values_below_threshold,1) != values_below_threshold)[0]     # for when there is more than one cluster found in a frame, the first cluster will be the most intense
+    if len(change_indices) > 0:
+        distance_from_base = change_indices - max_index
+        distance_from_base[distance_from_base>0] = -sys.maxint
+        idx = change_indices[distance_from_base.argmax()]
+    else:
+        idx = None
+    return idx
+
+def find_nearest_high_index_below_threshold(values, threshold):
+    max_index = np.argmax(values)
+    values_below_threshold = (values - threshold) < 0
+    change_indices = np.where(np.roll(values_below_threshold,1) != values_below_threshold)[0]     # for when there is more than one cluster found in a frame, the first cluster will be the most intense
+    if len(change_indices) > 0:
+        distance_from_base = change_indices - max_index
+        distance_from_base[distance_from_base<0] = sys.maxint
+        idx = change_indices[distance_from_base.argmin()]
+    else:
+        idx = None
+    return idx
 
 parser = argparse.ArgumentParser(description='A method for tracking features through frames.')
 parser.add_argument('-db','--database_name', type=str, help='The name of the source database.', required=True)
@@ -29,10 +55,17 @@ clusters_v = np.array(c.fetchall(), dtype=np.float32)
 clusters_v_feature_indices = np.where(clusters_v[:,CLUSTER_FEATURE_ID_IDX] > 0)[0]
 source_conn.close()
 
+filtered = signal.savgol_filter(clusters_v[clusters_v_feature_indices, CLUSTER_INTENSITY_SUM_IDX], window_length=41, polyorder=10)
+low_index = find_nearest_low_index_below_threshold(filtered, 50000)
+high_index = find_nearest_high_index_below_threshold(filtered, 50000)
+
 f1 = plt.figure()
 ax1 = f1.add_subplot(111)
-ax1.plot(clusters_v[:,CLUSTER_FRAME_ID_IDX], clusters_v[:,CLUSTER_INTENSITY_SUM_IDX], 'o', markerfacecolor='green', markeredgecolor='black', markeredgewidth=0.0, markersize=6)
+# ax1.plot(clusters_v[:,CLUSTER_FRAME_ID_IDX], clusters_v[:,CLUSTER_INTENSITY_SUM_IDX], 'o', markerfacecolor='green', markeredgecolor='black', markeredgewidth=0.0, markersize=6)
 ax1.plot(clusters_v[clusters_v_feature_indices,CLUSTER_FRAME_ID_IDX], clusters_v[clusters_v_feature_indices,CLUSTER_INTENSITY_SUM_IDX], 'o', markeredgewidth=0.0, markersize=6)
+ax1.plot(clusters_v[clusters_v_feature_indices, CLUSTER_FRAME_ID_IDX], filtered, '-', markerfacecolor='blue', markeredgecolor='black', markeredgewidth=0.0, markersize=6)
+ax1.plot(clusters_v[clusters_v_feature_indices[low_index], CLUSTER_FRAME_ID_IDX], filtered[low_index], 'x', markerfacecolor='green', markeredgecolor='green', markeredgewidth=2.0, markersize=20, alpha=0.5)
+ax1.plot(clusters_v[clusters_v_feature_indices[high_index], CLUSTER_FRAME_ID_IDX], filtered[high_index], 'x', markerfacecolor='green', markeredgecolor='green', markeredgewidth=2.0, markersize=20, alpha=0.5)
 
 plt.title("Features")
 
