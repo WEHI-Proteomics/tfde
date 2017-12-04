@@ -7,8 +7,8 @@ import sqlite3
 import copy
 import argparse
 import os.path
-import matplotlib.pyplot as plt
 from scipy import signal
+import sys
 
 # cluster array indices
 CLUSTER_FRAME_ID_IDX = 0
@@ -25,7 +25,6 @@ DELTA_MZ = 1.003355     # mass difference between Carbon-12 and Carbon-13 isotop
 
 NOISE_ASSESSMENT_WIDTH = 1      # length of time in seconds to average the noise level
 NOISE_ASSESSMENT_OFFSET = 1     # offset in seconds from the end of the search frames
-NOISE_THRESHOLD = 20000
 
 feature_id = 1
 feature_updates = []
@@ -36,38 +35,6 @@ def standard_deviation(mz):
     instrument_resolution = 40000.0
     return (mz / instrument_resolution) / 2.35482
 
-def find_nearest_low_index_below_threshold(base_index, threshold, indices):
-    global clusters_v
-
-    input_values_below_threshold = (clusters_v[indices,CLUSTER_INTENSITY_SUM_IDX] - threshold) < 0
-    change_indices = np.where(np.roll(input_values_below_threshold,1) != input_values_below_threshold)[0]     # for when there is more than one cluster found in a frame, the first cluster will be the most intense
-    if len(change_indices) > 0:
-        distance_from_base = indices[change_indices] - base_index
-        distance_from_base[distance_from_base>0] = -sys.maxint
-        idx = distance_from_base.argmax()
-    else:
-        idx = None
-    return idx
-
-# returns the index of the indices
-def find_nearest_high_index_below_threshold(base_index, threshold, indices):
-    global clusters_v
-
-    print("find_nearest_high_index_below_threshold - base index {}".format(base_index))
-    input_values_below_threshold = (clusters_v[indices,CLUSTER_INTENSITY_SUM_IDX] - threshold) < 0
-    print("input_values_below_threshold {}".format(input_values_below_threshold))
-    change_indices = np.where(np.roll(input_values_below_threshold,1) != input_values_below_threshold)[0]     # for when there is more than one cluster found in a frame, the first cluster will be the most intense
-    print("change_indices {}".format(change_indices))
-    if len(change_indices) > 0:
-        distance_from_base = indices[change_indices] - base_index
-        distance_from_base[distance_from_base<0] = sys.maxint
-        print("distance_from_base {}".format(distance_from_base))
-        idx = distance_from_base.argmin()
-        print("idx {}".format(idx))
-    else:
-        idx = None
-    return idx
-
 # find the corresponding indices in clusters_v for a given frame_id range
 def find_frame_indices(start_frame_id, end_frame_id):
     start_frame_indices = np.where(clusters_v[:,CLUSTER_FRAME_ID_IDX] == start_frame_id)[0]
@@ -75,6 +42,34 @@ def find_frame_indices(start_frame_id, end_frame_id):
     first_start_frame_index = start_frame_indices[0]  # first index of the start frame
     last_end_frame_index = end_frame_indices[len(end_frame_indices)-1]  # last index of the end frame
     return (first_start_frame_index, last_end_frame_index)
+
+def find_nearest_low_index_below_threshold(values, threshold):
+    max_index = np.argmax(values)
+    values_below_threshold = (values - threshold) < 0
+    change_indices = np.where(np.roll(values_below_threshold,1) != values_below_threshold)[0]     # for when there is more than one cluster found in a frame, the first cluster will be the most intense
+    if len(change_indices) > 0:
+        distance_from_base = change_indices - max_index
+        distance_from_base[distance_from_base>0] = -sys.maxint
+        idx = change_indices[distance_from_base.argmax()]
+        if idx == 0:
+            idx = None
+    else:
+        idx = None
+    return idx
+
+def find_nearest_high_index_below_threshold(values, threshold):
+    max_index = np.argmax(values)
+    values_below_threshold = (values - threshold) < 0
+    change_indices = np.where(np.roll(values_below_threshold,1) != values_below_threshold)[0]     # for when there is more than one cluster found in a frame, the first cluster will be the most intense
+    if len(change_indices) > 0:
+        distance_from_base = change_indices - max_index
+        distance_from_base[distance_from_base<0] = sys.maxint
+        idx = change_indices[distance_from_base.argmin()]
+        if idx == 0:
+            idx = None
+    else:
+        idx = None
+    return idx
 
 def find_feature(base_index):
     global clusters_v
@@ -119,6 +114,7 @@ def find_feature(base_index):
 
     # look for other clusters that belong to this feature
     nearby_indices = np.where(
+        (clusters_v[:, CLUSTER_INTENSITY_SUM_IDX] > -1) &
         (clusters_v[:, CLUSTER_FRAME_ID_IDX] >= search_start_frame) &
         (clusters_v[:, CLUSTER_FRAME_ID_IDX] <= search_end_frame) &
         (clusters_v[:, CLUSTER_CHARGE_STATE_IDX] == charge_state) &
@@ -127,6 +123,7 @@ def find_feature(base_index):
 
     # look for other clusters one isotope number down that belong to this feature
     nearby_lower_indices = np.where(
+        (clusters_v[:, CLUSTER_INTENSITY_SUM_IDX] > -1) &
         (clusters_v[:, CLUSTER_FRAME_ID_IDX] >= search_start_frame) &
         (clusters_v[:, CLUSTER_FRAME_ID_IDX] <= search_end_frame) &
         (clusters_v[:, CLUSTER_CHARGE_STATE_IDX] == charge_state) &
@@ -135,6 +132,7 @@ def find_feature(base_index):
 
     # look for other clusters one isotope number up that belong to this feature
     nearby_upper_indices = np.where(
+        (clusters_v[:, CLUSTER_INTENSITY_SUM_IDX] > -1) &
         (clusters_v[:, CLUSTER_FRAME_ID_IDX] >= search_start_frame) &
         (clusters_v[:, CLUSTER_FRAME_ID_IDX] <= search_end_frame) &
         (clusters_v[:, CLUSTER_CHARGE_STATE_IDX] == charge_state) &
@@ -156,24 +154,18 @@ def find_feature(base_index):
     else:
         feature_indices = feature_indices[0]
 
-    # check whether we picked up any remnants of previous features - discard this one if so
-    truncated_feature_remnants = len(np.where(clusters_v[feature_indices, CLUSTER_INTENSITY_SUM_IDX] == -1)[0])
-    if truncated_feature_remnants == 0:
-        quality = 1.0
-    else:
-        quality = 0.0
+    # snip each end where it falls below the intensity threshold
+    filtered = signal.savgol_filter(clusters_v[feature_indices, CLUSTER_INTENSITY_SUM_IDX], window_length=41, polyorder=10)
+    low_snip_index = find_nearest_low_index_below_threshold(filtered, 50000)
+    high_snip_index = find_nearest_high_index_below_threshold(filtered, 50000)
+    indices_to_delete = np.empty(0)
+    if low_snip_index is not None:
+        indices_to_delete = np.concatenate((indices_to_delete,np.arange(low_snip_index)))
+    if high_snip_index is not None:
+        indices_to_delete = np.concatenate((indices_to_delete,np.arange(high_snip_index+1,len(filtered))))
+    feature_indices = np.delete(feature_indices, indices_to_delete, 0)
 
-    filtered = signal.savgol_filter(clusters_v[feature_indices, CLUSTER_INTENSITY_SUM_IDX], window_length=21, polyorder=9)
-
-    f = plt.figure()
-    ax1 = f.add_subplot(111)
-    ax1.plot(clusters_v[feature_indices, CLUSTER_FRAME_ID_IDX], clusters_v[feature_indices, CLUSTER_INTENSITY_SUM_IDX], 'o', markerfacecolor='green', markeredgecolor='black', markeredgewidth=0.0, markersize=6)
-    ax1.plot(clusters_v[feature_indices, CLUSTER_FRAME_ID_IDX], filtered, '-', markerfacecolor='blue', markeredgecolor='black', markeredgewidth=0.0, markersize=6)
-    plt.title("Feature {}".format(feature_id))
-    plt.xlabel('frame')
-    plt.ylabel('intensity')
-    plt.margins(0.02)
-    plt.show()
+    quality = 1.0
 
     # package the result
     results = {}
@@ -193,7 +185,7 @@ parser = argparse.ArgumentParser(description='A method for tracking features thr
 parser.add_argument('-db','--database_name', type=str, help='The name of the source database.', required=True)
 parser.add_argument('-md','--mz_std_dev', type=int, default=4, help='Number of standard deviations to look either side of the base peak, in the m/z dimension.', required=False)
 parser.add_argument('-sd','--scan_std_dev', type=int, default=4, help='Number of standard deviations to look either side of the base peak, in the scan dimension.', required=False)
-parser.add_argument('-nf','--number_of_features', type=int, default=50, help='Maximum number of features to find.', required=False)
+parser.add_argument('-nf','--number_of_features', type=int, help='Maximum number of features to find.', required=False)
 parser.add_argument('-ns','--number_of_seconds', type=int, default=6, help='Number of seconds to look either side of the maximum cluster.', required=False)
 args = parser.parse_args()
 
@@ -238,7 +230,7 @@ print("Finding features")
 start_run = time.time()
 
 # go through each cluster and see whether it belongs to an existing feature
-while feature_id <= args.number_of_features:
+while True:
     # find the most intense cluster
     cluster_max_index = np.argmax(clusters_v[:,CLUSTER_INTENSITY_SUM_IDX])
     cluster = clusters_v[cluster_max_index]
@@ -271,8 +263,13 @@ while feature_id <= args.number_of_features:
 
     # remove the features we've processed from the run
     clusters_v[cluster_indices, CLUSTER_INTENSITY_SUM_IDX] = -1
-    if cluster_intensity < base_noise_level:
+
+    # check whether we have finished
+    if (cluster_intensity < base_noise_level):
         break
+    if args.number_of_features is not None:
+        if feature_id > args.number_of_features:
+            break
 
 stop_run = time.time()
 
