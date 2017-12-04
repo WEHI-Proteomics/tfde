@@ -24,7 +24,7 @@ NUMBER_OF_SECONDS_PER_FRAME = 0.1
 DELTA_MZ = 1.003355     # mass difference between Carbon-12 and Carbon-13 isotopes, in Da
 
 NOISE_ASSESSMENT_WIDTH = 1      # length of time in seconds to average the noise level
-NOISE_ASSESSMENT_OFFSET = 1     # offset in seconds from the end of the search frames
+NOISE_ASSESSMENT_OFFSET = 1     # offset in seconds from the end of the feature frames
 
 feature_id = 1
 feature_updates = []
@@ -51,8 +51,9 @@ def find_nearest_low_index_below_threshold(values, threshold):
         distance_from_base = change_indices - max_index
         distance_from_base[distance_from_base>0] = -sys.maxint
         idx = change_indices[distance_from_base.argmax()]
-        if idx == 0:
-            idx = None
+        if idx >= max_index:
+            idx = 0
+        # print("low - values {}, values_below_threshold {}, max_index {}, change_indices {}, distance_from_base {}, idx {}".format(values, values_below_threshold, max_index, change_indices, distance_from_base, idx))
     else:
         idx = None
     return idx
@@ -65,8 +66,9 @@ def find_nearest_high_index_below_threshold(values, threshold):
         distance_from_base = change_indices - max_index
         distance_from_base[distance_from_base<0] = sys.maxint
         idx = change_indices[distance_from_base.argmin()]
-        if idx == 0:
-            idx = None
+        if idx <= max_index:
+            idx = len(values)-1
+        # print("high - values {}, values_below_threshold {}, max_index {}, change_indices {}, distance_from_base {}, idx {}".format(values, values_below_threshold, max_index, change_indices, distance_from_base, idx))
     else:
         idx = None
     return idx
@@ -86,22 +88,6 @@ def find_feature(base_index):
 
     search_start_frame = max(frame_id-NUMBER_OF_FRAMES_TO_LOOK, int(np.min(clusters_v[:,CLUSTER_FRAME_ID_IDX])))    # make sure they are valid frame_ids
     search_end_frame = min(frame_id+NUMBER_OF_FRAMES_TO_LOOK, int(np.max(clusters_v[:,CLUSTER_FRAME_ID_IDX])))
-
-    lower_noise_eval_frame_1 = search_start_frame - int((NOISE_ASSESSMENT_OFFSET+NOISE_ASSESSMENT_WIDTH)/NUMBER_OF_SECONDS_PER_FRAME)
-    upper_noise_eval_frame_1 = search_start_frame - int(NOISE_ASSESSMENT_OFFSET/NUMBER_OF_SECONDS_PER_FRAME)
-    if (lower_noise_eval_frame_1 >= int(np.min(clusters_v[:,CLUSTER_FRAME_ID_IDX]))):
-        # assess the noise level in this window
-        (lower_noise_frame_1_index, upper_noise_frame_1_index) = find_frame_indices(lower_noise_eval_frame_1, upper_noise_eval_frame_1)
-        noise_level_1 = int(np.average(clusters_v[lower_noise_frame_1_index:upper_noise_frame_1_index,CLUSTER_INTENSITY_SUM_IDX]))
-        noise_level_readings.append(noise_level_1)
-
-    lower_noise_eval_frame_2 = search_end_frame + int((NOISE_ASSESSMENT_OFFSET)/NUMBER_OF_SECONDS_PER_FRAME)
-    upper_noise_eval_frame_2 = search_end_frame + int(NOISE_ASSESSMENT_OFFSET+NOISE_ASSESSMENT_WIDTH/NUMBER_OF_SECONDS_PER_FRAME)
-    if (lower_noise_eval_frame_2 <= int(np.max(clusters_v[:,CLUSTER_FRAME_ID_IDX]))):
-        # assess the noise level in this window
-        (lower_noise_frame_2_index, upper_noise_frame_2_index) = find_frame_indices(lower_noise_eval_frame_2, upper_noise_eval_frame_2)
-        noise_level_2 = int(np.average(clusters_v[lower_noise_frame_2_index:upper_noise_frame_2_index,CLUSTER_INTENSITY_SUM_IDX]))
-        noise_level_readings.append(noise_level_2)
 
     # Seed the search bounds by the properties of the base peaks
     base_max_point_mz = cluster[CLUSTER_BASE_MAX_POINT_MZ_IDX]
@@ -165,6 +151,26 @@ def find_feature(base_index):
         indices_to_delete = np.concatenate((indices_to_delete,np.arange(high_snip_index+1,len(filtered))))
     feature_indices = np.delete(feature_indices, indices_to_delete, 0)
 
+    # find the feature frame range
+    feature_start_frame = int(clusters_v[feature_indices[0],CLUSTER_FRAME_ID_IDX])
+    feature_end_frame = int(clusters_v[feature_indices[len(feature_indices)-1],CLUSTER_FRAME_ID_IDX])
+    # update the noise estimate
+    lower_noise_eval_frame_1 = feature_start_frame - int((NOISE_ASSESSMENT_OFFSET+NOISE_ASSESSMENT_WIDTH)/NUMBER_OF_SECONDS_PER_FRAME)
+    upper_noise_eval_frame_1 = feature_start_frame - int(NOISE_ASSESSMENT_OFFSET/NUMBER_OF_SECONDS_PER_FRAME)
+    if (lower_noise_eval_frame_1 >= int(np.min(clusters_v[:,CLUSTER_FRAME_ID_IDX]))):
+        # assess the noise level in this window
+        (lower_noise_frame_1_index, upper_noise_frame_1_index) = find_frame_indices(lower_noise_eval_frame_1, upper_noise_eval_frame_1)
+        noise_level_1 = int(np.average(clusters_v[lower_noise_frame_1_index:upper_noise_frame_1_index,CLUSTER_INTENSITY_SUM_IDX]))
+        noise_level_readings.append(noise_level_1)
+
+    lower_noise_eval_frame_2 = feature_end_frame + int((NOISE_ASSESSMENT_OFFSET)/NUMBER_OF_SECONDS_PER_FRAME)
+    upper_noise_eval_frame_2 = feature_end_frame + int((NOISE_ASSESSMENT_OFFSET+NOISE_ASSESSMENT_WIDTH)/NUMBER_OF_SECONDS_PER_FRAME)
+    if (lower_noise_eval_frame_2 <= int(np.max(clusters_v[:,CLUSTER_FRAME_ID_IDX]))):
+        # assess the noise level in this window
+        (lower_noise_frame_2_index, upper_noise_frame_2_index) = find_frame_indices(lower_noise_eval_frame_2, upper_noise_eval_frame_2)
+        noise_level_2 = int(np.average(clusters_v[lower_noise_frame_2_index:upper_noise_frame_2_index,CLUSTER_INTENSITY_SUM_IDX]))
+        noise_level_readings.append(noise_level_2)
+
     quality = 1.0
 
     # package the result
@@ -172,8 +178,9 @@ def find_feature(base_index):
     results['base_index'] = base_index
     results['base_cluster_frame_id'] = frame_id
     results['base_cluster_id'] = cluster_id
-    results['search_start_frame'] = search_start_frame
-    results['search_end_frame'] = search_end_frame
+    results['feature_frames'] = (feature_start_frame, feature_end_frame)
+    results['noise_low_frames'] = (lower_noise_eval_frame_1, upper_noise_eval_frame_1)
+    results['noise_high_frames'] = (lower_noise_eval_frame_2, upper_noise_eval_frame_2)
     results['cluster_indices'] = feature_indices
     results['charge_state'] = charge_state
     results['noise_readings'] = (noise_level_1, noise_level_2)
@@ -239,8 +246,9 @@ while True:
     feature = find_feature(base_index=cluster_max_index)
     base_cluster_frame_id = feature['base_cluster_frame_id']
     base_cluster_id = feature['base_cluster_id']
-    search_start_frame = feature['search_start_frame']
-    search_end_frame = feature['search_end_frame']
+    feature_frames = feature['feature_frames']
+    noise_low_frames = feature['noise_low_frames']
+    noise_high_frames = feature['noise_high_frames']
     cluster_indices = feature['cluster_indices']
     charge_state = feature['charge_state']
     noise_readings = feature['noise_readings']
@@ -249,14 +257,14 @@ while True:
     base_noise_level = int(np.average(noise_level_readings))
 
     if quality > 0.5:
-        print("feature {}, search frames {}-{}, intensity {}, length {}, noise readings {}, base noise level {}".format(feature_id, search_start_frame, search_end_frame, cluster_intensity, len(cluster_indices), noise_readings, base_noise_level))
+        print("feature {}, feature frames {}, intensity {}, length {}, noise low frames {}, noise high frames {}, noise readings {}, base noise level {}".format(feature_id, feature_frames, cluster_intensity, len(cluster_indices), noise_low_frames, noise_high_frames, noise_readings, base_noise_level))
         # Assign this feature ID to all the clusters in the feature
         for cluster_idx in cluster_indices:
             values = (feature_id, int(clusters_v[cluster_idx][CLUSTER_FRAME_ID_IDX]), int(clusters_v[cluster_idx][CLUSTER_ID_IDX]))
             cluster_updates.append(values)
 
         # Add the feature's details to the collection
-        values = (feature_id, base_cluster_frame_id, base_cluster_id, charge_state, search_start_frame, search_end_frame, quality)
+        values = (feature_id, base_cluster_frame_id, base_cluster_id, charge_state, feature_frames[0], feature_frames[1], quality)
         feature_updates.append(values)
 
         feature_id += 1
