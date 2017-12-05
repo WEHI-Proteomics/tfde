@@ -137,19 +137,23 @@ def find_feature(base_index):
     if len(np.unique(frame_ids)) > 1:
         frame_change_indices = np.where(np.roll(frame_ids,1) != frame_ids)[0]     # for when there is more than one cluster found in a frame, the first cluster will be the most intense
         feature_indices = feature_indices[frame_change_indices]
-    else:
-        feature_indices = feature_indices[0]
 
-    # snip each end where it falls below the intensity threshold
-    filtered = signal.savgol_filter(clusters_v[feature_indices, CLUSTER_INTENSITY_SUM_IDX], window_length=41, polyorder=10)
-    low_snip_index = find_nearest_low_index_below_threshold(filtered, 50000)
-    high_snip_index = find_nearest_high_index_below_threshold(filtered, 50000)
-    indices_to_delete = np.empty(0)
-    if low_snip_index is not None:
-        indices_to_delete = np.concatenate((indices_to_delete,np.arange(low_snip_index)))
-    if high_snip_index is not None:
-        indices_to_delete = np.concatenate((indices_to_delete,np.arange(high_snip_index+1,len(filtered))))
-    feature_indices = np.delete(feature_indices, indices_to_delete, 0)
+    if len(feature_indices) > 20:
+        # snip each end where it falls below the intensity threshold
+        filtered = signal.savgol_filter(clusters_v[feature_indices, CLUSTER_INTENSITY_SUM_IDX], window_length=11, polyorder=3)
+        low_snip_index = find_nearest_low_index_below_threshold(filtered, 50000)
+        high_snip_index = find_nearest_high_index_below_threshold(filtered, 50000)
+        indices_to_delete = np.empty(0)
+        if low_snip_index is not None:
+            indices_to_delete = np.concatenate((indices_to_delete,np.arange(low_snip_index)))
+        if high_snip_index is not None:
+            indices_to_delete = np.concatenate((indices_to_delete,np.arange(high_snip_index+1,len(filtered))))
+        feature_indices = np.delete(feature_indices, indices_to_delete, 0)
+        quality = 1.0
+    elif len(feature_indices) > 10:
+        quality = 0.8
+    else:
+        quality = 0.0
 
     # find the feature frame range
     feature_start_frame = int(clusters_v[feature_indices[0],CLUSTER_FRAME_ID_IDX])
@@ -165,13 +169,11 @@ def find_feature(base_index):
 
     lower_noise_eval_frame_2 = feature_end_frame + int((NOISE_ASSESSMENT_OFFSET)/NUMBER_OF_SECONDS_PER_FRAME)
     upper_noise_eval_frame_2 = feature_end_frame + int((NOISE_ASSESSMENT_OFFSET+NOISE_ASSESSMENT_WIDTH)/NUMBER_OF_SECONDS_PER_FRAME)
-    if (lower_noise_eval_frame_2 <= int(np.max(clusters_v[:,CLUSTER_FRAME_ID_IDX]))):
+    if (upper_noise_eval_frame_2 <= int(np.max(clusters_v[:,CLUSTER_FRAME_ID_IDX]))):
         # assess the noise level in this window
         (lower_noise_frame_2_index, upper_noise_frame_2_index) = find_frame_indices(lower_noise_eval_frame_2, upper_noise_eval_frame_2)
         noise_level_2 = int(np.average(clusters_v[lower_noise_frame_2_index:upper_noise_frame_2_index,CLUSTER_INTENSITY_SUM_IDX]))
         noise_level_readings.append(noise_level_2)
-
-    quality = 1.0
 
     # package the result
     results = {}
