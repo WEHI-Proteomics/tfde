@@ -149,24 +149,25 @@ def find_feature(base_index):
         filtered_max_index = np.argmax(filtered)
         filtered_max_value = filtered[filtered_max_index]
 
-        f = plt.figure()
-        ax1 = f.add_subplot(111)
-        ax1.plot(clusters_v[feature_indices, CLUSTER_FRAME_ID_IDX], clusters_v[feature_indices, CLUSTER_INTENSITY_SUM_IDX], 'o', markerfacecolor='green', markeredgecolor='black', markeredgewidth=0.0, markersize=6)
-        ax1.plot(clusters_v[feature_indices, CLUSTER_FRAME_ID_IDX], filtered, '-', markerfacecolor='blue', markeredgecolor='black', markeredgewidth=0.0, markersize=6)
+        # f = plt.figure()
+        # ax1 = f.add_subplot(111)
+        # ax1.plot(clusters_v[feature_indices, CLUSTER_FRAME_ID_IDX], clusters_v[feature_indices, CLUSTER_INTENSITY_SUM_IDX], 'o', markerfacecolor='green', markeredgecolor='black', markeredgewidth=0.0, markersize=6)
+        # ax1.plot(clusters_v[feature_indices, CLUSTER_FRAME_ID_IDX], filtered, '-', markerfacecolor='blue', markeredgecolor='black', markeredgewidth=0.0, markersize=6)
 
         low_snip_index = None
         high_snip_index = None
 
         peak_maxima_indexes = peakutils.indexes(filtered, thres=0.01, min_dist=10)
-        print("found {} peaks".format(len(peak_maxima_indexes)))
         peak_minima_indexes = []
         peak_minima_indexes.append(0)
+        peak_minima_indexes = peak_minima_indexes + np.where(filtered < base_noise_level)[0].tolist()
         if len(peak_maxima_indexes) > 1:
             for idx,peak_maxima_index in enumerate(peak_maxima_indexes):
                 if idx>0:
                     minimum_intensity_index = np.argmin(filtered[peak_maxima_indexes[idx-1]:peak_maxima_indexes[idx]+1]) + peak_maxima_indexes[idx-1]
                     peak_minima_indexes.append(minimum_intensity_index)
         peak_minima_indexes.append(len(filtered)-1)
+        peak_minima_indexes = sorted(peak_minima_indexes)
 
         # find the low snip index
         for idx in peak_minima_indexes:
@@ -177,23 +178,21 @@ def find_feature(base_index):
             if (filtered[idx] < (filtered_max_value / 10.0) or (filtered[idx] < base_noise_level)) and (idx > filtered_max_index):
                 high_snip_index = idx
 
-        print("feature length {}, low snip {}, high snip {}".format(len(filtered), low_snip_index, high_snip_index))
-
         # visualise what's going on
-        if low_snip_index is not None:
-            ax1.plot(clusters_v[feature_indices[low_snip_index], CLUSTER_FRAME_ID_IDX], filtered[low_snip_index], 'x', markerfacecolor='purple', markeredgecolor='black', markeredgewidth=6.0, markersize=10, alpha=0.5)
-        else:
-            ax1.plot(clusters_v[feature_indices[0], CLUSTER_FRAME_ID_IDX], filtered[0], 'x', markerfacecolor='purple', markeredgecolor='black', markeredgewidth=6.0, markersize=10, alpha=0.5)
+        # if low_snip_index is not None:
+        #     ax1.plot(clusters_v[feature_indices[low_snip_index], CLUSTER_FRAME_ID_IDX], filtered[low_snip_index], 'x', markerfacecolor='purple', markeredgecolor='black', markeredgewidth=6.0, markersize=10, alpha=0.5)
+        # else:
+        #     ax1.plot(clusters_v[feature_indices[0], CLUSTER_FRAME_ID_IDX], filtered[0], 'x', markerfacecolor='purple', markeredgecolor='black', markeredgewidth=6.0, markersize=10, alpha=0.5)
 
-        if high_snip_index is not None:
-            ax1.plot(clusters_v[feature_indices[high_snip_index], CLUSTER_FRAME_ID_IDX], filtered[high_snip_index], 'x', markerfacecolor='purple', markeredgecolor='black', markeredgewidth=6.0, markersize=10, alpha=0.5)
-        else:
-            ax1.plot(clusters_v[feature_indices[len(filtered)-1], CLUSTER_FRAME_ID_IDX], filtered[len(filtered)-1], 'x', markerfacecolor='purple', markeredgecolor='black', markeredgewidth=6.0, markersize=10, alpha=0.5)
+        # if high_snip_index is not None:
+        #     ax1.plot(clusters_v[feature_indices[high_snip_index], CLUSTER_FRAME_ID_IDX], filtered[high_snip_index], 'x', markerfacecolor='purple', markeredgecolor='black', markeredgewidth=6.0, markersize=10, alpha=0.5)
+        # else:
+        #     ax1.plot(clusters_v[feature_indices[len(filtered)-1], CLUSTER_FRAME_ID_IDX], filtered[len(filtered)-1], 'x', markerfacecolor='purple', markeredgecolor='black', markeredgewidth=6.0, markersize=10, alpha=0.5)
 
-        plt.xlabel('frame')
-        plt.ylabel('intensity')
-        plt.margins(0.02)
-        plt.show()
+        # plt.xlabel('frame')
+        # plt.ylabel('intensity')
+        # plt.margins(0.02)
+        # plt.show()
 
         indices_to_delete = np.empty(0)
         if low_snip_index is not None:
