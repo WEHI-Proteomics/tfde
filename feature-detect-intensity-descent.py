@@ -9,6 +9,8 @@ import argparse
 import os.path
 from scipy import signal
 import sys
+import matplotlib.pyplot as plt
+import peakutils
 
 # cluster array indices
 CLUSTER_FRAME_ID_IDX = 0
@@ -100,7 +102,7 @@ def find_feature(base_index):
 
     # look for other clusters that belong to this feature
     nearby_indices = np.where(
-        (clusters_v[:, CLUSTER_INTENSITY_SUM_IDX] > -1) &
+        (clusters_v[:, CLUSTER_INTENSITY_SUM_IDX] > 0) &
         (clusters_v[:, CLUSTER_FRAME_ID_IDX] >= search_start_frame) &
         (clusters_v[:, CLUSTER_FRAME_ID_IDX] <= search_end_frame) &
         (clusters_v[:, CLUSTER_CHARGE_STATE_IDX] == charge_state) &
@@ -109,7 +111,7 @@ def find_feature(base_index):
 
     # look for other clusters one isotope number down that belong to this feature
     nearby_lower_indices = np.where(
-        (clusters_v[:, CLUSTER_INTENSITY_SUM_IDX] > -1) &
+        (clusters_v[:, CLUSTER_INTENSITY_SUM_IDX] > 0) &
         (clusters_v[:, CLUSTER_FRAME_ID_IDX] >= search_start_frame) &
         (clusters_v[:, CLUSTER_FRAME_ID_IDX] <= search_end_frame) &
         (clusters_v[:, CLUSTER_CHARGE_STATE_IDX] == charge_state) &
@@ -118,7 +120,7 @@ def find_feature(base_index):
 
     # look for other clusters one isotope number up that belong to this feature
     nearby_upper_indices = np.where(
-        (clusters_v[:, CLUSTER_INTENSITY_SUM_IDX] > -1) &
+        (clusters_v[:, CLUSTER_INTENSITY_SUM_IDX] > 0) &
         (clusters_v[:, CLUSTER_FRAME_ID_IDX] >= search_start_frame) &
         (clusters_v[:, CLUSTER_FRAME_ID_IDX] <= search_end_frame) &
         (clusters_v[:, CLUSTER_CHARGE_STATE_IDX] == charge_state) &
@@ -138,11 +140,64 @@ def find_feature(base_index):
         frame_change_indices = np.where(np.roll(frame_ids,1) != frame_ids)[0]     # for when there is more than one cluster found in a frame, the first cluster will be the most intense
         feature_indices = feature_indices[frame_change_indices]
 
+    # trim the ends to make sure we only get one feature
     if len(feature_indices) > 20:
         # snip each end where it falls below the intensity threshold
         filtered = signal.savgol_filter(clusters_v[feature_indices, CLUSTER_INTENSITY_SUM_IDX], window_length=11, polyorder=3)
-        low_snip_index = find_nearest_low_index_below_threshold(filtered, 50000)
-        high_snip_index = find_nearest_high_index_below_threshold(filtered, 50000)
+        filtered_max_index = np.argmax(filtered)
+        filtered_max_value = filtered[filtered_max_index]
+
+        f = plt.figure()
+        ax1 = f.add_subplot(111)
+        ax1.plot(clusters_v[feature_indices, CLUSTER_FRAME_ID_IDX], clusters_v[feature_indices, CLUSTER_INTENSITY_SUM_IDX], 'o', markerfacecolor='green', markeredgecolor='black', markeredgewidth=0.0, markersize=6)
+        ax1.plot(clusters_v[feature_indices, CLUSTER_FRAME_ID_IDX], filtered, '-', markerfacecolor='blue', markeredgecolor='black', markeredgewidth=0.0, markersize=6)
+
+        low_snip_index = None
+        high_snip_index = None
+
+        peak_maxima_indexes = peakutils.indexes(filtered, thres=0.01, min_dist=10)
+        print("found {} peaks".format(len(peak_maxima_indexes)))
+        peak_minima_indexes = []
+        if len(peak_maxima_indexes) > 1:
+            for idx,peak_maxima_index in enumerate(peak_maxima_indexes):
+                if idx>0:
+                    intensities_between_maxima = filtered[peak_maxima_indexes[idx-1]:peak_maxima_indexes[idx]+1]
+                    minimum_intensity_index = np.argmin(intensities_between_maxima)+peak_maxima_indexes[idx-1]
+                    peak_minima_indexes.append(minimum_intensity_index)
+            # find the low snip index
+            for idx in peak_minima_indexes:
+                if (filtered[idx] < (filtered_max_value / 10.0)) and (idx < filtered_max_index):
+                    low_snip_index = idx
+            # find the high snip index
+            for idx in reversed(peak_minima_indexes):
+                if (filtered[idx] < (filtered_max_value / 10.0)) and (idx > filtered_max_index):
+                    high_snip_index = idx
+        else:
+            # find the low snip index
+            for idx,filtered_value in enumerate(filtered):
+                if (filtered_value < (filtered_max_value / 10.0)) and (idx < filtered_max_index):
+                    low_snip_index = idx
+            # find the high snip index
+            for idx,filtered_value in enumerate(reversed(peak_minima_indexes)):
+                if (filtered_value < (filtered_max_value / 10.0)) and (idx > filtered_max_index):
+                    high_snip_index = idx
+
+        # visualise what's going on
+        if low_snip_index is not None:
+            ax1.plot(clusters_v[feature_indices[low_snip_index], CLUSTER_FRAME_ID_IDX], filtered[low_snip_index], 'x', markerfacecolor='purple', markeredgecolor='black', markeredgewidth=6.0, markersize=10, alpha=0.5)
+        else:
+            ax1.plot(clusters_v[feature_indices[0], CLUSTER_FRAME_ID_IDX], filtered[0], 'x', markerfacecolor='purple', markeredgecolor='black', markeredgewidth=6.0, markersize=10, alpha=0.5)
+
+        if high_snip_index is not None:
+            ax1.plot(clusters_v[feature_indices[high_snip_index], CLUSTER_FRAME_ID_IDX], filtered[high_snip_index], 'x', markerfacecolor='purple', markeredgecolor='black', markeredgewidth=6.0, markersize=10, alpha=0.5)
+        else:
+            ax1.plot(clusters_v[feature_indices[len(filtered)-1], CLUSTER_FRAME_ID_IDX], filtered[len(filtered)-1], 'x', markerfacecolor='purple', markeredgecolor='black', markeredgewidth=6.0, markersize=10, alpha=0.5)
+
+        plt.xlabel('frame')
+        plt.ylabel('intensity')
+        plt.margins(0.02)
+        plt.show()
+
         indices_to_delete = np.empty(0)
         if low_snip_index is not None:
             indices_to_delete = np.concatenate((indices_to_delete,np.arange(low_snip_index)))
