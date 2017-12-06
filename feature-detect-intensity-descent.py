@@ -32,6 +32,7 @@ feature_id = 1
 feature_updates = []
 cluster_updates = []
 noise_level_readings = []
+base_noise_level = 15000
 
 def standard_deviation(mz):
     instrument_resolution = 40000.0
@@ -78,6 +79,7 @@ def find_nearest_high_index_below_threshold(values, threshold):
 def find_feature(base_index):
     global clusters_v
     global noise_level_readings
+    global base_noise_level
 
     noise_level_1 = None
     noise_level_2 = None
@@ -158,29 +160,24 @@ def find_feature(base_index):
         peak_maxima_indexes = peakutils.indexes(filtered, thres=0.01, min_dist=10)
         print("found {} peaks".format(len(peak_maxima_indexes)))
         peak_minima_indexes = []
+        peak_minima_indexes.append(0)
         if len(peak_maxima_indexes) > 1:
             for idx,peak_maxima_index in enumerate(peak_maxima_indexes):
                 if idx>0:
-                    intensities_between_maxima = filtered[peak_maxima_indexes[idx-1]:peak_maxima_indexes[idx]+1]
-                    minimum_intensity_index = np.argmin(intensities_between_maxima)+peak_maxima_indexes[idx-1]
+                    minimum_intensity_index = np.argmin(filtered[peak_maxima_indexes[idx-1]:peak_maxima_indexes[idx]+1]) + peak_maxima_indexes[idx-1]
                     peak_minima_indexes.append(minimum_intensity_index)
-            # find the low snip index
-            for idx in peak_minima_indexes:
-                if (filtered[idx] < (filtered_max_value / 10.0)) and (idx < filtered_max_index):
-                    low_snip_index = idx
-            # find the high snip index
-            for idx in reversed(peak_minima_indexes):
-                if (filtered[idx] < (filtered_max_value / 10.0)) and (idx > filtered_max_index):
-                    high_snip_index = idx
-        else:
-            # find the low snip index
-            for idx,filtered_value in enumerate(filtered):
-                if (filtered_value < (filtered_max_value / 10.0)) and (idx < filtered_max_index):
-                    low_snip_index = idx
-            # find the high snip index
-            for idx,filtered_value in enumerate(reversed(peak_minima_indexes)):
-                if (filtered_value < (filtered_max_value / 10.0)) and (idx > filtered_max_index):
-                    high_snip_index = idx
+        peak_minima_indexes.append(len(filtered)-1)
+
+        # find the low snip index
+        for idx in peak_minima_indexes:
+            if (filtered[idx] < (filtered_max_value / 10.0) or (filtered[idx] < base_noise_level)) and (idx < filtered_max_index):
+                low_snip_index = idx
+        # find the high snip index
+        for idx in reversed(peak_minima_indexes):
+            if (filtered[idx] < (filtered_max_value / 10.0) or (filtered[idx] < base_noise_level)) and (idx > filtered_max_index):
+                high_snip_index = idx
+
+        print("feature length {}, low snip {}, high snip {}".format(len(filtered), low_snip_index, high_snip_index))
 
         # visualise what's going on
         if low_snip_index is not None:
