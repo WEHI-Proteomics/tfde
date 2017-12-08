@@ -200,33 +200,42 @@ def find_feature(base_index):
         if high_snip_index is not None:
             indices_to_delete = np.concatenate((indices_to_delete,np.arange(high_snip_index+1,len(filtered))))
         feature_indices = np.delete(feature_indices, indices_to_delete, 0)
+
+    # score the feature quality
+    if len(feature_indices) >= MINIMUM_NUMBER_OF_FRAMES:
         quality = 1.0
-    elif len(feature_indices) > 10:
-        quality = 0.8
+
+        # find the feature frame range
+        feature_start_frame = int(clusters_v[feature_indices[0],CLUSTER_FRAME_ID_IDX])
+        feature_end_frame = int(clusters_v[feature_indices[len(feature_indices)-1],CLUSTER_FRAME_ID_IDX])
+        # update the noise estimate
+        lower_noise_eval_frame_1 = feature_start_frame - int((NOISE_ASSESSMENT_OFFSET+NOISE_ASSESSMENT_WIDTH)/NUMBER_OF_SECONDS_PER_FRAME)
+        upper_noise_eval_frame_1 = feature_start_frame - int(NOISE_ASSESSMENT_OFFSET/NUMBER_OF_SECONDS_PER_FRAME)
+        if (lower_noise_eval_frame_1 >= int(np.min(clusters_v[:,CLUSTER_FRAME_ID_IDX]))):
+            # assess the noise level in this window
+            (lower_noise_frame_1_index, upper_noise_frame_1_index) = find_frame_indices(lower_noise_eval_frame_1, upper_noise_eval_frame_1)
+            noise_indices = np.where(clusters_v[lower_noise_frame_1_index:upper_noise_frame_1_index,CLUSTER_INTENSITY_SUM_IDX] > 0)[0]
+            noise_level_1 = int(np.average(clusters_v[lower_noise_frame_1_index:upper_noise_frame_1_index,CLUSTER_INTENSITY_SUM_IDX][noise_indices]))
+            noise_level_readings.append(noise_level_1)
+
+        lower_noise_eval_frame_2 = feature_end_frame + int((NOISE_ASSESSMENT_OFFSET)/NUMBER_OF_SECONDS_PER_FRAME)
+        upper_noise_eval_frame_2 = feature_end_frame + int((NOISE_ASSESSMENT_OFFSET+NOISE_ASSESSMENT_WIDTH)/NUMBER_OF_SECONDS_PER_FRAME)
+        if (upper_noise_eval_frame_2 <= int(np.max(clusters_v[:,CLUSTER_FRAME_ID_IDX]))):
+            # assess the noise level in this window
+            (lower_noise_frame_2_index, upper_noise_frame_2_index) = find_frame_indices(lower_noise_eval_frame_2, upper_noise_eval_frame_2)
+            noise_indices = np.where(clusters_v[lower_noise_frame_2_index:upper_noise_frame_2_index,CLUSTER_INTENSITY_SUM_IDX] > 0)[0]
+            noise_level_2 = int(np.average(clusters_v[lower_noise_frame_2_index:upper_noise_frame_2_index,CLUSTER_INTENSITY_SUM_IDX][noise_indices]))
+            noise_level_readings.append(noise_level_2)
     else:
         quality = 0.0
-
-    # find the feature frame range
-    feature_start_frame = int(clusters_v[feature_indices[0],CLUSTER_FRAME_ID_IDX])
-    feature_end_frame = int(clusters_v[feature_indices[len(feature_indices)-1],CLUSTER_FRAME_ID_IDX])
-    # update the noise estimate
-    lower_noise_eval_frame_1 = feature_start_frame - int((NOISE_ASSESSMENT_OFFSET+NOISE_ASSESSMENT_WIDTH)/NUMBER_OF_SECONDS_PER_FRAME)
-    upper_noise_eval_frame_1 = feature_start_frame - int(NOISE_ASSESSMENT_OFFSET/NUMBER_OF_SECONDS_PER_FRAME)
-    if (lower_noise_eval_frame_1 >= int(np.min(clusters_v[:,CLUSTER_FRAME_ID_IDX]))):
-        # assess the noise level in this window
-        (lower_noise_frame_1_index, upper_noise_frame_1_index) = find_frame_indices(lower_noise_eval_frame_1, upper_noise_eval_frame_1)
-        noise_indices = np.where(clusters_v[lower_noise_frame_1_index:upper_noise_frame_1_index,CLUSTER_INTENSITY_SUM_IDX] > 0)[0]
-        noise_level_1 = int(np.average(clusters_v[lower_noise_frame_1_index:upper_noise_frame_1_index,CLUSTER_INTENSITY_SUM_IDX][noise_indices]))
-        noise_level_readings.append(noise_level_1)
-
-    lower_noise_eval_frame_2 = feature_end_frame + int((NOISE_ASSESSMENT_OFFSET)/NUMBER_OF_SECONDS_PER_FRAME)
-    upper_noise_eval_frame_2 = feature_end_frame + int((NOISE_ASSESSMENT_OFFSET+NOISE_ASSESSMENT_WIDTH)/NUMBER_OF_SECONDS_PER_FRAME)
-    if (upper_noise_eval_frame_2 <= int(np.max(clusters_v[:,CLUSTER_FRAME_ID_IDX]))):
-        # assess the noise level in this window
-        (lower_noise_frame_2_index, upper_noise_frame_2_index) = find_frame_indices(lower_noise_eval_frame_2, upper_noise_eval_frame_2)
-        noise_indices = np.where(clusters_v[lower_noise_frame_2_index:upper_noise_frame_2_index,CLUSTER_INTENSITY_SUM_IDX] > 0)[0]
-        noise_level_2 = int(np.average(clusters_v[lower_noise_frame_2_index:upper_noise_frame_2_index,CLUSTER_INTENSITY_SUM_IDX][noise_indices]))
-        noise_level_readings.append(noise_level_2)
+        feature_start_frame = None
+        feature_end_frame = None
+        lower_noise_eval_frame_1 = None
+        upper_noise_eval_frame_1 = None
+        lower_noise_eval_frame_2 = None
+        upper_noise_eval_frame_2 = None
+        noise_level_1 = None
+        noise_level_2 = None
 
     # package the result
     results = {}
@@ -248,10 +257,12 @@ parser.add_argument('-db','--database_name', type=str, help='The name of the sou
 parser.add_argument('-md','--mz_std_dev', type=int, default=4, help='Number of standard deviations to look either side of the base peak, in the m/z dimension.', required=False)
 parser.add_argument('-sd','--scan_std_dev', type=int, default=4, help='Number of standard deviations to look either side of the base peak, in the scan dimension.', required=False)
 parser.add_argument('-nf','--number_of_features', type=int, help='Maximum number of features to find.', required=False)
-parser.add_argument('-ns','--number_of_seconds', type=int, default=6, help='Number of seconds to look either side of the maximum cluster.', required=False)
+parser.add_argument('-ns','--number_of_seconds_each_side', type=int, default=20, help='Number of seconds to look either side of the maximum cluster.', required=False)
+parser.add_argument('-ml','--minimum_feature_length', type=int, default=6, help='Minimum number of seconds for a feature to be valid.', required=False)
 args = parser.parse_args()
 
-NUMBER_OF_FRAMES_TO_LOOK = int(args.number_of_seconds / NUMBER_OF_SECONDS_PER_FRAME)
+NUMBER_OF_FRAMES_TO_LOOK = int(args.number_of_seconds_each_side / NUMBER_OF_SECONDS_PER_FRAME)
+MINIMUM_NUMBER_OF_FRAMES = int(args.minimum_feature_length / NUMBER_OF_SECONDS_PER_FRAME)
 
 # Store the arguments as metadata in the database for later reference
 feature_info = []
@@ -323,6 +334,8 @@ while True:
         feature_updates.append(values)
 
         feature_id += 1
+    else:
+        print("poor quality feature - discarding (intensity {}, base noise level {})".format(cluster_intensity, base_noise_level))
 
     # remove the features we've processed from the run
     clusters_v[cluster_indices, CLUSTER_INTENSITY_SUM_IDX] = -1
