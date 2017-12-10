@@ -11,6 +11,7 @@ from scipy import signal
 import sys
 import matplotlib.pyplot as plt
 import peakutils
+from collections import deque
 
 # cluster array indices
 CLUSTER_FRAME_ID_IDX = 0
@@ -28,11 +29,14 @@ DELTA_MZ = 1.003355     # mass difference between Carbon-12 and Carbon-13 isotop
 NOISE_ASSESSMENT_WIDTH = 1      # length of time in seconds to average the noise level
 NOISE_ASSESSMENT_OFFSET = 1     # offset in seconds from the end of the feature frames
 
+TOLERANCE_OF_POOR_QUALITY = 250
+
 feature_id = 1
 feature_updates = []
 cluster_updates = []
 noise_level_readings = []
 base_noise_level = 15000
+feature_discovery_history = deque(maxlen=TOLERANCE_OF_POOR_QUALITY)
 
 def standard_deviation(mz):
     instrument_resolution = 40000.0
@@ -149,10 +153,11 @@ def find_feature(base_index):
         filtered_max_index = np.argmax(filtered)
         filtered_max_value = filtered[filtered_max_index]
 
-        # f = plt.figure()
-        # ax1 = f.add_subplot(111)
-        # ax1.plot(clusters_v[feature_indices, CLUSTER_FRAME_ID_IDX], clusters_v[feature_indices, CLUSTER_INTENSITY_SUM_IDX], 'o', markerfacecolor='green', markeredgecolor='black', markeredgewidth=0.0, markersize=6)
-        # ax1.plot(clusters_v[feature_indices, CLUSTER_FRAME_ID_IDX], filtered, '-', markerfacecolor='blue', markeredgecolor='black', markeredgewidth=0.0, markersize=6)
+        if (feature_id >= 1000) and (feature_id <= 1010):
+            f = plt.figure()
+            ax1 = f.add_subplot(111)
+            ax1.plot(clusters_v[feature_indices, CLUSTER_FRAME_ID_IDX], clusters_v[feature_indices, CLUSTER_INTENSITY_SUM_IDX], 'o', markerfacecolor='green', markeredgecolor='black', markeredgewidth=0.0, markersize=6)
+            ax1.plot(clusters_v[feature_indices, CLUSTER_FRAME_ID_IDX], filtered, '-', markerfacecolor='blue', markeredgecolor='black', markeredgewidth=0.0, markersize=6)
 
         low_snip_index = None
         high_snip_index = None
@@ -178,21 +183,22 @@ def find_feature(base_index):
             if (filtered[idx] < (filtered_max_value / 10.0) or (filtered[idx] < base_noise_level)) and (idx > filtered_max_index):
                 high_snip_index = idx
 
-        # visualise what's going on
-        # if low_snip_index is not None:
-        #     ax1.plot(clusters_v[feature_indices[low_snip_index], CLUSTER_FRAME_ID_IDX], filtered[low_snip_index], 'x', markerfacecolor='purple', markeredgecolor='black', markeredgewidth=6.0, markersize=10, alpha=0.5)
-        # else:
-        #     ax1.plot(clusters_v[feature_indices[0], CLUSTER_FRAME_ID_IDX], filtered[0], 'x', markerfacecolor='purple', markeredgecolor='black', markeredgewidth=6.0, markersize=10, alpha=0.5)
+        if (feature_id >= 1000) and (feature_id <= 1010):
+            # visualise what's going on
+            if low_snip_index is not None:
+                ax1.plot(clusters_v[feature_indices[low_snip_index], CLUSTER_FRAME_ID_IDX], filtered[low_snip_index], 'x', markerfacecolor='red', markeredgecolor='red', markeredgewidth=4.0, markersize=15, alpha=1.0)
+            else:
+                ax1.plot(clusters_v[feature_indices[0], CLUSTER_FRAME_ID_IDX], filtered[0], 'x', markerfacecolor='red', markeredgecolor='red', markeredgewidth=4.0, markersize=15, alpha=1.0)
 
-        # if high_snip_index is not None:
-        #     ax1.plot(clusters_v[feature_indices[high_snip_index], CLUSTER_FRAME_ID_IDX], filtered[high_snip_index], 'x', markerfacecolor='purple', markeredgecolor='black', markeredgewidth=6.0, markersize=10, alpha=0.5)
-        # else:
-        #     ax1.plot(clusters_v[feature_indices[len(filtered)-1], CLUSTER_FRAME_ID_IDX], filtered[len(filtered)-1], 'x', markerfacecolor='purple', markeredgecolor='black', markeredgewidth=6.0, markersize=10, alpha=0.5)
+            if high_snip_index is not None:
+                ax1.plot(clusters_v[feature_indices[high_snip_index], CLUSTER_FRAME_ID_IDX], filtered[high_snip_index], 'x', markerfacecolor='red', markeredgecolor='red', markeredgewidth=4.0, markersize=15, alpha=1.0)
+            else:
+                ax1.plot(clusters_v[feature_indices[len(filtered)-1], CLUSTER_FRAME_ID_IDX], filtered[len(filtered)-1], 'x', markerfacecolor='red', markeredgecolor='red', markeredgewidth=4.0, markersize=15, alpha=1.0)
 
-        # plt.xlabel('frame')
-        # plt.ylabel('intensity')
-        # plt.margins(0.02)
-        # plt.show()
+            plt.xlabel('frame')
+            plt.ylabel('intensity')
+            plt.margins(0.02)
+            plt.show()
 
         indices_to_delete = np.empty(0)
         if low_snip_index is not None:
@@ -321,6 +327,7 @@ while True:
     quality = feature['quality']
 
     base_noise_level = int(np.average(noise_level_readings))
+    feature_discovery_history.append(quality)
 
     if quality > 0.5:
         print("feature {}, feature frames {}, intensity {}, length {}, noise low frames {}, noise high frames {}, noise readings {}, base noise level {}".format(feature_id, feature_frames, cluster_intensity, len(cluster_indices), noise_low_frames, noise_high_frames, noise_readings, base_noise_level))
@@ -343,9 +350,10 @@ while True:
     # check whether we have finished
     if (cluster_intensity < base_noise_level):
         break
-    if args.number_of_features is not None:
-        if feature_id > args.number_of_features:
-            break
+    if ((args.number_of_features is not None) and (feature_id > args.number_of_features)):
+        break
+    if (feature_discovery_history.count(0.0) == TOLERANCE_OF_POOR_QUALITY):
+        break
 
 stop_run = time.time()
 
