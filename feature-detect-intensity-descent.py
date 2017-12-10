@@ -153,11 +153,10 @@ def find_feature(base_index):
         filtered_max_index = np.argmax(filtered)
         filtered_max_value = filtered[filtered_max_index]
 
-        if (feature_id >= 1000) and (feature_id <= 1010):
-            f = plt.figure()
-            ax1 = f.add_subplot(111)
-            ax1.plot(clusters_v[feature_indices, CLUSTER_FRAME_ID_IDX], clusters_v[feature_indices, CLUSTER_INTENSITY_SUM_IDX], 'o', markerfacecolor='green', markeredgecolor='black', markeredgewidth=0.0, markersize=6)
-            ax1.plot(clusters_v[feature_indices, CLUSTER_FRAME_ID_IDX], filtered, '-', markerfacecolor='blue', markeredgecolor='black', markeredgewidth=0.0, markersize=6)
+        f = plt.figure()
+        ax1 = f.add_subplot(111)
+        ax1.plot(clusters_v[feature_indices, CLUSTER_FRAME_ID_IDX], clusters_v[feature_indices, CLUSTER_INTENSITY_SUM_IDX], 'o', markerfacecolor='green', markeredgecolor='black', markeredgewidth=0.0, markersize=6)
+        ax1.plot(clusters_v[feature_indices, CLUSTER_FRAME_ID_IDX], filtered, '-', markerfacecolor='blue', markeredgecolor='black', markeredgewidth=0.0, markersize=6)
 
         low_snip_index = None
         high_snip_index = None
@@ -183,22 +182,21 @@ def find_feature(base_index):
             if (filtered[idx] < (filtered_max_value / 10.0) or (filtered[idx] < base_noise_level)) and (idx > filtered_max_index):
                 high_snip_index = idx
 
-        if (feature_id >= 1000) and (feature_id <= 1010):
-            # visualise what's going on
-            if low_snip_index is not None:
-                ax1.plot(clusters_v[feature_indices[low_snip_index], CLUSTER_FRAME_ID_IDX], filtered[low_snip_index], 'x', markerfacecolor='red', markeredgecolor='red', markeredgewidth=4.0, markersize=15, alpha=1.0)
-            else:
-                ax1.plot(clusters_v[feature_indices[0], CLUSTER_FRAME_ID_IDX], filtered[0], 'x', markerfacecolor='red', markeredgecolor='red', markeredgewidth=4.0, markersize=15, alpha=1.0)
+        # visualise what's going on
+        if low_snip_index is not None:
+            ax1.plot(clusters_v[feature_indices[low_snip_index], CLUSTER_FRAME_ID_IDX], filtered[low_snip_index], 'x', markerfacecolor='red', markeredgecolor='red', markeredgewidth=4.0, markersize=15, alpha=1.0)
+        else:
+            ax1.plot(clusters_v[feature_indices[0], CLUSTER_FRAME_ID_IDX], filtered[0], 'x', markerfacecolor='red', markeredgecolor='red', markeredgewidth=4.0, markersize=15, alpha=1.0)
 
-            if high_snip_index is not None:
-                ax1.plot(clusters_v[feature_indices[high_snip_index], CLUSTER_FRAME_ID_IDX], filtered[high_snip_index], 'x', markerfacecolor='red', markeredgecolor='red', markeredgewidth=4.0, markersize=15, alpha=1.0)
-            else:
-                ax1.plot(clusters_v[feature_indices[len(filtered)-1], CLUSTER_FRAME_ID_IDX], filtered[len(filtered)-1], 'x', markerfacecolor='red', markeredgecolor='red', markeredgewidth=4.0, markersize=15, alpha=1.0)
+        if high_snip_index is not None:
+            ax1.plot(clusters_v[feature_indices[high_snip_index], CLUSTER_FRAME_ID_IDX], filtered[high_snip_index], 'x', markerfacecolor='red', markeredgecolor='red', markeredgewidth=4.0, markersize=15, alpha=1.0)
+        else:
+            ax1.plot(clusters_v[feature_indices[len(filtered)-1], CLUSTER_FRAME_ID_IDX], filtered[len(filtered)-1], 'x', markerfacecolor='red', markeredgecolor='red', markeredgewidth=4.0, markersize=15, alpha=1.0)
 
-            plt.xlabel('frame')
-            plt.ylabel('intensity')
-            plt.margins(0.02)
-            plt.show()
+        plt.xlabel('frame')
+        plt.ylabel('intensity')
+        plt.margins(0.02)
+        plt.show()
 
         indices_to_delete = np.empty(0)
         if low_snip_index is not None:
@@ -208,12 +206,11 @@ def find_feature(base_index):
         feature_indices = np.delete(feature_indices, indices_to_delete, 0)
 
     # score the feature quality
-    if len(feature_indices) >= MINIMUM_NUMBER_OF_FRAMES:
+    feature_start_frame = int(clusters_v[feature_indices[0],CLUSTER_FRAME_ID_IDX])
+    feature_end_frame = int(clusters_v[feature_indices[len(feature_indices)-1],CLUSTER_FRAME_ID_IDX])
+    if (feature_end_frame-feature_start_frame) >= MINIMUM_NUMBER_OF_FRAMES:
         quality = 1.0
 
-        # find the feature frame range
-        feature_start_frame = int(clusters_v[feature_indices[0],CLUSTER_FRAME_ID_IDX])
-        feature_end_frame = int(clusters_v[feature_indices[len(feature_indices)-1],CLUSTER_FRAME_ID_IDX])
         # update the noise estimate
         lower_noise_eval_frame_1 = feature_start_frame - int((NOISE_ASSESSMENT_OFFSET+NOISE_ASSESSMENT_WIDTH)/NUMBER_OF_SECONDS_PER_FRAME)
         upper_noise_eval_frame_1 = feature_start_frame - int(NOISE_ASSESSMENT_OFFSET/NUMBER_OF_SECONDS_PER_FRAME)
@@ -242,6 +239,15 @@ def find_feature(base_index):
         upper_noise_eval_frame_2 = None
         noise_level_1 = None
         noise_level_2 = None
+
+        f = plt.figure()
+        ax1 = f.add_subplot(111)
+        ax1.plot(clusters_v[feature_indices, CLUSTER_FRAME_ID_IDX], clusters_v[feature_indices, CLUSTER_INTENSITY_SUM_IDX], 'o', markerfacecolor='green', markeredgecolor='black', markeredgewidth=0.0, markersize=6)
+        plt.title("Rejected Feature")
+        plt.xlabel('frame')
+        plt.ylabel('intensity')
+        plt.margins(0.02)
+        plt.show()
 
     # package the result
     results = {}
