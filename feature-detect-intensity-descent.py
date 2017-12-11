@@ -153,10 +153,10 @@ def find_feature(base_index):
         filtered_max_index = np.argmax(filtered)
         filtered_max_value = filtered[filtered_max_index]
 
-        f = plt.figure()
-        ax1 = f.add_subplot(111)
-        ax1.plot(clusters_v[feature_indices, CLUSTER_FRAME_ID_IDX], clusters_v[feature_indices, CLUSTER_INTENSITY_SUM_IDX], 'o', markerfacecolor='green', markeredgecolor='black', markeredgewidth=0.0, markersize=6)
-        ax1.plot(clusters_v[feature_indices, CLUSTER_FRAME_ID_IDX], filtered, '-', markerfacecolor='blue', markeredgecolor='black', markeredgewidth=0.0, markersize=6)
+        # f = plt.figure(figsize=(12,8))
+        # ax1 = f.add_subplot(111)
+        # ax1.plot(clusters_v[feature_indices, CLUSTER_FRAME_ID_IDX], clusters_v[feature_indices, CLUSTER_INTENSITY_SUM_IDX], 'o', markerfacecolor='green', markeredgecolor='black', markeredgewidth=0.0, markersize=6)
+        # ax1.plot(clusters_v[feature_indices, CLUSTER_FRAME_ID_IDX], filtered, '-', markerfacecolor='blue', markeredgecolor='black', markeredgewidth=0.0, markersize=6)
 
         low_snip_index = None
         high_snip_index = None
@@ -183,20 +183,19 @@ def find_feature(base_index):
                 high_snip_index = idx
 
         # visualise what's going on
-        if low_snip_index is not None:
-            ax1.plot(clusters_v[feature_indices[low_snip_index], CLUSTER_FRAME_ID_IDX], filtered[low_snip_index], 'x', markerfacecolor='red', markeredgecolor='red', markeredgewidth=4.0, markersize=15, alpha=1.0)
-        else:
-            ax1.plot(clusters_v[feature_indices[0], CLUSTER_FRAME_ID_IDX], filtered[0], 'x', markerfacecolor='red', markeredgecolor='red', markeredgewidth=4.0, markersize=15, alpha=1.0)
+        # if low_snip_index is not None:
+        #     ax1.plot(clusters_v[feature_indices[low_snip_index], CLUSTER_FRAME_ID_IDX], filtered[low_snip_index], 'x', markerfacecolor='red', markeredgecolor='red', markeredgewidth=4.0, markersize=15, alpha=1.0)
+        # else:
+        #     ax1.plot(clusters_v[feature_indices[0], CLUSTER_FRAME_ID_IDX], filtered[0], 'x', markerfacecolor='red', markeredgecolor='red', markeredgewidth=4.0, markersize=15, alpha=1.0)
 
-        if high_snip_index is not None:
-            ax1.plot(clusters_v[feature_indices[high_snip_index], CLUSTER_FRAME_ID_IDX], filtered[high_snip_index], 'x', markerfacecolor='red', markeredgecolor='red', markeredgewidth=4.0, markersize=15, alpha=1.0)
-        else:
-            ax1.plot(clusters_v[feature_indices[len(filtered)-1], CLUSTER_FRAME_ID_IDX], filtered[len(filtered)-1], 'x', markerfacecolor='red', markeredgecolor='red', markeredgewidth=4.0, markersize=15, alpha=1.0)
-
-        plt.xlabel('frame')
-        plt.ylabel('intensity')
-        plt.margins(0.02)
-        plt.show()
+        # if high_snip_index is not None:
+        #     ax1.plot(clusters_v[feature_indices[high_snip_index], CLUSTER_FRAME_ID_IDX], filtered[high_snip_index], 'x', markerfacecolor='red', markeredgecolor='red', markeredgewidth=4.0, markersize=15, alpha=1.0)
+        # else:
+        #     ax1.plot(clusters_v[feature_indices[len(filtered)-1], CLUSTER_FRAME_ID_IDX], filtered[len(filtered)-1], 'x', markerfacecolor='red', markeredgecolor='red', markeredgewidth=4.0, markersize=15, alpha=1.0)
+        # plt.xlabel('frame')
+        # plt.ylabel('intensity')
+        # plt.margins(0.02)
+        # plt.show()
 
         indices_to_delete = np.empty(0)
         if low_snip_index is not None:
@@ -240,14 +239,14 @@ def find_feature(base_index):
         noise_level_1 = None
         noise_level_2 = None
 
-        f = plt.figure()
-        ax1 = f.add_subplot(111)
-        ax1.plot(clusters_v[feature_indices, CLUSTER_FRAME_ID_IDX], clusters_v[feature_indices, CLUSTER_INTENSITY_SUM_IDX], 'o', markerfacecolor='green', markeredgecolor='black', markeredgewidth=0.0, markersize=6)
-        plt.title("Rejected Feature")
-        plt.xlabel('frame')
-        plt.ylabel('intensity')
-        plt.margins(0.02)
-        plt.show()
+        # f = plt.figure(figsize=(12,8))
+        # ax1 = f.add_subplot(111)
+        # ax1.plot(clusters_v[feature_indices, CLUSTER_FRAME_ID_IDX], clusters_v[feature_indices, CLUSTER_INTENSITY_SUM_IDX], 'o', markerfacecolor='green', markeredgecolor='black', markeredgewidth=0.0, markersize=6)
+        # plt.title("Rejected Feature")
+        # plt.xlabel('frame')
+        # plt.ylabel('intensity')
+        # plt.margins(0.02)
+        # plt.show()
 
     # package the result
     results = {}
