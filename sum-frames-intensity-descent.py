@@ -16,14 +16,13 @@ parser = argparse.ArgumentParser(description='An intensity descent method for su
 parser.add_argument('-sdb','--source_database_name', type=str, help='The name of the source database.', required=True)
 parser.add_argument('-ddb','--destination_database_name', type=str, help='The name of the destination database.', required=True)
 parser.add_argument('-n','--number_of_summed_frames_required', type=int, help='The number of summed frames required.', required=True)
-parser.add_argument('-sf','--base_source_frame_number', default=1, type=int, help='The frame number to start summing.', required=False)
+parser.add_argument('-sf','--base_source_frame_index', default=0, type=int, help='The frame index to start summing (note: this is an index, not the source frame ID).', required=False)
 parser.add_argument('-fts','--frames_to_sum', type=int, default=5, help='The number of source frames to sum.', required=False)
 parser.add_argument('-mf','--noise_threshold', type=int, default=2, help='Minimum number of frames a point must appear in to be processed.', required=False)
-parser.add_argument('-bf','--base_summed_frame_number', type=int, default=1, help='The base frame number of the summed frames.', required=False)
+parser.add_argument('-bf','--base_summed_frame_id', type=int, default=1, help='The base frame ID of the summed frames.', required=False)
 parser.add_argument('-ce','--collision_energy', type=int, default=10, help='Collision energy, in eV. Use 10 for MS1, 35 for MS2', required=False)
 parser.add_argument('-sl','--scan_lower', type=int, default=0, help='The lower scan number.', required=False)
 parser.add_argument('-su','--scan_upper', type=int, default=183, help='The upper scan number.', required=False)
-
 args = parser.parse_args()
 
 # Store the arguments as metadata in the database for later reference
@@ -46,15 +45,15 @@ dest_c.execute('''CREATE TABLE summing_info (item TEXT, value TEXT)''')
 
 # Find the complete set of frame ids to be processed
 number_of_source_frames = args.number_of_summed_frames_required*args.frames_to_sum
-frame_ids_df = pd.read_sql_query("select frame_id from frame_properties where collision_energy={} AND frame_id>={} order by frame_id ASC LIMIT {};".format(args.collision_energy, args.base_source_frame_number, number_of_source_frames), source_conn)
-frame_ids = tuple(frame_ids_df.values[:,0])
-
+frame_ids_df = pd.read_sql_query("select frame_id from frame_properties where collision_energy={} order by frame_id ASC;".format(args.collision_energy), source_conn)
+frame_ids = tuple(frame_ids_df.values[args.base_source_frame_index:args.base_source_frame_index+number_of_source_frames,0])
+print("summing {} source frames with collision energy {}".format(len(frame_ids), args.collision_energy))
 
 start_run = time.time()
 summedFrameId = args.base_summed_frame_number
 # Step through the source frames and sum them
-for summedFrameId in range(args.base_summed_frame_number,args.base_summed_frame_number+args.number_of_summed_frames_required):
-    baseFrameIdsIndex = (summedFrameId-args.base_summed_frame_number) * args.frames_to_sum
+for summedFrameId in range(args.base_summed_frame_id,args.base_summed_frame_id+args.number_of_summed_frames_required):
+    baseFrameIdsIndex = (summedFrameId-args.base_summed_frame_id) * args.frames_to_sum
     frameIdsToSum = frame_ids[baseFrameIdsIndex:baseFrameIdsIndex+args.frames_to_sum]
     print("Processing frames {} to create summed frame {}".format(frameIdsToSum, summedFrameId))
     frame_df = pd.read_sql_query("select frame_id,mz,scan,intensity from frames where frame_id in {} order by frame_id, mz, scan asc;".format(frameIdsToSum), source_conn)
