@@ -11,7 +11,9 @@ parser.add_argument('-sfb','--summed_frame_batch_size', type=int, default=10000,
 args = parser.parse_args()
 
 # Connect to the database file to find out the number of unique frame ids for this collision energy
-source_conn = sqlite3.connect("{}\{}".format(args.source_directory, args.base_database_name))
+source_db = "{}\{}".format(args.source_directory, args.base_database_name)
+print("connecting to {}".format(source_db))
+source_conn = sqlite3.connect(source_db)
 c = source_conn.cursor()
 q = c.execute("SELECT COUNT(DISTINCT frame_id) FROM frame_properties WHERE collision_energy={}".format(args.collision_energy))
 row = q.fetchone()
