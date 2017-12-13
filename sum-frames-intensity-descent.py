@@ -16,7 +16,7 @@ parser = argparse.ArgumentParser(description='An intensity descent method for su
 parser.add_argument('-sdb','--source_database_name', type=str, help='The name of the source database.', required=True)
 parser.add_argument('-ddb','--destination_database_name', type=str, help='The name of the destination database.', required=True)
 parser.add_argument('-n','--number_of_summed_frames_required', type=int, help='The number of summed frames required.', required=True)
-parser.add_argument('-sf','--base_source_frame_index', default=0, type=int, help='The frame index to start summing (note: this is an index, not the source frame ID).', required=False)
+parser.add_argument('-sf','--base_source_frame_index', default=0, type=int, help='The frame index to start summing for this collision energy (note: this is an index, not the source frame ID).', required=False)
 parser.add_argument('-fts','--frames_to_sum', type=int, default=5, help='The number of source frames to sum.', required=False)
 parser.add_argument('-mf','--noise_threshold', type=int, default=2, help='Minimum number of frames a point must appear in to be processed.', required=False)
 parser.add_argument('-bf','--base_summed_frame_id', type=int, default=1, help='The base frame ID of the summed frames.', required=False)
@@ -50,7 +50,7 @@ frame_ids = tuple(frame_ids_df.values[args.base_source_frame_index:args.base_sou
 print("summing {} source frames with collision energy {}".format(len(frame_ids), args.collision_energy))
 
 start_run = time.time()
-summedFrameId = args.base_summed_frame_number
+summedFrameId = args.base_summed_frame_id
 # Step through the source frames and sum them
 for summedFrameId in range(args.base_summed_frame_id,args.base_summed_frame_id+args.number_of_summed_frames_required):
     baseFrameIdsIndex = (summedFrameId-args.base_summed_frame_id) * args.frames_to_sum
