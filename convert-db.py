@@ -5,6 +5,8 @@ import timsdata
 import sqlite3
 import os
 import argparse
+from operator import itemgetter
+import time
 
 # Usage: python create-db.py D:\Bruker\Databases\Hela200ng100msMSonlyPP23pro_Slot1-5_01_57.d
 
@@ -37,6 +39,7 @@ frame_count = row[0]
 q = timsfile.conn.execute("SELECT MAX(Id) FROM Frames")
 row = q.fetchone()
 max_frame_id = row[0]
+max_frame_id = 100
 q = timsfile.conn.execute("SELECT MIN(Id) FROM Frames")
 row = q.fetchone()
 min_frame_id = row[0]
@@ -55,9 +58,19 @@ c.execute('''DROP TABLE IF EXISTS frame_properties''')
 c.execute('''CREATE TABLE frame_properties (frame_id INTEGER, collision_energy REAL)''')
 c.execute('''DROP INDEX IF EXISTS idx_frame_properties''')
 c.execute('''CREATE INDEX idx_frame_properties ON frame_properties (frame_id)''')
+c.execute('''DROP TABLE IF EXISTS convert_info''')
+c.execute('''CREATE TABLE convert_info (item TEXT, value TEXT)''')
 
 points = []
 frame_properties = []
+convert_info = []
+
+mz_lower = sys.float_info.max
+mz_upper = 0.0
+scan_lower = sys.maxint
+scan_upper = 0
+
+start_run = time.time()
 peak_id = 0
 for frame_id in range(min_frame_id, max_frame_id+1):
     print("Frame {:0>5} of {}".format(frame_id, frame_count))
@@ -83,6 +96,10 @@ for frame_id in range(min_frame_id, max_frame_id+1):
             	for index in range(0,len(mz)):
                     pointId += 1
                     points.append((frame_id, pointId, mz[index], i, intensities[index], peak_id))
+                    scan_lower = min(scan_lower, i)
+                    scan_upper = max(scan_upper, i)
+                    mz_lower = min(mz_lower, mz[index])
+                    mz_upper = max(mz_upper, mz[index])
     if frame_id % 1000 == 0:
         print("Writing 1000 frames...")
         c.executemany("INSERT INTO frames VALUES (?, ?, ?, ?, ?, ?)", points)
@@ -94,6 +111,20 @@ if len(points) > 0:
     c.executemany("INSERT INTO frames VALUES (?, ?, ?, ?, ?, ?)", points)
 
 c.executemany("INSERT INTO frame_properties VALUES (?, ?)", frame_properties)
+
+stop_run = time.time()
+print("{} seconds to process run".format(stop_run-start_run))
+
+convert_info.append(("scan_lower", scan_lower))
+convert_info.append(("scan_upper", scan_upper))
+convert_info.append(("mz_lower", mz_lower))
+convert_info.append(("mz_upper", mz_upper))
+convert_info.append(("source_frame_lower", min_frame_id))
+convert_info.append(("source_frame_upper", max_frame_id))
+convert_info.append(("source_frame_count", frame_count))
+convert_info.append(("run processing time (sec)", stop_run-start_run))
+convert_info.append(("processed", time.ctime()))
+c.executemany("INSERT INTO convert_info VALUES (?, ?)", convert_info)
 
 # Commit changes and close the connection
 conn.commit()
