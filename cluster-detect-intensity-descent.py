@@ -72,8 +72,8 @@ parser = argparse.ArgumentParser(description='A tree descent method for clusteri
 parser.add_argument('-db','--database_name', type=str, help='The name of the source database.', required=True)
 parser.add_argument('-fl','--frame_lower', type=int, help='The lower frame number to process.', required=False)
 parser.add_argument('-fu','--frame_upper', type=int, help='The upper frame number to process.', required=False)
-parser.add_argument('-sl','--scan_lower', type=int, default=0, help='The lower scan number to process.', required=False)
-parser.add_argument('-su','--scan_upper', type=int, default=183, help='The upper scan number to process.', required=False)
+parser.add_argument('-sl','--scan_lower', type=int, help='The lower scan number to process.', required=False)
+parser.add_argument('-su','--scan_upper', type=int, help='The upper scan number to process.', required=False)
 parser.add_argument('-ir','--isotope_number_right', type=int, default=5, help='Isotope numbers to look on the right.', required=False)
 parser.add_argument('-il','--isotope_number_left', type=int, default=2, help='Isotope numbers to look on the left.', required=False)
 parser.add_argument('-mi','--minimum_peak_intensity', type=int, default=250, help='Minimum peak intensity to process.', required=False)
@@ -89,16 +89,28 @@ source_conn = sqlite3.connect(args.database_name)
 c = source_conn.cursor()
 
 if args.frame_lower is None:
-    q = c.execute("SELECT MIN(frame_id) FROM peaks")
+    q = c.execute("SELECT value FROM peak_detect_info WHERE item=\"frame_lower\"")
     row = q.fetchone()
     args.frame_lower = int(row[0])
     print("lower frame_id set to {} from the data".format(args.frame_lower))
 
 if args.frame_upper is None:
-    q = c.execute("SELECT MAX(frame_id) FROM peaks")
+    q = c.execute("SELECT value FROM peak_detect_info WHERE item=\"frame_upper\"")
     row = q.fetchone()
     args.frame_upper = int(row[0])
     print("upper frame_id set to {} from the data".format(args.frame_upper))
+
+if args.scan_lower is None:
+    q = c.execute("SELECT value FROM peak_detect_info WHERE item=\"scan_lower\"")
+    row = q.fetchone()
+    args.scan_lower = int(row[0])
+    print("lower scan set to {} from the data".format(args.scan_lower))
+
+if args.scan_upper is None:
+    q = c.execute("SELECT value FROM peak_detect_info WHERE item=\"scan_upper\"")
+    row = q.fetchone()
+    args.scan_upper = int(row[0])
+    print("upper scan set to {} from the data".format(args.scan_upper))
 
 # Store the arguments as metadata in the database for later reference
 cluster_detect_info = []
