@@ -28,15 +28,18 @@ number_of_batches = number_of_summed_frames / args.summed_frame_batch_size
 if (number_of_summed_frames % args.summed_frame_batch_size > 0):
     number_of_batches += 1
 number_of_source_frames_per_batch = args.frames_to_sum * args.summed_frame_batch_size
-print("total summed frames {} in {} batches".format(number_of_summed_frames, number_of_batches))
+print("total summed frames {} in {} batches\n".format(number_of_summed_frames, number_of_batches))
 
 for i in range(number_of_batches):
-    start_frame_destination = i*args.summed_frame_batch_size+1
-    end_frame_destination = (i+1)*args.summed_frame_batch_size
-    if (end_frame_destination > number_of_summed_frames):
-    	end_frame_destination = number_of_summed_frames
+    base_summed_frame_id = i*args.summed_frame_batch_size+1
+    if (base_summed_frame_id+args.summed_frame_batch_size-1 > number_of_summed_frames):
+	    number_of_summed_frames_required_this_batch = number_of_summed_frames-base_summed_frame_id+1
+    else:
+        number_of_summed_frames_required_this_batch = args.summed_frame_batch_size
 
-    start_frame_index_source = start_frame_destination-1
-    print("python sum-frames-intensity-descent.py -sdb \"{}/{}\" -ddb \"{}/summed-{}-{}-{}\" -n {} -bf {} -sf {}".format(args.source_directory, 
-    	args.base_database_name, args.destination_directory, start_frame_destination, end_frame_destination, args.base_database_name, args.summed_frame_batch_size, 
-    	start_frame_destination, start_frame_index_source))
+    last_summed_frame_id = base_summed_frame_id+number_of_summed_frames_required_this_batch-1
+    base_source_frame_index = i*number_of_source_frames_per_batch
+
+    print("start \"Summing {}-{}\" python sum-frames-intensity-descent.py -sdb \"{}/{}\" -ddb \"{}/summed-{}-{}-{}\" -n {} -bf {} -sf {}".format(base_summed_frame_id, last_summed_frame_id, args.source_directory, 
+    	args.base_database_name, args.destination_directory, base_summed_frame_id, last_summed_frame_id, args.base_database_name, number_of_summed_frames_required_this_batch, 
+    	base_summed_frame_id, base_source_frame_index))

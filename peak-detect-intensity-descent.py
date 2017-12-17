@@ -45,17 +45,12 @@ parser = argparse.ArgumentParser(description='A tree descent method for peak det
 parser.add_argument('-db','--database_name', type=str, help='The name of the source database.', required=True)
 parser.add_argument('-fl','--frame_lower', type=int, help='The lower frame number.', required=False)
 parser.add_argument('-fu','--frame_upper', type=int, help='The upper frame number.', required=False)
-parser.add_argument('-sl','--scan_lower', type=int, default=0, help='The lower scan number.', required=False)
-parser.add_argument('-su','--scan_upper', type=int, default=183, help='The upper scan number.', required=False)
+parser.add_argument('-sl','--scan_lower', type=int, help='The lower scan number.', required=False)
+parser.add_argument('-su','--scan_upper', type=int, help='The upper scan number.', required=False)
 parser.add_argument('-es','--empty_scans', type=int, default=2, help='Maximum number of empty scans to tolerate.', required=False)
 parser.add_argument('-sd','--standard_deviations', type=int, default=4, help='Number of standard deviations to look either side of a point.', required=False)
 
 args = parser.parse_args()
-
-# Store the arguments as metadata in the database for later reference
-peak_detect_info = []
-for arg in vars(args):
-    peak_detect_info.append((arg, getattr(args, arg)))
 
 source_conn = sqlite3.connect(database=args.database_name, timeout=60)
 
@@ -82,16 +77,33 @@ print("Resetting peak IDs")
 c.execute("update frames set peak_id=0 where peak_id!=0")
 
 if args.frame_lower is None:
-    q = timsfile.conn.execute("SELECT MIN(frame_id) FROM frames")
+    q = c.execute("SELECT value FROM summing_info WHERE item=\"summed_frame_lower\"")
     row = q.fetchone()
     args.frame_lower = int(row[0])
     print("lower frame_id set to {} from the data".format(args.frame_lower))
 
 if args.frame_upper is None:
-    q = timsfile.conn.execute("SELECT MAX(frame_id) FROM frames")
+    q = c.execute("SELECT value FROM summing_info WHERE item=\"summed_frame_upper\"")
     row = q.fetchone()
     args.frame_upper = int(row[0])
     print("upper frame_id set to {} from the data".format(args.frame_upper))
+
+if args.scan_lower is None:
+    q = c.execute("SELECT value FROM summing_info WHERE item=\"scan_lower\"")
+    row = q.fetchone()
+    args.scan_lower = int(row[0])
+    print("lower scan set to {} from the data".format(args.scan_lower))
+
+if args.scan_upper is None:
+    q = c.execute("SELECT value FROM summing_info WHERE item=\"scan_upper\"")
+    row = q.fetchone()
+    args.scan_upper = int(row[0])
+    print("upper scan set to {} from the data".format(args.scan_upper))
+
+# Store the arguments as metadata in the database for later reference
+peak_detect_info = []
+for arg in vars(args):
+    peak_detect_info.append((arg, getattr(args, arg)))
 
 mono_peaks = []
 point_updates = []
@@ -253,7 +265,7 @@ for frame_id in range(args.frame_lower, args.frame_upper+1):
         frame_v[peak_indices,2] = -1
 
     # Write out the peaks we found in this frame
-    d.executemany("INSERT INTO peaks VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?)", mono_peaks)
+    c.executemany("INSERT INTO peaks VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?)", mono_peaks)
     mono_peaks = []
 
     # Update the points in the frame table
