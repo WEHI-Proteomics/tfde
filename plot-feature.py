@@ -38,7 +38,7 @@ ax1 = f1.add_subplot(111)
 ax1.plot(clusters_v[clusters_v_feature_indices,CLUSTER_FRAME_ID_IDX], clusters_v[clusters_v_feature_indices,CLUSTER_INTENSITY_SUM_IDX], 'o', markeredgewidth=0.0, markersize=6)
 ax1.plot(clusters_v[clusters_v_feature_indices, CLUSTER_FRAME_ID_IDX], filtered, '-', markerfacecolor='blue', markeredgecolor='black', markeredgewidth=0.0, markersize=6)
 
-plt.title("Features")
+plt.title("Feature ID {} ({})".format(args.feature_id, args.database_name))
 
 plt.xlabel('frame')
 plt.ylabel('intensity')
