@@ -204,6 +204,9 @@ def find_feature(base_index):
             indices_to_delete = np.concatenate((indices_to_delete,np.arange(high_snip_index+1,len(filtered))))
         feature_indices = np.delete(feature_indices, indices_to_delete, 0)
 
+    # find the feature's intensity
+    feature_summed_intensity = int(sum(clusters_v[feature_indices,CLUSTER_INTENSITY_SUM_IDX]))
+
     # score the feature quality
     feature_start_frame = int(clusters_v[feature_indices[0],CLUSTER_FRAME_ID_IDX])
     feature_end_frame = int(clusters_v[feature_indices[len(feature_indices)-1],CLUSTER_FRAME_ID_IDX])
@@ -260,6 +263,7 @@ def find_feature(base_index):
     results['charge_state'] = charge_state
     results['noise_readings'] = (noise_level_1, noise_level_2)
     results['quality'] = quality
+    results['summed_intensity'] = feature_summed_intensity
     return results
 
 
@@ -294,6 +298,7 @@ c.execute('''CREATE TABLE `features` ( `feature_id` INTEGER,
                                         `start_frame` INTEGER, 
                                         `end_frame` INTEGER, 
                                         `quality_score` REAL, 
+                                        `summed_intensity` INTEGER, 
                                         PRIMARY KEY(`feature_id`) )''')
 c.execute('''DROP INDEX IF EXISTS idx_features''')
 c.execute('''CREATE INDEX idx_features ON features (feature_id)''')
@@ -330,6 +335,7 @@ while True:
     charge_state = feature['charge_state']
     noise_readings = feature['noise_readings']
     quality = feature['quality']
+    summed_intensity = feature['summed_intensity']
 
     base_noise_level = int(np.average(noise_level_readings))
     feature_discovery_history.append(quality)
@@ -342,7 +348,7 @@ while True:
             cluster_updates.append(values)
 
         # Add the feature's details to the collection
-        values = (feature_id, base_cluster_frame_id, base_cluster_id, charge_state, feature_frames[0], feature_frames[1], quality)
+        values = (feature_id, base_cluster_frame_id, base_cluster_id, charge_state, feature_frames[0], feature_frames[1], quality, summed_intensity)
         feature_updates.append(values)
 
         feature_id += 1
@@ -365,7 +371,7 @@ stop_run = time.time()
 print("updating the clusters table")
 c.executemany("UPDATE clusters SET feature_id=? WHERE frame_id=? AND cluster_id=?", cluster_updates)
 print("updating the features table")
-c.executemany("INSERT INTO features VALUES (?, ?, ?, ?, ?, ?, ?)", feature_updates)
+c.executemany("INSERT INTO features VALUES (?, ?, ?, ?, ?, ?, ?, ?)", feature_updates)
 
 feature_info.append(("run processing time (sec)", stop_run-start_run))
 feature_info.append(("processed", time.ctime()))

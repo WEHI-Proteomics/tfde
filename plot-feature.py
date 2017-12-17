@@ -30,7 +30,7 @@ clusters_v = np.array(c.fetchall(), dtype=np.float32)
 clusters_v_feature_indices = np.where(clusters_v[:,CLUSTER_FEATURE_ID_IDX] > 0)[0]
 source_conn.close()
 
-filtered = signal.savgol_filter(clusters_v[clusters_v_feature_indices, CLUSTER_INTENSITY_SUM_IDX], window_length=11, polyorder=3)
+filtered = signal.savgol_filter(clusters_v[clusters_v_feature_indices, CLUSTER_INTENSITY_SUM_IDX], window_length=5, polyorder=3)
 
 f1 = plt.figure()
 ax1 = f1.add_subplot(111)

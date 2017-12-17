@@ -12,10 +12,11 @@ args = parser.parse_args()
 # Connect to the database file
 conn = sqlite3.connect(args.database_name)
 c = conn.cursor()
-intensity_df = pd.read_sql_query("select intensity_sum from clusters where (frame_id,cluster_id) in (select base_frame_id,base_cluster_id from features);", conn)
+c.execute("select intensity_sum from clusters where (frame_id,cluster_id) in (select base_frame_id,base_cluster_id from features limit 10);")
+intensity_v = np.array(c.fetchall(), dtype=np.float32)
 conn.close()
 
-x = np.sort(intensity_df.intensity_sum.values)
+x = np.sort(intensity_v)
 y = np.arange(len(x))/float(len(x))
 
 plt.plot(x, y, marker='.', linestyle='none')

@@ -30,37 +30,37 @@ source_conn = sqlite3.connect(args.database_name)
 c = source_conn.cursor()
 
 if args.frame_lower is None:
-    q = c.execute("SELECT MIN(frame_id) FROM clusters")
+    q = c.execute("SELECT value FROM summing_info WHERE item=\"frame_lower\"")
     row = q.fetchone()
     args.frame_lower = int(row[0])
     print("lower frame_id set to {} from the data".format(args.frame_lower))
 
 if args.frame_upper is None:
-    q = c.execute("SELECT MAX(frame_id) FROM clusters")
+    q = c.execute("SELECT value FROM summing_info WHERE item=\"frame_upper\"")
     row = q.fetchone()
     args.frame_upper = int(row[0])
     print("upper frame_id set to {} from the data".format(args.frame_upper))
 
 if args.mz_lower is None:
-    q = c.execute("SELECT MIN(base_peak_max_point_mz) FROM clusters")
+    q = c.execute("SELECT value FROM summing_info WHERE item=\"mz_lower\"")
     row = q.fetchone()
-    args.mz_lower = int(row[0])
+    args.mz_lower = float(row[0])
     print("lower m/z set to {} from the data".format(args.mz_lower))
 
 if args.mz_upper is None:
-    q = c.execute("SELECT MAX(base_peak_max_point_mz) FROM clusters")
+    q = c.execute("SELECT value FROM summing_info WHERE item=\"mz_upper\"")
     row = q.fetchone()
-    args.mz_upper = int(row[0])
+    args.mz_upper = float(row[0])
     print("upper m/z set to {} from the data".format(args.mz_upper))
 
 if args.scan_lower is None:
-    q = c.execute("SELECT MIN(base_peak_max_point_scan) FROM clusters")
+    q = c.execute("SELECT value FROM summing_info WHERE item=\"scan_lower\"")
     row = q.fetchone()
     args.scan_lower = int(row[0])
     print("lower scan set to {} from the data".format(args.scan_lower))
 
 if args.scan_upper is None:
-    q = c.execute("SELECT MAX(base_peak_max_point_scan) FROM clusters")
+    q = c.execute("SELECT value FROM summing_info WHERE item=\"scan_upper\"")
     row = q.fetchone()
     args.scan_upper = int(row[0])
     print("upper scan set to {} from the data".format(args.scan_upper))

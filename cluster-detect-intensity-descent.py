@@ -89,25 +89,25 @@ source_conn = sqlite3.connect(args.database_name)
 c = source_conn.cursor()
 
 if args.frame_lower is None:
-    q = c.execute("SELECT value FROM peak_detect_info WHERE item=\"frame_lower\"")
+    q = c.execute("SELECT value FROM summing_info WHERE item=\"frame_lower\"")
     row = q.fetchone()
     args.frame_lower = int(row[0])
     print("lower frame_id set to {} from the data".format(args.frame_lower))
 
 if args.frame_upper is None:
-    q = c.execute("SELECT value FROM peak_detect_info WHERE item=\"frame_upper\"")
+    q = c.execute("SELECT value FROM summing_info WHERE item=\"frame_upper\"")
     row = q.fetchone()
     args.frame_upper = int(row[0])
     print("upper frame_id set to {} from the data".format(args.frame_upper))
 
 if args.scan_lower is None:
-    q = c.execute("SELECT value FROM peak_detect_info WHERE item=\"scan_lower\"")
+    q = c.execute("SELECT value FROM summing_info WHERE item=\"scan_lower\"")
     row = q.fetchone()
     args.scan_lower = int(row[0])
     print("lower scan set to {} from the data".format(args.scan_lower))
 
 if args.scan_upper is None:
-    q = c.execute("SELECT value FROM peak_detect_info WHERE item=\"scan_upper\"")
+    q = c.execute("SELECT value FROM summing_info WHERE item=\"scan_upper\"")
     row = q.fetchone()
     args.scan_upper = int(row[0])
     print("upper scan set to {} from the data".format(args.scan_upper))

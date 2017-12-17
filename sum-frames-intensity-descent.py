@@ -53,6 +53,13 @@ if args.scan_upper is None:
     args.scan_upper = int(row[0])
     print("upper scan set to {} from the data".format(args.scan_upper))
 
+q = src_c.execute("SELECT value FROM convert_info WHERE item=\"mz_lower\"")
+row = q.fetchone()
+mz_lower = float(row[0])
+q = src_c.execute("SELECT value FROM convert_info WHERE item=\"mz_upper\"")
+row = q.fetchone()
+mz_upper = float(row[0])
+
 # Store the arguments as metadata in the database for later reference
 summing_info = []
 for arg in vars(args):
@@ -135,6 +142,8 @@ print("{} seconds to process run".format(stop_run-start_run))
 
 summing_info.append(("summed_frame_lower", args.base_summed_frame_id))
 summing_info.append(("summed_frame_upper", args.base_summed_frame_id+args.number_of_summed_frames_required))
+summing_info.append(("mz_lower", mz_lower))
+summing_info.append(("mz_upper", mz_upper))
 
 summing_info.append(("run processing time (sec)", stop_run-start_run))
 summing_info.append(("processed", time.ctime()))
