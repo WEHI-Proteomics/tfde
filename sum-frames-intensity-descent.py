@@ -21,18 +21,16 @@ parser.add_argument('-fts','--frames_to_sum', type=int, default=5, help='The num
 parser.add_argument('-mf','--noise_threshold', type=int, default=2, help='Minimum number of frames a point must appear in to be processed.', required=False)
 parser.add_argument('-bf','--base_summed_frame_id', type=int, default=1, help='The base frame ID of the summed frames.', required=False)
 parser.add_argument('-ce','--collision_energy', type=int, default=10, help='Collision energy, in eV. Use 10 for MS1, 35 for MS2', required=False)
-parser.add_argument('-sl','--scan_lower', type=int, default=0, help='The lower scan number.', required=False)
-parser.add_argument('-su','--scan_upper', type=int, default=183, help='The upper scan number.', required=False)
+parser.add_argument('-sl','--scan_lower', type=int, help='The lower scan number.', required=False)
+parser.add_argument('-su','--scan_upper', type=int, help='The upper scan number.', required=False)
 args = parser.parse_args()
-
-# Store the arguments as metadata in the database for later reference
-summing_info = []
-for arg in vars(args):
-    summing_info.append((arg, getattr(args, arg)))
 
 source_conn = sqlite3.connect(args.source_database_name)
 dest_conn = sqlite3.connect(args.destination_database_name)
+src_c = source_conn.cursor()
 dest_c = dest_conn.cursor()
+
+print("Setting up tables and indexes")
 
 dest_c.execute('''CREATE TABLE IF NOT EXISTS frames (frame_id INTEGER, point_id INTEGER, mz REAL, scan INTEGER, intensity INTEGER, peak_id INTEGER)''')
 dest_c.execute('''CREATE INDEX IF NOT EXISTS idx_frames ON frames (frame_id)''')
@@ -42,6 +40,23 @@ dest_c.execute('''DROP INDEX IF EXISTS idx_elution_profile''')
 dest_c.execute('''CREATE INDEX idx_elution_profile ON elution_profile (frame_id)''')
 dest_c.execute('''DROP TABLE IF EXISTS summing_info''')
 dest_c.execute('''CREATE TABLE summing_info (item TEXT, value TEXT)''')
+
+if args.scan_lower is None:
+    q = src_c.execute("SELECT value FROM convert_info WHERE item=\"scan_lower\"")
+    row = q.fetchone()
+    args.scan_lower = int(row[0])
+    print("lower scan set to {} from the data".format(args.scan_lower))
+
+if args.scan_upper is None:
+    q = src_c.execute("SELECT value FROM convert_info WHERE item=\"scan_upper\"")
+    row = q.fetchone()
+    args.scan_upper = int(row[0])
+    print("upper scan set to {} from the data".format(args.scan_upper))
+
+# Store the arguments as metadata in the database for later reference
+summing_info = []
+for arg in vars(args):
+    summing_info.append((arg, getattr(args, arg)))
 
 # Find the complete set of frame ids to be processed
 number_of_source_frames = args.number_of_summed_frames_required*args.frames_to_sum
@@ -118,8 +133,9 @@ for summedFrameId in range(args.base_summed_frame_id,args.base_summed_frame_id+a
 stop_run = time.time()
 print("{} seconds to process run".format(stop_run-start_run))
 
-summing_info.append(("scan lower", args.scan_lower))
-summing_info.append(("scan upper", args.scan_upper))
+summing_info.append(("summed_frame_lower", args.base_summed_frame_id))
+summing_info.append(("summed_frame_upper", args.base_summed_frame_id+args.number_of_summed_frames_required))
+
 summing_info.append(("run processing time (sec)", stop_run-start_run))
 summing_info.append(("processed", time.ctime()))
 dest_c.executemany("INSERT INTO summing_info VALUES (?, ?)", summing_info)
