@@ -12,6 +12,7 @@ import sys
 import matplotlib.pyplot as plt
 import peakutils
 from collections import deque
+from operator import itemgetter
 
 # cluster array indices
 CLUSTER_FRAME_ID_IDX = 0
@@ -23,13 +24,14 @@ CLUSTER_BASE_MAX_POINT_SCAN_IDX = 5
 CLUSTER_INTENSITY_SUM_IDX = 6
 
 NUMBER_OF_SECONDS_PER_FRAME = 0.1
+NUMBER_OF_FRAMES_PER_SECOND = 1.0 / NUMBER_OF_SECONDS_PER_FRAME
 
 DELTA_MZ = 1.003355     # mass difference between Carbon-12 and Carbon-13 isotopes, in Da
 
 NOISE_ASSESSMENT_WIDTH = 1      # length of time in seconds to average the noise level
 NOISE_ASSESSMENT_OFFSET = 1     # offset in seconds from the end of the feature frames
 
-TOLERANCE_OF_POOR_QUALITY = 250
+TOLERANCE_OF_POOR_QUALITY = 1000
 
 feature_id = 1
 feature_updates = []
@@ -79,6 +81,13 @@ def find_nearest_high_index_below_threshold(values, threshold):
     else:
         idx = None
     return idx
+
+# returns True if the number of points in the proposed feature is more than the minimum number per second
+def check_min_points_per_second(feature_indices, min_points_per_second):
+    max_gap = np.max(np.diff(clusters_v[feature_indices, CLUSTER_FRAME_ID_IDX])) * NUMBER_OF_SECONDS_PER_FRAME
+    max_allowed_gap = 1.0 / min_points_per_second
+    print("max gap: {} secs, max allowed gap: {} secs".format(max_gap, max_allowed_gap))
+    return (max_gap < max_allowed_gap)
 
 def find_feature(base_index):
     global clusters_v
@@ -210,7 +219,8 @@ def find_feature(base_index):
     # score the feature quality
     feature_start_frame = int(clusters_v[feature_indices[0],CLUSTER_FRAME_ID_IDX])
     feature_end_frame = int(clusters_v[feature_indices[len(feature_indices)-1],CLUSTER_FRAME_ID_IDX])
-    if (feature_end_frame-feature_start_frame) >= MINIMUM_NUMBER_OF_FRAMES:
+    print("number of frames: {}, minimum frames {}".format(feature_end_frame-feature_start_frame, MINIMUM_NUMBER_OF_FRAMES))
+    if ((feature_end_frame-feature_start_frame) >= MINIMUM_NUMBER_OF_FRAMES) and (check_min_points_per_second(feature_indices, args.minimum_points_per_second)):
         quality = 1.0
 
         # update the noise estimate
@@ -274,6 +284,7 @@ parser.add_argument('-sd','--scan_std_dev', type=int, default=4, help='Number of
 parser.add_argument('-nf','--number_of_features', type=int, help='Maximum number of features to find.', required=False)
 parser.add_argument('-ns','--number_of_seconds_each_side', type=int, default=20, help='Number of seconds to look either side of the maximum cluster.', required=False)
 parser.add_argument('-ml','--minimum_feature_length', type=int, default=6, help='Minimum number of seconds for a feature to be valid.', required=False)
+parser.add_argument('-pps','--minimum_points_per_second', type=int, default=1, help='Minimum number of points per second for a feature to be valid.', required=False)
 args = parser.parse_args()
 
 NUMBER_OF_FRAMES_TO_LOOK = int(args.number_of_seconds_each_side / NUMBER_OF_SECONDS_PER_FRAME)
@@ -360,13 +371,18 @@ while True:
 
     # check whether we have finished
     if (cluster_intensity < base_noise_level):
+        print("Reached base noise level")
         break
     if ((args.number_of_features is not None) and (feature_id > args.number_of_features)):
+        print("Reached the maximum number of features")
         break
     if (feature_discovery_history.count(0.0) == TOLERANCE_OF_POOR_QUALITY):
+        print("Reached maximum number of consecutive rejected features")
         break
 
 stop_run = time.time()
+
+print("found {} features in {} seconds".format(max(feature_updates, key=itemgetter(0))[0], stop_run-start_run))
 
 print("updating the clusters table")
 c.executemany("UPDATE clusters SET feature_id=? WHERE frame_id=? AND cluster_id=?", cluster_updates)
