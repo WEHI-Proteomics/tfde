@@ -5,10 +5,9 @@ import timsdata
 import sqlite3
 import os
 import argparse
-from operator import itemgetter
 import time
 
-# Usage: python create-db.py D:\Bruker\Databases\Hela200ng100msMSonlyPP23pro_Slot1-5_01_57.d
+# Usage: python create-db.py -sdb "S:\data\Projects\ProtemicsLab\Bruker timsTOF\databases\20170714_SN34_UPS2_yeast200ng_AIF15_Slot1-39_01_728.d" -ddb "S:\data\Projects\ProtemicsLab\Bruker timsTOF\converted\20170714_SN34_UPS2_yeast200ng_AIF15_Slot1-39_01_728.sqlite"
 
 THRESHOLD = 0
 COLLISION_ENERGY_PROPERTY = 1454
@@ -39,7 +38,6 @@ frame_count = row[0]
 q = timsfile.conn.execute("SELECT MAX(Id) FROM Frames")
 row = q.fetchone()
 max_frame_id = row[0]
-max_frame_id = 100
 q = timsfile.conn.execute("SELECT MIN(Id) FROM Frames")
 row = q.fetchone()
 min_frame_id = row[0]
@@ -50,6 +48,8 @@ conn = sqlite3.connect(args.destination_database_name)
 c = conn.cursor()
 
 # Create the table
+print("Setting up tables and indexes")
+
 c.execute('''DROP TABLE IF EXISTS frames''')
 c.execute('''CREATE TABLE frames (frame_id INTEGER, point_id INTEGER, mz REAL, scan INTEGER, intensity INTEGER, peak_id INTEGER)''')
 c.execute('''DROP INDEX IF EXISTS idx_frames''')
