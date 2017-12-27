@@ -89,13 +89,13 @@ source_conn = sqlite3.connect(args.database_name)
 c = source_conn.cursor()
 
 if args.frame_lower is None:
-    q = c.execute("SELECT value FROM summing_info WHERE item=\"frame_lower\"")
+    q = c.execute("SELECT value FROM summing_info WHERE item=\"summed_frame_lower\"")
     row = q.fetchone()
     args.frame_lower = int(row[0])
     print("lower frame_id set to {} from the data".format(args.frame_lower))
 
 if args.frame_upper is None:
-    q = c.execute("SELECT value FROM summing_info WHERE item=\"frame_upper\"")
+    q = c.execute("SELECT value FROM summing_info WHERE item=\"summed_frame_upper\"")
     row = q.fetchone()
     args.frame_upper = int(row[0])
     print("upper frame_id set to {} from the data".format(args.frame_upper))
@@ -142,6 +142,10 @@ c.execute('''CREATE TABLE `clusters` ( `frame_id` INTEGER,
                                         'state' TEXT, 
                                         'intensity_sum' INTEGER, 
                                         'feature_id' INTEGER, 
+                                        'scan_lower' INTEGER, 
+                                        'scan_upper' INTEGER, 
+                                        'mz_lower' REAL, 
+                                        'mz_upper' REAL, 
                                         PRIMARY KEY(`cluster_id`,`frame_id`) )''')
 c.execute('''DROP INDEX IF EXISTS idx_clusters''')
 c.execute('''CREATE INDEX idx_clusters ON clusters (frame_id,cluster_id)''')
@@ -355,6 +359,10 @@ for frame_id in range(args.frame_lower, args.frame_upper+1):
                     peak_updates.append((cluster_id, frame_id, p_id))
                 # determine some other cluster characteristics before writing it to the database
                 cluster_intensity_sum = sum(cluster_peaks[:,PEAK_INTENSITY_SUM_IDX])
+                cluster_scan_lower = min(cluster_peaks[:,PEAK_SCAN_LOWER_IDX])
+                cluster_scan_upper = max(cluster_peaks[:,PEAK_SCAN_UPPER_IDX])
+                cluster_mz_lower = min(cluster_peaks[:,PEAK_CENTROID_MZ_IDX])
+                cluster_mz_upper = max(cluster_peaks[:,PEAK_CENTROID_MZ_IDX])
 
                 #                                            0            1             2          3           4            5
                 base_peak_df = pd.read_sql_query("select centroid_mz,centroid_scan,std_dev_mz,std_dev_scan,peak_max_mz,peak_max_scan from peaks where frame_id={} and peak_id={};".format(frame_id, base_peak_id), source_conn)
@@ -400,7 +408,11 @@ for frame_id in range(args.frame_lower, args.frame_upper+1):
                                     json.dumps(rationale), 
                                     ' ', 
                                     cluster_intensity_sum, 
-                                    cluster_feature_id))
+                                    cluster_feature_id,
+                                    cluster_scan_lower,
+                                    cluster_scan_upper,
+                                    cluster_mz_lower,
+                                    cluster_mz_upper))
                 cluster_id += 1
 
         # remove the peaks we've processed from the frame
@@ -413,7 +425,7 @@ for frame_id in range(args.frame_lower, args.frame_upper+1):
     print("{} seconds to process frame - found {} clusters".format(stop_frame-start_frame, cluster_id))
 
 # Write out all the clusters to the database
-c.executemany("INSERT INTO clusters VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", clusters)
+c.executemany("INSERT INTO clusters VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", clusters)
 
 # Update the peaks with their cluster IDs
 c.executemany("UPDATE peaks SET cluster_id=? WHERE frame_id=? AND peak_id=?", peak_updates)

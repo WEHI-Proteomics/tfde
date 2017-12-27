@@ -22,6 +22,10 @@ CLUSTER_BASE_SCAN_STD_DEV_IDX = 3
 CLUSTER_BASE_MAX_POINT_MZ_IDX = 4
 CLUSTER_BASE_MAX_POINT_SCAN_IDX = 5
 CLUSTER_INTENSITY_SUM_IDX = 6
+CLUSTER_SCAN_LOWER_IDX = 7
+CLUSTER_SCAN_UPPER_IDX = 8
+CLUSTER_MZ_LOWER_IDX = 9
+CLUSTER_MZ_UPPER_IDX = 10
 
 NUMBER_OF_SECONDS_PER_FRAME = 0.1
 NUMBER_OF_FRAMES_PER_SECOND = 1.0 / NUMBER_OF_SECONDS_PER_FRAME
@@ -213,15 +217,23 @@ def find_feature(base_index):
             indices_to_delete = np.concatenate((indices_to_delete,np.arange(high_snip_index+1,len(filtered))))
         feature_indices = np.delete(feature_indices, indices_to_delete, 0)
 
-    # find the feature's intensity
-    feature_summed_intensity = int(sum(clusters_v[feature_indices,CLUSTER_INTENSITY_SUM_IDX]))
-
     # score the feature quality
     feature_start_frame = int(clusters_v[feature_indices[0],CLUSTER_FRAME_ID_IDX])
     feature_end_frame = int(clusters_v[feature_indices[len(feature_indices)-1],CLUSTER_FRAME_ID_IDX])
     print("number of frames: {}, minimum frames {}".format(feature_end_frame-feature_start_frame, MINIMUM_NUMBER_OF_FRAMES))
     if ((feature_end_frame-feature_start_frame) >= MINIMUM_NUMBER_OF_FRAMES) and (check_min_points_per_second(feature_indices, args.minimum_points_per_second)):
         quality = 1.0
+
+        # find the feature's intensity
+        feature_summed_intensity = int(sum(clusters_v[feature_indices,CLUSTER_INTENSITY_SUM_IDX]))
+
+        # find the feature's scan range
+        feature_scan_lower = int(min(clusters_v[feature_indices,CLUSTER_SCAN_LOWER_IDX]))
+        feature_scan_upper = int(max(clusters_v[feature_indices,CLUSTER_SCAN_UPPER_IDX]))
+
+        # find the feature's m/z range
+        feature_mz_lower = min(clusters_v[feature_indices,CLUSTER_MZ_LOWER_IDX])
+        feature_mz_upper = max(clusters_v[feature_indices,CLUSTER_MZ_UPPER_IDX])
 
         # update the noise estimate
         lower_noise_eval_frame_1 = feature_start_frame - int((NOISE_ASSESSMENT_OFFSET+NOISE_ASSESSMENT_WIDTH)/NUMBER_OF_SECONDS_PER_FRAME)
@@ -251,6 +263,11 @@ def find_feature(base_index):
         upper_noise_eval_frame_2 = None
         noise_level_1 = None
         noise_level_2 = None
+        feature_summed_intensity = 0
+        feature_scan_lower = 0
+        feature_scan_upper = 0
+        feature_mz_lower = 0
+        feature_mz_upper = 0
 
         # f = plt.figure(figsize=(12,8))
         # ax1 = f.add_subplot(111)
@@ -274,6 +291,8 @@ def find_feature(base_index):
     results['noise_readings'] = (noise_level_1, noise_level_2)
     results['quality'] = quality
     results['summed_intensity'] = feature_summed_intensity
+    results['scan_range'] = (feature_scan_lower, feature_scan_upper)
+    results['mz_range'] = (feature_mz_lower, feature_mz_upper)
     return results
 
 
@@ -310,6 +329,10 @@ c.execute('''CREATE TABLE `features` ( `feature_id` INTEGER,
                                         `end_frame` INTEGER, 
                                         `quality_score` REAL, 
                                         `summed_intensity` INTEGER, 
+                                        `scan_lower` INTEGER, 
+                                        `scan_upper` INTEGER, 
+                                        `mz_lower` REAL, 
+                                        `mz_upper` REAL, 
                                         PRIMARY KEY(`feature_id`) )''')
 c.execute('''DROP INDEX IF EXISTS idx_features''')
 c.execute('''CREATE INDEX idx_features ON features (feature_id)''')
@@ -321,7 +344,7 @@ print("Resetting the feature IDs in the cluster table.")
 c.execute("update clusters set feature_id=0 where feature_id!=0;")
 
 print("Loading the clusters information")
-c.execute("select frame_id, cluster_id, charge_state, base_peak_scan_std_dev, base_peak_max_point_mz, base_peak_max_point_scan, intensity_sum from clusters order by frame_id, cluster_id asc;")
+c.execute("select frame_id, cluster_id, charge_state, base_peak_scan_std_dev, base_peak_max_point_mz, base_peak_max_point_scan, intensity_sum, scan_lower, scan_upper, mz_lower, mz_upper from clusters order by frame_id, cluster_id asc;")
 clusters_v = np.array(c.fetchall(), dtype=np.float32)
 
 print("clusters array occupies {} bytes".format(clusters_v.nbytes))
@@ -347,19 +370,21 @@ while True:
     noise_readings = feature['noise_readings']
     quality = feature['quality']
     summed_intensity = feature['summed_intensity']
+    scan_range = feature['scan_range']
+    mz_range = feature['mz_range']
 
     base_noise_level = int(np.average(noise_level_readings))
     feature_discovery_history.append(quality)
 
     if quality > 0.5:
-        print("feature {}, feature frames {}, intensity {}, length {}, noise low frames {}, noise high frames {}, noise readings {}, base noise level {}".format(feature_id, feature_frames, cluster_intensity, len(cluster_indices), noise_low_frames, noise_high_frames, noise_readings, base_noise_level))
+        print("feature {}, feature frames {}, intensity {}, length {}, noise low frames {}, noise high frames {}, noise readings {}, base noise level {}, scan range {}, m/z range {}".format(feature_id, feature_frames, cluster_intensity, len(cluster_indices), noise_low_frames, noise_high_frames, noise_readings, base_noise_level, scan_range, mz_range))
         # Assign this feature ID to all the clusters in the feature
         for cluster_idx in cluster_indices:
             values = (feature_id, int(clusters_v[cluster_idx][CLUSTER_FRAME_ID_IDX]), int(clusters_v[cluster_idx][CLUSTER_ID_IDX]))
             cluster_updates.append(values)
 
         # Add the feature's details to the collection
-        values = (feature_id, base_cluster_frame_id, base_cluster_id, charge_state, feature_frames[0], feature_frames[1], quality, summed_intensity)
+        values = (feature_id, base_cluster_frame_id, base_cluster_id, charge_state, feature_frames[0], feature_frames[1], quality, summed_intensity, scan_range[0], scan_range[1], mz_range[0], mz_range[1])
         feature_updates.append(values)
 
         feature_id += 1
@@ -387,7 +412,7 @@ print("found {} features in {} seconds".format(max(feature_updates, key=itemgett
 print("updating the clusters table")
 c.executemany("UPDATE clusters SET feature_id=? WHERE frame_id=? AND cluster_id=?", cluster_updates)
 print("updating the features table")
-c.executemany("INSERT INTO features VALUES (?, ?, ?, ?, ?, ?, ?, ?)", feature_updates)
+c.executemany("INSERT INTO features VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", feature_updates)
 
 feature_info.append(("run processing time (sec)", stop_run-start_run))
 feature_info.append(("processed", time.ctime()))

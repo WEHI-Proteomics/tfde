@@ -141,7 +141,7 @@ stop_run = time.time()
 print("{} seconds to process run".format(stop_run-start_run))
 
 summing_info.append(("summed_frame_lower", args.base_summed_frame_id))
-summing_info.append(("summed_frame_upper", args.base_summed_frame_id+args.number_of_summed_frames_required))
+summing_info.append(("summed_frame_upper", args.base_summed_frame_id+args.number_of_summed_frames_required-1))
 # summing_info.append(("mz_lower", mz_lower))
 # summing_info.append(("mz_upper", mz_upper))
 
