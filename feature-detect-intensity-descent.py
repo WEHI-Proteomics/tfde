@@ -232,8 +232,8 @@ def find_feature(base_index):
         feature_scan_upper = int(max(clusters_v[feature_indices,CLUSTER_SCAN_UPPER_IDX]))
 
         # find the feature's m/z range
-        feature_mz_lower = min(clusters_v[feature_indices,CLUSTER_MZ_LOWER_IDX])
-        feature_mz_upper = max(clusters_v[feature_indices,CLUSTER_MZ_UPPER_IDX])
+        feature_mz_lower = float(min(clusters_v[feature_indices,CLUSTER_MZ_LOWER_IDX]))
+        feature_mz_upper = float(max(clusters_v[feature_indices,CLUSTER_MZ_UPPER_IDX]))
 
         # update the noise estimate
         lower_noise_eval_frame_1 = feature_start_frame - int((NOISE_ASSESSMENT_OFFSET+NOISE_ASSESSMENT_WIDTH)/NUMBER_OF_SECONDS_PER_FRAME)
