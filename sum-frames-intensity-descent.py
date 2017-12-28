@@ -53,12 +53,12 @@ if args.scan_upper is None:
     args.scan_upper = int(row[0])
     print("upper scan set to {} from the data".format(args.scan_upper))
 
-# q = src_c.execute("SELECT value FROM convert_info WHERE item=\"mz_lower\"")
-# row = q.fetchone()
-# mz_lower = float(row[0])
-# q = src_c.execute("SELECT value FROM convert_info WHERE item=\"mz_upper\"")
-# row = q.fetchone()
-# mz_upper = float(row[0])
+q = src_c.execute("SELECT value FROM convert_info WHERE item=\"mz_lower\"")
+row = q.fetchone()
+mz_lower = float(row[0])
+q = src_c.execute("SELECT value FROM convert_info WHERE item=\"mz_upper\"")
+row = q.fetchone()
+mz_upper = float(row[0])
 
 # Store the arguments as metadata in the database for later reference
 summing_info = []

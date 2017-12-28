@@ -1,13 +1,13 @@
 import argparse
 import sqlite3
 
-parser = argparse.ArgumentParser(description='Generates the commands to run frame summation in parallel.')
+parser = argparse.ArgumentParser(description='Generates the commands to run frame processing in parallel.')
 parser.add_argument('-sdb','--source_directory', type=str, help='The name of the source directory.', required=True)
 parser.add_argument('-ddb','--destination_directory', type=str, help='The name of the destination directory.', required=True)
 parser.add_argument('-bdb','--base_database_name', type=str, help='The base name of the database.', required=True)
 parser.add_argument('-fts','--frames_to_sum', type=int, default=5, help='The number of source frames to sum.', required=False)
 parser.add_argument('-ce','--collision_energy', type=int, default=10, help='Collision energy, in eV. Use 10 for MS1, 35 for MS2', required=False)
-parser.add_argument('-sfb','--summed_frame_batch_size', type=int, default=10000, help='The number of summed frames in each batch.', required=False)
+parser.add_argument('-sfb','--summed_frame_batch_size', type=int, default=2000, help='The number of summed frames in each batch.', required=False)
 args = parser.parse_args()
 
 args.source_directory = args.source_directory.replace('\\', '/')
@@ -43,3 +43,39 @@ for i in range(number_of_batches):
     print("start \"Summing {}-{}\" python sum-frames-intensity-descent.py -sdb \"{}/{}\" -ddb \"{}/summed-{}-{}-{}\" -n {} -bf {} -sf {}".format(base_summed_frame_id, last_summed_frame_id, args.source_directory, 
     	args.base_database_name, args.destination_directory, base_summed_frame_id, last_summed_frame_id, args.base_database_name, number_of_summed_frames_required_this_batch, 
     	base_summed_frame_id, base_source_frame_index))
+
+print("")
+for i in range(number_of_batches):
+    base_summed_frame_id = i*args.summed_frame_batch_size+1
+    if (base_summed_frame_id+args.summed_frame_batch_size-1 > number_of_summed_frames):
+        number_of_summed_frames_required_this_batch = number_of_summed_frames-base_summed_frame_id+1
+    else:
+        number_of_summed_frames_required_this_batch = args.summed_frame_batch_size
+
+    last_summed_frame_id = base_summed_frame_id+number_of_summed_frames_required_this_batch-1
+    print("start \"Peak detect {}-{}\" python peak-detect-intensity-descent.py -db \"{}/summed-{}-{}-{}\"".format(base_summed_frame_id, last_summed_frame_id, args.destination_directory, 
+        base_summed_frame_id, last_summed_frame_id, args.base_database_name))
+
+print("")
+for i in range(number_of_batches):
+    base_summed_frame_id = i*args.summed_frame_batch_size+1
+    if (base_summed_frame_id+args.summed_frame_batch_size-1 > number_of_summed_frames):
+        number_of_summed_frames_required_this_batch = number_of_summed_frames-base_summed_frame_id+1
+    else:
+        number_of_summed_frames_required_this_batch = args.summed_frame_batch_size
+
+    last_summed_frame_id = base_summed_frame_id+number_of_summed_frames_required_this_batch-1
+    print("start \"Cluster detect {}-{}\" python cluster-detect-intensity-descent.py -db \"{}/summed-{}-{}-{}\"".format(base_summed_frame_id, last_summed_frame_id, args.destination_directory, 
+        base_summed_frame_id, last_summed_frame_id, args.base_database_name))
+
+print("")
+for i in range(number_of_batches):
+    base_summed_frame_id = i*args.summed_frame_batch_size+1
+    if (base_summed_frame_id+args.summed_frame_batch_size-1 > number_of_summed_frames):
+        number_of_summed_frames_required_this_batch = number_of_summed_frames-base_summed_frame_id+1
+    else:
+        number_of_summed_frames_required_this_batch = args.summed_frame_batch_size
+
+    last_summed_frame_id = base_summed_frame_id+number_of_summed_frames_required_this_batch-1
+    print("start \"Feature detect {}-{}\" python feature-detect-intensity-descent.py -db \"{}/summed-{}-{}-{}\"".format(base_summed_frame_id, last_summed_frame_id, args.destination_directory, 
+        base_summed_frame_id, last_summed_frame_id, args.base_database_name))
