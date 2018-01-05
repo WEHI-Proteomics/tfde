@@ -3,6 +3,8 @@ import sqlite3
 import argparse
 import numpy as np
 import time
+import pandas as pd
+import peakutils
 
 # feature array indices
 FEATURE_ID_IDX = 0
@@ -26,12 +28,12 @@ def standard_deviation(mz):
     instrument_resolution = 40000.0
     return (mz / instrument_resolution) / 2.35482
 
+# Find the source MS2 frame IDs corresponding to the specified summed MS1 frame ID
 def ms2_frame_ids_from_ms1_frame_id(ms1_frame_id):
     # find the set of frames summed to make this MS1 frame
-    lower_source_frame_index = ms1_frame_id / frames_to_sum
-    upper_source_frame_index = lower_source_frame_index + frames_to_sum -1
-    print("ms1 source frames for frame ID {}: {}".format(ms1_frame_ids_v[lower_source_frame_index:upper_source_frame_index+1,0], ms1_frame_id))
-    print("corresponding ms2 frames: {}".format(ms2_frame_ids_v[lower_source_frame_index:upper_source_frame_index+1,0]))
+    lower_source_frame_index = (ms1_frame_id-1) * frames_to_sum
+    upper_source_frame_index = lower_source_frame_index + frames_to_sum
+    return tuple(ms2_frame_ids_v[lower_source_frame_index:upper_source_frame_index,0])
 
 
 parser = argparse.ArgumentParser(description='Extract MS2 features from MS1 features.')
@@ -49,7 +51,7 @@ dest_c = dest_conn.cursor()
 print("Setting up tables and indexes")
 
 dest_c.execute("DROP TABLE IF EXISTS summed_ms2_regions")
-dest_c.execute("CREATE TABLE summed_ms2_regions (ms1_feature_id INTEGER PRIMARY KEY, point_id INTEGER, mz REAL, scan INTEGER, intensity INTEGER, peak_id INTEGER)")
+dest_c.execute("CREATE TABLE summed_ms2_regions (ms1_feature_id INTEGER, point_id INTEGER, mz REAL, scan INTEGER, intensity INTEGER, peak_id INTEGER)")
 
 dest_c.execute("DROP INDEX IF EXISTS idx_summed_ms2_regions")
 dest_c.execute("CREATE INDEX idx_summed_ms2_regions ON summed_ms2_regions (ms1_feature_id)")
@@ -64,33 +66,42 @@ for arg in vars(args):
 
 start_run = time.time()
 
-print("Loading the MS1 frame IDs")
-ms1_frame_ids_df = pd.read_sql_query("select frame_id from frame_properties where collision_energy={} order by frame_id ASC;".format(MS1_COLLISION_ENERGY), source_conn)
-ms1_frame_ids_v = ms1_frame_ids_df.values
-
 print("Loading the MS2 frame IDs")
 ms2_frame_ids_df = pd.read_sql_query("select frame_id from frame_properties where collision_energy={} order by frame_id ASC;".format(MS2_COLLISION_ENERGY), source_conn)
 ms2_frame_ids_v = ms2_frame_ids_df.values
 
 print("Getting some metadata about how the frames were summed")
 
-q = src_c.execute("SELECT value FROM summing_info WHERE item=\"frames_to_sum\"")
+q = dest_c.execute("SELECT value FROM summing_info WHERE item=\"frames_to_sum\"")
 row = q.fetchone()
 frames_to_sum = int(row[0])
-print("frames to sum {}".format(frames_to_sum))
+print("Number of source frames that were summed: {}".format(frames_to_sum))
 
+print("Loading the MS1 features")
+features_df = pd.read_sql_query("select feature_id,start_frame,end_frame,scan_lower,scan_upper,mz_lower,mz_upper from features order by feature_id ASC;", dest_conn)
+features_v = features_df.values
 
 for feature in features_v:
-    feature_id = feature[FEATURE_ID_IDX]
+    feature_id = int(feature[FEATURE_ID_IDX])
+    feature_start_frame = int(feature[FEATURE_START_FRAME_IDX])
+    feature_end_frame = int(feature[FEATURE_END_FRAME_IDX])
+    feature_scan_lower = int(feature[FEATURE_SCAN_LOWER_IDX])
+    feature_scan_upper = int(feature[FEATURE_SCAN_UPPER_IDX])
+    feature_mz_lower = feature[FEATURE_MZ_LOWER_IDX]
+    feature_mz_upper = feature[FEATURE_MZ_UPPER_IDX]
+
+    # Load the MS2 frame points for the feature's region
     ms2_frame_ids = ()
-    for frame_id in range(feature[FEATURE_START_FRAME_IDX], feature[FEATURE_END_FRAME_IDX]+1):
+    for frame_id in range(feature_start_frame, feature_end_frame+1):
         ms2_frame_ids += ms2_frame_ids_from_ms1_frame_id(frame_id)
-    frame_df = pd.read_sql_query("select frame_id,mz,scan,intensity from frames where frame_id in {} order by frame_id, mz, scan asc;".format(ms2_frame_ids), source_conn)
+    print("feature ID {}, MS1 frame IDs {}-{}, MS2 frame IDs {}\n".format(feature_id, feature_start_frame, feature_end_frame, ms2_frame_ids))
+    frame_df = pd.read_sql_query("select frame_id,mz,scan,intensity from frames where frame_id in {} and mz <= {} and mz >= {} and scan <= {} and scan >= {} order by frame_id, mz, scan asc;".format(ms2_frame_ids, feature_mz_upper, feature_mz_lower, feature_scan_upper, feature_scan_lower), source_conn)
     frame_v = frame_df.values
 
+    # Sum the points in the feature's region, just as we did for MS1 frames
     pointId = 1
     points = []
-    for scan in range(args.scan_lower, args.scan_upper+1):
+    for scan in range(feature_scan_lower, feature_scan_upper+1):
         points_v = frame_v[np.where(frame_v[:,FRAME_SCAN_IDX] == scan)]
         points_to_process = len(points_v)
         while len(points_v) > 0:
@@ -117,7 +128,7 @@ for feature in features_v:
     dest_c.executemany("INSERT INTO summed_ms2_regions VALUES (?, ?, ?, ?, ?, ?)", points)
 
     # check whether we have finished
-    if ((args.number_of_ms1_features is not None) and (feature_id > args.number_of_features)):
+    if ((args.number_of_ms1_features is not None) and (feature_id >= args.number_of_ms1_features)):
         print("Reached the maximum number of features")
         break
 
@@ -125,7 +136,7 @@ for feature in features_v:
 stop_run = time.time()
 print("{} seconds to process run".format(stop_run-start_run))
 
-summing_info.append(("run processing time (sec)", stop_run-start_run))
-summing_info.append(("processed", time.ctime()))
+ms2_feature_info.append(("run processing time (sec)", stop_run-start_run))
+ms2_feature_info.append(("processed", time.ctime()))
 dest_c.executemany("INSERT INTO ms2_feature_info VALUES (?, ?)", ms2_feature_info)
 dest_conn.commit()
