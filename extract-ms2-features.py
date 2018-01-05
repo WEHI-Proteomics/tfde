@@ -51,7 +51,7 @@ dest_c = dest_conn.cursor()
 print("Setting up tables and indexes")
 
 dest_c.execute("DROP TABLE IF EXISTS summed_ms2_regions")
-dest_c.execute("CREATE TABLE summed_ms2_regions (ms1_feature_id INTEGER, point_id INTEGER, mz REAL, scan INTEGER, intensity INTEGER, peak_id INTEGER)")
+dest_c.execute("CREATE TABLE summed_ms2_regions (ms1_feature_id INTEGER, point_id INTEGER, mz REAL, scan INTEGER, intensity INTEGER, number_frames INTEGER, peak_id INTEGER)")  # number_frames = number of source frames the point was found in
 
 dest_c.execute("DROP INDEX IF EXISTS idx_summed_ms2_regions")
 dest_c.execute("CREATE INDEX idx_summed_ms2_regions ON summed_ms2_regions (ms1_feature_id)")
@@ -94,8 +94,8 @@ for feature in features_v:
     ms2_frame_ids = ()
     for frame_id in range(feature_start_frame, feature_end_frame+1):
         ms2_frame_ids += ms2_frame_ids_from_ms1_frame_id(frame_id)
-    print("feature ID {}, MS1 frame IDs {}-{}, MS2 frame IDs {}\n".format(feature_id, feature_start_frame, feature_end_frame, ms2_frame_ids))
-    frame_df = pd.read_sql_query("select frame_id,mz,scan,intensity from frames where frame_id in {} and mz <= {} and mz >= {} and scan <= {} and scan >= {} order by frame_id, mz, scan asc;".format(ms2_frame_ids, feature_mz_upper, feature_mz_lower, feature_scan_upper, feature_scan_lower), source_conn)
+    print("feature ID {}, MS1 frame IDs {}-{}, {} MS2 frames, scans {}-{}\n".format(feature_id, feature_start_frame, feature_end_frame, len(ms2_frame_ids), feature_scan_lower, feature_scan_upper))
+    frame_df = pd.read_sql_query("select frame_id,mz,scan,intensity from frames where frame_id in {} and scan <= {} and scan >= {} order by frame_id, mz, scan asc;".format(ms2_frame_ids, feature_scan_upper, feature_scan_lower), source_conn)
     frame_v = frame_df.values
 
     # Sum the points in the feature's region, just as we did for MS1 frames
@@ -118,14 +118,14 @@ for feature in features_v:
                 # find the total intensity and centroid m/z
                 centroid_intensity = nearby_points[:,FRAME_INTENSITY_IDX].sum()
                 centroid_mz = peakutils.centroid(nearby_points[:,FRAME_MZ_IDX], nearby_points[:,FRAME_INTENSITY_IDX])
-                points.append((feature_id, pointId, centroid_mz, scan, int(round(centroid_intensity)), 0))
+                points.append((feature_id, pointId, centroid_mz, scan, int(round(centroid_intensity)), len(unique_frames), 0))
                 pointId += 1
                 # remove the points we've processed
                 points_v = np.delete(points_v, nearby_point_indices, 0)
             else:
                 # remove this point because it doesn't have enough neighbours
                 points_v = np.delete(points_v, max_intensity_index, 0)
-    dest_c.executemany("INSERT INTO summed_ms2_regions VALUES (?, ?, ?, ?, ?, ?)", points)
+    dest_c.executemany("INSERT INTO summed_ms2_regions VALUES (?, ?, ?, ?, ?, ?, ?)", points)
 
     # check whether we have finished
     if ((args.number_of_ms1_features is not None) and (feature_id >= args.number_of_ms1_features)):
