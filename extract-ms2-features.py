@@ -40,7 +40,7 @@ parser = argparse.ArgumentParser(description='Extract MS2 features from MS1 feat
 parser.add_argument('-sdb','--source_database_name', type=str, help='The name of the source database (for reading MS2 frames).', required=True)
 parser.add_argument('-ddb','--destination_database_name', type=str, help='The name of the destination database (for reading MS1 features and writing MS2 features).', required=True)
 parser.add_argument('-nf','--number_of_ms1_features', type=int, help='Maximum number of MS1 features to process.', required=False)
-parser.add_argument('-mf','--noise_threshold', type=int, default=2, help='Minimum number of frames a point must appear in to be processed.', required=False)
+parser.add_argument('-mf','--noise_threshold', type=int, default=150, help='Minimum number of frames a point must appear in to be processed.', required=False)
 args = parser.parse_args()
 
 source_conn = sqlite3.connect(args.source_database_name)
@@ -97,6 +97,7 @@ for feature in features_v:
     print("feature ID {}, MS1 frame IDs {}-{}, {} MS2 frames, scans {}-{}\n".format(feature_id, feature_start_frame, feature_end_frame, len(ms2_frame_ids), feature_scan_lower, feature_scan_upper))
     frame_df = pd.read_sql_query("select frame_id,mz,scan,intensity from frames where frame_id in {} and scan <= {} and scan >= {} order by frame_id, mz, scan asc;".format(ms2_frame_ids, feature_scan_upper, feature_scan_lower), source_conn)
     frame_v = frame_df.values
+    print("frame occupies {} bytes".format(frame_v.nbytes))
 
     # Sum the points in the feature's region, just as we did for MS1 frames
     pointId = 1
