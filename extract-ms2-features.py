@@ -1,3 +1,4 @@
+from __future__ import print_function
 import sys
 import sqlite3
 import argparse
@@ -54,7 +55,6 @@ dest_c.execute("DROP TABLE IF EXISTS summed_ms2_regions")
 dest_c.execute("CREATE TABLE summed_ms2_regions (ms1_feature_id INTEGER, point_id INTEGER, mz REAL, scan INTEGER, intensity INTEGER, number_frames INTEGER, peak_id INTEGER)")  # number_frames = number of source frames the point was found in
 
 dest_c.execute("DROP INDEX IF EXISTS idx_summed_ms2_regions")
-dest_c.execute("CREATE INDEX idx_summed_ms2_regions ON summed_ms2_regions (ms1_feature_id)")
 
 dest_c.execute("DROP TABLE IF EXISTS ms2_feature_info")
 dest_c.execute("CREATE TABLE ms2_feature_info (item TEXT, value TEXT)")
@@ -103,6 +103,7 @@ for feature in features_v:
     pointId = 1
     points = []
     for scan in range(feature_scan_lower, feature_scan_upper+1):
+        print("{},".format(scan), end="")
         points_v = frame_v[np.where(frame_v[:,FRAME_SCAN_IDX] == scan)]
         points_to_process = len(points_v)
         while len(points_v) > 0:
@@ -121,11 +122,8 @@ for feature in features_v:
                 centroid_mz = peakutils.centroid(nearby_points[:,FRAME_MZ_IDX], nearby_points[:,FRAME_INTENSITY_IDX])
                 points.append((feature_id, pointId, centroid_mz, scan, int(round(centroid_intensity)), len(unique_frames), 0))
                 pointId += 1
-                # remove the points we've processed
-                points_v = np.delete(points_v, nearby_point_indices, 0)
-            else:
-                # remove this point because it doesn't have enough neighbours
-                points_v = np.delete(points_v, max_intensity_index, 0)
+            # remove the points we've processed
+            points_v = np.delete(points_v, nearby_point_indices, 0)
     dest_c.executemany("INSERT INTO summed_ms2_regions VALUES (?, ?, ?, ?, ?, ?, ?)", points)
 
     # check whether we have finished
@@ -133,6 +131,8 @@ for feature in features_v:
         print("Reached the maximum number of features")
         break
 
+print("Creating index on summed_ms2_regions")
+dest_c.execute("CREATE INDEX idx_summed_ms2_regions ON summed_ms2_regions (ms1_feature_id)")
 
 stop_run = time.time()
 print("{} seconds to process run".format(stop_run-start_run))
