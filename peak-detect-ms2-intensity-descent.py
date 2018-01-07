@@ -157,61 +157,13 @@ for ms1_feature_id in range(ms1_feature_id_lower, ms1_feature_id_upper+1):
                     ms1_feature_v_index_to_use = nearby_indices_down[0]
                 
                 # Update the m/z window
-                mz = ms1_feature_v[ms1_feature_v_index_to_use][REGION_POINT_INTENSITY_IDX]
+                mz = ms1_feature_v[ms1_feature_v_index_to_use][REGION_POINT_MZ_IDX]
                 std_dev_window = standard_deviation(mz) * args.standard_deviations
                 missed_scans = 0
                 peak_indices = np.append(peak_indices, ms1_feature_v_index_to_use)
             scan_offset += 1
 
         if len(peak_indices) > 1:
-            if len(peak_indices) > MIN_POINTS_IN_PEAK_TO_CHECK_FOR_TROUGHS:
-                # Check whether it has more than one peak
-                # filter the intensity with a Gaussian filter
-                sorted_peaks_indexes = np.argsort(ms1_feature_v[peak_indices][:,REGION_POINT_SCAN_IDX])
-                peaks_sorted = ms1_feature_v[peak_indices[sorted_peaks_indexes]]
-                rationale["point ids"] = peaks_sorted[:,REGION_POINT_ID_IDX].astype(int).tolist()
-                filtered = signal.savgol_filter(peaks_sorted[:,REGION_POINT_INTENSITY_IDX], 9, 5)
-                max_index = np.argmax(peaks_sorted[:,REGION_POINT_INTENSITY_IDX])
-
-                # f = plt.figure()
-                # ax1 = f.add_subplot(111)
-                # ax1.plot(peaks_sorted[:,1], peaks_sorted[:,2], 'o', markerfacecolor='green', markeredgecolor='black', markeredgewidth=0.0, markersize=6)
-                # ax1.plot(peaks_sorted[:,1], filtered, '-', markerfacecolor='blue', markeredgecolor='black', markeredgewidth=0.0, markersize=6)
-
-                peak_maxima_indexes = peakutils.indexes(filtered, thres=0.05, min_dist=2)
-                peak_minima_indexes = []
-                if len(peak_maxima_indexes) > 1:
-                    for idx,peak_maxima_index in enumerate(peak_maxima_indexes):
-                        # ax1.plot(peaks_sorted[peak_maxima_index,1], peaks_sorted[peak_maxima_index,2], 'o', markerfacecolor='red', markeredgecolor='black', markeredgewidth=0.0, markersize=10, alpha=0.5)
-                        if idx>0:
-                            intensities_between_maxima = filtered[peak_maxima_indexes[idx-1]:peak_maxima_indexes[idx]+1]
-                            minimum_intensity_index = np.argmin(intensities_between_maxima)+peak_maxima_indexes[idx-1]
-                            peak_minima_indexes.append(minimum_intensity_index)
-                            # ax1.plot(peaks_sorted[minimum_intensity_index,1], peaks_sorted[minimum_intensity_index,2], 'x', markerfacecolor='purple', markeredgecolor='black', markeredgewidth=6.0, markersize=10, alpha=0.5)
-                # print("peak maximum: {}".format(max_index))
-                # print("peak minima: {}".format(peak_minima_indexes))
-                indices_to_delete = np.empty(0)
-                if len(peak_minima_indexes) > 0:
-                    idx,lower_snip = findNearestLessThan(max_index, peak_minima_indexes)
-                    idx,upper_snip = findNearestGreaterThan(max_index, peak_minima_indexes)
-                    if lower_snip < max_index:
-                        # ax1.plot(peaks_sorted[lower_snip,1], peaks_sorted[lower_snip,2], '+', markerfacecolor='purple', markeredgecolor='red', markeredgewidth=2.0, markersize=20, alpha=1.0)
-                        indices_to_delete = np.concatenate((indices_to_delete,np.arange(lower_snip)))
-                    if upper_snip > max_index:
-                        # ax1.plot(peaks_sorted[upper_snip,1], peaks_sorted[upper_snip,2], '+', markerfacecolor='purple', markeredgecolor='red', markeredgewidth=2.0, markersize=20, alpha=1.0)
-                        indices_to_delete = np.concatenate((indices_to_delete,np.arange(upper_snip+1,len(peaks_sorted))))
-                    sorted_peaks_indexes = np.delete(sorted_peaks_indexes, indices_to_delete, 0)
-                    peak_indices = peak_indices[sorted_peaks_indexes]
-                    peaks_sorted = ms1_feature_v[peak_indices]
-                    # ax1.plot(peaks_sorted[:,1], peaks_sorted[:,2], 'o', markerfacecolor='blue', markeredgecolor='black', markeredgewidth=0.0, markersize=6)
-                    rationale["point ids after trimming"] = peaks_sorted[:,REGION_POINT_ID_IDX].astype(int).tolist()
-
-                # plt.title("Peak {}".format(peak_id))
-                # plt.xlabel('scan')
-                # plt.ylabel('intensity')
-                # plt.margins(0.02)
-                # plt.show()
-
             # Add the peak to the collection
             peak_mz = []
             peak_scan = []
