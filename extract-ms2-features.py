@@ -105,15 +105,13 @@ for feature in features_v:
     for scan in range(feature_scan_lower, feature_scan_upper+1):
         print("{},".format(scan), end="")
         points_v = frame_v[np.where(frame_v[:,FRAME_SCAN_IDX] == scan)]
-        points_to_process = len(points_v)
-        # while len(points_v) > 0:
-        while len(np.where((points_v[:,FRAME_INTENSITY_IDX] > -1))[0]) > 0:
+        while len(points_v) > 0:
             max_intensity_index = np.argmax(points_v[:,FRAME_INTENSITY_IDX])
             point_mz = points_v[max_intensity_index, FRAME_MZ_IDX]
             # print("m/z {}, intensity {}".format(point_mz, points_v[max_intensity_index, 3]))
             delta_mz = standard_deviation(point_mz) * 4.0
             # Find all the points in this point's std dev window
-            nearby_point_indices = np.where((points_v[:,FRAME_INTENSITY_IDX] > -1) & (points_v[:,FRAME_MZ_IDX] >= point_mz-delta_mz) & (points_v[:,FRAME_MZ_IDX] <= point_mz+delta_mz))[0]
+            nearby_point_indices = np.where((points_v[:,FRAME_MZ_IDX] >= point_mz-delta_mz) & (points_v[:,FRAME_MZ_IDX] <= point_mz+delta_mz))[0]
             nearby_points = points_v[nearby_point_indices]
             # How many distinct frames do the points come from?
             unique_frames = np.unique(nearby_points[:,FRAME_ID_IDX])
@@ -124,9 +122,7 @@ for feature in features_v:
                 points.append((feature_id, pointId, centroid_mz, scan, int(round(centroid_intensity)), len(unique_frames), 0))
                 pointId += 1
             # remove the points we've processed
-            # points_v = np.delete(points_v, nearby_point_indices, 0)
-            # flag the points we've processed
-            points_v[nearby_point_indices,FRAME_INTENSITY_IDX] = -1
+            points_v = np.delete(points_v, nearby_point_indices, 0)
     print("")
     dest_c.executemany("INSERT INTO summed_ms2_regions VALUES (?, ?, ?, ?, ?, ?, ?)", points)
 
@@ -137,9 +133,13 @@ for feature in features_v:
 
 print("Creating index on summed_ms2_regions")
 dest_c.execute("CREATE INDEX idx_summed_ms2_regions ON summed_ms2_regions (ms1_feature_id)")
+dest_c.execute("CREATE INDEX idx_summed_ms2_regions_2 ON summed_ms2_regions (ms1_feature_id,point_id)")
 
 stop_run = time.time()
 print("{} seconds to process run".format(stop_run-start_run))
+
+ms2_feature_info.append(("ms1_feature_id_lower", np.min(features_v[:,FEATURE_ID_IDX])))
+ms2_feature_info.append(("ms1_feature_id_upper", np.max(features_v[:,FEATURE_ID_IDX])))
 
 ms2_feature_info.append(("run processing time (sec)", stop_run-start_run))
 ms2_feature_info.append(("processed", time.ctime()))
