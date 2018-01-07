@@ -164,6 +164,38 @@ for ms1_feature_id in range(ms1_feature_id_lower, ms1_feature_id_upper+1):
             scan_offset += 1
 
         if len(peak_indices) > 1:
+
+            if len(peak_indices) > MIN_POINTS_IN_PEAK_TO_CHECK_FOR_TROUGHS:
+                # Check whether it has more than one peak
+                # filter the intensity with a Gaussian filter
+                sorted_peaks_indexes = np.argsort(ms1_feature_v[peak_indices][:,REGION_POINT_SCAN_IDX])
+                peaks_sorted = ms1_feature_v[peak_indices[sorted_peaks_indexes]]
+                rationale["point ids"] = peaks_sorted[:,REGION_POINT_ID_IDX].astype(int).tolist()
+                filtered = signal.savgol_filter(peaks_sorted[:,REGION_POINT_INTENSITY_IDX], 9, 5)
+                max_index = np.argmax(peaks_sorted[:,REGION_POINT_INTENSITY_IDX])
+
+                peak_maxima_indexes = peakutils.indexes(filtered, thres=0.05, min_dist=2)
+                peak_minima_indexes = []
+                if len(peak_maxima_indexes) > 1:
+                    for idx,peak_maxima_index in enumerate(peak_maxima_indexes):
+                        if idx>0:
+                            intensities_between_maxima = filtered[peak_maxima_indexes[idx-1]:peak_maxima_indexes[idx]+1]
+                            minimum_intensity_index = np.argmin(intensities_between_maxima)+peak_maxima_indexes[idx-1]
+                            peak_minima_indexes.append(minimum_intensity_index)
+
+                indices_to_delete = np.empty(0)
+                if len(peak_minima_indexes) > 0:
+                    idx,lower_snip = findNearestLessThan(max_index, peak_minima_indexes)
+                    idx,upper_snip = findNearestGreaterThan(max_index, peak_minima_indexes)
+                    if lower_snip < max_index:
+                        indices_to_delete = np.concatenate((indices_to_delete,np.arange(lower_snip)))
+                    if upper_snip > max_index:
+                        indices_to_delete = np.concatenate((indices_to_delete,np.arange(upper_snip+1,len(peaks_sorted))))
+                    sorted_peaks_indexes = np.delete(sorted_peaks_indexes, indices_to_delete, 0)
+                    peak_indices = peak_indices[sorted_peaks_indexes]
+                    peaks_sorted = ms1_feature_v[peak_indices]
+                    rationale["point ids after trimming"] = peaks_sorted[:,REGION_POINT_ID_IDX].astype(int).tolist()
+
             # Add the peak to the collection
             peak_mz = []
             peak_scan = []
