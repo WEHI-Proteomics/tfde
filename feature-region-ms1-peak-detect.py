@@ -11,6 +11,7 @@ import math
 import collections
 import json
 import os
+from operator import itemgetter
 
 # MS1 summed region array indices
 REGION_POINT_ID_IDX = 0
@@ -64,19 +65,19 @@ parser.add_argument('-sd','--standard_deviations', type=int, default=4, help='Nu
 args = parser.parse_args()
 
 source_conn = sqlite3.connect(database=args.database_name, timeout=60)
+src_c = source_conn.cursor()
 
-c = source_conn.cursor()
 print("Setting up tables and indexes")
 
-c.execute('''DROP TABLE IF EXISTS ms1_feature_region_peaks''')
-c.execute('''CREATE TABLE ms1_feature_region_peaks (feature_id INTEGER, peak_id INTEGER, centroid_mz REAL, centroid_scan REAL, intensity_sum INTEGER, scan_upper INTEGER, scan_lower INTEGER, std_dev_mz REAL, std_dev_scan REAL, cluster_id INTEGER, 'rationale' TEXT, 'state' TEXT, intensity_max INTEGER, peak_max_mz REAL, peak_max_scan INTEGER, PRIMARY KEY (feature_id, peak_id))''')
+src_c.execute('''DROP TABLE IF EXISTS ms1_feature_region_peaks''')
+src_c.execute('''CREATE TABLE ms1_feature_region_peaks (feature_id INTEGER, peak_id INTEGER, centroid_mz REAL, centroid_scan REAL, intensity_sum INTEGER, scan_upper INTEGER, scan_lower INTEGER, std_dev_mz REAL, std_dev_scan REAL, cluster_id INTEGER, 'rationale' TEXT, 'state' TEXT, intensity_max INTEGER, peak_max_mz REAL, peak_max_scan INTEGER, PRIMARY KEY (feature_id, peak_id))''')
 
-c.execute('''DROP TABLE IF EXISTS ms1_feature_region_peak_detect_info''')
-c.execute('''CREATE TABLE ms1_feature_region_peak_detect_info (item TEXT, value TEXT)''')
+src_c.execute('''DROP TABLE IF EXISTS ms1_feature_region_peak_detect_info''')
+src_c.execute('''CREATE TABLE ms1_feature_region_peak_detect_info (item TEXT, value TEXT)''')
 
 
 print("Resetting peak IDs")
-c.execute("update summed_ms1_regions set peak_id=0 where peak_id!=0")
+src_c.execute("update summed_ms1_regions set peak_id=0 where peak_id!=0")
 
 # Store the arguments as metadata in the database for later reference
 ms1_feature_region_peak_detect_info = []
@@ -87,17 +88,19 @@ mono_peaks = []
 point_updates = []
 start_run = time.time()
 
-# Find the MS1 feature IDs to process (which feature IDs are in the summed_ms1_regions table)
-q = dest_c.execute("SELECT value FROM summing_info WHERE item=\"frames_to_sum\"")
+# Determine the MS1 feature IDs to process (which feature IDs are in the summed_ms1_regions table)
+q = src_c.execute("SELECT value FROM ms1_feature_region_summing_info WHERE item=\"feature_id_lower\"")
 row = q.fetchone()
 feature_id_lower = int(row[0])
 print("feature_id_lower: {}".format(feature_id_lower))
 
+q = src_c.execute("SELECT value FROM ms1_feature_region_summing_info WHERE item=\"feature_id_upper\"")
+row = q.fetchone()
+feature_id_upper = int(row[0])
+print("feature_id_upper: {}".format(feature_id_upper))
 
-
-
-print("Loading the MS1 features")
-features_df = pd.read_sql_query("select feature_id,start_frame,end_frame,scan_lower,scan_upper,mz_lower,mz_upper from features order by feature_id ASC;", source_conn)
+print("Loading the MS1 features {}-{}".format(feature_id_lower, feature_id_upper))
+features_df = pd.read_sql_query("select feature_id,start_frame,end_frame,scan_lower,scan_upper,mz_lower,mz_upper from features where feature_id >= {} and feature_id <= {} order by feature_id ASC;".format(feature_id_lower, feature_id_upper), source_conn)
 features_v = features_df.values
 
 for feature in features_v:
@@ -110,7 +113,7 @@ for feature in features_v:
     feature_mz_upper = feature[FEATURE_MZ_UPPER_IDX]
 
     peak_id = 1
-    ms1_feature_df = pd.read_sql_query("select point_id,mz,scan,intensity from summed_ms1_regions where ms1_feature_id={} order by mz, scan asc;".format(feature_id), source_conn)
+    ms1_feature_df = pd.read_sql_query("select point_id,mz,scan,intensity from summed_ms1_regions where feature_id={} order by mz, scan asc;".format(feature_id), source_conn)
     print("Processing MS1 feature {}".format(feature_id))
     start_feature = time.time()
     ms1_feature_v = ms1_feature_df.values
@@ -249,25 +252,29 @@ for feature in features_v:
         ms1_feature_v = np.delete(ms1_feature_v, peak_indices, 0)
 
     # Write out the peaks we found for this feature
-    print("Writing out the peaks we found for this feature.")
-    c.executemany("INSERT INTO ms1_feature_region_peaks VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?)", mono_peaks)
+    print("Writing out the peaks for this feature.")
+    src_c.executemany("INSERT INTO ms1_feature_region_peaks VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?)", mono_peaks)
     mono_peaks = []
 
     # Update the points in the summed_ms1_regions table
     print("Updating the points in the summed_ms1_regions table.")
-    c.executemany("UPDATE summed_ms1_regions SET peak_id=? WHERE ms1_feature_id=? AND point_id=?", point_updates)
+    src_c.executemany("UPDATE summed_ms1_regions SET peak_id=? WHERE feature_id=? AND point_id=?", point_updates)
     point_updates = []
 
     stop_feature = time.time()
     print("{} seconds to process feature {} - {} peaks".format(stop_feature-start_feature, feature_id, peak_id))
 
 stop_run = time.time()
-print("{} seconds to process features {} to {}".format(stop_run-start_run, np.min(features_v[:,FEATURE_ID_IDX]), np.max(features_v[:,FEATURE_ID_IDX])))
+print("{} seconds to process features {} to {}".format(stop_run-start_run, feature_id_lower, feature_id_upper))
+
+# Keep a record of the features we actually processed
+ms1_feature_region_peak_detect_info.append(("feature_id_lower", feature_id_lower))
+ms1_feature_region_peak_detect_info.append(("feature_id_upper", feature_id_upper))
 
 # write out the processing info
 ms1_feature_region_peak_detect_info.append(("run processing time (sec)", stop_run-start_run))
 ms1_feature_region_peak_detect_info.append(("processed", time.ctime()))
-c.executemany("INSERT INTO ms1_feature_region_peak_detect_info VALUES (?, ?)", ms1_feature_region_peak_detect_info)
+src_c.executemany("INSERT INTO ms1_feature_region_peak_detect_info VALUES (?, ?)", ms1_feature_region_peak_detect_info)
 source_conn.commit()
 source_conn.close()
 
