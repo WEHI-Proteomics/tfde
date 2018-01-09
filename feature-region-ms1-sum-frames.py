@@ -6,6 +6,7 @@ import numpy as np
 import time
 import pandas as pd
 import peakutils
+from operator import itemgetter
 
 # feature array indices
 FEATURE_ID_IDX = 0
@@ -39,23 +40,26 @@ src_c = source_conn.cursor()
 print("Setting up tables and indexes")
 
 src_c.execute("DROP TABLE IF EXISTS summed_ms1_regions")
-src_c.execute("CREATE TABLE summed_ms1_regions (ms1_feature_id INTEGER, point_id INTEGER, mz REAL, scan INTEGER, intensity INTEGER, number_frames INTEGER, peak_id INTEGER)")  # number_frames = number of source frames the point was found in
+src_c.execute("CREATE TABLE summed_ms1_regions (feature_id INTEGER, point_id INTEGER, mz REAL, scan INTEGER, intensity INTEGER, number_frames INTEGER, peak_id INTEGER)")  # number_frames = number of source frames the point was found in
 
 src_c.execute("DROP INDEX IF EXISTS idx_summed_ms1_regions")
 
-src_c.execute("DROP TABLE IF EXISTS ms1_feature_region_info")
-src_c.execute("CREATE TABLE ms1_feature_region_info (item TEXT, value TEXT)")
+src_c.execute("DROP TABLE IF EXISTS ms1_feature_region_summing_info")
+src_c.execute("CREATE TABLE ms1_feature_region_summing_info (item TEXT, value TEXT)")
 
 # Store the arguments as metadata in the database for later reference
-ms1_feature_region_info = []
+ms1_feature_region_summing_info = []
 for arg in vars(args):
-    ms1_feature_region_info.append((arg, getattr(args, arg)))
+    ms1_feature_region_summing_info.append((arg, getattr(args, arg)))
 
 start_run = time.time()
 
 print("Loading the MS1 features")
 features_df = pd.read_sql_query("select feature_id,start_frame,end_frame,scan_lower,scan_upper,mz_lower,mz_upper from features order by feature_id ASC;", source_conn)
 features_v = features_df.values
+
+feature_id_lower = int(features_v[0,FEATURE_ID_IDX])
+feature_id_upper = int(features_v[len(features_v)-1,FEATURE_ID_IDX])
 
 for feature in features_v:
     feature_id = int(feature[FEATURE_ID_IDX])
@@ -65,6 +69,7 @@ for feature in features_v:
     feature_scan_upper = int(feature[FEATURE_SCAN_UPPER_IDX])
     feature_mz_lower = feature[FEATURE_MZ_LOWER_IDX]
     feature_mz_upper = feature[FEATURE_MZ_UPPER_IDX]
+    print("Processing feature ID {} ({} frames)".format(feature_id, feature_end_frame-feature_start_frame))
 
     # Load the MS1 frame points for the feature's region
     frame_df = pd.read_sql_query("select frame_id,mz,scan,intensity from frames where frame_id >= {} and frame_id <= {} and mz <= {} and mz >= {} and scan <= {} and scan >= {} order by frame_id, mz, scan asc;".format(feature_start_frame, feature_end_frame, feature_mz_upper, feature_mz_lower, feature_scan_upper, feature_scan_lower), source_conn)
@@ -75,7 +80,6 @@ for feature in features_v:
     pointId = 1
     points = []
     for scan in range(feature_scan_lower, feature_scan_upper+1):
-        print("{},".format(scan), end="")
         points_v = frame_v[np.where(frame_v[:,FRAME_SCAN_IDX] == scan)]
         while len(points_v) > 0:
             max_intensity_index = np.argmax(points_v[:,FRAME_INTENSITY_IDX])
@@ -95,22 +99,26 @@ for feature in features_v:
                 pointId += 1
             # remove the points we've processed
             points_v = np.delete(points_v, nearby_point_indices, 0)
-    print("")
     src_c.executemany("INSERT INTO summed_ms1_regions VALUES (?, ?, ?, ?, ?, ?, ?)", points)
 
     # check whether we have finished
     if ((args.number_of_ms1_features is not None) and (feature_id >= args.number_of_ms1_features)):
+        feature_id_upper = feature_id
         print("Reached the maximum number of features")
         break
 
 print("Creating index on summed_ms1_regions")
-src_c.execute("CREATE INDEX idx_summed_ms1_regions ON summed_ms1_regions (ms1_feature_id)")
-src_c.execute("CREATE INDEX idx_summed_ms1_regions_2 ON summed_ms1_regions (ms1_feature_id,point_id)")
+src_c.execute("CREATE INDEX idx_summed_ms1_regions ON summed_ms1_regions (feature_id)")
+src_c.execute("CREATE INDEX idx_summed_ms1_regions_2 ON summed_ms1_regions (feature_id,point_id)")
 
 stop_run = time.time()
 print("{} seconds to process run".format(stop_run-start_run))
 
-ms1_feature_region_info.append(("run processing time (sec)", stop_run-start_run))
-ms1_feature_region_info.append(("processed", time.ctime()))
-src_c.executemany("INSERT INTO ms1_feature_region_info VALUES (?, ?)", ms1_feature_region_info)
+# Keep a record of the features we actually processed
+ms1_feature_region_summing_info.append(("feature_id_lower", feature_id_lower))
+ms1_feature_region_summing_info.append(("feature_id_upper", feature_id_upper))
+
+ms1_feature_region_summing_info.append(("run processing time (sec)", stop_run-start_run))
+ms1_feature_region_summing_info.append(("processed", time.ctime()))
+src_c.executemany("INSERT INTO ms1_feature_region_summing_info VALUES (?, ?)", ms1_feature_region_summing_info)
 source_conn.commit()
