@@ -229,7 +229,7 @@ for ms1_feature_id in range(ms1_feature_id_lower, ms1_feature_id_upper+1):
         # remove the points we've processed
         ms1_feature_v = np.delete(ms1_feature_v, peak_indices, 0)
 
-    # Write out the peaks we found for this feature
+    # Write out the peaks for this feature
     print("Writing out the peaks we found for this feature.")
     c.executemany("INSERT INTO ms2_peaks VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?)", mono_peaks)
     mono_peaks = []

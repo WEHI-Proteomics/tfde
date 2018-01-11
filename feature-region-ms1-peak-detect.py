@@ -75,6 +75,9 @@ src_c.execute('''CREATE TABLE ms1_feature_region_peaks (feature_id INTEGER, peak
 src_c.execute('''DROP TABLE IF EXISTS ms1_feature_region_peak_detect_info''')
 src_c.execute('''CREATE TABLE ms1_feature_region_peak_detect_info (item TEXT, value TEXT)''')
 
+src_c.execute('''DROP TABLE IF EXISTS feature_base_peaks''')
+src_c.execute('''CREATE TABLE feature_base_peaks (feature_id INTEGER, base_peak_id INTEGER, PRIMARY KEY (feature_id, base_peak_id))''')
+
 
 print("Resetting peak IDs")
 src_c.execute("update summed_ms1_regions set peak_id=0 where peak_id!=0")
@@ -86,6 +89,7 @@ for arg in vars(args):
 
 mono_peaks = []
 point_updates = []
+base_peaks = []
 start_run = time.time()
 
 # Determine the MS1 feature IDs to process (which feature IDs are in the summed_ms1_regions table)
@@ -251,7 +255,11 @@ for feature in features_v:
         # remove the points we've processed
         ms1_feature_v = np.delete(ms1_feature_v, peak_indices, 0)
 
-    # Write out the peaks we found for this feature
+    # Remember the base peak for the feature
+    base_peak_id = max(mono_peaks, key=itemgetter(4))[1]    # find the max peak_intensity_sum, return its peak_id
+    base_peaks.append((feature_id, base_peak_id))
+
+    # Write out the peaks for this feature
     print("Writing out the peaks for this feature.")
     src_c.executemany("INSERT INTO ms1_feature_region_peaks VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?)", mono_peaks)
     mono_peaks = []
@@ -262,7 +270,10 @@ for feature in features_v:
     point_updates = []
 
     stop_feature = time.time()
-    print("{} seconds to process feature {} - {} peaks".format(stop_feature-start_feature, feature_id, peak_id))
+    print("{} seconds to process feature {} ({} peaks)".format(stop_feature-start_feature, feature_id, peak_id))
+
+print("Write out the base peaks")
+src_c.executemany("INSERT INTO feature_base_peaks VALUES (?, ?)", base_peaks)
 
 stop_run = time.time()
 print("{} seconds to process features {} to {}".format(stop_run-start_run, feature_id_lower, feature_id_upper))
