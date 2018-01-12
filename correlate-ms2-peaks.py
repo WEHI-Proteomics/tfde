@@ -82,7 +82,7 @@ for feature in features_v:
     feature_base_peak_points_v = feature_base_peak_points_df.values
 
     # Load the MS2 peak points
-    ms2_peak_points_df = pd.read_sql_query("select peak_id,point_id,mz,scan,intensity from summed_ms2_regions where ms1_feature_id={} order by peak_id,scan ASC;".format(feature_id), source_conn)
+    ms2_peak_points_df = pd.read_sql_query("select peak_id,point_id,mz,scan,intensity from summed_ms2_regions where feature_id={} order by peak_id,scan ASC;".format(feature_id), source_conn)
     ms2_peak_points_v = ms2_peak_points_df.values
 
     if len(ms2_peak_points_v) > 0:
