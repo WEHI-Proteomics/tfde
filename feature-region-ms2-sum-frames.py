@@ -41,7 +41,8 @@ def ms2_frame_ids_from_ms1_frame_id(ms1_frame_id):
 parser = argparse.ArgumentParser(description='Sum MS2 frames in the region of the MS1 feature\'s drift and retention time.')
 parser.add_argument('-sdb','--source_database_name', type=str, help='The name of the source database (for reading MS2 frames).', required=True)
 parser.add_argument('-ddb','--destination_database_name', type=str, help='The name of the destination database (for reading MS1 features and writing MS2 features).', required=True)
-parser.add_argument('-nf','--number_of_ms1_features', type=int, help='Maximum number of MS1 features to process.', required=False)
+parser.add_argument('-fl','--feature_id_lower', type=int, help='Lower feature ID to process.', required=False)
+parser.add_argument('-fu','--feature_id_upper', type=int, help='Upper feature ID to process.', required=False)
 parser.add_argument('-mf','--noise_threshold', type=int, default=150, help='Minimum number of frames a point must appear in to be processed.', required=False)
 args = parser.parse_args()
 
@@ -52,13 +53,25 @@ dest_c = dest_conn.cursor()
 
 print("Setting up tables and indexes")
 
-dest_c.execute("DROP TABLE IF EXISTS summed_ms2_regions")
-dest_c.execute("CREATE TABLE summed_ms2_regions (ms1_feature_id INTEGER, point_id INTEGER, mz REAL, scan INTEGER, intensity INTEGER, number_frames INTEGER, peak_id INTEGER)")  # number_frames = number of source frames the point was found in
+dest_c.execute("CREATE TABLE IF NOT EXISTS summed_ms2_regions (feature_id INTEGER, point_id INTEGER, mz REAL, scan INTEGER, intensity INTEGER, number_frames INTEGER, peak_id INTEGER)")  # number_frames = number of source frames the point was found in
+dest_c.execute("CREATE TABLE IF NOT EXISTS ms2_feature_info (item TEXT, value TEXT)")
 
-dest_c.execute("DROP INDEX IF EXISTS idx_summed_ms2_regions")
+# Determine the MS1 feature IDs to process (which feature IDs are in the summed_ms1_regions table)
+if args.feature_id_lower is None:
+    q = src_c.execute("SELECT MIN(feature_id) FROM features")
+    row = q.fetchone()
+    args.feature_id_lower = int(row[0])
+    print("feature_id_lower: {}".format(args.feature_id_lower))
 
-dest_c.execute("DROP TABLE IF EXISTS ms2_feature_info")
-dest_c.execute("CREATE TABLE ms2_feature_info (item TEXT, value TEXT)")
+if args.feature_id_upper is None:
+    q = src_c.execute("SELECT MAX(feature_id) FROM features")
+    row = q.fetchone()
+    args.feature_id_upper = int(row[0])
+    print("feature_id_upper: {}".format(args.feature_id_upper))
+
+# Remove any existing entries
+dest_c.execute("DELETE FROM summed_ms2_regions WHERE feature_id >= {} and feature_id <= {}".format(args.feature_id_lower, args.feature_id_upper))
+dest_c.execute("DELETE FROM ms2_feature_info WHERE item=\"features {}-{}\"".format(args.feature_id_lower, args.feature_id_upper))
 
 # Store the arguments as metadata in the database for later reference
 ms2_feature_info = []
@@ -79,7 +92,7 @@ frames_to_sum = int(row[0])
 print("Number of source frames that were summed: {}".format(frames_to_sum))
 
 print("Loading the MS1 features")
-features_df = pd.read_sql_query("select feature_id,start_frame,end_frame,scan_lower,scan_upper,mz_lower,mz_upper from features order by feature_id ASC;", dest_conn)
+features_df = pd.read_sql_query("select feature_id,start_frame,end_frame,scan_lower,scan_upper,mz_lower,mz_upper from features where feature_id >= {} and feature_id <= {} order by feature_id ASC;".format(args.feature_id_lower, args.feature_id_upper), dest_conn)
 features_v = features_df.values
 
 for feature in features_v:
@@ -95,7 +108,7 @@ for feature in features_v:
     ms2_frame_ids = ()
     for frame_id in range(feature_start_frame, feature_end_frame+1):
         ms2_frame_ids += ms2_frame_ids_from_ms1_frame_id(frame_id)
-    print("feature ID {}, MS1 frame IDs {}-{}, {} MS2 frames, scans {}-{}\n".format(feature_id, feature_start_frame, feature_end_frame, len(ms2_frame_ids), feature_scan_lower, feature_scan_upper))
+    print("feature ID {}, MS1 frame IDs {}-{}, {} MS2 frames, scans {}-{}".format(feature_id, feature_start_frame, feature_end_frame, len(ms2_frame_ids), feature_scan_lower, feature_scan_upper))
     frame_df = pd.read_sql_query("select frame_id,mz,scan,intensity from frames where frame_id in {} and scan <= {} and scan >= {} order by frame_id, mz, scan asc;".format(ms2_frame_ids, feature_scan_upper, feature_scan_lower), source_conn)
     frame_v = frame_df.values
     print("frame occupies {} bytes".format(frame_v.nbytes))
@@ -127,15 +140,6 @@ for feature in features_v:
     print("")
     dest_c.executemany("INSERT INTO summed_ms2_regions VALUES (?, ?, ?, ?, ?, ?, ?)", points)
 
-    # check whether we have finished
-    if ((args.number_of_ms1_features is not None) and (feature_id >= args.number_of_ms1_features)):
-        print("Reached the maximum number of features")
-        break
-
-print("Creating index on summed_ms2_regions")
-dest_c.execute("CREATE INDEX idx_summed_ms2_regions ON summed_ms2_regions (ms1_feature_id)")
-dest_c.execute("CREATE INDEX idx_summed_ms2_regions_2 ON summed_ms2_regions (ms1_feature_id,point_id)")
-
 stop_run = time.time()
 print("{} seconds to process run".format(stop_run-start_run))
 
@@ -144,5 +148,9 @@ ms2_feature_info.append(("ms1_feature_id_upper", max(points, key=itemgetter(0))[
 
 ms2_feature_info.append(("run processing time (sec)", stop_run-start_run))
 ms2_feature_info.append(("processed", time.ctime()))
-dest_c.executemany("INSERT INTO ms2_feature_info VALUES (?, ?)", ms2_feature_info)
+
+ms2_feature_info_entry = []
+ms2_feature_info_entry.append(("features {}-{}".format(args.feature_id_lower, args.feature_id_upper)))
+
+dest_c.executemany("INSERT INTO ms2_feature_info VALUES (?, ?)", ms2_feature_info_entry)
 dest_conn.commit()
