@@ -67,6 +67,9 @@ c.execute('''CREATE TABLE ms2_peaks (feature_id INTEGER, peak_id INTEGER, centro
 c.execute('''DROP TABLE IF EXISTS ms2_peak_detect_info''')
 c.execute('''CREATE TABLE ms2_peak_detect_info (item TEXT, value TEXT)''')
 
+c.execute("CREATE INDEX idx_summed_ms2_regions ON summed_ms2_regions (ms1_feature_id)")
+c.execute("CREATE INDEX idx_summed_ms2_regions_2 ON summed_ms2_regions (ms1_feature_id,point_id)")
+
 
 print("Resetting peak IDs")
 c.execute("update summed_ms2_regions set peak_id=0 where peak_id!=0")
@@ -91,7 +94,7 @@ point_updates = []
 start_run = time.time()
 for ms1_feature_id in range(ms1_feature_id_lower, ms1_feature_id_upper+1):
     peak_id = 1
-    ms1_feature_df = pd.read_sql_query("select point_id,mz,scan,intensity from summed_ms2_regions where ms1_feature_id={} order by mz, scan asc;".format(ms1_feature_id), source_conn)
+    ms1_feature_df = pd.read_sql_query("select point_id,mz,scan,intensity from summed_ms2_regions where feature_id={} order by mz, scan asc;".format(ms1_feature_id), source_conn)
     print("Processing MS1 feature {}".format(ms1_feature_id))
     start_feature = time.time()
     ms1_feature_v = ms1_feature_df.values
