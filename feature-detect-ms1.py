@@ -40,8 +40,8 @@ TOLERANCE_OF_POOR_QUALITY = 1000
 feature_id = 1
 feature_updates = []
 cluster_updates = []
-noise_level_readings = []
 base_noise_level = 15000
+noise_level_readings = [base_noise_level]
 feature_discovery_history = deque(maxlen=TOLERANCE_OF_POOR_QUALITY)
 
 def standard_deviation(mz):
@@ -188,11 +188,11 @@ def find_feature(base_index):
 
         # find the low snip index
         for idx in peak_minima_indexes:
-            if (filtered[idx] < (filtered_max_value / 10.0) or (filtered[idx] < base_noise_level)) and (idx < filtered_max_index):
+            if (filtered[idx] < (filtered_max_value / 2.0) or (filtered[idx] < base_noise_level)) and (idx < filtered_max_index):
                 low_snip_index = idx
         # find the high snip index
         for idx in reversed(peak_minima_indexes):
-            if (filtered[idx] < (filtered_max_value / 10.0) or (filtered[idx] < base_noise_level)) and (idx > filtered_max_index):
+            if (filtered[idx] < (filtered_max_value / 2.0) or (filtered[idx] < base_noise_level)) and (idx > filtered_max_index):
                 high_snip_index = idx
 
         # visualise what's going on
@@ -228,8 +228,11 @@ def find_feature(base_index):
         feature_summed_intensity = int(sum(clusters_v[feature_indices,CLUSTER_INTENSITY_SUM_IDX]))
 
         # find the feature's scan range
-        feature_scan_lower = int(min(clusters_v[feature_indices,CLUSTER_SCAN_LOWER_IDX]))
-        feature_scan_upper = int(max(clusters_v[feature_indices,CLUSTER_SCAN_UPPER_IDX]))
+        feature_max_intensity_idx = np.argmax(clusters_v[feature_indices,CLUSTER_INTENSITY_SUM_IDX])
+        feature_max_intensity_scan = int(clusters_v[feature_indices[feature_max_intensity_idx],CLUSTER_BASE_MAX_POINT_SCAN_IDX])
+
+        feature_scan_lower = max(int(min(clusters_v[feature_indices,CLUSTER_SCAN_LOWER_IDX])), feature_max_intensity_scan - 10)
+        feature_scan_upper = min(int(max(clusters_v[feature_indices,CLUSTER_SCAN_UPPER_IDX])), feature_max_intensity_scan + 10)
 
         # find the feature's m/z range
         feature_mz_lower = float(min(clusters_v[feature_indices,CLUSTER_MZ_LOWER_IDX]))
