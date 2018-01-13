@@ -47,14 +47,9 @@ parser.add_argument('-mf','--noise_threshold', type=int, default=150, help='Mini
 args = parser.parse_args()
 
 source_conn = sqlite3.connect(args.source_database_name)
-dest_conn = sqlite3.connect(args.destination_database_name)
 src_c = source_conn.cursor()
+dest_conn = sqlite3.connect(args.destination_database_name)
 dest_c = dest_conn.cursor()
-
-print("Setting up tables and indexes")
-
-dest_c.execute("CREATE TABLE IF NOT EXISTS summed_ms2_regions (feature_id INTEGER, point_id INTEGER, mz REAL, scan INTEGER, intensity INTEGER, number_frames INTEGER, peak_id INTEGER)")  # number_frames = number of source frames the point was found in
-dest_c.execute("CREATE TABLE IF NOT EXISTS ms2_feature_info (item TEXT, value TEXT)")
 
 # Determine the MS1 feature IDs to process (which feature IDs are in the summed_ms1_regions table)
 if args.feature_id_lower is None:
@@ -69,10 +64,6 @@ if args.feature_id_upper is None:
     args.feature_id_upper = int(row[0])
     print("feature_id_upper: {}".format(args.feature_id_upper))
 
-# Remove any existing entries
-dest_c.execute("DELETE FROM summed_ms2_regions WHERE feature_id >= {} and feature_id <= {}".format(args.feature_id_lower, args.feature_id_upper))
-dest_c.execute("DELETE FROM ms2_feature_info WHERE item=\"features {}-{}\"".format(args.feature_id_lower, args.feature_id_upper))
-
 # Store the arguments as metadata in the database for later reference
 ms2_feature_info = []
 for arg in vars(args):
@@ -85,7 +76,6 @@ ms2_frame_ids_df = pd.read_sql_query("select frame_id from frame_properties wher
 ms2_frame_ids_v = ms2_frame_ids_df.values
 
 print("Getting some metadata about how the frames were summed")
-
 q = dest_c.execute("SELECT value FROM summing_info WHERE item=\"frames_to_sum\"")
 row = q.fetchone()
 frames_to_sum = int(row[0])
@@ -94,6 +84,8 @@ print("Number of source frames that were summed: {}".format(frames_to_sum))
 print("Loading the MS1 features")
 features_df = pd.read_sql_query("select feature_id,start_frame,end_frame,scan_lower,scan_upper,mz_lower,mz_upper from features where feature_id >= {} and feature_id <= {} order by feature_id ASC;".format(args.feature_id_lower, args.feature_id_upper), dest_conn)
 features_v = features_df.values
+
+points = []
 
 for feature in features_v:
     feature_id = int(feature[FEATURE_ID_IDX])
@@ -115,7 +107,6 @@ for feature in features_v:
 
     # Sum the points in the feature's region, just as we did for MS1 frames
     pointId = 1
-    points = []
     for scan in range(feature_scan_lower, feature_scan_upper+1):
         print("{},".format(scan), end="")
         points_v = frame_v[np.where(frame_v[:,FRAME_SCAN_IDX] == scan)]
@@ -138,7 +129,17 @@ for feature in features_v:
             # remove the points we've processed
             points_v = np.delete(points_v, nearby_point_indices, 0)
     print("")
-    dest_c.executemany("INSERT INTO summed_ms2_regions VALUES (?, ?, ?, ?, ?, ?, ?)", points)
+
+# Set up the tables if they don't exist already
+dest_c.execute("CREATE TABLE IF NOT EXISTS summed_ms2_regions (feature_id INTEGER, point_id INTEGER, mz REAL, scan INTEGER, intensity INTEGER, number_frames INTEGER, peak_id INTEGER)")  # number_frames = number of source frames the point was found in
+dest_c.execute("CREATE TABLE IF NOT EXISTS ms2_feature_info (item TEXT, value TEXT)")
+
+# Remove any existing entries for this feature range
+dest_c.execute("DELETE FROM summed_ms2_regions WHERE feature_id >= {} and feature_id <= {}".format(args.feature_id_lower, args.feature_id_upper))
+dest_c.execute("DELETE FROM ms2_feature_info WHERE item=\"features {}-{}\"".format(args.feature_id_lower, args.feature_id_upper))
+
+# Store the points in the database
+dest_c.executemany("INSERT INTO summed_ms2_regions VALUES (?, ?, ?, ?, ?, ?, ?)", points)
 
 stop_run = time.time()
 print("{} seconds to process run".format(stop_run-start_run))
@@ -150,7 +151,10 @@ ms2_feature_info.append(("run processing time (sec)", stop_run-start_run))
 ms2_feature_info.append(("processed", time.ctime()))
 
 ms2_feature_info_entry = []
-ms2_feature_info_entry.append(("features {}-{}".format(args.feature_id_lower, args.feature_id_upper)))
+ms2_feature_info_entry.append(("features {}-{}".format(args.feature_id_lower, args.feature_id_upper), ' '.join(str(e) for e in ms2_feature_info)))
 
 dest_c.executemany("INSERT INTO ms2_feature_info VALUES (?, ?)", ms2_feature_info_entry)
+
 dest_conn.commit()
+dest_conn.close()
+source_conn.close()
