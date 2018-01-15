@@ -305,8 +305,9 @@ parser.add_argument('-md','--mz_std_dev', type=int, default=4, help='Number of s
 parser.add_argument('-sd','--scan_std_dev', type=int, default=4, help='Number of standard deviations to look either side of the base peak, in the scan dimension.', required=False)
 parser.add_argument('-nf','--number_of_features', type=int, help='Maximum number of features to find.', required=False)
 parser.add_argument('-ns','--number_of_seconds_each_side', type=int, default=20, help='Number of seconds to look either side of the maximum cluster.', required=False)
-parser.add_argument('-ml','--minimum_feature_length', type=int, default=6, help='Minimum number of seconds for a feature to be valid.', required=False)
+parser.add_argument('-ml','--minimum_feature_length', type=int, default=2, help='Minimum number of seconds for a feature to be valid.', required=False)
 parser.add_argument('-pps','--minimum_points_per_second', type=int, default=1, help='Minimum number of points per second for a feature to be valid.', required=False)
+parser.add_argument('-mcs','--minimum_charge_state', type=int, default=2, help='Minimum charge state to process.', required=False)
 args = parser.parse_args()
 
 NUMBER_OF_FRAMES_TO_LOOK = int(args.number_of_seconds_each_side / NUMBER_OF_SECONDS_PER_FRAME)

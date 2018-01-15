@@ -1,6 +1,6 @@
 from __future__ import print_function
 import sys
-import sqlite3
+import pymysql
 import pandas as pd
 import argparse
 import numpy as np
@@ -43,7 +43,7 @@ def weighted_avg_and_std(values, weights):
     """
     average = np.average(values, weights=weights)
     variance = np.average((values-average)**2, weights=weights)  # Fast and numerically precise
-    return (average, math.sqrt(variance))
+    return (float(average), float(math.sqrt(variance)))
 
 def findNearestGreaterThan(searchVal, inputData):
     diff = inputData - searchVal
@@ -58,26 +58,25 @@ def findNearestLessThan(searchVal, inputData):
     return idx, inputData[idx]
 
 parser = argparse.ArgumentParser(description='Detect peaks in MS1 feature regions.')
-parser.add_argument('-db','--database_name', type=str, help='The name of the source database.', required=True)
+parser.add_argument('-fl','--feature_id_lower', type=int, help='Lower feature ID to process.', required=True)
+parser.add_argument('-fu','--feature_id_upper', type=int, help='Upper feature ID to process.', required=True)
 parser.add_argument('-es','--empty_scans', type=int, default=2, help='Maximum number of empty scans to tolerate.', required=False)
 parser.add_argument('-sd','--standard_deviations', type=int, default=4, help='Number of standard deviations to look either side of a point.', required=False)
-
+parser.add_argument('-mcs','--minimum_charge_state', type=int, default=2, help='Minimum charge state to process.', required=False)
 args = parser.parse_args()
 
-source_conn = sqlite3.connect(database=args.database_name, timeout=60)
+source_conn = pymysql.connect(host='localhost', user='root', passwd='password', database='timsTOF')
 src_c = source_conn.cursor()
 
 print("Setting up tables and indexes")
+src_c.execute("CREATE TABLE IF NOT EXISTS ms1_feature_region_peaks (feature_id INTEGER, peak_id INTEGER, centroid_mz REAL, centroid_scan REAL, intensity_sum INTEGER, scan_upper INTEGER, scan_lower INTEGER, std_dev_mz REAL, std_dev_scan REAL, rationale TEXT, intensity_max INTEGER, peak_max_mz REAL, peak_max_scan INTEGER, PRIMARY KEY (feature_id, peak_id))")
+src_c.execute("CREATE TABLE IF NOT EXISTS ms1_feature_region_peak_detect_info (item TEXT, value TEXT)")
+src_c.execute("CREATE TABLE IF NOT EXISTS feature_base_peaks (feature_id INTEGER, base_peak_id INTEGER, PRIMARY KEY (feature_id, base_peak_id))")
 
-src_c.execute('''DROP TABLE IF EXISTS ms1_feature_region_peaks''')
-src_c.execute('''CREATE TABLE ms1_feature_region_peaks (feature_id INTEGER, peak_id INTEGER, centroid_mz REAL, centroid_scan REAL, intensity_sum INTEGER, scan_upper INTEGER, scan_lower INTEGER, std_dev_mz REAL, std_dev_scan REAL, cluster_id INTEGER, 'rationale' TEXT, 'state' TEXT, intensity_max INTEGER, peak_max_mz REAL, peak_max_scan INTEGER, PRIMARY KEY (feature_id, peak_id))''')
-
-src_c.execute('''DROP TABLE IF EXISTS ms1_feature_region_peak_detect_info''')
-src_c.execute('''CREATE TABLE ms1_feature_region_peak_detect_info (item TEXT, value TEXT)''')
-
-src_c.execute('''DROP TABLE IF EXISTS feature_base_peaks''')
-src_c.execute('''CREATE TABLE feature_base_peaks (feature_id INTEGER, base_peak_id INTEGER, PRIMARY KEY (feature_id, base_peak_id))''')
-
+# Remove any existing entries for this feature range
+src_c.execute("DELETE FROM ms1_feature_region_peaks WHERE feature_id >= {} and feature_id <= {}".format(args.feature_id_lower, args.feature_id_upper))
+src_c.execute("DELETE FROM feature_base_peaks WHERE feature_id >= {} and feature_id <= {}".format(args.feature_id_lower, args.feature_id_upper))
+src_c.execute("DELETE FROM ms1_feature_region_peak_detect_info WHERE item=\"features {}-{}\"".format(args.feature_id_lower, args.feature_id_upper))
 
 print("Resetting peak IDs")
 src_c.execute("update summed_ms1_regions set peak_id=0 where peak_id!=0")
@@ -92,19 +91,8 @@ point_updates = []
 base_peaks = []
 start_run = time.time()
 
-# Determine the MS1 feature IDs to process (which feature IDs are in the summed_ms1_regions table)
-q = src_c.execute("SELECT value FROM ms1_feature_region_summing_info WHERE item=\"feature_id_lower\"")
-row = q.fetchone()
-feature_id_lower = int(row[0])
-print("feature_id_lower: {}".format(feature_id_lower))
-
-q = src_c.execute("SELECT value FROM ms1_feature_region_summing_info WHERE item=\"feature_id_upper\"")
-row = q.fetchone()
-feature_id_upper = int(row[0])
-print("feature_id_upper: {}".format(feature_id_upper))
-
-print("Loading the MS1 features {}-{}".format(feature_id_lower, feature_id_upper))
-features_df = pd.read_sql_query("select feature_id,start_frame,end_frame,scan_lower,scan_upper,mz_lower,mz_upper from features where feature_id >= {} and feature_id <= {} order by feature_id ASC;".format(feature_id_lower, feature_id_upper), source_conn)
+print("Loading the MS1 features {}-{}".format(args.feature_id_lower, args.feature_id_upper))
+features_df = pd.read_sql_query("select feature_id,start_frame,end_frame,scan_lower,scan_upper,mz_lower,mz_upper from features where feature_id >= {} and feature_id <= {} and charge_state >= {} order by feature_id ASC;".format(args.feature_id_lower, args.feature_id_upper, args.minimum_charge_state), source_conn)
 features_v = features_df.values
 
 for feature in features_v:
@@ -235,20 +223,20 @@ for feature in features_v:
                 peak_intensity.append(int(ms1_feature_v[p][REGION_POINT_INTENSITY_IDX]))
 
                 # Assign this peak ID to all the points in the peak
-                point_updates.append((peak_id, feature_id, ms1_feature_v[int(p)][REGION_POINT_ID_IDX]))
+                point_updates.append((peak_id, feature_id, int(ms1_feature_v[int(p)][REGION_POINT_ID_IDX])))
 
             # Add the peak's details to the collection
-            peak_intensity_sum = np.sum(peak_intensity)
-            peak_intensity_max = np.max(peak_intensity)
-            peak_scan_upper = np.max(peak_scan)
-            peak_scan_lower = np.min(peak_scan)
+            peak_intensity_sum = int(np.sum(peak_intensity))
+            peak_intensity_max = int(np.max(peak_intensity))
+            peak_scan_upper = int(np.max(peak_scan))
+            peak_scan_lower = int(np.min(peak_scan))
             peak_mz_centroid, peak_std_dev_mz = weighted_avg_and_std(values=peak_mz, weights=peak_intensity)
             peak_scan_centroid, peak_std_dev_scan = weighted_avg_and_std(values=peak_scan, weights=peak_intensity)
             peak_points = ms1_feature_v[peak_indices]
             peak_max_index = peak_points[:,REGION_POINT_INTENSITY_IDX].argmax()
-            peak_max_mz = peak_points[peak_max_index][REGION_POINT_MZ_IDX]
-            peak_max_scan = peak_points[peak_max_index][REGION_POINT_SCAN_IDX].astype(int)
-            mono_peaks.append((feature_id, peak_id, peak_mz_centroid, peak_scan_centroid, peak_intensity_sum, peak_scan_upper, peak_scan_lower, peak_std_dev_mz, peak_std_dev_scan, json.dumps(rationale), ' ', peak_intensity_max, peak_max_mz, peak_max_scan))
+            peak_max_mz = float(peak_points[peak_max_index][REGION_POINT_MZ_IDX])
+            peak_max_scan = int(peak_points[peak_max_index][REGION_POINT_SCAN_IDX])
+            mono_peaks.append((feature_id, peak_id, peak_mz_centroid, peak_scan_centroid, peak_intensity_sum, peak_scan_upper, peak_scan_lower, peak_std_dev_mz, peak_std_dev_scan, json.dumps(rationale), peak_intensity_max, peak_max_mz, peak_max_scan))
 
             peak_id += 1
 
@@ -261,31 +249,36 @@ for feature in features_v:
 
     # Write out the peaks for this feature
     print("Writing out the peaks for this feature.")
-    src_c.executemany("INSERT INTO ms1_feature_region_peaks VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?)", mono_peaks)
+    src_c.executemany("INSERT INTO ms1_feature_region_peaks VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)", mono_peaks)
     mono_peaks = []
 
     # Update the points in the summed_ms1_regions table
     print("Updating the points in the summed_ms1_regions table.")
-    src_c.executemany("UPDATE summed_ms1_regions SET peak_id=? WHERE feature_id=? AND point_id=?", point_updates)
+    src_c.executemany("UPDATE summed_ms1_regions SET peak_id=%s WHERE feature_id=%s AND point_id=%s", point_updates)
     point_updates = []
 
     stop_feature = time.time()
     print("{} seconds to process feature {} ({} peaks)".format(stop_feature-start_feature, feature_id, peak_id))
 
 print("Write out the base peaks")
-src_c.executemany("INSERT INTO feature_base_peaks VALUES (?, ?)", base_peaks)
+src_c.executemany("INSERT INTO feature_base_peaks VALUES (%s, %s)", base_peaks)
 
 stop_run = time.time()
-print("{} seconds to process features {} to {}".format(stop_run-start_run, feature_id_lower, feature_id_upper))
+print("{} seconds to process features {} to {}".format(stop_run-start_run, args.feature_id_lower, args.feature_id_upper))
 
 # Keep a record of the features we actually processed
-ms1_feature_region_peak_detect_info.append(("feature_id_lower", feature_id_lower))
-ms1_feature_region_peak_detect_info.append(("feature_id_upper", feature_id_upper))
+ms1_feature_region_peak_detect_info.append(("feature_id_lower", args.feature_id_lower))
+ms1_feature_region_peak_detect_info.append(("feature_id_upper", args.feature_id_upper))
 
 # write out the processing info
 ms1_feature_region_peak_detect_info.append(("run processing time (sec)", stop_run-start_run))
 ms1_feature_region_peak_detect_info.append(("processed", time.ctime()))
-src_c.executemany("INSERT INTO ms1_feature_region_peak_detect_info VALUES (?, ?)", ms1_feature_region_peak_detect_info)
+
+ms1_feature_region_peak_detect_info_entry = []
+ms1_feature_region_peak_detect_info_entry.append(("features {}-{}".format(args.feature_id_lower, args.feature_id_upper), ' '.join(str(e) for e in ms1_feature_region_peak_detect_info)))
+
+src_c.executemany("INSERT INTO ms1_feature_region_peak_detect_info VALUES (%s, %s)", ms1_feature_region_peak_detect_info_entry)
+
 source_conn.commit()
 source_conn.close()
 

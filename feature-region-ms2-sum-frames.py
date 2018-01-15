@@ -7,6 +7,7 @@ import time
 import pandas as pd
 import peakutils
 from operator import itemgetter
+import pymysql
 
 # feature array indices
 FEATURE_ID_IDX = 0
@@ -40,26 +41,26 @@ def ms2_frame_ids_from_ms1_frame_id(ms1_frame_id):
 
 parser = argparse.ArgumentParser(description='Sum MS2 frames in the region of the MS1 feature\'s drift and retention time.')
 parser.add_argument('-sdb','--source_database_name', type=str, help='The name of the source database (for reading MS2 frames).', required=True)
-parser.add_argument('-ddb','--destination_database_name', type=str, help='The name of the destination database (for reading MS1 features and writing MS2 features).', required=True)
 parser.add_argument('-fl','--feature_id_lower', type=int, help='Lower feature ID to process.', required=False)
 parser.add_argument('-fu','--feature_id_upper', type=int, help='Upper feature ID to process.', required=False)
 parser.add_argument('-mf','--noise_threshold', type=int, default=150, help='Minimum number of frames a point must appear in to be processed.', required=False)
+parser.add_argument('-mcs','--minimum_charge_state', type=int, default=2, help='Minimum charge state to process.', required=False)
 args = parser.parse_args()
 
 source_conn = sqlite3.connect(args.source_database_name)
 src_c = source_conn.cursor()
-dest_conn = sqlite3.connect(args.destination_database_name)
+dest_conn = pymysql.connect(host='localhost', user='root', passwd='password', database='timsTOF')
 dest_c = dest_conn.cursor()
 
 # Determine the MS1 feature IDs to process (which feature IDs are in the summed_ms1_regions table)
 if args.feature_id_lower is None:
-    q = src_c.execute("SELECT MIN(feature_id) FROM features")
+    src_c.execute("SELECT MIN(feature_id) FROM features")
     row = q.fetchone()
     args.feature_id_lower = int(row[0])
     print("feature_id_lower: {}".format(args.feature_id_lower))
 
 if args.feature_id_upper is None:
-    q = src_c.execute("SELECT MAX(feature_id) FROM features")
+    src_c.execute("SELECT MAX(feature_id) FROM features")
     row = q.fetchone()
     args.feature_id_upper = int(row[0])
     print("feature_id_upper: {}".format(args.feature_id_upper))
@@ -76,13 +77,13 @@ ms2_frame_ids_df = pd.read_sql_query("select frame_id from frame_properties wher
 ms2_frame_ids_v = ms2_frame_ids_df.values
 
 print("Getting some metadata about how the frames were summed")
-q = dest_c.execute("SELECT value FROM summing_info WHERE item=\"frames_to_sum\"")
-row = q.fetchone()
+dest_c.execute("SELECT value FROM summing_info WHERE item=\"frames_to_sum\"")
+row = dest_c.fetchone()
 frames_to_sum = int(row[0])
 print("Number of source frames that were summed: {}".format(frames_to_sum))
 
 print("Loading the MS1 features")
-features_df = pd.read_sql_query("select feature_id,start_frame,end_frame,scan_lower,scan_upper,mz_lower,mz_upper from features where feature_id >= {} and feature_id <= {} order by feature_id ASC;".format(args.feature_id_lower, args.feature_id_upper), dest_conn)
+features_df = pd.read_sql_query("select feature_id,start_frame,end_frame,scan_lower,scan_upper,mz_lower,mz_upper from features where feature_id >= {} and feature_id <= {} and charge_state >= {} order by feature_id ASC;".format(args.feature_id_lower, args.feature_id_upper, args.minimum_charge_state), dest_conn)
 features_v = features_df.values
 
 points = []
@@ -124,7 +125,7 @@ for feature in features_v:
                 # find the total intensity and centroid m/z
                 centroid_intensity = nearby_points[:,FRAME_INTENSITY_IDX].sum()
                 centroid_mz = peakutils.centroid(nearby_points[:,FRAME_MZ_IDX], nearby_points[:,FRAME_INTENSITY_IDX])
-                points.append((feature_id, pointId, centroid_mz, scan, int(round(centroid_intensity)), len(unique_frames), 0))
+                points.append((feature_id, pointId, float(centroid_mz), scan, int(round(centroid_intensity)), len(unique_frames), 0))
                 pointId += 1
             # remove the points we've processed
             points_v = np.delete(points_v, nearby_point_indices, 0)
@@ -132,14 +133,14 @@ for feature in features_v:
 
 # Set up the tables if they don't exist already
 dest_c.execute("CREATE TABLE IF NOT EXISTS summed_ms2_regions (feature_id INTEGER, point_id INTEGER, mz REAL, scan INTEGER, intensity INTEGER, number_frames INTEGER, peak_id INTEGER)")  # number_frames = number of source frames the point was found in
-dest_c.execute("CREATE TABLE IF NOT EXISTS ms2_feature_info (item TEXT, value TEXT)")
+dest_c.execute("CREATE TABLE IF NOT EXISTS summed_ms2_regions_info (item TEXT, value TEXT)")
 
 # Remove any existing entries for this feature range
 dest_c.execute("DELETE FROM summed_ms2_regions WHERE feature_id >= {} and feature_id <= {}".format(args.feature_id_lower, args.feature_id_upper))
-dest_c.execute("DELETE FROM ms2_feature_info WHERE item=\"features {}-{}\"".format(args.feature_id_lower, args.feature_id_upper))
+dest_c.execute("DELETE FROM summed_ms2_regions_info WHERE item=\"features {}-{}\"".format(args.feature_id_lower, args.feature_id_upper))
 
 # Store the points in the database
-dest_c.executemany("INSERT INTO summed_ms2_regions VALUES (?, ?, ?, ?, ?, ?, ?)", points)
+dest_c.executemany("INSERT INTO summed_ms2_regions (feature_id, point_id, mz, scan, intensity, number_frames, peak_id) VALUES (%s, %s, %s, %s, %s, %s, %s)", points)
 
 stop_run = time.time()
 print("{} seconds to process run".format(stop_run-start_run))
@@ -153,7 +154,7 @@ ms2_feature_info.append(("processed", time.ctime()))
 ms2_feature_info_entry = []
 ms2_feature_info_entry.append(("features {}-{}".format(args.feature_id_lower, args.feature_id_upper), ' '.join(str(e) for e in ms2_feature_info)))
 
-dest_c.executemany("INSERT INTO ms2_feature_info VALUES (?, ?)", ms2_feature_info_entry)
+dest_c.executemany("INSERT INTO summed_ms2_regions_info VALUES (%s, %s)", ms2_feature_info_entry)
 
 dest_conn.commit()
 dest_conn.close()
