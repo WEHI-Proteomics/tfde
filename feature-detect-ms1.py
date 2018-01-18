@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 import math
 import time
-import sqlite3
+import pymysql
 import copy
 import argparse
 import os.path
@@ -90,7 +90,6 @@ def find_nearest_high_index_below_threshold(values, threshold):
 def check_min_points_per_second(feature_indices, min_points_per_second):
     max_gap = np.max(np.diff(clusters_v[feature_indices, CLUSTER_FRAME_ID_IDX])) * NUMBER_OF_SECONDS_PER_FRAME
     max_allowed_gap = 1.0 / min_points_per_second
-    print("max gap: {} secs, max allowed gap: {} secs".format(max_gap, max_allowed_gap))
     return (max_gap < max_allowed_gap)
 
 def find_feature(base_index):
@@ -220,7 +219,6 @@ def find_feature(base_index):
     # score the feature quality
     feature_start_frame = int(clusters_v[feature_indices[0],CLUSTER_FRAME_ID_IDX])
     feature_end_frame = int(clusters_v[feature_indices[len(feature_indices)-1],CLUSTER_FRAME_ID_IDX])
-    print("number of frames: {}, minimum frames {}".format(feature_end_frame-feature_start_frame, MINIMUM_NUMBER_OF_FRAMES))
     if ((feature_end_frame-feature_start_frame) >= MINIMUM_NUMBER_OF_FRAMES) and (check_min_points_per_second(feature_indices, args.minimum_points_per_second)):
         quality = 1.0
 
@@ -299,11 +297,13 @@ def find_feature(base_index):
     return results
 
 
+#
+# Note: this script's scope is global - it will detect features across all the frames in the database
+#
+
 parser = argparse.ArgumentParser(description='A method for tracking features through frames.')
-parser.add_argument('-db','--database_name', type=str, help='The name of the source database.', required=True)
 parser.add_argument('-md','--mz_std_dev', type=int, default=4, help='Number of standard deviations to look either side of the base peak, in the m/z dimension.', required=False)
 parser.add_argument('-sd','--scan_std_dev', type=int, default=4, help='Number of standard deviations to look either side of the base peak, in the scan dimension.', required=False)
-parser.add_argument('-nf','--number_of_features', type=int, help='Maximum number of features to find.', required=False)
 parser.add_argument('-ns','--number_of_seconds_each_side', type=int, default=20, help='Number of seconds to look either side of the maximum cluster.', required=False)
 parser.add_argument('-ml','--minimum_feature_length', type=int, default=2, help='Minimum number of seconds for a feature to be valid.', required=False)
 parser.add_argument('-pps','--minimum_points_per_second', type=int, default=1, help='Minimum number of points per second for a feature to be valid.', required=False)
@@ -319,36 +319,20 @@ for arg in vars(args):
     feature_info.append((arg, getattr(args, arg)))
 
 # Connect to the database file
-source_conn = sqlite3.connect(args.database_name)
+source_conn = pymysql.connect(host='mscypher-004', user='root', passwd='password', database='timsTOF')
 c = source_conn.cursor()
 
 print("Setting up tables and indexes")
-
-c.execute('''DROP TABLE IF EXISTS features''')
-c.execute('''CREATE TABLE `features` ( `feature_id` INTEGER, 
-                                        `base_frame_id` INTEGER, 
-                                        `base_cluster_id` INTEGER, 
-                                        `charge_state` INTEGER, 
-                                        `start_frame` INTEGER, 
-                                        `end_frame` INTEGER, 
-                                        `quality_score` REAL, 
-                                        `summed_intensity` INTEGER, 
-                                        `scan_lower` INTEGER, 
-                                        `scan_upper` INTEGER, 
-                                        `mz_lower` REAL, 
-                                        `mz_upper` REAL, 
-                                        PRIMARY KEY(`feature_id`) )''')
-c.execute('''DROP INDEX IF EXISTS idx_features''')
-c.execute('''CREATE INDEX idx_features ON features (feature_id)''')
-
-c.execute('''DROP TABLE IF EXISTS feature_info''')
-c.execute('''CREATE TABLE feature_info (item TEXT, value TEXT)''')
+c.execute("DROP TABLE IF EXISTS features")
+c.execute("CREATE TABLE features (feature_id INTEGER, base_frame_id INTEGER, base_cluster_id INTEGER, charge_state INTEGER, start_frame INTEGER, end_frame INTEGER, quality_score REAL, summed_intensity INTEGER, scan_lower INTEGER, scan_upper INTEGER, mz_lower REAL, mz_upper REAL, PRIMARY KEY(feature_id))")
+c.execute("DROP TABLE IF EXISTS feature_info")
+c.execute("CREATE TABLE feature_info (item TEXT, value TEXT)")
 
 print("Resetting the feature IDs in the cluster table.")
 c.execute("update clusters set feature_id=0 where feature_id!=0;")
 
 print("Loading the clusters information")
-c.execute("select frame_id, cluster_id, charge_state, base_peak_scan_std_dev, base_peak_max_point_mz, base_peak_max_point_scan, intensity_sum, scan_lower, scan_upper, mz_lower, mz_upper from clusters order by frame_id, cluster_id asc;")
+c.execute("select frame_id, cluster_id, charge_state, base_peak_scan_std_dev, base_peak_max_point_mz, base_peak_max_point_scan, intensity_sum, scan_lower, scan_upper, mz_lower, mz_upper from clusters where charge_state >= {} order by frame_id, cluster_id asc;".format(args.minimum_charge_state))
 clusters_v = np.array(c.fetchall(), dtype=np.float32)
 
 print("clusters array occupies {} bytes".format(clusters_v.nbytes))
@@ -388,7 +372,7 @@ while True:
             cluster_updates.append(values)
 
         # Add the feature's details to the collection
-        values = (feature_id, base_cluster_frame_id, base_cluster_id, charge_state, feature_frames[0], feature_frames[1], quality, summed_intensity, scan_range[0], scan_range[1], mz_range[0], mz_range[1])
+        values = (int(feature_id), int(base_cluster_frame_id), int(base_cluster_id), int(charge_state), int(feature_frames[0]), int(feature_frames[1]), float(quality), int(summed_intensity), int(scan_range[0]), int(scan_range[1]), float(mz_range[0]), float(mz_range[1]))
         feature_updates.append(values)
 
         feature_id += 1
@@ -402,9 +386,6 @@ while True:
     if (cluster_intensity < base_noise_level):
         print("Reached base noise level")
         break
-    if ((args.number_of_features is not None) and (feature_id > args.number_of_features)):
-        print("Reached the maximum number of features")
-        break
     if (feature_discovery_history.count(0.0) == TOLERANCE_OF_POOR_QUALITY):
         print("Reached maximum number of consecutive rejected features")
         break
@@ -414,13 +395,13 @@ stop_run = time.time()
 print("found {} features in {} seconds".format(max(feature_updates, key=itemgetter(0))[0], stop_run-start_run))
 
 print("updating the clusters table")
-c.executemany("UPDATE clusters SET feature_id=? WHERE frame_id=? AND cluster_id=?", cluster_updates)
+c.executemany("UPDATE clusters SET feature_id=%s WHERE frame_id=%s AND cluster_id=%s", cluster_updates)
 print("updating the features table")
-c.executemany("INSERT INTO features VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", feature_updates)
+c.executemany("INSERT INTO features VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)", feature_updates)
 
 feature_info.append(("run processing time (sec)", stop_run-start_run))
 feature_info.append(("processed", time.ctime()))
-c.executemany("INSERT INTO feature_info VALUES (?, ?)", feature_info)
+c.executemany("INSERT INTO feature_info VALUES (%s, %s)", feature_info)
 
 source_conn.commit()
 source_conn.close()
