@@ -49,21 +49,8 @@ args = parser.parse_args()
 
 source_conn = sqlite3.connect(args.source_database_name)
 src_c = source_conn.cursor()
-dest_conn = pymysql.connect(host='localhost', user='root', passwd='password', database='timsTOF')
+dest_conn = pymysql.connect(host='mscypher-004', user='root', passwd='password', database='timsTOF')
 dest_c = dest_conn.cursor()
-
-# Determine the MS1 feature IDs to process (which feature IDs are in the summed_ms1_regions table)
-if args.feature_id_lower is None:
-    src_c.execute("SELECT MIN(feature_id) FROM features")
-    row = q.fetchone()
-    args.feature_id_lower = int(row[0])
-    print("feature_id_lower: {}".format(args.feature_id_lower))
-
-if args.feature_id_upper is None:
-    src_c.execute("SELECT MAX(feature_id) FROM features")
-    row = q.fetchone()
-    args.feature_id_upper = int(row[0])
-    print("feature_id_upper: {}".format(args.feature_id_upper))
 
 # Store the arguments as metadata in the database for later reference
 ms2_feature_info = []
