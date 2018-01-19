@@ -44,22 +44,18 @@ min_frame_id = row[0]
 print("Analysis has {} frames. Frame IDs {}-{}".format(frame_count, min_frame_id, max_frame_id))
 
 # Connecting to the database file
-conn = sqlite3.connect(args.destination_database_name)
+conn = pymysql.connect(host='mscypher-004', user='root', passwd='password', database="{}".format(args.destination_database_name))
 c = conn.cursor()
 
 # Create the table
 print("Setting up tables and indexes")
 
-c.execute('''DROP TABLE IF EXISTS frames''')
-c.execute('''CREATE TABLE frames (frame_id INTEGER, point_id INTEGER, mz REAL, scan INTEGER, intensity INTEGER, peak_id INTEGER)''')
-c.execute('''DROP INDEX IF EXISTS idx_frames''')
-c.execute('''CREATE INDEX idx_frames ON frames (frame_id)''')
-c.execute('''DROP TABLE IF EXISTS frame_properties''')
-c.execute('''CREATE TABLE frame_properties (frame_id INTEGER, collision_energy REAL)''')
-c.execute('''DROP INDEX IF EXISTS idx_frame_properties''')
-c.execute('''CREATE INDEX idx_frame_properties ON frame_properties (frame_id)''')
-c.execute('''DROP TABLE IF EXISTS convert_info''')
-c.execute('''CREATE TABLE convert_info (item TEXT, value TEXT)''')
+c.execute("DROP TABLE IF EXISTS frames")
+c.execute("CREATE TABLE frames (frame_id INTEGER, point_id INTEGER, mz REAL, scan INTEGER, intensity INTEGER, peak_id INTEGER)")
+c.execute("DROP TABLE IF EXISTS frame_properties")
+c.execute("CREATE TABLE frame_properties (frame_id INTEGER, collision_energy REAL)")
+c.execute("DROP TABLE IF EXISTS convert_info")
+c.execute("CREATE TABLE convert_info (item TEXT, value TEXT)")
 
 points = []
 frame_properties = []
@@ -110,7 +106,13 @@ for frame_id in range(min_frame_id, max_frame_id+1):
 if len(points) > 0:
     c.executemany("INSERT INTO frames VALUES (?, ?, ?, ?, ?, ?)", points)
 
+c.execute("DROP INDEX IF EXISTS idx_frames")
+c.execute("CREATE INDEX idx_frames ON frames (frame_id)")
+
 c.executemany("INSERT INTO frame_properties VALUES (?, ?)", frame_properties)
+
+c.execute("DROP INDEX IF EXISTS idx_frame_properties")
+c.execute("CREATE INDEX idx_frame_properties ON frame_properties (frame_id)")
 
 stop_run = time.time()
 print("{} seconds to process run".format(stop_run-start_run))
