@@ -39,14 +39,14 @@ source_conn = pymysql.connect(host='mscypher-004', user='root', passwd='password
 src_c = source_conn.cursor()
 
 if args.feature_id_lower is None:
-    c.execute("SELECT MIN(feature_id) FROM features")
-    row = c.fetchone()
+    src_c.execute("SELECT MIN(feature_id) FROM features")
+    row = src_c.fetchone()
     args.feature_id_lower = int(row[0])
     print("feature_id_lower set to {} from the data".format(args.feature_id_lower))
 
 if args.feature_id_upper is None:
-    c.execute("SELECT MAX(feature_id) FROM features")
-    row = c.fetchone()
+    src_c.execute("SELECT MAX(feature_id) FROM features")
+    row = src_c.fetchone()
     args.feature_id_upper = int(row[0])
     print("feature_id_upper set to {} from the data".format(args.feature_id_upper))
 
