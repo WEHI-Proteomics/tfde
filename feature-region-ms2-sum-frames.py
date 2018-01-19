@@ -40,7 +40,7 @@ def ms2_frame_ids_from_ms1_frame_id(ms1_frame_id):
 
 
 parser = argparse.ArgumentParser(description='Sum MS2 frames in the region of the MS1 feature\'s drift and retention time.')
-parser.add_argument('-sdb','--source_database_name', type=str, help='The name of the source database (for reading MS2 frames).', required=True)
+parser.add_argument('-sdb','--source_database_name', type=str, help='The name of the (converted but not summed) source database, for reading MS2 frames.', required=True)
 parser.add_argument('-fl','--feature_id_lower', type=int, help='Lower feature ID to process.', required=False)
 parser.add_argument('-fu','--feature_id_upper', type=int, help='Upper feature ID to process.', required=False)
 parser.add_argument('-mf','--noise_threshold', type=int, default=150, help='Minimum number of frames a point must appear in to be processed.', required=False)
@@ -73,8 +73,10 @@ print("Loading the MS1 features")
 features_df = pd.read_sql_query("select feature_id,start_frame,end_frame,scan_lower,scan_upper,mz_lower,mz_upper from features where feature_id >= {} and feature_id <= {} and charge_state >= {} order by feature_id ASC;".format(args.feature_id_lower, args.feature_id_upper, args.minimum_charge_state), dest_conn)
 features_v = features_df.values
 
-points = []
+# Close the connections
+dest_conn.close()
 
+points = []
 for feature in features_v:
     feature_id = int(feature[FEATURE_ID_IDX])
     feature_start_frame = int(feature[FEATURE_START_FRAME_IDX])
@@ -118,6 +120,12 @@ for feature in features_v:
             points_v = np.delete(points_v, nearby_point_indices, 0)
     print("")
 
+source_conn.close()
+
+# Connect to the database
+dest_conn = pymysql.connect(host='mscypher-004', user='root', passwd='password', database='timsTOF')
+dest_c = dest_conn.cursor()
+
 # Set up the tables if they don't exist already
 dest_c.execute("CREATE TABLE IF NOT EXISTS summed_ms2_regions (feature_id INTEGER, point_id INTEGER, mz REAL, scan INTEGER, intensity INTEGER, number_frames INTEGER, peak_id INTEGER)")  # number_frames = number of source frames the point was found in
 dest_c.execute("CREATE TABLE IF NOT EXISTS summed_ms2_regions_info (item TEXT, value TEXT)")
@@ -145,4 +153,3 @@ dest_c.executemany("INSERT INTO summed_ms2_regions_info VALUES (%s, %s)", ms2_fe
 
 dest_conn.commit()
 dest_conn.close()
-source_conn.close()
