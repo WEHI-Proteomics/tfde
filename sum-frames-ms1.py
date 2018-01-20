@@ -42,12 +42,12 @@ for arg in vars(args):
 # Find the complete set of frame ids to be processed
 frame_ids_df = pd.read_sql_query("select frame_id from frame_properties where collision_energy={} order by frame_id ASC;".format(args.collision_energy), source_conn)
 frame_ids = tuple(frame_ids_df.values[:,0])
-print("summing {} source frames with collision energy {}".format(len(frame_ids), args.collision_energy))
+number_of_summed_frames = len(frame_ids)/args.frames_to_sum
+print("summing {} source frames with collision energy {} to create {} summed frames".format(len(frame_ids), args.collision_energy, number_of_summed_frames))
 
 start_run = time.time()
-number_of_summed_frames_required = len(frame_ids)/args.frames_to_sum
 # Step through the source frames and sum them
-for summedFrameId in range(1,number_of_summed_frames_required+1):
+for summedFrameId in range(1,number_of_summed_frames+1):
     baseFrameIdsIndex = (summedFrameId-1) * args.frames_to_sum
     frameIdsToSum = frame_ids[baseFrameIdsIndex:baseFrameIdsIndex+args.frames_to_sum]
     print("Processing frames {} to create summed frame {}".format(frameIdsToSum, summedFrameId))
@@ -80,15 +80,16 @@ for summedFrameId in range(1,number_of_summed_frames_required+1):
             # remove the points we've processed
             points_v = np.delete(points_v, nearby_point_indices, 0)
 
-    src_c.executemany("INSERT INTO summed_frames VALUES (%s, %s, %s, %s, %s, %s)", points)
-    source_conn.commit()
-
-    # add the elution profile
-    src_c.executemany("INSERT INTO elution_profile VALUES (%s, %s)", [(summedFrameId, sum(zip(*points)[4]))])
+    if len(points) > 0:
+        src_c.executemany("INSERT INTO summed_frames VALUES (%s, %s, %s, %s, %s, %s)", points)
+        src_c.executemany("INSERT INTO elution_profile VALUES (%s, %s)", [(summedFrameId, sum(zip(*points)[4]))])
+    else:
+        print("no points for summed frame id {}".format(summedFrameId))
+        src_c.executemany("INSERT INTO elution_profile VALUES (%s, %s)", [(summedFrameId, 0)])
     source_conn.commit()
 
     frame_end = time.time()
-    print("{} sec for frame {}".format(frame_end-frame_start, summedFrameId))
+    print("{} sec for frame {} ({} points)".format(frame_end-frame_start, summedFrameId, len(points)))
 
 stop_run = time.time()
 print("{} seconds to process run".format(stop_run-start_run))
