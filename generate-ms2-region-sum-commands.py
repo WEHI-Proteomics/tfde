@@ -4,7 +4,7 @@ import pymysql
 # Process the command line arguments
 parser = argparse.ArgumentParser(description='Generates the commands to run MS2 feature region summing in parallel.')
 parser.add_argument('-sdb','--source_database_name', type=str, help='The name of the (converted but not summed) source database, for reading MS2 frames.', required=True)
-parser.add_argument('-fbs','--feature_batch_size', type=int, default=20, help='The number of features in each batch.', required=False)
+parser.add_argument('-fbs','--feature_batch_size', type=int, default=200, help='The number of features in each batch.', required=False)
 parser.add_argument('-mcs','--minimum_charge_state', type=int, default=2, help='Minimum charge state to process.', required=False)
 args = parser.parse_args()
 
