@@ -68,22 +68,26 @@ convert_info = []
 
 start_run = time.time()
 peak_id = 0 # set the peak ID to be zero for now
+max_scans = 0
 
 for frame in frames_v:
     frame_id = frame[FRAME_ID_IDX]
+    num_scans = frame[FRAME_NUMSCAN_IDX]
     pointId = 0
 
-    print("Frame {:0>5} of {}".format(frame_id, frame_count))
+    if num_scans > max_scans:
+        max_scans = num_scans
 
-    num_scans = frame[FRAME_NUMSCAN_IDX]
-    for scan in td.readScans(frame_id, 0, num_scans):
+    print("Frame {:0>5} of {} ({} scans)".format(frame_id, frame_count, num_scans))
+
+    for scan_line, scan in enumerate(td.readScans(frame_id, 0, num_scans)):
         index = np.array(scan[0], dtype=np.float64)
         mz_values = td.indexToMz(frame_id, index)
         if len(mz_values) > 0:
             intensity_values = scan[1]
-            for i in range(0, len(intensity_values)):   # step through the scan lines
+            for i in range(0, len(intensity_values)):   # step through the intensity readings (i.e. points) on this scan line
                 pointId += 1
-                points.append((int(frame_id), int(pointId), float(mz_values[i]), int(i), int(intensity_values[i]), int(peak_id)))
+                points.append((int(frame_id), int(pointId), float(mz_values[i]), int(scan_line), int(intensity_values[i]), int(peak_id)))
 
     # Check whether we've done a chunk to write out to the database
     if frame_id % 1000 == 0:
@@ -110,6 +114,7 @@ print("{} seconds to process run".format(stop_run-start_run))
 convert_info.append(("source_frame_lower", int(min_frame_id)))
 convert_info.append(("source_frame_upper", int(max_frame_id)))
 convert_info.append(("source_frame_count", int(frame_count)))
+convert_info.append(("num_scans", int(max_scans)))
 convert_info.append(("run processing time (sec)", float(stop_run-start_run)))
 convert_info.append(("processed", time.ctime()))
 dest_c.executemany("INSERT INTO convert_info VALUES (%s, %s)", convert_info)
