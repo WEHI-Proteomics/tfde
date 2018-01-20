@@ -22,8 +22,8 @@ dll.tims_get_last_error_string.argtypes = [ c_char_p, c_uint32 ]
 dll.tims_get_last_error_string.restype = c_uint32
 dll.tims_has_recalibrated_state.argtypes = [ c_uint64 ]
 dll.tims_has_recalibrated_state.restype = c_uint32
-dll.tims_read_scans.argtypes = [ c_uint64, c_int64, c_uint32, c_uint32, c_void_p, c_uint32 ]
-dll.tims_read_scans.restype = c_uint32
+dll.tims_read_scans_v2.argtypes = [ c_uint64, c_int64, c_uint32, c_uint32, c_void_p, c_uint32 ]
+dll.tims_read_scans_v2.restype = c_uint32
 
 convfunc_argtypes = [ c_uint64, c_int64, POINTER(c_double), POINTER(c_double), c_uint32 ]
 
@@ -134,7 +134,7 @@ class TimsData:
 
         
     # Output: list of tuples (indices, intensities)
-    def readScans (self, tims_id, scan_begin, scan_end):
+    def readScans (self, frame_id, scan_begin, scan_end):
 
         # buffer-growing loop
         while True:
@@ -142,7 +142,7 @@ class TimsData:
             buf = np.empty(shape=cnt, dtype=np.uint32)
             len = 4 * cnt
 
-            required_len = self.dll.tims_read_scans(self.handle, tims_id, scan_begin, scan_end,
+            required_len = self.dll.tims_read_scans_v2(self.handle, frame_id, scan_begin, scan_end,
                                                     buf.ctypes.data_as(POINTER(c_uint32)),
                                                     len)
             if required_len == 0:
