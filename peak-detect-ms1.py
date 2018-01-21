@@ -1,9 +1,8 @@
 import sys
-import sqlite3
+import pymysql
 import pandas as pd
 import argparse
 import numpy as np
-# import matplotlib.pyplot as plt
 from scipy import signal
 import peakutils
 import time
@@ -52,51 +51,42 @@ parser.add_argument('-sd','--standard_deviations', type=int, default=4, help='Nu
 
 args = parser.parse_args()
 
-source_conn = sqlite3.connect(database=args.database_name, timeout=60)
+source_conn = pymysql.connect(host='mscypher-004', user='root', passwd='password', database="{}".format(args.database_name))
+src_c = source_conn.cursor()
 
-c = source_conn.cursor()
 print("Setting up tables and indexes")
 
-c.execute('''DROP TABLE IF EXISTS peaks''')
-c.execute('''CREATE TABLE peaks (frame_id INTEGER, peak_id INTEGER, centroid_mz REAL, centroid_scan REAL, intensity_sum INTEGER, scan_upper INTEGER, scan_lower INTEGER, std_dev_mz REAL, std_dev_scan REAL, cluster_id INTEGER, 'rationale' TEXT, 'state' TEXT, intensity_max INTEGER, peak_max_mz REAL, peak_max_scan INTEGER, PRIMARY KEY (frame_id, peak_id))''')
-
-c.execute('''DROP TABLE IF EXISTS peak_detect_info''')
-c.execute('''CREATE TABLE peak_detect_info (item TEXT, value TEXT)''')
+src_c.execute("CREATE OR REPLACE TABLE peaks (frame_id INTEGER, peak_id INTEGER, centroid_mz REAL, centroid_scan REAL, intensity_sum INTEGER, scan_upper INTEGER, scan_lower INTEGER, std_dev_mz REAL, std_dev_scan REAL, rationale TEXT, intensity_max INTEGER, peak_max_mz REAL, peak_max_scan INTEGER, cluster_id INTEGER, PRIMARY KEY (frame_id, peak_id))")
+src_c.execute("CREATE OR REPLACE TABLE peak_detect_info (item TEXT, value TEXT)")
 
 # Indexes
-c.execute('''DROP INDEX IF EXISTS idx_frame_peak''')
-c.execute('''CREATE INDEX idx_frame_peak ON peaks (frame_id,peak_id)''')
-
-c.execute('''DROP INDEX IF EXISTS idx_frame''')
-c.execute('''CREATE INDEX idx_frame ON peaks (frame_id)''')
-
-c.execute('''DROP INDEX IF EXISTS idx_frame_point''')
-c.execute('''CREATE INDEX idx_frame_point ON frames (frame_id,point_id)''')
+src_c.execute("CREATE OR REPLACE INDEX idx_summed_frames ON summed_frames (frame_id)")
+src_c.execute("CREATE OR REPLACE INDEX idx_summed_frames_2 ON summed_frames (frame_id,point_id)")
 
 print("Resetting peak IDs")
-c.execute("update frames set peak_id=0 where peak_id!=0")
+src_c.execute("update summed_frames set peak_id=0 where peak_id!=0")
 
 if args.frame_lower is None:
-    q = c.execute("SELECT value FROM summing_info WHERE item=\"summed_frame_lower\"")
-    row = q.fetchone()
+    src_c.execute("SELECT value FROM summing_info WHERE item=\"frame_lower\"")
+    row = src_c.fetchone()
     args.frame_lower = int(row[0])
     print("lower frame_id set to {} from the data".format(args.frame_lower))
 
 if args.frame_upper is None:
-    q = c.execute("SELECT value FROM summing_info WHERE item=\"summed_frame_upper\"")
-    row = q.fetchone()
+    src_c.execute("SELECT value FROM summing_info WHERE item=\"frame_upper\"")
+    row = src_c.fetchone()
     args.frame_upper = int(row[0])
     print("upper frame_id set to {} from the data".format(args.frame_upper))
 
 if args.scan_lower is None:
-    q = c.execute("SELECT value FROM summing_info WHERE item=\"scan_lower\"")
-    row = q.fetchone()
+    src_c.execute("SELECT value FROM summing_info WHERE item=\"scan_lower\"")
+    row = src_c.fetchone()
     args.scan_lower = int(row[0])
     print("lower scan set to {} from the data".format(args.scan_lower))
 
 if args.scan_upper is None:
-    q = c.execute("SELECT value FROM summing_info WHERE item=\"scan_upper\"")
-    row = q.fetchone()
+    src_c.execute("SELECT value FROM summing_info WHERE item=\"scan_upper\"")
+    row = src_c.fetchone()
     args.scan_upper = int(row[0])
     print("upper scan set to {} from the data".format(args.scan_upper))
 
@@ -110,14 +100,12 @@ point_updates = []
 start_run = time.time()
 for frame_id in range(args.frame_lower, args.frame_upper+1):
     peak_id = 1
-    frame_df = pd.read_sql_query("select mz,scan,intensity,point_id,peak_id,frame_id from frames where frame_id={} order by mz, scan asc;"
-        .format(frame_id), source_conn)
+    frame_df = pd.read_sql_query("select mz,scan,intensity,point_id,peak_id,frame_id from summed_frames where frame_id={} order by mz, scan asc;".format(frame_id), source_conn)
     print("Processing frame {}".format(frame_id))
     start_frame = time.time()
     frame_v = frame_df.values
     print("frame occupies {} bytes".format(frame_v.nbytes))
-    # for i in range(1,61):
-    while len(np.where((frame_v[:,2] > -1))[0]) > 0:
+    while len(frame_v) > 0:
         peak_indices = np.empty(0, dtype=int)
 
         rationale = collections.OrderedDict()
@@ -136,7 +124,7 @@ for frame_id in range(args.frame_lower, args.frame_upper+1):
         missed_scans = 0
         while (missed_scans < args.empty_scans) and (scan-scan_offset >= args.scan_lower):
             # print("looking in scan {}".format(scan-scan_offset))
-            nearby_indices_up = np.where((frame_v[:,2] > -1) & (frame_v[:,1] == scan-scan_offset) & (frame_v[:,0] >= mz - std_dev_window) & (frame_v[:,0] <= mz + std_dev_window))[0]
+            nearby_indices_up = np.where((frame_v[:,1] == scan-scan_offset) & (frame_v[:,0] >= mz - std_dev_window) & (frame_v[:,0] <= mz + std_dev_window))[0]
             nearby_points_up = frame_v[nearby_indices_up]
             # print("nearby indices: {}".format(nearby_indices_up))
             if len(nearby_indices_up) == 0:
@@ -162,7 +150,7 @@ for frame_id in range(args.frame_lower, args.frame_upper+1):
         std_dev_window = standard_deviation(mz) * args.standard_deviations
         while (missed_scans < args.empty_scans) and (scan+scan_offset <= args.scan_upper):
             # print("looking in scan {}".format(scan+scan_offset))
-            nearby_indices_down = np.where((frame_v[:,2] > -1) & (frame_v[:,1] == scan+scan_offset) & (frame_v[:,0] >= mz - std_dev_window) & (frame_v[:,0] <= mz + std_dev_window))[0]
+            nearby_indices_down = np.where((frame_v[:,1] == scan+scan_offset) & (frame_v[:,0] >= mz - std_dev_window) & (frame_v[:,0] <= mz + std_dev_window))[0]
             nearby_points_down = frame_v[nearby_indices_down]
             if len(nearby_indices_down) == 0:
                 missed_scans += 1
@@ -243,7 +231,7 @@ for frame_id in range(args.frame_lower, args.frame_upper+1):
                 peak_intensity.append(int(frame_v[p][2]))
 
                 # Assign this peak ID to all the points in the peak
-                point_updates.append((peak_id, frame_id, frame_v[int(p)][3]))
+                point_updates.append((int(peak_id), int(frame_id), int(frame_v[int(p)][3])))
 
             # Add the peak's details to the collection
             peak_intensity_sum = np.sum(peak_intensity)
@@ -256,21 +244,23 @@ for frame_id in range(args.frame_lower, args.frame_upper+1):
             peak_max_index = peak_points[:,2].argmax()
             peak_max_mz = peak_points[peak_max_index][0]
             peak_max_scan = peak_points[peak_max_index][1].astype(int)
-            mono_peaks.append((frame_id, peak_id, peak_mz_centroid, peak_scan_centroid, peak_intensity_sum, peak_scan_upper, peak_scan_lower, peak_std_dev_mz, peak_std_dev_scan, json.dumps(rationale), ' ', peak_intensity_max, peak_max_mz, peak_max_scan))
+            cluster_id = 0
+            mono_peaks.append((int(frame_id), int(peak_id), float(peak_mz_centroid), float(peak_scan_centroid), int(peak_intensity_sum), int(peak_scan_upper), int(peak_scan_lower), float(peak_std_dev_mz), float(peak_std_dev_scan), json.dumps(rationale), int(peak_intensity_max), float(peak_max_mz), int(peak_max_scan), int(cluster_id)))
 
             peak_id += 1
 
         # remove the points we've processed from the frame
-        # frame_v = np.delete(frame_v, peak_indices, 0)
-        frame_v[peak_indices,2] = -1
+        frame_v = np.delete(frame_v, peak_indices, 0)
 
     # Write out the peaks we found in this frame
-    c.executemany("INSERT INTO peaks VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?)", mono_peaks)
+    src_c.executemany("INSERT INTO peaks VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)", mono_peaks)
     mono_peaks = []
 
     # Update the points in the frame table
-    c.executemany("UPDATE frames SET peak_id=? WHERE frame_id=? AND point_id=?", point_updates)
+    src_c.executemany("UPDATE summed_frames SET peak_id=%s WHERE frame_id=%s AND point_id=%s", point_updates)
     point_updates = []
+
+    source_conn.commit()
 
     stop_frame = time.time()
     print("{} seconds to process frame {} - {} peaks".format(stop_frame-start_frame, frame_id, peak_id))
@@ -281,7 +271,7 @@ print("{} seconds to process frames {} to {}".format(stop_run-start_run, args.fr
 # write out the processing info
 peak_detect_info.append(("run processing time (sec)", stop_run-start_run))
 peak_detect_info.append(("processed", time.ctime()))
-c.executemany("INSERT INTO peak_detect_info VALUES (?, ?)", peak_detect_info)
+src_c.executemany("INSERT INTO peak_detect_info VALUES (%s, %s)", peak_detect_info)
 source_conn.commit()
 source_conn.close()
 
