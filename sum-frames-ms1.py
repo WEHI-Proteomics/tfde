@@ -45,6 +45,9 @@ frame_ids = tuple(frame_ids_df.values[:,0])
 number_of_summed_frames = len(frame_ids)/args.frames_to_sum
 print("summing {} source frames with collision energy {} to create {} summed frames".format(len(frame_ids), args.collision_energy, number_of_summed_frames))
 
+frame_lower = 1
+frame_upper = number_of_summed_frames
+
 start_run = time.time()
 # Step through the source frames and sum them
 for summedFrameId in range(1,number_of_summed_frames+1):
@@ -93,6 +96,11 @@ for summedFrameId in range(1,number_of_summed_frames+1):
 
 stop_run = time.time()
 print("{} seconds to process run".format(stop_run-start_run))
+
+summing_info.append(("scan_lower", scan_lower))
+summing_info.append(("scan_upper", scan_upper))
+summing_info.append(("frame_lower", frame_lower))
+summing_info.append(("frame_upper", frame_upper))
 
 summing_info.append(("run processing time (sec)", stop_run-start_run))
 summing_info.append(("processed", time.ctime()))
