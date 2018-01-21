@@ -2,7 +2,7 @@ import sys
 import numpy as np
 import pandas as pd
 import time
-import sqlite3
+import pymysql
 import copy
 import argparse
 import os.path
@@ -85,30 +85,30 @@ parser.add_argument('-md','--mz_std_dev', type=int, default=3, help='Number of w
 args = parser.parse_args()
 
 # Connect to the database file
-source_conn = sqlite3.connect(args.database_name)
-c = source_conn.cursor()
+source_conn = pymysql.connect(host='mscypher-004', user='root', passwd='password', database="{}".format(args.database_name))
+src_c = source_conn.cursor()
 
 if args.frame_lower is None:
-    q = c.execute("SELECT value FROM summing_info WHERE item=\"summed_frame_lower\"")
-    row = q.fetchone()
+    src_c.execute("SELECT value FROM summing_info WHERE item=\"frame_lower\"")
+    row = src_c.fetchone()
     args.frame_lower = int(row[0])
     print("lower frame_id set to {} from the data".format(args.frame_lower))
 
 if args.frame_upper is None:
-    q = c.execute("SELECT value FROM summing_info WHERE item=\"summed_frame_upper\"")
-    row = q.fetchone()
+    src_c.execute("SELECT value FROM summing_info WHERE item=\"frame_upper\"")
+    row = src_c.fetchone()
     args.frame_upper = int(row[0])
     print("upper frame_id set to {} from the data".format(args.frame_upper))
 
 if args.scan_lower is None:
-    q = c.execute("SELECT value FROM summing_info WHERE item=\"scan_lower\"")
-    row = q.fetchone()
+    src_c.execute("SELECT value FROM summing_info WHERE item=\"scan_lower\"")
+    row = src_c.fetchone()
     args.scan_lower = int(row[0])
     print("lower scan set to {} from the data".format(args.scan_lower))
 
 if args.scan_upper is None:
-    q = c.execute("SELECT value FROM summing_info WHERE item=\"scan_upper\"")
-    row = q.fetchone()
+    src_c.execute("SELECT value FROM summing_info WHERE item=\"scan_upper\"")
+    row = src_c.fetchone()
     args.scan_upper = int(row[0])
     print("upper scan set to {} from the data".format(args.scan_upper))
 
@@ -118,43 +118,35 @@ for arg in vars(args):
     cluster_detect_info.append((arg, getattr(args, arg)))
 
 print("Setting up tables and indexes")
-c.execute('''DROP TABLE IF EXISTS clusters''')
-c.execute('''CREATE TABLE `clusters` ( `frame_id` INTEGER, 
-                                        `cluster_id` INTEGER, 
-                                        `charge_state` INTEGER, 
-                                        'base_isotope_peak_id' INTEGER, 
-                                        'base_peak_mz_centroid' REAL, 
-                                        'base_peak_mz_std_dev' REAL, 
-                                        'base_peak_scan_centroid' REAL, 
-                                        'base_peak_scan_std_dev' REAL, 
-                                        'base_peak_max_point_mz' REAL, 
-                                        'base_peak_max_point_scan' INTEGER, 
-                                        'monoisotopic_peak_id' INTEGER, 
-                                        'mono_peak_mz_centroid' REAL, 
-                                        'mono_peak_mz_std_dev' REAL, 
-                                        'mono_peak_scan_centroid' REAL, 
-                                        'mono_peak_scan_std_dev' REAL, 
-                                        'mono_peak_max_point_mz' REAL, 
-                                        'mono_peak_max_point_scan' INTEGER, 
-                                        'sulphides' INTEGER, 
-                                        'fit_error' REAL, 
-                                        'rationale' TEXT, 
-                                        'state' TEXT, 
-                                        'intensity_sum' INTEGER, 
-                                        'feature_id' INTEGER, 
-                                        'scan_lower' INTEGER, 
-                                        'scan_upper' INTEGER, 
-                                        'mz_lower' REAL, 
-                                        'mz_upper' REAL, 
-                                        PRIMARY KEY(`cluster_id`,`frame_id`) )''')
-c.execute('''DROP INDEX IF EXISTS idx_clusters''')
-c.execute('''CREATE INDEX idx_clusters ON clusters (frame_id,cluster_id)''')
-c.execute('''DROP TABLE IF EXISTS cluster_detect_info''')
-c.execute('''CREATE TABLE cluster_detect_info (item TEXT, value TEXT)''')
-source_conn.commit()
+src_c.execute("""CREATE OR REPLACE TABLE clusters (frame_id INTEGER, 
+                                                cluster_id INTEGER, 
+                                                charge_state INTEGER, 
+                                                base_isotope_peak_id INTEGER, 
+                                                base_peak_mz_centroid REAL, 
+                                                base_peak_mz_std_dev REAL, 
+                                                base_peak_scan_centroid REAL, 
+                                                base_peak_scan_std_dev REAL, 
+                                                base_peak_max_point_mz REAL, 
+                                                base_peak_max_point_scan INTEGER, 
+                                                monoisotopic_peak_id INTEGER, 
+                                                sulphides INTEGER, 
+                                                fit_error REAL, 
+                                                rationale TEXT, 
+                                                intensity_sum INTEGER, 
+                                                feature_id INTEGER, 
+                                                scan_lower INTEGER, 
+                                                scan_upper INTEGER, 
+                                                mz_lower REAL, 
+                                                mz_upper REAL, 
+                                                PRIMARY KEY(cluster_id,frame_id))""")
+src_c.execute("CREATE OR REPLACE TABLE cluster_detect_info (item TEXT, value TEXT)")
+
+# Indexes
+src_c.execute("CREATE OR REPLACE INDEX idx_peaks ON peaks (frame_id)")
+src_c.execute("CREATE OR REPLACE INDEX idx_peaks_2 ON peaks (frame_id,peak_id)")
 
 print("Resetting cluster IDs")
-c.execute("update peaks set cluster_id=0 where cluster_id!=0")
+src_c.execute("update peaks set cluster_id=0 where cluster_id!=0")
 
 DELTA_MZ = 1.003355     # mass difference between Carbon-12 and Carbon-13 isotopes, in Da
 PROTON_MASS = 1.007276  # mass of a proton in unified atomic mass units, or Da
@@ -181,11 +173,10 @@ for frame_id in range(args.frame_lower, args.frame_upper+1):
     cluster_id = 1
     # Get all the peaks for this frame
     #                                       0        1           2               3           4          5          6          7            8
-    peaks_df = pd.read_sql_query("select peak_id,centroid_mz,centroid_scan,intensity_sum,scan_upper,scan_lower,std_dev_mz,std_dev_scan,intensity_max from peaks where frame_id={} order by peak_id asc;"
-        .format(frame_id), source_conn)
+    peaks_df = pd.read_sql_query("select peak_id,centroid_mz,centroid_scan,intensity_sum,scan_upper,scan_lower,std_dev_mz,std_dev_scan,intensity_max from peaks where frame_id={} order by peak_id asc;".format(frame_id), source_conn)
     peaks_v = peaks_df.values
-    # for i in range(1,6):
-    while len(np.where((peaks_v[:,PEAK_INTENSITY_SUM_IDX] > -1))[0]) > 0:
+
+    while len(peaks_v) > 0:
 
         max_intensity_index = peaks_v.argmax(axis=0)[PEAK_INTENSITY_SUM_IDX]
         base_peak_id = int(peaks_v[max_intensity_index][PEAK_ID_IDX])
@@ -356,7 +347,7 @@ for frame_id in range(args.frame_lower, args.frame_upper+1):
                 # Assign the cluster ID to the peaks
                 for p in cluster_peaks:
                     p_id = int(p[PEAK_ID_IDX])
-                    peak_updates.append((cluster_id, frame_id, p_id))
+                    peak_updates.append((int(cluster_id), int(frame_id), int(p_id)))
                 # determine some other cluster characteristics before writing it to the database
                 cluster_intensity_sum = sum(cluster_peaks[:,PEAK_INTENSITY_SUM_IDX])
                 cluster_scan_lower = min(cluster_peaks[:,PEAK_SCAN_LOWER_IDX])
@@ -374,68 +365,49 @@ for frame_id in range(args.frame_lower, args.frame_upper+1):
                 base_peak_max_point_mz = base_peak_v[0][4]
                 base_peak_max_point_scan = base_peak_v[0][5]
 
-                #                                            0            1             2          3           4            5
-                mono_peak_df = pd.read_sql_query("select centroid_mz,centroid_scan,std_dev_mz,std_dev_scan,peak_max_mz,peak_max_scan from peaks where frame_id={} and peak_id={};".format(frame_id, monoisotopic_peak_id), source_conn)
-                mono_peak_v = mono_peak_df.values
-                mono_peak_mz_centroid = mono_peak_v[0][0]
-                mono_peak_scan_centroid = mono_peak_v[0][1]
-                mono_peak_mz_std_dev = mono_peak_v[0][2]
-                mono_peak_scan_std_dev = mono_peak_v[0][3]
-                mono_peak_max_point_mz = mono_peak_v[0][4]
-                mono_peak_max_point_scan = mono_peak_v[0][5]
-
                 cluster_feature_id = 0
                 # add the cluster to the list
-                clusters.append((frame_id, 
-                                    cluster_id, 
-                                    charge, 
-                                    base_peak_id, 
-                                    base_peak_mz_centroid, 
-                                    base_peak_mz_std_dev, 
-                                    base_peak_scan_centroid, 
-                                    base_peak_scan_std_dev, 
-                                    base_peak_max_point_mz,
-                                    base_peak_max_point_scan,
-                                    monoisotopic_peak_id, 
-                                    mono_peak_mz_centroid, 
-                                    mono_peak_mz_std_dev, 
-                                    mono_peak_scan_centroid, 
-                                    mono_peak_scan_std_dev, 
-                                    mono_peak_max_point_mz,
-                                    mono_peak_max_point_scan,
+                clusters.append((int(frame_id), 
+                                    int(cluster_id), 
+                                    int(charge), 
+                                    int(base_peak_id), 
+                                    float(base_peak_mz_centroid), 
+                                    float(base_peak_mz_std_dev), 
+                                    float(base_peak_scan_centroid), 
+                                    float(base_peak_scan_std_dev), 
+                                    float(base_peak_max_point_mz),
+                                    int(base_peak_max_point_scan),
+                                    int(monoisotopic_peak_id), 
                                     int(number_of_sulphur), 
-                                    fit_error, 
+                                    float(fit_error), 
                                     json.dumps(rationale), 
-                                    ' ', 
-                                    cluster_intensity_sum, 
-                                    cluster_feature_id,
-                                    cluster_scan_lower,
-                                    cluster_scan_upper,
-                                    cluster_mz_lower,
-                                    cluster_mz_upper))
+                                    int(cluster_intensity_sum), 
+                                    int(cluster_feature_id),
+                                    int(cluster_scan_lower),
+                                    int(cluster_scan_upper),
+                                    float(cluster_mz_lower),
+                                    float(cluster_mz_upper)))
                 cluster_id += 1
 
         # remove the peaks we've processed from the frame
         peaks_v_indices = np.searchsorted(peaks_v[:,PEAK_ID_IDX], cluster_peaks[:,PEAK_ID_IDX])
-        # peaks_v = np.delete(peaks_v, peaks_v_indices, 0)
-        peaks_v[peaks_v_indices,PEAK_INTENSITY_SUM_IDX] = -1
-        # print("removed peak ids {} - {} peaks remaining\n".format(cluster_peaks[:,0].astype(int), len(np.where((peaks_v[:,PEAK_INTENSITY_SUM_IDX] > -1))[0])))
+        peaks_v = np.delete(peaks_v, peaks_v_indices, 0)
 
     stop_frame = time.time()
     print("{} seconds to process frame - found {} clusters".format(stop_frame-start_frame, cluster_id))
 
 # Write out all the clusters to the database
-c.executemany("INSERT INTO clusters VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", clusters)
+src_c.executemany("INSERT INTO clusters VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)", clusters)
 
 # Update the peaks with their cluster IDs
-c.executemany("UPDATE peaks SET cluster_id=? WHERE frame_id=? AND peak_id=?", peak_updates)
+src_c.executemany("UPDATE peaks SET cluster_id=%s WHERE frame_id=%s AND peak_id=%s", peak_updates)
 
 stop_run = time.time()
 
 # Store some metadata about clustering
 cluster_detect_info.append(("run processing time (sec)", stop_run-start_run))
 cluster_detect_info.append(("processed", time.ctime()))
-c.executemany("INSERT INTO cluster_detect_info VALUES (?, ?)", cluster_detect_info)
+src_c.executemany("INSERT INTO cluster_detect_info VALUES (%s, %s)", cluster_detect_info)
 
 source_conn.commit()
 source_conn.close()
