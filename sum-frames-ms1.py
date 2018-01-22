@@ -13,7 +13,8 @@ def standard_deviation(mz):
 
 parser = argparse.ArgumentParser(description='An intensity descent method for summing frames.')
 parser.add_argument('-db','--database_name', type=str, help='The name of the source database.', required=True)
-parser.add_argument('-fts','--frames_to_sum', type=int, default=5, help='The number of source frames to sum.', required=False)
+parser.add_argument('-fts','--frames_to_sum', type=int, default=150, help='The number of MS1 source frames to sum.', required=False)
+parser.add_argument('-fso','--frame_summing_offset', type=int, default=25, help='The number of MS1 source frames to shift for each summation.', required=False)
 parser.add_argument('-mf','--noise_threshold', type=int, default=2, help='Minimum number of frames a point must appear in to be processed.', required=False)
 parser.add_argument('-ce','--collision_energy', type=int, help='Collision energy, in eV.', required=True)
 args = parser.parse_args()
@@ -42,18 +43,18 @@ for arg in vars(args):
 # Find the complete set of frame ids to be processed
 frame_ids_df = pd.read_sql_query("select frame_id from frame_properties where collision_energy={} order by frame_id ASC;".format(args.collision_energy), source_conn)
 frame_ids = tuple(frame_ids_df.values[:,0])
-number_of_summed_frames = len(frame_ids)/args.frames_to_sum
+number_of_summed_frames = 1 + int(((len(frame_ids) - args.frames_to_sum) / args.frame_summing_offset))
 print("summing {} source frames with collision energy {} to create {} summed frames".format(len(frame_ids), args.collision_energy, number_of_summed_frames))
 
 frame_lower = 1
 frame_upper = number_of_summed_frames
+baseFrameIdsIndex = 0
 
 start_run = time.time()
 # Step through the source frames and sum them
 for summedFrameId in range(1,number_of_summed_frames+1):
-    baseFrameIdsIndex = (summedFrameId-1) * args.frames_to_sum
     frameIdsToSum = frame_ids[baseFrameIdsIndex:baseFrameIdsIndex+args.frames_to_sum]
-    print("Processing frames {} to create summed frame {}".format(frameIdsToSum, summedFrameId))
+    print("Processing {} frames ({}) to create summed frame {}".format(len(frameIdsToSum), frameIdsToSum, summedFrameId))
     frame_df = pd.read_sql_query("select frame_id,mz,scan,intensity from frames where frame_id in {} order by frame_id, mz, scan asc;".format(frameIdsToSum), source_conn)
     frame_v = frame_df.values
 
@@ -93,6 +94,9 @@ for summedFrameId in range(1,number_of_summed_frames+1):
 
     frame_end = time.time()
     print("{} sec for frame {} ({} points)".format(frame_end-frame_start, summedFrameId, len(points)))
+
+    baseFrameIdsIndex += args.frame_summing_offset
+
 
 stop_run = time.time()
 print("{} seconds to process run".format(stop_run-start_run))
