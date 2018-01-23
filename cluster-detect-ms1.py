@@ -406,7 +406,11 @@ stop_run = time.time()
 # Store some metadata about clustering
 cluster_detect_info.append(("run processing time (sec)", stop_run-start_run))
 cluster_detect_info.append(("processed", time.ctime()))
-src_c.executemany("INSERT INTO cluster_detect_info VALUES (%s, %s)", cluster_detect_info)
+
+cluster_detect_info_entry = []
+cluster_detect_info_entry.append(("summed frames {}-{}".format(args.frame_lower, args.frame_upper), ' '.join(str(e) for e in cluster_detect_info)))
+
+src_c.executemany("INSERT INTO cluster_detect_info VALUES (%s, %s)", cluster_detect_info_entry)
 
 source_conn.commit()
 source_conn.close()
