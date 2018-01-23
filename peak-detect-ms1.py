@@ -49,23 +49,10 @@ parser.add_argument('-sl','--scan_lower', type=int, help='The lower scan number.
 parser.add_argument('-su','--scan_upper', type=int, help='The upper scan number.', required=False)
 parser.add_argument('-es','--empty_scans', type=int, default=2, help='Maximum number of empty scans to tolerate.', required=False)
 parser.add_argument('-sd','--standard_deviations', type=int, default=4, help='Number of standard deviations to look either side of a point.', required=False)
-
 args = parser.parse_args()
 
 source_conn = pymysql.connect(host='mscypher-004', user='root', passwd='password', database="{}".format(args.database_name))
 src_c = source_conn.cursor()
-
-print("Setting up tables and indexes")
-
-src_c.execute("CREATE OR REPLACE TABLE peaks (frame_id INTEGER, peak_id INTEGER, centroid_mz REAL, centroid_scan REAL, intensity_sum INTEGER, scan_upper INTEGER, scan_lower INTEGER, std_dev_mz REAL, std_dev_scan REAL, rationale TEXT, intensity_max INTEGER, peak_max_mz REAL, peak_max_scan INTEGER, cluster_id INTEGER, PRIMARY KEY (frame_id, peak_id))")
-src_c.execute("CREATE OR REPLACE TABLE peak_detect_info (item TEXT, value TEXT)")
-
-# Indexes
-src_c.execute("CREATE OR REPLACE INDEX idx_summed_frames ON summed_frames (frame_id)")
-src_c.execute("CREATE OR REPLACE INDEX idx_summed_frames_2 ON summed_frames (frame_id,point_id)")
-
-print("Resetting peak IDs")
-src_c.execute("update summed_frames set peak_id=0 where peak_id!=0")
 
 if args.frame_lower is None:
     src_c.execute("SELECT value FROM summing_info WHERE item=\"frame_lower\"")
@@ -90,6 +77,22 @@ if args.scan_upper is None:
     row = src_c.fetchone()
     args.scan_upper = int(row[0])
     print("upper scan set to {} from the data".format(args.scan_upper))
+
+print("Setting up tables and indexes")
+
+src_c.execute("CREATE TABLE IF NOT EXISTS peaks (frame_id INTEGER, peak_id INTEGER, centroid_mz REAL, centroid_scan REAL, intensity_sum INTEGER, scan_upper INTEGER, scan_lower INTEGER, std_dev_mz REAL, std_dev_scan REAL, rationale TEXT, intensity_max INTEGER, peak_max_mz REAL, peak_max_scan INTEGER, cluster_id INTEGER, PRIMARY KEY (frame_id, peak_id))")
+src_c.execute("CREATE TABLE IF NOT EXISTS peak_detect_info (item TEXT, value TEXT)")
+
+# Indexes
+src_c.execute("CREATE INDEX IF NOT EXISTS idx_summed_frames ON summed_frames (frame_id)")
+src_c.execute("CREATE INDEX IF NOT EXISTS idx_summed_frames_2 ON summed_frames (frame_id,point_id)")
+
+# Remove any existing entries for this feature range
+src_c.execute("DELETE FROM peaks WHERE frame_id >= {} and frame_id <= {}".format(args.frame_lower, args.frame_upper))
+src_c.execute("DELETE FROM peak_detect_info WHERE item=\"frames {}-{}\"".format(args.frame_lower, args.frame_upper))
+
+print("Resetting peak IDs")
+src_c.execute("update summed_frames set peak_id=0 where frame_id >= {} and frame_id <= {} and peak_id!=0".format(args.frame_lower, args.frame_upper))
 
 # Store the arguments as metadata in the database for later reference
 peak_detect_info = []
@@ -280,7 +283,11 @@ print("{} seconds to process frames {} to {}".format(stop_run-start_run, args.fr
 # write out the processing info
 peak_detect_info.append(("run processing time (sec)", stop_run-start_run))
 peak_detect_info.append(("processed", time.ctime()))
-src_c.executemany("INSERT INTO peak_detect_info VALUES (%s, %s)", peak_detect_info)
+
+peak_detect_info_entry = []
+peak_detect_info_entry.append(("frames {}-{}".format(args.frame_lower, args.frame_upper), ' '.join(str(e) for e in peak_detect_info)))
+
+src_c.executemany("INSERT INTO peak_detect_info VALUES (%s, %s)", peak_detect_info_entry)
 source_conn.commit()
 source_conn.close()
 
