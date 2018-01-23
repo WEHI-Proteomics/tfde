@@ -91,8 +91,8 @@ src_c.execute("CREATE INDEX IF NOT EXISTS idx_summed_frames_2 ON summed_frames (
 # src_c.execute("DELETE FROM peaks WHERE frame_id >= {} and frame_id <= {}".format(args.frame_lower, args.frame_upper))
 # src_c.execute("DELETE FROM peak_detect_info WHERE item=\"frames {}-{}\"".format(args.frame_lower, args.frame_upper))
 
-print("Resetting peak IDs")
-src_c.execute("update summed_frames set peak_id=0 where frame_id >= {} and frame_id <= {} and peak_id!=0".format(args.frame_lower, args.frame_upper))
+# print("Resetting peak IDs")
+# src_c.execute("update summed_frames set peak_id=0 where frame_id >= {} and frame_id <= {} and peak_id!=0".format(args.frame_lower, args.frame_upper))
 
 # Store the arguments as metadata in the database for later reference
 peak_detect_info = []
@@ -285,7 +285,7 @@ peak_detect_info.append(("run processing time (sec)", stop_run-start_run))
 peak_detect_info.append(("processed", time.ctime()))
 
 peak_detect_info_entry = []
-peak_detect_info_entry.append(("frames {}-{}".format(args.frame_lower, args.frame_upper), ' '.join(str(e) for e in peak_detect_info)))
+peak_detect_info_entry.append(("summed frames {}-{}".format(args.frame_lower, args.frame_upper), ' '.join(str(e) for e in peak_detect_info)))
 
 src_c.executemany("INSERT INTO peak_detect_info VALUES (%s, %s)", peak_detect_info_entry)
 source_conn.commit()
