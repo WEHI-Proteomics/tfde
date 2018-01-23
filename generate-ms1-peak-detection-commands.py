@@ -8,7 +8,7 @@ parser.add_argument('-fbs','--number_of_batches', type=int, default=12, help='Th
 args = parser.parse_args()
 
 # Connect to the database
-source_conn = pymysql.connect(host='mscypher-004', user='root', passwd='password', database="'{}'".format(args.database_name))
+source_conn = pymysql.connect(host='mscypher-004', user='root', passwd='password', database="{}".format(args.database_name))
 src_c = source_conn.cursor()
 
 # Find out the number of summed MS1 frames in the database
@@ -28,7 +28,7 @@ print("number of frames {}, batch size {}, number of batches {}".format(number_o
 for i in range(args.number_of_batches):
     first_frame_id = i*batch_size+1
     last_frame_id = first_frame_id + batch_size - 1
-    if last frame_id > number_of_frames:
+    if last_frame_id > number_of_frames:
         last_frame_id = number_of_frames
 
     # print("start \"Summing {}-{}\" python sum-frames-intensity-descent.py -sdb \"{}/{}\" -ddb \"{}/summed-{}-{}-{}\" -n {} -bf {} -sf {}".format(base_feature_id, last_summed_frame_id, args.source_directory, 
@@ -39,7 +39,7 @@ for i in range(args.number_of_batches):
 for i in range(args.number_of_batches):
     first_frame_id = i*batch_size+1
     last_frame_id = first_frame_id + batch_size - 1
-    if last frame_id > number_of_frames:
+    if last_frame_id > number_of_frames:
         last_frame_id = number_of_frames
 
     # print("start \"Summing {}-{}\" python sum-frames-intensity-descent.py -sdb \"{}/{}\" -ddb \"{}/summed-{}-{}-{}\" -n {} -bf {} -sf {}".format(base_feature_id, last_summed_frame_id, args.source_directory, 
