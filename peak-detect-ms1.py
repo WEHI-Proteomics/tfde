@@ -88,8 +88,8 @@ src_c.execute("CREATE INDEX IF NOT EXISTS idx_summed_frames ON summed_frames (fr
 src_c.execute("CREATE INDEX IF NOT EXISTS idx_summed_frames_2 ON summed_frames (frame_id,point_id)")
 
 # Remove any existing entries for this feature range
-src_c.execute("DELETE FROM peaks WHERE frame_id >= {} and frame_id <= {}".format(args.frame_lower, args.frame_upper))
-src_c.execute("DELETE FROM peak_detect_info WHERE item=\"frames {}-{}\"".format(args.frame_lower, args.frame_upper))
+# src_c.execute("DELETE FROM peaks WHERE frame_id >= {} and frame_id <= {}".format(args.frame_lower, args.frame_upper))
+# src_c.execute("DELETE FROM peak_detect_info WHERE item=\"frames {}-{}\"".format(args.frame_lower, args.frame_upper))
 
 print("Resetting peak IDs")
 src_c.execute("update summed_frames set peak_id=0 where frame_id >= {} and frame_id <= {} and peak_id!=0".format(args.frame_lower, args.frame_upper))
