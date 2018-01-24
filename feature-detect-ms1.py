@@ -86,7 +86,6 @@ def find_nearest_high_index_below_threshold(values, threshold):
 # returns True if the gap between points is within acceptable limit
 def check_gap_between_points(feature_indices, max_gap_in_seconds):
     features_max_gap_in_seconds = np.max(np.diff(clusters_v[feature_indices, CLUSTER_FRAME_ID_IDX])) / args.frames_per_second
-    print("max gap found {}, max allowed gap {}".format(features_max_gap_in_seconds, max_gap_in_seconds))
     return (features_max_gap_in_seconds <= max_gap_in_seconds)
 
 def find_feature(base_index):
@@ -216,7 +215,6 @@ def find_feature(base_index):
     # score the feature quality
     feature_start_frame = int(clusters_v[feature_indices[0],CLUSTER_FRAME_ID_IDX])
     feature_end_frame = int(clusters_v[feature_indices[len(feature_indices)-1],CLUSTER_FRAME_ID_IDX])
-    print("frames {}-{}".format(feature_start_frame, feature_end_frame))
 
     if ((feature_end_frame-feature_start_frame) >= MINIMUM_NUMBER_OF_FRAMES) and (check_gap_between_points(feature_indices, args.maximum_gap_between_points)):
         quality = 1.0
