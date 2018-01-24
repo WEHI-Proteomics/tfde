@@ -382,6 +382,13 @@ while True:
     # remove the features we've processed from the run
     clusters_v[cluster_indices, CLUSTER_INTENSITY_SUM_IDX] = -1
 
+    # save this in the database
+    c.executemany("UPDATE clusters SET feature_id=%s WHERE frame_id=%s AND cluster_id=%s", cluster_updates)
+    cluster_updates = []
+    c.executemany("INSERT INTO features VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)", feature_updates)
+    feature_updates = []
+    source_conn.commit()
+
     # check whether we have finished
     if (cluster_intensity < base_noise_level):
         print("Reached base noise level")
@@ -393,11 +400,6 @@ while True:
 stop_run = time.time()
 
 print("found {} features in {} seconds".format(max(feature_updates, key=itemgetter(0))[0], stop_run-start_run))
-
-print("updating the clusters table")
-c.executemany("UPDATE clusters SET feature_id=%s WHERE frame_id=%s AND cluster_id=%s", cluster_updates)
-print("updating the features table")
-c.executemany("INSERT INTO features VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)", feature_updates)
 
 feature_info.append(("run processing time (sec)", stop_run-start_run))
 feature_info.append(("processed", time.ctime()))
