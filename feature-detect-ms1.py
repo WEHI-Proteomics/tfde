@@ -247,8 +247,9 @@ def find_feature(base_index):
             (lower_noise_frame_1_index, upper_noise_frame_1_index) = find_frame_indices(lower_noise_eval_frame_1, upper_noise_eval_frame_1)
             if (lower_noise_frame_1_index is not None) and (upper_noise_frame_1_index is not None):
                 noise_indices = np.where(clusters_v[lower_noise_frame_1_index:upper_noise_frame_1_index,CLUSTER_INTENSITY_SUM_IDX] > 0)[0]
-                noise_level_1 = int(np.average(clusters_v[lower_noise_frame_1_index:upper_noise_frame_1_index,CLUSTER_INTENSITY_SUM_IDX][noise_indices]))
-                noise_level_readings.append(noise_level_1)
+                if len(noise_indices) > 0:
+                    noise_level_1 = int(np.average(clusters_v[lower_noise_frame_1_index:upper_noise_frame_1_index,CLUSTER_INTENSITY_SUM_IDX][noise_indices]))
+                    noise_level_readings.append(noise_level_1)
 
         # update the noise estimate from the upper window
         lower_noise_eval_frame_2 = feature_end_frame + int((NOISE_ASSESSMENT_OFFSET) * args.frames_per_second)
@@ -258,8 +259,9 @@ def find_feature(base_index):
             (lower_noise_frame_2_index, upper_noise_frame_2_index) = find_frame_indices(lower_noise_eval_frame_2, upper_noise_eval_frame_2)
             if (lower_noise_frame_2_index is not None) and (upper_noise_frame_2_index is not None):
                 noise_indices = np.where(clusters_v[lower_noise_frame_2_index:upper_noise_frame_2_index,CLUSTER_INTENSITY_SUM_IDX] > 0)[0]
-                noise_level_2 = int(np.average(clusters_v[lower_noise_frame_2_index:upper_noise_frame_2_index,CLUSTER_INTENSITY_SUM_IDX][noise_indices]))
-                noise_level_readings.append(noise_level_2)
+                if len(noise_indices) > 0:
+                    noise_level_2 = int(np.average(clusters_v[lower_noise_frame_2_index:upper_noise_frame_2_index,CLUSTER_INTENSITY_SUM_IDX][noise_indices]))
+                    noise_level_readings.append(noise_level_2)
     else:
         quality = 0.0
         feature_start_frame = None
