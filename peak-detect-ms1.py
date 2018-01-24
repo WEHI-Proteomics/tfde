@@ -78,14 +78,14 @@ if args.scan_upper is None:
     args.scan_upper = int(row[0])
     print("upper scan set to {} from the data".format(args.scan_upper))
 
-print("Setting up tables and indexes")
+# print("Setting up tables and indexes")
 
-src_c.execute("CREATE TABLE IF NOT EXISTS peaks (frame_id INTEGER, peak_id INTEGER, centroid_mz REAL, centroid_scan REAL, intensity_sum INTEGER, scan_upper INTEGER, scan_lower INTEGER, std_dev_mz REAL, std_dev_scan REAL, rationale TEXT, intensity_max INTEGER, peak_max_mz REAL, peak_max_scan INTEGER, cluster_id INTEGER, PRIMARY KEY (frame_id, peak_id))")
-src_c.execute("CREATE TABLE IF NOT EXISTS peak_detect_info (item TEXT, value TEXT)")
+# src_c.execute("CREATE TABLE IF NOT EXISTS peaks (frame_id INTEGER, peak_id INTEGER, centroid_mz REAL, centroid_scan REAL, intensity_sum INTEGER, scan_upper INTEGER, scan_lower INTEGER, std_dev_mz REAL, std_dev_scan REAL, rationale TEXT, intensity_max INTEGER, peak_max_mz REAL, peak_max_scan INTEGER, cluster_id INTEGER, PRIMARY KEY (frame_id, peak_id))")
+# src_c.execute("CREATE TABLE IF NOT EXISTS peak_detect_info (item TEXT, value TEXT)")
 
 # Indexes
-src_c.execute("CREATE INDEX IF NOT EXISTS idx_summed_frames ON summed_frames (frame_id)")
-src_c.execute("CREATE INDEX IF NOT EXISTS idx_summed_frames_2 ON summed_frames (frame_id,point_id)")
+# src_c.execute("CREATE INDEX IF NOT EXISTS idx_summed_frames ON summed_frames (frame_id)")
+# src_c.execute("CREATE INDEX IF NOT EXISTS idx_summed_frames_2 ON summed_frames (frame_id,point_id)")
 
 # Remove any existing entries for this feature range
 # src_c.execute("DELETE FROM peaks WHERE frame_id >= {} and frame_id <= {}".format(args.frame_lower, args.frame_upper))
