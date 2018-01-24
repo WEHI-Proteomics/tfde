@@ -49,8 +49,14 @@ def standard_deviation(mz):
 def find_frame_indices(start_frame_id, end_frame_id):
     start_frame_indices = np.where(clusters_v[:,CLUSTER_FRAME_ID_IDX] == start_frame_id)[0]
     end_frame_indices = np.where(clusters_v[:,CLUSTER_FRAME_ID_IDX] == end_frame_id)[0]
-    first_start_frame_index = start_frame_indices[0]  # first index of the start frame
-    last_end_frame_index = end_frame_indices[len(end_frame_indices)-1]  # last index of the end frame
+    if len(start_frame_indices) > 0:
+        first_start_frame_index = start_frame_indices[0]  # first index of the start frame
+    else:
+        first_start_frame_index = None
+    if len(end_frame_indices) > 0:
+        last_end_frame_index = end_frame_indices[len(end_frame_indices)-1]  # last index of the end frame
+    else:
+        last_end_frame_index = None
     return (first_start_frame_index, last_end_frame_index)
 
 def find_nearest_low_index_below_threshold(values, threshold):
@@ -233,24 +239,27 @@ def find_feature(base_index):
         feature_mz_lower = float(min(clusters_v[feature_indices,CLUSTER_MZ_LOWER_IDX]))
         feature_mz_upper = float(max(clusters_v[feature_indices,CLUSTER_MZ_UPPER_IDX]))
 
-        # update the noise estimate
+        # update the noise estimate from the lower window
         lower_noise_eval_frame_1 = feature_start_frame - int((NOISE_ASSESSMENT_OFFSET+NOISE_ASSESSMENT_WIDTH) * args.frames_per_second)
         upper_noise_eval_frame_1 = feature_start_frame - int(NOISE_ASSESSMENT_OFFSET * args.frames_per_second)
         if (lower_noise_eval_frame_1 >= int(np.min(clusters_v[:,CLUSTER_FRAME_ID_IDX]))):
             # assess the noise level in this window
             (lower_noise_frame_1_index, upper_noise_frame_1_index) = find_frame_indices(lower_noise_eval_frame_1, upper_noise_eval_frame_1)
-            noise_indices = np.where(clusters_v[lower_noise_frame_1_index:upper_noise_frame_1_index,CLUSTER_INTENSITY_SUM_IDX] > 0)[0]
-            noise_level_1 = int(np.average(clusters_v[lower_noise_frame_1_index:upper_noise_frame_1_index,CLUSTER_INTENSITY_SUM_IDX][noise_indices]))
-            noise_level_readings.append(noise_level_1)
+            if (lower_noise_frame_1_index is not None) and (upper_noise_frame_1_index is not None):
+                noise_indices = np.where(clusters_v[lower_noise_frame_1_index:upper_noise_frame_1_index,CLUSTER_INTENSITY_SUM_IDX] > 0)[0]
+                noise_level_1 = int(np.average(clusters_v[lower_noise_frame_1_index:upper_noise_frame_1_index,CLUSTER_INTENSITY_SUM_IDX][noise_indices]))
+                noise_level_readings.append(noise_level_1)
 
+        # update the noise estimate from the upper window
         lower_noise_eval_frame_2 = feature_end_frame + int((NOISE_ASSESSMENT_OFFSET) * args.frames_per_second)
         upper_noise_eval_frame_2 = feature_end_frame + int((NOISE_ASSESSMENT_OFFSET+NOISE_ASSESSMENT_WIDTH) * args.frames_per_second)
         if (upper_noise_eval_frame_2 <= int(np.max(clusters_v[:,CLUSTER_FRAME_ID_IDX]))):
             # assess the noise level in this window
             (lower_noise_frame_2_index, upper_noise_frame_2_index) = find_frame_indices(lower_noise_eval_frame_2, upper_noise_eval_frame_2)
-            noise_indices = np.where(clusters_v[lower_noise_frame_2_index:upper_noise_frame_2_index,CLUSTER_INTENSITY_SUM_IDX] > 0)[0]
-            noise_level_2 = int(np.average(clusters_v[lower_noise_frame_2_index:upper_noise_frame_2_index,CLUSTER_INTENSITY_SUM_IDX][noise_indices]))
-            noise_level_readings.append(noise_level_2)
+            if (lower_noise_frame_2_index is not None) and (upper_noise_frame_2_index is not None):
+                noise_indices = np.where(clusters_v[lower_noise_frame_2_index:upper_noise_frame_2_index,CLUSTER_INTENSITY_SUM_IDX] > 0)[0]
+                noise_level_2 = int(np.average(clusters_v[lower_noise_frame_2_index:upper_noise_frame_2_index,CLUSTER_INTENSITY_SUM_IDX][noise_indices]))
+                noise_level_readings.append(noise_level_2)
     else:
         quality = 0.0
         feature_start_frame = None
