@@ -1,6 +1,5 @@
 from __future__ import print_function
 import sys
-import sqlite3
 import argparse
 import numpy as np
 import time
@@ -24,8 +23,6 @@ FRAME_MZ_IDX = 1
 FRAME_SCAN_IDX = 2
 FRAME_INTENSITY_IDX = 3
 
-MS1_COLLISION_ENERGY = 10
-MS2_COLLISION_ENERGY = 35
 
 def standard_deviation(mz):
     instrument_resolution = 40000.0
@@ -40,16 +37,15 @@ def ms2_frame_ids_from_ms1_frame_id(ms1_frame_id):
 
 
 parser = argparse.ArgumentParser(description='Sum MS2 frames in the region of the MS1 feature\'s drift and retention time.')
-parser.add_argument('-sdb','--source_database_name', type=str, help='The name of the (converted but not summed) source database, for reading MS2 frames.', required=True)
+parser.add_argument('-db','--database_name', type=str, help='The name of the database.', required=True)
 parser.add_argument('-fl','--feature_id_lower', type=int, help='Lower feature ID to process.', required=False)
 parser.add_argument('-fu','--feature_id_upper', type=int, help='Upper feature ID to process.', required=False)
-parser.add_argument('-mf','--noise_threshold', type=int, default=150, help='Minimum number of frames a point must appear in to be processed.', required=False)
+parser.add_argument('-mf','--noise_threshold', type=int, default=150, help='Minimum number of MS2 frames a point must appear in to be processed.', required=False)
 parser.add_argument('-mcs','--minimum_charge_state', type=int, default=2, help='Minimum charge state to process.', required=False)
+parser.add_argument('-ms2ce','--ms2_collision_energy', type=float, help='Collision energy used for MS2.', required=True)
 args = parser.parse_args()
 
-source_conn = sqlite3.connect(args.source_database_name)
-src_c = source_conn.cursor()
-dest_conn = pymysql.connect(host='mscypher-004', user='root', passwd='password', database='timsTOF')
+dest_conn = pymysql.connect(host='mscypher-004', user='root', passwd='password', database="{}".format(args.database_name))
 dest_c = dest_conn.cursor()
 
 # Store the arguments as metadata in the database for later reference
@@ -60,7 +56,7 @@ for arg in vars(args):
 start_run = time.time()
 
 print("Loading the MS2 frame IDs")
-ms2_frame_ids_df = pd.read_sql_query("select frame_id from frame_properties where collision_energy={} order by frame_id ASC;".format(MS2_COLLISION_ENERGY), source_conn)
+ms2_frame_ids_df = pd.read_sql_query("select frame_id from frame_properties where collision_energy={} order by frame_id ASC;".format(args.ms2_collision_energy), dest_conn)
 ms2_frame_ids_v = ms2_frame_ids_df.values
 
 print("Getting some metadata about how the frames were summed")
@@ -91,7 +87,7 @@ for feature in features_v:
     for frame_id in range(feature_start_frame, feature_end_frame+1):
         ms2_frame_ids += ms2_frame_ids_from_ms1_frame_id(frame_id)
     print("feature ID {}, MS1 frame IDs {}-{}, {} MS2 frames, scans {}-{}".format(feature_id, feature_start_frame, feature_end_frame, len(ms2_frame_ids), feature_scan_lower, feature_scan_upper))
-    frame_df = pd.read_sql_query("select frame_id,mz,scan,intensity from frames where frame_id in {} and scan <= {} and scan >= {} order by frame_id, mz, scan asc;".format(ms2_frame_ids, feature_scan_upper, feature_scan_lower), source_conn)
+    frame_df = pd.read_sql_query("select frame_id,mz,scan,intensity from frames where frame_id in {} and scan <= {} and scan >= {} order by frame_id, mz, scan asc;".format(ms2_frame_ids, feature_scan_upper, feature_scan_lower), dest_conn)
     frame_v = frame_df.values
     print("frame occupies {} bytes".format(frame_v.nbytes))
 
@@ -123,16 +119,8 @@ for feature in features_v:
 source_conn.close()
 
 # Connect to the database
-dest_conn = pymysql.connect(host='mscypher-004', user='root', passwd='password', database='timsTOF')
+dest_conn = pymysql.connect(host='mscypher-004', user='root', passwd='password', database="{}".format(args.database_name))
 dest_c = dest_conn.cursor()
-
-# Set up the tables if they don't exist already
-dest_c.execute("CREATE TABLE IF NOT EXISTS summed_ms2_regions (feature_id INTEGER, point_id INTEGER, mz REAL, scan INTEGER, intensity INTEGER, number_frames INTEGER, peak_id INTEGER)")  # number_frames = number of source frames the point was found in
-dest_c.execute("CREATE TABLE IF NOT EXISTS summed_ms2_regions_info (item TEXT, value TEXT)")
-
-# Remove any existing entries for this feature range
-dest_c.execute("DELETE FROM summed_ms2_regions WHERE feature_id >= {} and feature_id <= {}".format(args.feature_id_lower, args.feature_id_upper))
-dest_c.execute("DELETE FROM summed_ms2_regions_info WHERE item=\"features {}-{}\"".format(args.feature_id_lower, args.feature_id_upper))
 
 # Store the points in the database
 dest_c.executemany("INSERT INTO summed_ms2_regions (feature_id, point_id, mz, scan, intensity, number_frames, peak_id) VALUES (%s, %s, %s, %s, %s, %s, %s)", points)

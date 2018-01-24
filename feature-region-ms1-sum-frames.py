@@ -50,14 +50,14 @@ if args.feature_id_upper is None:
     args.feature_id_upper = int(row[0])
     print("feature_id_upper set to {} from the data".format(args.feature_id_upper))
 
-print("Setting up tables and indexes")
-
-src_c.execute("CREATE TABLE IF NOT EXISTS summed_ms1_regions (feature_id INTEGER, point_id INTEGER, mz REAL, scan INTEGER, intensity INTEGER, number_frames INTEGER, peak_id INTEGER)")  # number_frames = number of source frames the point was found in
-src_c.execute("CREATE TABLE IF NOT EXISTS ms1_feature_region_summing_info (item TEXT, value TEXT)")
+# print("Setting up tables and indexes")
+# 
+# src_c.execute("CREATE TABLE IF NOT EXISTS summed_ms1_regions (feature_id INTEGER, point_id INTEGER, mz REAL, scan INTEGER, intensity INTEGER, number_frames INTEGER, peak_id INTEGER)")  # number_frames = number of source frames the point was found in
+# src_c.execute("CREATE TABLE IF NOT EXISTS ms1_feature_region_summing_info (item TEXT, value TEXT)")
 
 # Remove any existing entries for this feature range
-src_c.execute("DELETE FROM summed_ms1_regions WHERE feature_id >= {} and feature_id <= {}".format(args.feature_id_lower, args.feature_id_upper))
-src_c.execute("DELETE FROM ms1_feature_region_summing_info WHERE item=\"features {}-{}\"".format(args.feature_id_lower, args.feature_id_upper))
+# src_c.execute("DELETE FROM summed_ms1_regions WHERE feature_id >= {} and feature_id <= {}".format(args.feature_id_lower, args.feature_id_upper))
+# src_c.execute("DELETE FROM ms1_feature_region_summing_info WHERE item=\"features {}-{}\"".format(args.feature_id_lower, args.feature_id_upper))
 
 # Store the arguments as metadata in the database for later reference
 ms1_feature_region_summing_info = []

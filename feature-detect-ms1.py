@@ -410,7 +410,7 @@ while True:
 
 stop_run = time.time()
 
-print("found {} features in {} seconds".format(max(feature_updates, key=itemgetter(0))[0], stop_run-start_run))
+print("found {} features in {} seconds".format(feature_id-1, stop_run-start_run))
 
 feature_info.append(("run processing time (sec)", stop_run-start_run))
 feature_info.append(("processed", time.ctime()))
