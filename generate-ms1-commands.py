@@ -36,6 +36,8 @@ for i in range(args.number_of_batches):
     #     base_feature_id, base_source_frame_index))
     print("nohup python -u ./peak-detect-ms1.py -db {} -fl {} -fu {} > ../logs/peak-batch-{}-{}-{}.log 2>&1 &".format(args.database_name, first_frame_id, last_frame_id, i, first_frame_id, last_frame_id))
 
+print("")
+
 for i in range(args.number_of_batches):
     first_frame_id = i*batch_size+1
     last_frame_id = first_frame_id + batch_size - 1
