@@ -185,13 +185,13 @@ def find_feature(base_index):
         peak_minima_indexes.append(len(filtered)-1)
         peak_minima_indexes = sorted(peak_minima_indexes)
 
-        # find the low snip index
+        # find the low snip index (at the FWHM points)
         for idx in peak_minima_indexes:
-            if (filtered[idx] < (filtered_max_value / 2.0) or (filtered[idx] < base_noise_level)) and (idx < filtered_max_index):
+            if (filtered[idx] < (filtered_max_value * args.magnitude_for_feature_endpoints) or (filtered[idx] < base_noise_level)) and (idx < filtered_max_index):
                 low_snip_index = idx
         # find the high snip index
         for idx in reversed(peak_minima_indexes):
-            if (filtered[idx] < (filtered_max_value / 2.0) or (filtered[idx] < base_noise_level)) and (idx > filtered_max_index):
+            if (filtered[idx] < (filtered_max_value * args.magnitude_for_feature_endpoints) or (filtered[idx] < base_noise_level)) and (idx > filtered_max_index):
                 high_snip_index = idx
 
         # visualise what's going on
@@ -308,6 +308,7 @@ parser.add_argument('-ns','--number_of_seconds_each_side', type=int, default=20,
 parser.add_argument('-ml','--minimum_feature_length', type=int, default=2, help='Minimum number of seconds for a feature to be valid.', required=False)
 parser.add_argument('-pps','--minimum_points_per_second', type=int, default=1, help='Minimum number of points per second for a feature to be valid.', required=False)
 parser.add_argument('-mcs','--minimum_charge_state', type=int, default=2, help='Minimum charge state to process.', required=False)
+parser.add_argument('-mfe','--magnitude_for_feature_endpoints', type=float, default=0.5, help='Proportion of a feature\'s magnitude to take for its endpoints', required=False)
 args = parser.parse_args()
 
 NUMBER_OF_FRAMES_TO_LOOK = int(args.number_of_seconds_each_side / NUMBER_OF_SECONDS_PER_FRAME)
