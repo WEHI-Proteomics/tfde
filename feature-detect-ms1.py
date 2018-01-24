@@ -307,7 +307,7 @@ parser.add_argument('-ml','--minimum_feature_length', type=float, default=3.0, h
 parser.add_argument('-pps','--minimum_points_per_second', type=int, default=1, help='Minimum number of points per second for a feature to be valid.', required=False)
 parser.add_argument('-mcs','--minimum_charge_state', type=int, default=2, help='Minimum charge state to process.', required=False)
 parser.add_argument('-mfe','--magnitude_for_feature_endpoints', type=float, default=0.8, help='Proportion of a feature\'s magnitude to take for its endpoints', required=False)
-parser.add_argument('-spf','--frames_per_second', type=float, default=1.0, help='Frame rate.', required=False)
+parser.add_argument('-fps','--frames_per_second', type=float, default=1.0, help='Frame rate.', required=False)
 args = parser.parse_args()
 
 NUMBER_OF_FRAMES_TO_LOOK = int(args.number_of_seconds_each_side * args.frames_per_second)
