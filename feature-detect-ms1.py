@@ -302,6 +302,7 @@ def find_feature(base_index):
 #
 
 parser = argparse.ArgumentParser(description='A method for tracking features through frames.')
+parser.add_argument('-db','--database_name', type=str, help='The name of the source database.', required=True)
 parser.add_argument('-md','--mz_std_dev', type=int, default=4, help='Number of standard deviations to look either side of the base peak, in the m/z dimension.', required=False)
 parser.add_argument('-sd','--scan_std_dev', type=int, default=4, help='Number of standard deviations to look either side of the base peak, in the scan dimension.', required=False)
 parser.add_argument('-ns','--number_of_seconds_each_side', type=int, default=20, help='Number of seconds to look either side of the maximum cluster.', required=False)
@@ -320,7 +321,7 @@ for arg in vars(args):
     feature_info.append((arg, getattr(args, arg)))
 
 # Connect to the database file
-source_conn = pymysql.connect(host='mscypher-004', user='root', passwd='password', database='timsTOF')
+source_conn = pymysql.connect(host='mscypher-004', user='root', passwd='password', database="{}".format(args.database_name))
 c = source_conn.cursor()
 
 print("Setting up tables and indexes")
