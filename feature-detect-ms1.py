@@ -83,11 +83,11 @@ def find_nearest_high_index_below_threshold(values, threshold):
         idx = None
     return idx
 
-# returns True if the number of points in the proposed feature is more than the minimum number per second
-def check_min_points_per_second(feature_indices, min_points_per_second):
-    max_gap = np.max(np.diff(clusters_v[feature_indices, CLUSTER_FRAME_ID_IDX])) / args.frames_per_second
-    max_allowed_gap = 1.0 / min_points_per_second
-    return (max_gap < max_allowed_gap)
+# returns True if the gap between points is within acceptable limit
+def check_gap_between_points(feature_indices, max_gap_in_seconds):
+    features_max_gap_in_seconds = np.max(np.diff(clusters_v[feature_indices, CLUSTER_FRAME_ID_IDX])) / args.frames_per_second
+    print("max gap found {}, max allowed gap {}".format(features_max_gap_in_seconds, max_gap_in_seconds))
+    return (features_max_gap_in_seconds <= max_gap_in_seconds)
 
 def find_feature(base_index):
     global clusters_v
@@ -216,7 +216,9 @@ def find_feature(base_index):
     # score the feature quality
     feature_start_frame = int(clusters_v[feature_indices[0],CLUSTER_FRAME_ID_IDX])
     feature_end_frame = int(clusters_v[feature_indices[len(feature_indices)-1],CLUSTER_FRAME_ID_IDX])
-    if ((feature_end_frame-feature_start_frame) >= MINIMUM_NUMBER_OF_FRAMES) and (check_min_points_per_second(feature_indices, args.minimum_points_per_second)):
+    print("frames {}-{}".format(feature_start_frame, feature_end_frame))
+
+    if ((feature_end_frame-feature_start_frame) >= MINIMUM_NUMBER_OF_FRAMES) and (check_gap_between_points(feature_indices, args.maximum_gap_between_points)):
         quality = 1.0
 
         # find the feature's intensity
@@ -234,8 +236,8 @@ def find_feature(base_index):
         feature_mz_upper = float(max(clusters_v[feature_indices,CLUSTER_MZ_UPPER_IDX]))
 
         # update the noise estimate
-        lower_noise_eval_frame_1 = feature_start_frame - int((NOISE_ASSESSMENT_OFFSET+NOISE_ASSESSMENT_WIDTH)/NUMBER_OF_SECONDS_PER_FRAME)
-        upper_noise_eval_frame_1 = feature_start_frame - int(NOISE_ASSESSMENT_OFFSET/NUMBER_OF_SECONDS_PER_FRAME)
+        lower_noise_eval_frame_1 = feature_start_frame - int((NOISE_ASSESSMENT_OFFSET+NOISE_ASSESSMENT_WIDTH) * args.frames_per_second)
+        upper_noise_eval_frame_1 = feature_start_frame - int(NOISE_ASSESSMENT_OFFSET * args.frames_per_second)
         if (lower_noise_eval_frame_1 >= int(np.min(clusters_v[:,CLUSTER_FRAME_ID_IDX]))):
             # assess the noise level in this window
             (lower_noise_frame_1_index, upper_noise_frame_1_index) = find_frame_indices(lower_noise_eval_frame_1, upper_noise_eval_frame_1)
@@ -243,8 +245,8 @@ def find_feature(base_index):
             noise_level_1 = int(np.average(clusters_v[lower_noise_frame_1_index:upper_noise_frame_1_index,CLUSTER_INTENSITY_SUM_IDX][noise_indices]))
             noise_level_readings.append(noise_level_1)
 
-        lower_noise_eval_frame_2 = feature_end_frame + int((NOISE_ASSESSMENT_OFFSET)/NUMBER_OF_SECONDS_PER_FRAME)
-        upper_noise_eval_frame_2 = feature_end_frame + int((NOISE_ASSESSMENT_OFFSET+NOISE_ASSESSMENT_WIDTH)/NUMBER_OF_SECONDS_PER_FRAME)
+        lower_noise_eval_frame_2 = feature_end_frame + int((NOISE_ASSESSMENT_OFFSET) * args.frames_per_second)
+        upper_noise_eval_frame_2 = feature_end_frame + int((NOISE_ASSESSMENT_OFFSET+NOISE_ASSESSMENT_WIDTH) * args.frames_per_second)
         if (upper_noise_eval_frame_2 <= int(np.max(clusters_v[:,CLUSTER_FRAME_ID_IDX]))):
             # assess the noise level in this window
             (lower_noise_frame_2_index, upper_noise_frame_2_index) = find_frame_indices(lower_noise_eval_frame_2, upper_noise_eval_frame_2)
@@ -304,7 +306,7 @@ parser.add_argument('-md','--mz_std_dev', type=int, default=4, help='Number of s
 parser.add_argument('-sd','--scan_std_dev', type=int, default=4, help='Number of standard deviations to look either side of the base peak, in the scan dimension.', required=False)
 parser.add_argument('-ns','--number_of_seconds_each_side', type=int, default=20, help='Number of seconds to look either side of the maximum cluster.', required=False)
 parser.add_argument('-ml','--minimum_feature_length', type=float, default=3.0, help='Minimum number of seconds for a feature to be valid.', required=False)
-parser.add_argument('-pps','--minimum_points_per_second', type=int, default=1, help='Minimum number of points per second for a feature to be valid.', required=False)
+parser.add_argument('-gbp','--maximum_gap_between_points', type=float, default=2.0, help='Maximum number of seconds between points.', required=False)
 parser.add_argument('-mcs','--minimum_charge_state', type=int, default=2, help='Minimum charge state to process.', required=False)
 parser.add_argument('-mfe','--magnitude_for_feature_endpoints', type=float, default=0.8, help='Proportion of a feature\'s magnitude to take for its endpoints', required=False)
 parser.add_argument('-fps','--frames_per_second', type=float, default=1.0, help='Frame rate.', required=False)
