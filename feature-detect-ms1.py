@@ -27,9 +27,6 @@ CLUSTER_SCAN_UPPER_IDX = 8
 CLUSTER_MZ_LOWER_IDX = 9
 CLUSTER_MZ_UPPER_IDX = 10
 
-NUMBER_OF_SECONDS_PER_FRAME = 0.1
-NUMBER_OF_FRAMES_PER_SECOND = 1.0 / NUMBER_OF_SECONDS_PER_FRAME
-
 DELTA_MZ = 1.003355     # mass difference between Carbon-12 and Carbon-13 isotopes, in Da
 
 NOISE_ASSESSMENT_WIDTH = 1      # length of time in seconds to average the noise level
@@ -88,7 +85,7 @@ def find_nearest_high_index_below_threshold(values, threshold):
 
 # returns True if the number of points in the proposed feature is more than the minimum number per second
 def check_min_points_per_second(feature_indices, min_points_per_second):
-    max_gap = np.max(np.diff(clusters_v[feature_indices, CLUSTER_FRAME_ID_IDX])) * NUMBER_OF_SECONDS_PER_FRAME
+    max_gap = np.max(np.diff(clusters_v[feature_indices, CLUSTER_FRAME_ID_IDX])) / args.frames_per_second
     max_allowed_gap = 1.0 / min_points_per_second
     return (max_gap < max_allowed_gap)
 
@@ -185,7 +182,7 @@ def find_feature(base_index):
         peak_minima_indexes.append(len(filtered)-1)
         peak_minima_indexes = sorted(peak_minima_indexes)
 
-        # find the low snip index (at the FWHM points)
+        # find the low snip index
         for idx in peak_minima_indexes:
             if (filtered[idx] < (filtered_max_value * args.magnitude_for_feature_endpoints) or (filtered[idx] < base_noise_level)) and (idx < filtered_max_index):
                 low_snip_index = idx
@@ -306,14 +303,15 @@ parser.add_argument('-db','--database_name', type=str, help='The name of the sou
 parser.add_argument('-md','--mz_std_dev', type=int, default=4, help='Number of standard deviations to look either side of the base peak, in the m/z dimension.', required=False)
 parser.add_argument('-sd','--scan_std_dev', type=int, default=4, help='Number of standard deviations to look either side of the base peak, in the scan dimension.', required=False)
 parser.add_argument('-ns','--number_of_seconds_each_side', type=int, default=20, help='Number of seconds to look either side of the maximum cluster.', required=False)
-parser.add_argument('-ml','--minimum_feature_length', type=int, default=2, help='Minimum number of seconds for a feature to be valid.', required=False)
+parser.add_argument('-ml','--minimum_feature_length', type=float, default=3.0, help='Minimum number of seconds for a feature to be valid.', required=False)
 parser.add_argument('-pps','--minimum_points_per_second', type=int, default=1, help='Minimum number of points per second for a feature to be valid.', required=False)
 parser.add_argument('-mcs','--minimum_charge_state', type=int, default=2, help='Minimum charge state to process.', required=False)
-parser.add_argument('-mfe','--magnitude_for_feature_endpoints', type=float, default=0.5, help='Proportion of a feature\'s magnitude to take for its endpoints', required=False)
+parser.add_argument('-mfe','--magnitude_for_feature_endpoints', type=float, default=0.8, help='Proportion of a feature\'s magnitude to take for its endpoints', required=False)
+parser.add_argument('-spf','--frames_per_second', type=float, default=1.0, help='Frame rate.', required=False)
 args = parser.parse_args()
 
-NUMBER_OF_FRAMES_TO_LOOK = int(args.number_of_seconds_each_side / NUMBER_OF_SECONDS_PER_FRAME)
-MINIMUM_NUMBER_OF_FRAMES = int(args.minimum_feature_length / NUMBER_OF_SECONDS_PER_FRAME)
+NUMBER_OF_FRAMES_TO_LOOK = int(args.number_of_seconds_each_side * args.frames_per_second)
+MINIMUM_NUMBER_OF_FRAMES = int(args.minimum_feature_length * args.frames_per_second)
 
 # Store the arguments as metadata in the database for later reference
 feature_info = []
