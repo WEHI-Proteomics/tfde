@@ -51,10 +51,6 @@ if args.feature_id_upper is None:
     args.feature_id_upper = int(row[0])
     print("feature_id_upper set to {} from the data".format(args.feature_id_upper))
 
-print("Setting up tables and indexes")
-src_c.execute("CREATE OR REPLACE TABLE summed_ms1_regions (feature_id INTEGER, point_id INTEGER, mz REAL, scan INTEGER, intensity INTEGER, number_frames INTEGER, peak_id INTEGER)")  # number_frames = number of source frames the point was found in
-src_c.execute("CREATE OR REPLACE TABLE summed_ms1_regions_info (item TEXT, value TEXT)")
-
 # Store the arguments as metadata in the database for later reference
 ms1_feature_region_summing_info = []
 for arg in vars(args):
@@ -105,10 +101,7 @@ for feature in features_v:
             # remove the points we've processed
             points_v = np.delete(points_v, nearby_point_indices, 0)
     src_c.executemany("INSERT INTO summed_ms1_regions VALUES (%s, %s, %s, %s, %s, %s, %s)", points)
-
-print("Creating index on summed_ms1_regions")
-src_c.execute("CREATE INDEX IF NOT EXISTS idx_summed_ms1_regions ON summed_ms1_regions (feature_id)")
-src_c.execute("CREATE INDEX IF NOT EXISTS idx_summed_ms1_regions_2 ON summed_ms1_regions (feature_id,point_id)")
+    source_conn.commit()
 
 stop_run = time.time()
 print("{} seconds to process run".format(stop_run-start_run))
@@ -121,3 +114,4 @@ ms1_feature_region_summing_info_entry.append(("features {}-{}".format(args.featu
 
 src_c.executemany("INSERT INTO summed_ms1_regions_info VALUES (%s, %s)", ms1_feature_region_summing_info_entry)
 source_conn.commit()
+source_conn.close()
