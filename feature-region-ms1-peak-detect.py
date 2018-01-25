@@ -58,25 +58,33 @@ def findNearestLessThan(searchVal, inputData):
     return idx, inputData[idx]
 
 parser = argparse.ArgumentParser(description='Detect peaks in MS1 feature regions.')
-parser.add_argument('-fl','--feature_id_lower', type=int, help='Lower feature ID to process.', required=True)
-parser.add_argument('-fu','--feature_id_upper', type=int, help='Upper feature ID to process.', required=True)
+parser.add_argument('-db','--database_name', type=str, help='The name of the source database.', required=True)
+parser.add_argument('-fl','--feature_id_lower', type=int, help='Lower feature ID to process.', required=False)
+parser.add_argument('-fu','--feature_id_upper', type=int, help='Upper feature ID to process.', required=False)
 parser.add_argument('-es','--empty_scans', type=int, default=2, help='Maximum number of empty scans to tolerate.', required=False)
 parser.add_argument('-sd','--standard_deviations', type=int, default=4, help='Number of standard deviations to look either side of a point.', required=False)
 parser.add_argument('-mcs','--minimum_charge_state', type=int, default=2, help='Minimum charge state to process.', required=False)
 args = parser.parse_args()
 
-source_conn = pymysql.connect(host='localhost', user='root', passwd='password', database='timsTOF')
+source_conn = pymysql.connect(host='mscypher-004', user='root', passwd='password', database="{}".format(args.database_name))
 src_c = source_conn.cursor()
 
-print("Setting up tables and indexes")
-src_c.execute("CREATE TABLE IF NOT EXISTS ms1_feature_region_peaks (feature_id INTEGER, peak_id INTEGER, centroid_mz REAL, centroid_scan REAL, intensity_sum INTEGER, scan_upper INTEGER, scan_lower INTEGER, std_dev_mz REAL, std_dev_scan REAL, rationale TEXT, intensity_max INTEGER, peak_max_mz REAL, peak_max_scan INTEGER, PRIMARY KEY (feature_id, peak_id))")
-src_c.execute("CREATE TABLE IF NOT EXISTS ms1_feature_region_peak_detect_info (item TEXT, value TEXT)")
-src_c.execute("CREATE TABLE IF NOT EXISTS feature_base_peaks (feature_id INTEGER, base_peak_id INTEGER, PRIMARY KEY (feature_id, base_peak_id))")
+if args.feature_id_lower is None:
+    src_c.execute("SELECT MIN(feature_id) FROM features")
+    row = src_c.fetchone()
+    args.feature_id_lower = int(row[0])
+    print("feature_id_lower set to {} from the data".format(args.feature_id_lower))
 
-# Remove any existing entries for this feature range
-src_c.execute("DELETE FROM ms1_feature_region_peaks WHERE feature_id >= {} and feature_id <= {}".format(args.feature_id_lower, args.feature_id_upper))
-src_c.execute("DELETE FROM feature_base_peaks WHERE feature_id >= {} and feature_id <= {}".format(args.feature_id_lower, args.feature_id_upper))
-src_c.execute("DELETE FROM ms1_feature_region_peak_detect_info WHERE item=\"features {}-{}\"".format(args.feature_id_lower, args.feature_id_upper))
+if args.feature_id_upper is None:
+    src_c.execute("SELECT MAX(feature_id) FROM features")
+    row = src_c.fetchone()
+    args.feature_id_upper = int(row[0])
+    print("feature_id_upper set to {} from the data".format(args.feature_id_upper))
+
+print("Setting up tables and indexes")
+src_c.execute("CREATE OR REPLACE TABLE ms1_feature_region_peaks (feature_id INTEGER, peak_id INTEGER, centroid_mz REAL, centroid_scan REAL, intensity_sum INTEGER, scan_upper INTEGER, scan_lower INTEGER, std_dev_mz REAL, std_dev_scan REAL, rationale TEXT, intensity_max INTEGER, peak_max_mz REAL, peak_max_scan INTEGER, PRIMARY KEY (feature_id, peak_id))")
+src_c.execute("CREATE OR REPLACE TABLE ms1_feature_region_peak_detect_info (item TEXT, value TEXT)")
+src_c.execute("CREATE OR REPLACE TABLE feature_base_peaks (feature_id INTEGER, base_peak_id INTEGER, PRIMARY KEY (feature_id, base_peak_id))")
 
 print("Resetting peak IDs")
 src_c.execute("update summed_ms1_regions set peak_id=0 where peak_id!=0")

@@ -38,16 +38,3 @@ for i in range(args.number_of_batches):
     #     args.base_database_name, args.destination_directory, base_feature_id, last_summed_frame_id, args.base_database_name, number_of_features_required_this_batch, 
     #     base_feature_id, base_source_frame_index))
     print("nohup python -u ./feature-region-ms2-sum-frames.py -db {} -fl {} -fu {} -ms2ce {} > ../logs/{}-ms2-feature-region-sum-batch-{}-{}-{}.log 2>&1 &".format(args.database_name, first_feature_id, last_feature_id, args.ms2_collision_energy, args.database_name, i, first_feature_id, last_feature_id))
-
-# print("")
-
-# for i in range(args.number_of_batches):
-#     first_feature_id = i*batch_size+1
-#     last_feature_id = first_feature_id + batch_size - 1
-#     if last_feature_id > number_of_features:
-#         last_feature_id = number_of_features
-
-#     # print("start \"Summing {}-{}\" python sum-frames-intensity-descent.py -sdb \"{}/{}\" -ddb \"{}/summed-{}-{}-{}\" -n {} -bf {} -sf {}".format(base_feature_id, last_summed_frame_id, args.source_directory, 
-#     #     args.base_database_name, args.destination_directory, base_feature_id, last_summed_frame_id, args.base_database_name, number_of_features_required_this_batch, 
-#     #     base_feature_id, base_source_frame_index))
-#     print("nohup python -u ./cluster-detect-ms1.py -db {} -fl {} -fu {} > ../logs/{}-cluster-batch-{}-{}-{}.log 2>&1 &".format(args.database_name, first_frame_id, last_frame_id, args.database_name, i, first_frame_id, last_frame_id))

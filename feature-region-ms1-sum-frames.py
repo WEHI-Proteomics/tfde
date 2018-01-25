@@ -29,13 +29,14 @@ def standard_deviation(mz):
 
 
 parser = argparse.ArgumentParser(description='Sum all MS1 frames in the region of a MS1 feature\'s m/z, drift, and retention time.')
+parser.add_argument('-db','--database_name', type=str, help='The name of the source database.', required=True)
 parser.add_argument('-fl','--feature_id_lower', type=int, help='Lower feature ID to process.', required=False)
 parser.add_argument('-fu','--feature_id_upper', type=int, help='Upper feature ID to process.', required=False)
 parser.add_argument('-mf','--noise_threshold', type=int, default=2, help='Minimum number of frames a point must appear in to be processed.', required=False)
 parser.add_argument('-mcs','--minimum_charge_state', type=int, default=2, help='Minimum charge state to process.', required=False)
 args = parser.parse_args()
 
-source_conn = pymysql.connect(host='mscypher-004', user='root', passwd='password', database='timsTOF')
+source_conn = pymysql.connect(host='mscypher-004', user='root', passwd='password', database="{}".format(args.database_name))
 src_c = source_conn.cursor()
 
 if args.feature_id_lower is None:
@@ -50,14 +51,9 @@ if args.feature_id_upper is None:
     args.feature_id_upper = int(row[0])
     print("feature_id_upper set to {} from the data".format(args.feature_id_upper))
 
-# print("Setting up tables and indexes")
-# 
-# src_c.execute("CREATE TABLE IF NOT EXISTS summed_ms1_regions (feature_id INTEGER, point_id INTEGER, mz REAL, scan INTEGER, intensity INTEGER, number_frames INTEGER, peak_id INTEGER)")  # number_frames = number of source frames the point was found in
-# src_c.execute("CREATE TABLE IF NOT EXISTS ms1_feature_region_summing_info (item TEXT, value TEXT)")
-
-# Remove any existing entries for this feature range
-# src_c.execute("DELETE FROM summed_ms1_regions WHERE feature_id >= {} and feature_id <= {}".format(args.feature_id_lower, args.feature_id_upper))
-# src_c.execute("DELETE FROM ms1_feature_region_summing_info WHERE item=\"features {}-{}\"".format(args.feature_id_lower, args.feature_id_upper))
+print("Setting up tables and indexes")
+src_c.execute("CREATE OR REPLACE TABLE summed_ms1_regions (feature_id INTEGER, point_id INTEGER, mz REAL, scan INTEGER, intensity INTEGER, number_frames INTEGER, peak_id INTEGER)")  # number_frames = number of source frames the point was found in
+src_c.execute("CREATE OR REPLACE TABLE summed_ms1_regions_info (item TEXT, value TEXT)")
 
 # Store the arguments as metadata in the database for later reference
 ms1_feature_region_summing_info = []
@@ -80,8 +76,8 @@ for feature in features_v:
     feature_mz_upper = feature[FEATURE_MZ_UPPER_IDX]
     print("Processing feature ID {} ({} frames)".format(feature_id, feature_end_frame-feature_start_frame))
 
-    # Load the MS1 frame points for the feature's region
-    frame_df = pd.read_sql_query("select frame_id,mz,scan,intensity from frames where frame_id >= {} and frame_id <= {} and mz <= {} and mz >= {} and scan <= {} and scan >= {} order by frame_id, mz, scan asc;".format(feature_start_frame, feature_end_frame, feature_mz_upper, feature_mz_lower, feature_scan_upper, feature_scan_lower), source_conn)
+    # Load the MS1 frame (summed) points for the feature's region
+    frame_df = pd.read_sql_query("select frame_id,mz,scan,intensity from summed_frames where frame_id >= {} and frame_id <= {} and mz <= {} and mz >= {} and scan <= {} and scan >= {} order by frame_id, mz, scan asc;".format(feature_start_frame, feature_end_frame, feature_mz_upper, feature_mz_lower, feature_scan_upper, feature_scan_lower), source_conn)
     frame_v = frame_df.values
     print("frame occupies {} bytes".format(frame_v.nbytes))
 
@@ -117,15 +113,11 @@ src_c.execute("CREATE INDEX IF NOT EXISTS idx_summed_ms1_regions_2 ON summed_ms1
 stop_run = time.time()
 print("{} seconds to process run".format(stop_run-start_run))
 
-# Keep a record of the features we actually processed
-ms1_feature_region_summing_info.append(("feature_id_lower", args.feature_id_lower))
-ms1_feature_region_summing_info.append(("feature_id_upper", args.feature_id_upper))
-
 ms1_feature_region_summing_info.append(("run processing time (sec)", stop_run-start_run))
 ms1_feature_region_summing_info.append(("processed", time.ctime()))
 
 ms1_feature_region_summing_info_entry = []
 ms1_feature_region_summing_info_entry.append(("features {}-{}".format(args.feature_id_lower, args.feature_id_upper), ' '.join(str(e) for e in ms1_feature_region_summing_info)))
 
-src_c.executemany("INSERT INTO ms1_feature_region_summing_info VALUES (%s, %s)", ms1_feature_region_summing_info_entry)
+src_c.executemany("INSERT INTO summed_ms1_regions_info VALUES (%s, %s)", ms1_feature_region_summing_info_entry)
 source_conn.commit()

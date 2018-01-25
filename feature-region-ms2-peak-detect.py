@@ -50,29 +50,38 @@ def findNearestLessThan(searchVal, inputData):
     return idx, inputData[idx]
 
 parser = argparse.ArgumentParser(description='A tree descent method for MS2 peak detection.')
-parser.add_argument('-fl','--feature_id_lower', type=int, help='Lower feature ID to process.', required=True)
-parser.add_argument('-fu','--feature_id_upper', type=int, help='Upper feature ID to process.', required=True)
+parser.add_argument('-db','--database_name', type=str, help='The name of the source database.', required=True)
+parser.add_argument('-fl','--feature_id_lower', type=int, help='Lower feature ID to process.', required=False)
+parser.add_argument('-fu','--feature_id_upper', type=int, help='Upper feature ID to process.', required=False)
 parser.add_argument('-es','--empty_scans', type=int, default=2, help='Maximum number of empty scans to tolerate.', required=False)
 parser.add_argument('-sd','--standard_deviations', type=int, default=4, help='Number of standard deviations to look either side of a point.', required=False)
 args = parser.parse_args()
 
-source_conn = pymysql.connect(host='localhost', user='root', passwd='password', database='timsTOF')
-c = source_conn.cursor()
+source_conn = pymysql.connect(host='mscypher-004', user='root', passwd='password', database="{}".format(args.database_name))
+src_c = source_conn.cursor()
 
 print("Setting up tables and indexes")
 
-c.execute("CREATE TABLE IF NOT EXISTS ms2_peaks (feature_id INTEGER, peak_id INTEGER, centroid_mz REAL, centroid_scan REAL, intensity_sum INTEGER, scan_upper INTEGER, scan_lower INTEGER, std_dev_mz REAL, std_dev_scan REAL, rationale TEXT, intensity_max INTEGER, peak_max_mz REAL, peak_max_scan INTEGER, PRIMARY KEY (feature_id, peak_id))")
-c.execute("CREATE TABLE IF NOT EXISTS ms2_peak_detect_info (item TEXT, value TEXT)")
+src_c.execute("CREATE OR REPLACE TABLE ms2_peaks (feature_id INTEGER, peak_id INTEGER, centroid_mz REAL, centroid_scan REAL, intensity_sum INTEGER, scan_upper INTEGER, scan_lower INTEGER, std_dev_mz REAL, std_dev_scan REAL, rationale TEXT, intensity_max INTEGER, peak_max_mz REAL, peak_max_scan INTEGER, PRIMARY KEY (feature_id, peak_id))")
+src_c.execute("CREATE OR REPLACE TABLE ms2_peak_detect_info (item TEXT, value TEXT)")
 
-c.execute("CREATE INDEX IF NOT EXISTS idx_summed_ms2_regions ON summed_ms2_regions (feature_id)")
-c.execute("CREATE INDEX IF NOT EXISTS idx_summed_ms2_regions_2 ON summed_ms2_regions (feature_id,point_id)")
-
-# Remove any existing entries for this feature range
-c.execute("DELETE FROM ms2_peaks WHERE feature_id >= {} and feature_id <= {}".format(args.feature_id_lower, args.feature_id_upper))
-c.execute("DELETE FROM ms2_peak_detect_info WHERE item=\"features {}-{}\"".format(args.feature_id_lower, args.feature_id_upper))
+src_c.execute("CREATE INDEX IF NOT EXISTS idx_summed_ms2_regions ON summed_ms2_regions (feature_id)")
+src_c.execute("CREATE INDEX IF NOT EXISTS idx_summed_ms2_regions_2 ON summed_ms2_regions (feature_id,point_id)")
 
 print("Resetting peak IDs")
-c.execute("update summed_ms2_regions set peak_id=0 where peak_id!=0")
+src_c.execute("update summed_ms2_regions set peak_id=0 where peak_id!=0")
+
+if args.feature_id_lower is None:
+    src_c.execute("SELECT MIN(feature_id) FROM features")
+    row = src_c.fetchone()
+    args.feature_id_lower = int(row[0])
+    print("feature_id_lower set to {} from the data".format(args.feature_id_lower))
+
+if args.feature_id_upper is None:
+    src_c.execute("SELECT MAX(feature_id) FROM features")
+    row = src_c.fetchone()
+    args.feature_id_upper = int(row[0])
+    print("feature_id_upper set to {} from the data".format(args.feature_id_upper))
 
 # Store the arguments as metadata in the database for later reference
 ms2_peak_detect_info = []
@@ -224,12 +233,12 @@ for ms1_feature_id in range(args.feature_id_lower, args.feature_id_upper+1):
 
     # Write out the peaks for this feature
     print("Writing out the peaks we found for this feature.")
-    c.executemany("INSERT INTO ms2_peaks (feature_id, peak_id, centroid_mz, centroid_scan, intensity_sum, scan_upper, scan_lower, std_dev_mz, std_dev_scan, rationale, intensity_max, peak_max_mz, peak_max_scan) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)", mono_peaks)
+    src_c.executemany("INSERT INTO ms2_peaks (feature_id, peak_id, centroid_mz, centroid_scan, intensity_sum, scan_upper, scan_lower, std_dev_mz, std_dev_scan, rationale, intensity_max, peak_max_mz, peak_max_scan) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)", mono_peaks)
     mono_peaks = []
 
     # Update the points in the summed_ms2_regions table
     print("Updating the points in the summed_ms2_regions table.")
-    c.executemany("UPDATE summed_ms2_regions SET peak_id=%s WHERE feature_id=%s AND point_id=%s", point_updates)
+    src_c.executemany("UPDATE summed_ms2_regions SET peak_id=%s WHERE feature_id=%s AND point_id=%s", point_updates)
     point_updates = []
 
     stop_feature = time.time()
@@ -245,7 +254,7 @@ ms2_peak_detect_info.append(("processed", time.ctime()))
 ms2_feature_info_entry = []
 ms2_feature_info_entry.append(("features {}-{}".format(args.feature_id_lower, args.feature_id_upper), ' '.join(str(e) for e in ms2_peak_detect_info)))
 
-c.executemany("INSERT INTO ms2_peak_detect_info VALUES (%s, %s)", ms2_feature_info_entry)
+src_c.executemany("INSERT INTO ms2_peak_detect_info VALUES (%s, %s)", ms2_feature_info_entry)
 source_conn.commit()
 source_conn.close()
 
