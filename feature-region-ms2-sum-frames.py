@@ -130,9 +130,6 @@ if len(ms2_frame_ids_v) > 0:
     stop_run = time.time()
     print("{} seconds to process run".format(stop_run-start_run))
 
-    ms2_feature_info.append(("ms1_feature_id_lower", min(points, key=itemgetter(0))[0]))
-    ms2_feature_info.append(("ms1_feature_id_upper", max(points, key=itemgetter(0))[0]))
-
     ms2_feature_info.append(("run processing time (sec)", stop_run-start_run))
     ms2_feature_info.append(("processed", time.ctime()))
 
