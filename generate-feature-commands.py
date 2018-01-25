@@ -9,6 +9,7 @@ parser.add_argument('-ms2ce','--ms2_collision_energy', type=float, help='Collisi
 parser.add_argument('-ml','--mz_lower', type=float, help='Lower feature m/z to process.', required=False)
 parser.add_argument('-mu','--mz_upper', type=float, help='Upper feature m/z to process.', required=False)
 parser.add_argument('-op','--operation', type=str, default='all', help='The operation to perform.', required=False)
+parser.add_argument('-os','--operating_system', type=str, default='unix', help='The operating system to target.', required=False)
 args = parser.parse_args()
 
 # Connect to the database
@@ -41,11 +42,12 @@ if (args.operation == 'all') or (args.operation == 'sum-ms2-region'):
             if last_feature_id > number_of_features:
                 last_feature_id = number_of_features
 
-            # print("start \"Summing {}-{}\" python sum-frames-intensity-descent.py -sdb \"{}/{}\" -ddb \"{}/summed-{}-{}-{}\" -n {} -bf {} -sf {}".format(base_feature_id, last_summed_frame_id, args.source_directory, 
-            #     args.base_database_name, args.destination_directory, base_feature_id, last_summed_frame_id, args.base_database_name, number_of_features_required_this_batch, 
-            #     base_feature_id, base_source_frame_index))
-            print("nohup python -u ./feature-region-ms2-sum-frames.py -db {} -fl {} -fu {} -ms2ce {} -ml {} -mu {} > ../logs/{}-ms2-feature-region-sum-batch-{}-{}-{}.log 2>&1 &"
-                .format(args.database_name, first_feature_id, last_feature_id, args.ms2_collision_energy, args.mz_lower, args.mz_upper, args.database_name, i, first_feature_id, last_feature_id))
+            if args.operating_system == 'windows':
+                print("start \"Summing {}-{}\" python -u feature-region-ms2-sum-frames.py -db {} -fl {} -fu {} -ms2ce {} -ml {} -mu {}"
+                    .format(first_feature_id, last_feature_id, args.database_name, first_feature_id, last_feature_id, args.ms2_collision_energy, args.mz_lower, args.mz_upper))
+            else:
+                print("nohup python -u ./feature-region-ms2-sum-frames.py -db {} -fl {} -fu {} -ms2ce {} -ml {} -mu {} > ../logs/{}-ms2-feature-region-sum-batch-{}-{}-{}.log 2>&1 &"
+                    .format(args.database_name, first_feature_id, last_feature_id, args.ms2_collision_energy, args.mz_lower, args.mz_upper, args.database_name, i, first_feature_id, last_feature_id))
     else:
         print("ERROR: mandatory parameters missing.")
 
@@ -58,5 +60,9 @@ if (args.operation == 'all') or (args.operation == 'sum-ms1-region'):
         if last_feature_id > number_of_features:
             last_feature_id = number_of_features
 
-        print("nohup python -u ./feature-region-ms1-sum-frames.py -db {} -fl {} -fu {} > ../logs/{}-ms1-feature-region-sum-batch-{}-{}-{}.log 2>&1 &"
-            .format(args.database_name, first_feature_id, last_feature_id, args.database_name, i, first_feature_id, last_feature_id))
+        if args.operating_system == 'windows':
+            print("start \"Summing {}-{}\" python -u feature-region-ms1-sum-frames.py -db {} -fl {} -fu {}"
+                .format(first_feature_id, last_feature_id, args.database_name, first_feature_id, last_feature_id))
+        else:
+            print("nohup python -u ./feature-region-ms1-sum-frames.py -db {} -fl {} -fu {} > ../logs/{}-ms1-feature-region-sum-batch-{}-{}-{}.log 2>&1 &"
+                .format(args.database_name, first_feature_id, last_feature_id, args.database_name, i, first_feature_id, last_feature_id))
