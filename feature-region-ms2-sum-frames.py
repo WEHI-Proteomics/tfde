@@ -73,6 +73,8 @@ if len(ms2_frame_ids_v) > 0:
     frame_summing_offset = int(row[0])
     print("Number of source frames that were summed {} with offset".format(frames_to_sum, frame_summing_offset))
 
+    # Take the ms1 features within the m/z band of interest, and sum the ms2 frames over the whole m/z range (as we don't know where the fragments will be in ms2)
+
     print("Loading the MS1 features")
     features_df = pd.read_sql_query("""select feature_id,start_frame,end_frame,scan_lower,scan_upper,mz_lower,mz_upper from features where feature_id >= {} and 
         feature_id <= {} and charge_state >= {} and mz_lower <= {} and mz_upper >= {} order by feature_id ASC;""".format(args.feature_id_lower, args.feature_id_upper, args.minimum_charge_state, args.mz_upper, args.mz_lower), dest_conn)
