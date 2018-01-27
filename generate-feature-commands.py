@@ -30,6 +30,9 @@ if (batch_size * args.number_of_batches) < number_of_features:
 
 print("number of features {}, batch size {}, number of batches {}".format(number_of_features, batch_size, args.number_of_batches))
 
+#
+# MS2 feature region summing
+#
 if (args.operation == 'all') or (args.operation == 'sum-ms2-region'):
     if (args.mz_lower is not None) and (args.mz_upper is not None) and (args.ms2_collision_energy is not None):
 
@@ -51,6 +54,30 @@ if (args.operation == 'all') or (args.operation == 'sum-ms2-region'):
     else:
         print("ERROR: mandatory parameters missing.")
 
+#
+# MS2 feature region peak detection
+#
+if (args.operation == 'all') or (args.operation == 'peak-ms2-region'):
+
+    print("")
+    print("python ./feature-region-ms2-peak-detect-prep.py -db {}".format(args.database_name))
+
+    for i in range(args.number_of_batches):
+        first_feature_id = i*batch_size+1
+        last_feature_id = first_feature_id + batch_size - 1
+        if last_feature_id > number_of_features:
+            last_feature_id = number_of_features
+
+        if args.operating_system == 'windows':
+            print("start \"Summing {}-{}\" python -u feature-region-ms2-peak-detect.py -db {} -fl {} -fu {}"
+                .format(first_feature_id, last_feature_id, args.database_name, first_feature_id, last_feature_id))
+        else:
+            print("nohup python -u ./feature-region-ms2-peak-detect.py -db {} -fl {} -fu {} > ../logs/{}-ms2-feature-region-peak-batch-{}-{}-{}.log 2>&1 &"
+                .format(args.database_name, first_feature_id, last_feature_id, args.database_name, i, first_feature_id, last_feature_id))
+
+#
+# MS1 feature region summing
+#
 if (args.operation == 'all') or (args.operation == 'sum-ms1-region'):
     if (args.mz_lower is not None) and (args.mz_upper is not None):
         print("")
@@ -69,3 +96,22 @@ if (args.operation == 'all') or (args.operation == 'sum-ms1-region'):
                     .format(args.database_name, first_feature_id, last_feature_id, args.mz_lower, args.mz_upper, args.database_name, i, first_feature_id, last_feature_id))
     else:
         print("ERROR: mandatory parameters missing.")
+
+#
+# MS1 feature region peak detection
+#
+if (args.operation == 'all') or (args.operation == 'peak-ms1-region'):
+    print("")
+    print("python ./feature-region-ms1-peak-detect-prep.py -db {}".format(args.database_name))
+    for i in range(args.number_of_batches):
+        first_feature_id = i*batch_size+1
+        last_feature_id = first_feature_id + batch_size - 1
+        if last_feature_id > number_of_features:
+            last_feature_id = number_of_features
+
+        if args.operating_system == 'windows':
+            print("start \"Summing {}-{}\" python -u feature-region-ms1-peak-detect.py -db {} -fl {} -fu {}"
+                .format(first_feature_id, last_feature_id, args.database_name, first_feature_id, last_feature_id))
+        else:
+            print("nohup python -u ./feature-region-ms1-peak-detect.py -db {} -fl {} -fu {} > ../logs/{}-ms1-feature-region-peak-batch-{}-{}-{}.log 2>&1 &"
+                .format(args.database_name, first_feature_id, last_feature_id, args.database_name, i, first_feature_id, last_feature_id))

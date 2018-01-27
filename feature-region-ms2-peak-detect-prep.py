@@ -20,6 +20,7 @@ dest_c.execute("CREATE OR REPLACE TABLE ms2_peak_detect_info (item TEXT, value T
 
 dest_c.execute("CREATE INDEX IF NOT EXISTS idx_ms2_peaks_1 ON summed_ms2_regions (feature_id)")
 dest_c.execute("CREATE INDEX IF NOT EXISTS idx_ms2_peaks_2 ON summed_ms2_regions (peak_id)")
+dest_c.execute("create index if not exists idx_ms2_regions_3 on summed_ms2_regions (feature_id,point_id)")
 
 print("Resetting peak IDs")
 dest_c.execute("update summed_ms2_regions set peak_id=0 where peak_id!=0")
