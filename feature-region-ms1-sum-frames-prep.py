@@ -18,5 +18,8 @@ print("Setting up tables and indexes")
 dest_c.execute("CREATE OR REPLACE TABLE summed_ms1_regions (feature_id INTEGER, point_id INTEGER, mz REAL, scan INTEGER, intensity INTEGER, number_frames INTEGER, peak_id INTEGER)")  # number_frames = number of source frames the point was found in
 dest_c.execute("CREATE OR REPLACE TABLE summed_ms1_regions_info (item TEXT, value TEXT)")
 
+dest_c.execute("CREATE OR REPLACE INDEX idx_summed_ms1_regions_1 on features (feature_id, charge_state, mz_lower, mz_upper)")
+dest_c.execute("CREATE OR REPLACE INDEX idx_summed_ms1_regions_2 on summed_frames (frame_id, mz, scan)")
+
 dest_conn.commit()
 dest_conn.close()

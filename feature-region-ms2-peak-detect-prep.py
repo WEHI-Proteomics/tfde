@@ -18,8 +18,8 @@ print("Setting up tables and indexes")
 dest_c.execute("CREATE OR REPLACE TABLE ms2_peaks (feature_id INTEGER, peak_id INTEGER, centroid_mz REAL, centroid_scan REAL, intensity_sum INTEGER, scan_upper INTEGER, scan_lower INTEGER, std_dev_mz REAL, std_dev_scan REAL, rationale TEXT, intensity_max INTEGER, peak_max_mz REAL, peak_max_scan INTEGER, PRIMARY KEY (feature_id, peak_id))")
 dest_c.execute("CREATE OR REPLACE TABLE ms2_peak_detect_info (item TEXT, value TEXT)")
 
-dest_c.execute("CREATE INDEX IF NOT EXISTS idx_summed_ms2_regions ON summed_ms2_regions (feature_id)")
-dest_c.execute("CREATE INDEX IF NOT EXISTS idx_summed_ms2_regions_2 ON summed_ms2_regions (feature_id,point_id)")
+dest_c.execute("CREATE INDEX IF NOT EXISTS idx_ms2_peaks_1 ON summed_ms2_regions (feature_id)")
+dest_c.execute("CREATE INDEX IF NOT EXISTS idx_ms2_peaks_2 ON summed_ms2_regions (peak_id)")
 
 print("Resetting peak IDs")
 dest_c.execute("update summed_ms2_regions set peak_id=0 where peak_id!=0")
