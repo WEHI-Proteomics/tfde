@@ -67,6 +67,7 @@ features_df = pd.read_sql_query("""select feature_id,start_frame,end_frame,scan_
     feature_id <= {} and charge_state >= {} and mz_lower <= {} and mz_upper >= {} order by feature_id ASC;""".format(args.feature_id_lower, args.feature_id_upper, args.minimum_charge_state, args.mz_upper, args.mz_lower), source_conn)
 features_v = features_df.values
 
+points = []
 for feature in features_v:
     feature_id = int(feature[FEATURE_ID_IDX])
     feature_start_frame = int(feature[FEATURE_START_FRAME_IDX])
@@ -84,7 +85,6 @@ for feature in features_v:
 
     # Sum the points in the feature's region, just as we did for MS1 frames
     pointId = 1
-    points = []
     for scan in range(feature_scan_lower, feature_scan_upper+1):
         points_v = frame_v[np.where(frame_v[:,FRAME_SCAN_IDX] == scan)]
         while len(points_v) > 0:
@@ -105,8 +105,8 @@ for feature in features_v:
                 pointId += 1
             # remove the points we've processed
             points_v = np.delete(points_v, nearby_point_indices, 0)
-    src_c.executemany("INSERT INTO summed_ms1_regions VALUES (%s, %s, %s, %s, %s, %s, %s)", points)
-    source_conn.commit()
+
+src_c.executemany("INSERT INTO summed_ms1_regions VALUES (%s, %s, %s, %s, %s, %s, %s)", points)
 
 stop_run = time.time()
 print("{} seconds to process run".format(stop_run-start_run))
