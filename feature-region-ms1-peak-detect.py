@@ -277,10 +277,6 @@ src_c.executemany("INSERT INTO feature_base_peaks VALUES (%s, %s)", base_peaks)
 stop_run = time.time()
 print("{} seconds to process features {} to {}".format(stop_run-start_run, args.feature_id_lower, args.feature_id_upper))
 
-# Keep a record of the features we actually processed
-ms1_feature_region_peak_detect_info.append(("feature_id_lower", args.feature_id_lower))
-ms1_feature_region_peak_detect_info.append(("feature_id_upper", args.feature_id_upper))
-
 # write out the processing info
 ms1_feature_region_peak_detect_info.append(("run processing time (sec)", stop_run-start_run))
 ms1_feature_region_peak_detect_info.append(("processed", time.ctime()))
