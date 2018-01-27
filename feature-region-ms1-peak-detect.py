@@ -99,8 +99,11 @@ point_updates = []
 base_peaks = []
 start_run = time.time()
 
+# Take the ms1 features within the m/z band of interest, and detect peaks in the summed regions
+
 print("Loading the MS1 features {}-{}".format(args.feature_id_lower, args.feature_id_upper))
-features_df = pd.read_sql_query("select feature_id,start_frame,end_frame,scan_lower,scan_upper,mz_lower,mz_upper from features where feature_id >= {} and feature_id <= {} and charge_state >= {} order by feature_id ASC;".format(args.feature_id_lower, args.feature_id_upper, args.minimum_charge_state), source_conn)
+features_df = pd.read_sql_query("""select feature_id,start_frame,end_frame,scan_lower,scan_upper,mz_lower,mz_upper from features where feature_id >= {} and 
+    feature_id <= {} and charge_state >= {} and mz_lower <= {} and mz_upper >= {} order by feature_id ASC;""".format(args.feature_id_lower, args.feature_id_upper, args.minimum_charge_state, args.mz_upper, args.mz_lower), source_conn)
 features_v = features_df.values
 
 for feature in features_v:
