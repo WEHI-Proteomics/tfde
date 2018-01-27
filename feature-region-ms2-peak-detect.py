@@ -83,155 +83,158 @@ start_run = time.time()
 for ms1_feature_id in range(args.feature_id_lower, args.feature_id_upper+1):
     peak_id = 1
     ms1_feature_df = pd.read_sql_query("select point_id,mz,scan,intensity from summed_ms2_regions where feature_id={} order by mz, scan asc;".format(ms1_feature_id), source_conn)
-    print("Processing MS1 feature {}".format(ms1_feature_id))
-    start_feature = time.time()
     ms1_feature_v = ms1_feature_df.values
-    print("frame occupies {} bytes".format(ms1_feature_v.nbytes))
-    scan_lower = int(np.min(ms1_feature_v[:,REGION_POINT_SCAN_IDX]))
-    scan_upper = int(np.max(ms1_feature_v[:,REGION_POINT_SCAN_IDX]))
-    print("scan range {}-{}".format(scan_lower,scan_upper))
-    while len(ms1_feature_v) > 0:
-        peak_indices = np.empty(0, dtype=int)
+    if len(ms1_feature_v) > 0:
+        print("Processing MS1 feature {}".format(ms1_feature_id))
+        print("frame occupies {} bytes".format(ms1_feature_v.nbytes))
+        start_feature = time.time()
+        scan_lower = int(np.min(ms1_feature_v[:,REGION_POINT_SCAN_IDX]))
+        scan_upper = int(np.max(ms1_feature_v[:,REGION_POINT_SCAN_IDX]))
+        print("scan range {}-{}".format(scan_lower,scan_upper))
+        while len(ms1_feature_v) > 0:
+            peak_indices = np.empty(0, dtype=int)
 
-        rationale = collections.OrderedDict()
-        max_intensity_index = ms1_feature_v.argmax(axis=0)[REGION_POINT_INTENSITY_IDX]
-        mz = ms1_feature_v[max_intensity_index][REGION_POINT_MZ_IDX]
-        scan = int(ms1_feature_v[max_intensity_index][REGION_POINT_SCAN_IDX])
-        intensity = int(ms1_feature_v[max_intensity_index][REGION_POINT_INTENSITY_IDX])
-        point_id = int(ms1_feature_v[max_intensity_index][REGION_POINT_ID_IDX])
-        peak_indices = np.append(peak_indices, max_intensity_index)
-        rationale["highest intensity point id"] = point_id
+            rationale = collections.OrderedDict()
+            max_intensity_index = ms1_feature_v.argmax(axis=0)[REGION_POINT_INTENSITY_IDX]
+            mz = ms1_feature_v[max_intensity_index][REGION_POINT_MZ_IDX]
+            scan = int(ms1_feature_v[max_intensity_index][REGION_POINT_SCAN_IDX])
+            intensity = int(ms1_feature_v[max_intensity_index][REGION_POINT_INTENSITY_IDX])
+            point_id = int(ms1_feature_v[max_intensity_index][REGION_POINT_ID_IDX])
+            peak_indices = np.append(peak_indices, max_intensity_index)
+            rationale["highest intensity point id"] = point_id
 
-        # Look for other points belonging to this peak
-        std_dev_window = standard_deviation(mz) * args.standard_deviations
-        # Look in the 'up' direction
-        scan_offset = 1
-        missed_scans = 0
-        while (missed_scans < args.empty_scans) and (scan-scan_offset >= scan_lower):
-            # print("looking in scan {}".format(scan-scan_offset))
-            nearby_indices_up = np.where((ms1_feature_v[:,REGION_POINT_SCAN_IDX] == scan-scan_offset) & (ms1_feature_v[:,REGION_POINT_MZ_IDX] >= mz - std_dev_window) & (ms1_feature_v[:,REGION_POINT_MZ_IDX] <= mz + std_dev_window))[0]
-            nearby_points_up = ms1_feature_v[nearby_indices_up]
-            # print("nearby indices: {}".format(nearby_indices_up))
-            if len(nearby_indices_up) == 0:
-                missed_scans += 1
-                # print("found no points")
-            else:
-                if len(nearby_indices_up) > 1:
-                    # take the most intense point if there's more than one point found on this scan
-                    ms1_feature_v_index_to_use = nearby_indices_up[np.argmax(nearby_points_up[:,REGION_POINT_INTENSITY_IDX])]
+            # Look for other points belonging to this peak
+            std_dev_window = standard_deviation(mz) * args.standard_deviations
+            # Look in the 'up' direction
+            scan_offset = 1
+            missed_scans = 0
+            while (missed_scans < args.empty_scans) and (scan-scan_offset >= scan_lower):
+                # print("looking in scan {}".format(scan-scan_offset))
+                nearby_indices_up = np.where((ms1_feature_v[:,REGION_POINT_SCAN_IDX] == scan-scan_offset) & (ms1_feature_v[:,REGION_POINT_MZ_IDX] >= mz - std_dev_window) & (ms1_feature_v[:,REGION_POINT_MZ_IDX] <= mz + std_dev_window))[0]
+                nearby_points_up = ms1_feature_v[nearby_indices_up]
+                # print("nearby indices: {}".format(nearby_indices_up))
+                if len(nearby_indices_up) == 0:
+                    missed_scans += 1
+                    # print("found no points")
                 else:
-                    ms1_feature_v_index_to_use = nearby_indices_up[0]
-                # Update the m/z window
-                mz = ms1_feature_v[ms1_feature_v_index_to_use][REGION_POINT_MZ_IDX]
-                std_dev_window = standard_deviation(mz) * args.standard_deviations
-                missed_scans = 0
-                # print("found {} points".format(len(nearby_indices_up)))
-                peak_indices = np.append(peak_indices, ms1_feature_v_index_to_use)
-            scan_offset += 1
-        # Look in the 'down' direction
-        scan_offset = 1
-        missed_scans = 0
-        mz = ms1_feature_v[max_intensity_index][REGION_POINT_MZ_IDX]
-        std_dev_window = standard_deviation(mz) * args.standard_deviations
-        while (missed_scans < args.empty_scans) and (scan+scan_offset <= scan_upper):
-            # print("looking in scan {}".format(scan+scan_offset))
-            nearby_indices_down = np.where((ms1_feature_v[:,REGION_POINT_SCAN_IDX] == scan+scan_offset) & (ms1_feature_v[:,REGION_POINT_MZ_IDX] >= mz - std_dev_window) & (ms1_feature_v[:,REGION_POINT_MZ_IDX] <= mz + std_dev_window))[0]
-            nearby_points_down = ms1_feature_v[nearby_indices_down]
-            if len(nearby_indices_down) == 0:
-                missed_scans += 1
-                # print("found no points")
-            else:
-                if len(nearby_indices_down) > 1:
-                    # take the most intense point if there's more than one point found on this scan
-                    ms1_feature_v_index_to_use = nearby_indices_down[np.argmax(nearby_points_down[:,REGION_POINT_INTENSITY_IDX])]
+                    if len(nearby_indices_up) > 1:
+                        # take the most intense point if there's more than one point found on this scan
+                        ms1_feature_v_index_to_use = nearby_indices_up[np.argmax(nearby_points_up[:,REGION_POINT_INTENSITY_IDX])]
+                    else:
+                        ms1_feature_v_index_to_use = nearby_indices_up[0]
+                    # Update the m/z window
+                    mz = ms1_feature_v[ms1_feature_v_index_to_use][REGION_POINT_MZ_IDX]
+                    std_dev_window = standard_deviation(mz) * args.standard_deviations
+                    missed_scans = 0
+                    # print("found {} points".format(len(nearby_indices_up)))
+                    peak_indices = np.append(peak_indices, ms1_feature_v_index_to_use)
+                scan_offset += 1
+            # Look in the 'down' direction
+            scan_offset = 1
+            missed_scans = 0
+            mz = ms1_feature_v[max_intensity_index][REGION_POINT_MZ_IDX]
+            std_dev_window = standard_deviation(mz) * args.standard_deviations
+            while (missed_scans < args.empty_scans) and (scan+scan_offset <= scan_upper):
+                # print("looking in scan {}".format(scan+scan_offset))
+                nearby_indices_down = np.where((ms1_feature_v[:,REGION_POINT_SCAN_IDX] == scan+scan_offset) & (ms1_feature_v[:,REGION_POINT_MZ_IDX] >= mz - std_dev_window) & (ms1_feature_v[:,REGION_POINT_MZ_IDX] <= mz + std_dev_window))[0]
+                nearby_points_down = ms1_feature_v[nearby_indices_down]
+                if len(nearby_indices_down) == 0:
+                    missed_scans += 1
+                    # print("found no points")
                 else:
-                    ms1_feature_v_index_to_use = nearby_indices_down[0]
-                
-                # Update the m/z window
-                mz = ms1_feature_v[ms1_feature_v_index_to_use][REGION_POINT_MZ_IDX]
-                std_dev_window = standard_deviation(mz) * args.standard_deviations
-                missed_scans = 0
-                peak_indices = np.append(peak_indices, ms1_feature_v_index_to_use)
-            scan_offset += 1
+                    if len(nearby_indices_down) > 1:
+                        # take the most intense point if there's more than one point found on this scan
+                        ms1_feature_v_index_to_use = nearby_indices_down[np.argmax(nearby_points_down[:,REGION_POINT_INTENSITY_IDX])]
+                    else:
+                        ms1_feature_v_index_to_use = nearby_indices_down[0]
+                    
+                    # Update the m/z window
+                    mz = ms1_feature_v[ms1_feature_v_index_to_use][REGION_POINT_MZ_IDX]
+                    std_dev_window = standard_deviation(mz) * args.standard_deviations
+                    missed_scans = 0
+                    peak_indices = np.append(peak_indices, ms1_feature_v_index_to_use)
+                scan_offset += 1
 
-        if len(peak_indices) > 1:
+            if len(peak_indices) > 1:
 
-            if len(peak_indices) > MIN_POINTS_IN_PEAK_TO_CHECK_FOR_TROUGHS:
-                # Check whether it has more than one peak
-                # filter the intensity with a Gaussian filter
-                sorted_peaks_indexes = np.argsort(ms1_feature_v[peak_indices][:,REGION_POINT_SCAN_IDX])
-                peaks_sorted = ms1_feature_v[peak_indices[sorted_peaks_indexes]]
-                rationale["point ids"] = peaks_sorted[:,REGION_POINT_ID_IDX].astype(int).tolist()
-                filtered = signal.savgol_filter(peaks_sorted[:,REGION_POINT_INTENSITY_IDX], 9, 5)
-                max_index = np.argmax(peaks_sorted[:,REGION_POINT_INTENSITY_IDX])
+                if len(peak_indices) > MIN_POINTS_IN_PEAK_TO_CHECK_FOR_TROUGHS:
+                    # Check whether it has more than one peak
+                    # filter the intensity with a Gaussian filter
+                    sorted_peaks_indexes = np.argsort(ms1_feature_v[peak_indices][:,REGION_POINT_SCAN_IDX])
+                    peaks_sorted = ms1_feature_v[peak_indices[sorted_peaks_indexes]]
+                    rationale["point ids"] = peaks_sorted[:,REGION_POINT_ID_IDX].astype(int).tolist()
+                    filtered = signal.savgol_filter(peaks_sorted[:,REGION_POINT_INTENSITY_IDX], 9, 5)
+                    max_index = np.argmax(peaks_sorted[:,REGION_POINT_INTENSITY_IDX])
 
-                peak_maxima_indexes = peakutils.indexes(filtered, thres=0.05, min_dist=2)
-                peak_minima_indexes = []
-                if len(peak_maxima_indexes) > 1:
-                    for idx,peak_maxima_index in enumerate(peak_maxima_indexes):
-                        if idx>0:
-                            intensities_between_maxima = filtered[peak_maxima_indexes[idx-1]:peak_maxima_indexes[idx]+1]
-                            minimum_intensity_index = np.argmin(intensities_between_maxima)+peak_maxima_indexes[idx-1]
-                            peak_minima_indexes.append(minimum_intensity_index)
+                    peak_maxima_indexes = peakutils.indexes(filtered, thres=0.05, min_dist=2)
+                    peak_minima_indexes = []
+                    if len(peak_maxima_indexes) > 1:
+                        for idx,peak_maxima_index in enumerate(peak_maxima_indexes):
+                            if idx>0:
+                                intensities_between_maxima = filtered[peak_maxima_indexes[idx-1]:peak_maxima_indexes[idx]+1]
+                                minimum_intensity_index = np.argmin(intensities_between_maxima)+peak_maxima_indexes[idx-1]
+                                peak_minima_indexes.append(minimum_intensity_index)
 
-                indices_to_delete = np.empty(0)
-                if len(peak_minima_indexes) > 0:
-                    idx,lower_snip = findNearestLessThan(max_index, peak_minima_indexes)
-                    idx,upper_snip = findNearestGreaterThan(max_index, peak_minima_indexes)
-                    if lower_snip < max_index:
-                        indices_to_delete = np.concatenate((indices_to_delete,np.arange(lower_snip)))
-                    if upper_snip > max_index:
-                        indices_to_delete = np.concatenate((indices_to_delete,np.arange(upper_snip+1,len(peaks_sorted))))
-                    sorted_peaks_indexes = np.delete(sorted_peaks_indexes, indices_to_delete, 0)
-                    peak_indices = peak_indices[sorted_peaks_indexes]
-                    peaks_sorted = ms1_feature_v[peak_indices]
-                    rationale["point ids after trimming"] = peaks_sorted[:,REGION_POINT_ID_IDX].astype(int).tolist()
+                    indices_to_delete = np.empty(0)
+                    if len(peak_minima_indexes) > 0:
+                        idx,lower_snip = findNearestLessThan(max_index, peak_minima_indexes)
+                        idx,upper_snip = findNearestGreaterThan(max_index, peak_minima_indexes)
+                        if lower_snip < max_index:
+                            indices_to_delete = np.concatenate((indices_to_delete,np.arange(lower_snip)))
+                        if upper_snip > max_index:
+                            indices_to_delete = np.concatenate((indices_to_delete,np.arange(upper_snip+1,len(peaks_sorted))))
+                        sorted_peaks_indexes = np.delete(sorted_peaks_indexes, indices_to_delete, 0)
+                        peak_indices = peak_indices[sorted_peaks_indexes]
+                        peaks_sorted = ms1_feature_v[peak_indices]
+                        rationale["point ids after trimming"] = peaks_sorted[:,REGION_POINT_ID_IDX].astype(int).tolist()
 
-            # Add the peak to the collection
-            peak_mz = []
-            peak_scan = []
-            peak_intensity = []
+                # Add the peak to the collection
+                peak_mz = []
+                peak_scan = []
+                peak_intensity = []
 
-            # Update database
-            for p in peak_indices:
-                # Collect all the points in the peak
-                peak_mz.append(ms1_feature_v[p][REGION_POINT_MZ_IDX])
-                peak_scan.append(ms1_feature_v[p][REGION_POINT_SCAN_IDX])
-                peak_intensity.append(int(ms1_feature_v[p][REGION_POINT_INTENSITY_IDX]))
+                # Update database
+                for p in peak_indices:
+                    # Collect all the points in the peak
+                    peak_mz.append(ms1_feature_v[p][REGION_POINT_MZ_IDX])
+                    peak_scan.append(ms1_feature_v[p][REGION_POINT_SCAN_IDX])
+                    peak_intensity.append(int(ms1_feature_v[p][REGION_POINT_INTENSITY_IDX]))
 
-                # Assign this peak ID to all the points in the peak
-                point_updates.append((peak_id, ms1_feature_id, int(ms1_feature_v[int(p)][REGION_POINT_ID_IDX])))
+                    # Assign this peak ID to all the points in the peak
+                    point_updates.append((peak_id, ms1_feature_id, int(ms1_feature_v[int(p)][REGION_POINT_ID_IDX])))
 
-            # Add the peak's details to the collection
-            peak_intensity_sum = int(np.sum(peak_intensity))
-            peak_intensity_max = int(np.max(peak_intensity))
-            peak_scan_upper = int(np.max(peak_scan))
-            peak_scan_lower = int(np.min(peak_scan))
-            peak_mz_centroid, peak_std_dev_mz = weighted_avg_and_std(values=peak_mz, weights=peak_intensity)
-            peak_scan_centroid, peak_std_dev_scan = weighted_avg_and_std(values=peak_scan, weights=peak_intensity)
-            peak_points = ms1_feature_v[peak_indices]
-            peak_max_index = peak_points[:,REGION_POINT_INTENSITY_IDX].argmax()
-            peak_max_mz = peak_points[peak_max_index][REGION_POINT_MZ_IDX]
-            peak_max_scan = int(peak_points[peak_max_index][REGION_POINT_SCAN_IDX])
-            mono_peaks.append((ms1_feature_id, peak_id, float(peak_mz_centroid), float(peak_scan_centroid), peak_intensity_sum, peak_scan_upper, peak_scan_lower, float(peak_std_dev_mz), float(peak_std_dev_scan), json.dumps(rationale), peak_intensity_max, float(peak_max_mz), peak_max_scan))
+                # Add the peak's details to the collection
+                peak_intensity_sum = int(np.sum(peak_intensity))
+                peak_intensity_max = int(np.max(peak_intensity))
+                peak_scan_upper = int(np.max(peak_scan))
+                peak_scan_lower = int(np.min(peak_scan))
+                peak_mz_centroid, peak_std_dev_mz = weighted_avg_and_std(values=peak_mz, weights=peak_intensity)
+                peak_scan_centroid, peak_std_dev_scan = weighted_avg_and_std(values=peak_scan, weights=peak_intensity)
+                peak_points = ms1_feature_v[peak_indices]
+                peak_max_index = peak_points[:,REGION_POINT_INTENSITY_IDX].argmax()
+                peak_max_mz = peak_points[peak_max_index][REGION_POINT_MZ_IDX]
+                peak_max_scan = int(peak_points[peak_max_index][REGION_POINT_SCAN_IDX])
+                mono_peaks.append((ms1_feature_id, peak_id, float(peak_mz_centroid), float(peak_scan_centroid), peak_intensity_sum, peak_scan_upper, peak_scan_lower, float(peak_std_dev_mz), float(peak_std_dev_scan), json.dumps(rationale), peak_intensity_max, float(peak_max_mz), peak_max_scan))
 
-            peak_id += 1
+                peak_id += 1
 
-        # remove the points we've processed
-        ms1_feature_v = np.delete(ms1_feature_v, peak_indices, 0)
+            # remove the points we've processed
+            ms1_feature_v = np.delete(ms1_feature_v, peak_indices, 0)
 
-    # Write out the peaks for this feature
-    print("Writing out the peaks we found for this feature.")
-    src_c.executemany("INSERT INTO ms2_peaks (feature_id, peak_id, centroid_mz, centroid_scan, intensity_sum, scan_upper, scan_lower, std_dev_mz, std_dev_scan, rationale, intensity_max, peak_max_mz, peak_max_scan) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)", mono_peaks)
-    mono_peaks = []
+        # Write out the peaks for this feature
+        print("Writing out the peaks we found for this feature.")
+        src_c.executemany("INSERT INTO ms2_peaks (feature_id, peak_id, centroid_mz, centroid_scan, intensity_sum, scan_upper, scan_lower, std_dev_mz, std_dev_scan, rationale, intensity_max, peak_max_mz, peak_max_scan) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)", mono_peaks)
+        mono_peaks = []
 
-    # Update the points in the summed_ms2_regions table
-    print("Updating the points in the summed_ms2_regions table.")
-    src_c.executemany("UPDATE summed_ms2_regions SET peak_id=%s WHERE feature_id=%s AND point_id=%s", point_updates)
-    point_updates = []
+        # Update the points in the summed_ms2_regions table
+        print("Updating the points in the summed_ms2_regions table.")
+        src_c.executemany("UPDATE summed_ms2_regions SET peak_id=%s WHERE feature_id=%s AND point_id=%s", point_updates)
+        point_updates = []
 
-    stop_feature = time.time()
-    print("{} seconds to process feature {} - {} peaks".format(stop_feature-start_feature, ms1_feature_id, peak_id))
+        source_conn.commit()
+
+        stop_feature = time.time()
+        print("{} seconds to process feature {} - {} peaks".format(stop_feature-start_feature, ms1_feature_id, peak_id))
 
 stop_run = time.time()
 print("{} seconds to process features {} to {}".format(stop_run-start_run, args.feature_id_lower, args.feature_id_upper))
