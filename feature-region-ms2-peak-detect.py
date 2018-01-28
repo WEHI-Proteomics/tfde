@@ -109,10 +109,10 @@ for feature in features_v:
     feature_mz_upper = feature[FEATURE_MZ_UPPER_IDX]
 
     peak_id = 1
-    ms1_feature_df = pd.read_sql_query("select point_id,mz,scan,intensity from summed_ms2_regions where feature_id={} order by mz, scan asc;".format(ms1_feature_id), source_conn)
+    ms1_feature_df = pd.read_sql_query("select point_id,mz,scan,intensity from summed_ms2_regions where feature_id={} order by mz, scan asc;".format(feature_id), source_conn)
     ms1_feature_v = ms1_feature_df.values
 
-    print("Processing MS1 feature {}".format(ms1_feature_id))
+    print("Processing MS1 feature {}".format(feature_id))
     print("frame occupies {} bytes".format(ms1_feature_v.nbytes))
     start_feature = time.time()
     scan_lower = int(np.min(ms1_feature_v[:,REGION_POINT_SCAN_IDX]))
@@ -228,7 +228,7 @@ for feature in features_v:
                 peak_intensity.append(int(ms1_feature_v[p][REGION_POINT_INTENSITY_IDX]))
 
                 # Assign this peak ID to all the points in the peak
-                point_updates.append((peak_id, ms1_feature_id, int(ms1_feature_v[int(p)][REGION_POINT_ID_IDX])))
+                point_updates.append((peak_id, feature_id, int(ms1_feature_v[int(p)][REGION_POINT_ID_IDX])))
 
             # Add the peak's details to the collection
             peak_intensity_sum = int(np.sum(peak_intensity))
@@ -241,7 +241,7 @@ for feature in features_v:
             peak_max_index = peak_points[:,REGION_POINT_INTENSITY_IDX].argmax()
             peak_max_mz = peak_points[peak_max_index][REGION_POINT_MZ_IDX]
             peak_max_scan = int(peak_points[peak_max_index][REGION_POINT_SCAN_IDX])
-            mono_peaks.append((ms1_feature_id, peak_id, float(peak_mz_centroid), float(peak_scan_centroid), peak_intensity_sum, peak_scan_upper, peak_scan_lower, float(peak_std_dev_mz), float(peak_std_dev_scan), json.dumps(rationale), peak_intensity_max, float(peak_max_mz), peak_max_scan))
+            mono_peaks.append((feature_id, peak_id, float(peak_mz_centroid), float(peak_scan_centroid), peak_intensity_sum, peak_scan_upper, peak_scan_lower, float(peak_std_dev_mz), float(peak_std_dev_scan), json.dumps(rationale), peak_intensity_max, float(peak_max_mz), peak_max_scan))
 
             peak_id += 1
 
@@ -261,7 +261,7 @@ for feature in features_v:
     source_conn.commit()
 
     stop_feature = time.time()
-    print("{} seconds to process feature {} - {} peaks".format(stop_feature-start_feature, ms1_feature_id, peak_id))
+    print("{} seconds to process feature {} - {} peaks".format(stop_feature-start_feature, feature_id, peak_id))
 
 stop_run = time.time()
 print("{} seconds to process features {} to {}".format(stop_run-start_run, args.feature_id_lower, args.feature_id_upper))
