@@ -83,14 +83,6 @@ if args.feature_id_upper is None:
     args.feature_id_upper = int(row[0])
     print("feature_id_upper set to {} from the data".format(args.feature_id_upper))
 
-print("Setting up tables and indexes")
-src_c.execute("CREATE OR REPLACE TABLE ms1_feature_region_peaks (feature_id INTEGER, peak_id INTEGER, centroid_mz REAL, centroid_scan REAL, intensity_sum INTEGER, scan_upper INTEGER, scan_lower INTEGER, std_dev_mz REAL, std_dev_scan REAL, rationale TEXT, intensity_max INTEGER, peak_max_mz REAL, peak_max_scan INTEGER, PRIMARY KEY (feature_id, peak_id))")
-src_c.execute("CREATE OR REPLACE TABLE ms1_feature_region_peak_detect_info (item TEXT, value TEXT)")
-src_c.execute("CREATE OR REPLACE TABLE feature_base_peaks (feature_id INTEGER, base_peak_id INTEGER, PRIMARY KEY (feature_id, base_peak_id))")
-
-print("Resetting peak IDs")
-src_c.execute("update summed_ms1_regions set peak_id=0 where peak_id!=0")
-
 # Store the arguments as metadata in the database for later reference
 ms1_feature_region_peak_detect_info = []
 for arg in vars(args):
