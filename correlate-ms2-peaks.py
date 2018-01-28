@@ -1,7 +1,7 @@
 import pandas as pd
 import argparse
 import numpy as np
-import sqlite3
+import pymysql
 
 
 # feature / base peak array indices
@@ -59,12 +59,11 @@ parser = argparse.ArgumentParser(description='Calculate correlation between MS1 
 parser.add_argument('-db','--database_name', type=str, help='The name of the source database.', required=True)
 args = parser.parse_args()
 
-source_conn = sqlite3.connect(database=args.database_name, timeout=60)
+source_conn = pymysql.connect(host='mscypher-004', user='root', passwd='password', database="{}".format(args.database_name))
 src_c = source_conn.cursor()
 
 print("Setting up tables and indexes")
-src_c.execute('''DROP TABLE IF EXISTS peak_correlation''')
-src_c.execute('''CREATE TABLE peak_correlation (feature_id INTEGER, base_peak_id INTEGER, ms2_peak_id INTEGER, correlation REAL, PRIMARY KEY (feature_id, base_peak_id, ms2_peak_id))''')
+src_c.execute("CREATE OR REPLACE TABLE peak_correlation (feature_id INTEGER, base_peak_id INTEGER, ms2_peak_id INTEGER, correlation REAL, PRIMARY KEY (feature_id, base_peak_id, ms2_peak_id))")
 
 print("Loading the MS1 base peaks")
 features_df = pd.read_sql_query("select feature_id,base_peak_id from feature_base_peaks order by feature_id ASC;", source_conn)
@@ -78,7 +77,8 @@ for feature in features_v:
     feature_id = int(feature[FEATURE_ID_IDX])
     base_peak_id = int(feature[FEATURE_BASE_PEAK_ID_IDX])
 
-    feature_base_peak_points_df = pd.read_sql_query("select point_id,mz,scan,intensity from summed_ms1_regions where feature_id={} and peak_id={} order by scan ASC;".format(feature_id,base_peak_id), source_conn)
+    feature_base_peak_points_df = pd.read_sql_query("""select point_id,mz,scan,intensity from summed_ms1_regions where feature_id={} and peak_id={} order by scan ASC;"""
+        .format(feature_id,base_peak_id), source_conn)
     feature_base_peak_points_v = feature_base_peak_points_df.values
 
     # Load the MS2 peak points
@@ -101,7 +101,7 @@ for feature in features_v:
         print("No MS2 peak points found for feature {}".format(feature_id))
 
 print("Writing out the peak correlations")
-src_c.executemany("INSERT INTO peak_correlation VALUES (?, ?, ?, ?)", peak_correlation)
+src_c.executemany("INSERT INTO peak_correlation VALUES (%s, %s, %s, %s)", peak_correlation)
 
 source_conn.commit()
 source_conn.close()
