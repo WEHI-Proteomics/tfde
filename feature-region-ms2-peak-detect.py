@@ -61,6 +61,8 @@ parser = argparse.ArgumentParser(description='A tree descent method for MS2 peak
 parser.add_argument('-db','--database_name', type=str, help='The name of the source database.', required=True)
 parser.add_argument('-fl','--feature_id_lower', type=int, help='Lower feature ID to process.', required=False)
 parser.add_argument('-fu','--feature_id_upper', type=int, help='Upper feature ID to process.', required=False)
+parser.add_argument('-ml','--mz_lower', type=float, help='Lower feature m/z to process.', required=True)
+parser.add_argument('-mu','--mz_upper', type=float, help='Upper feature m/z to process.', required=True)
 parser.add_argument('-es','--empty_scans', type=int, default=2, help='Maximum number of empty scans to tolerate.', required=False)
 parser.add_argument('-sd','--standard_deviations', type=int, default=4, help='Number of standard deviations to look either side of a point.', required=False)
 args = parser.parse_args()

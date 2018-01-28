@@ -69,11 +69,11 @@ if (args.operation == 'all') or (args.operation == 'peak-ms2-region'):
             last_feature_id = number_of_features
 
         if args.operating_system == 'windows':
-            print("start \"Summing {}-{}\" python -u feature-region-ms2-peak-detect.py -db {} -fl {} -fu {}"
-                .format(first_feature_id, last_feature_id, args.database_name, first_feature_id, last_feature_id))
+            print("start \"Summing {}-{}\" python -u feature-region-ms2-peak-detect.py -db {} -fl {} -fu {} -ml {} -mu {}"
+                .format(first_feature_id, last_feature_id, args.database_name, first_feature_id, last_feature_id, args.mz_lower, args.mz_upper))
         else:
-            print("nohup python -u ./feature-region-ms2-peak-detect.py -db {} -fl {} -fu {} > ../logs/{}-ms2-feature-region-peak-batch-{}-{}-{}.log 2>&1 &"
-                .format(args.database_name, first_feature_id, last_feature_id, args.database_name, i, first_feature_id, last_feature_id))
+            print("nohup python -u ./feature-region-ms2-peak-detect.py -db {} -fl {} -fu {} -ml {} -mu {} > ../logs/{}-ms2-feature-region-peak-batch-{}-{}-{}.log 2>&1 &"
+                .format(args.database_name, first_feature_id, last_feature_id, args.mz_lower, args.mz_upper, args.database_name, i, first_feature_id, last_feature_id))
 
 #
 # MS1 feature region summing
@@ -110,8 +110,8 @@ if (args.operation == 'all') or (args.operation == 'peak-ms1-region'):
             last_feature_id = number_of_features
 
         if args.operating_system == 'windows':
-            print("start \"Summing {}-{}\" python -u feature-region-ms1-peak-detect.py -db {} -fl {} -fu {}"
-                .format(first_feature_id, last_feature_id, args.database_name, first_feature_id, last_feature_id))
+            print("start \"Summing {}-{}\" python -u feature-region-ms1-peak-detect.py -db {} -fl {} -fu {} -ml {} -mu {}"
+                .format(first_feature_id, last_feature_id, args.database_name, first_feature_id, last_feature_id, args.mz_lower, args.mz_upper))
         else:
-            print("nohup python -u ./feature-region-ms1-peak-detect.py -db {} -fl {} -fu {} > ../logs/{}-ms1-feature-region-peak-batch-{}-{}-{}.log 2>&1 &"
-                .format(args.database_name, first_feature_id, last_feature_id, args.database_name, i, first_feature_id, last_feature_id))
+            print("nohup python -u ./feature-region-ms1-peak-detect.py -db {} -fl {} -fu {} -ml {} -mu {} > ../logs/{}-ms1-feature-region-peak-batch-{}-{}-{}.log 2>&1 &"
+                .format(args.database_name, first_feature_id, last_feature_id, args.mz_lower, args.mz_upper, args.database_name, i, first_feature_id, last_feature_id))
