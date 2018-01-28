@@ -40,6 +40,8 @@ parser = argparse.ArgumentParser(description='Sum MS2 frames in the region of th
 parser.add_argument('-db','--database_name', type=str, help='The name of the database.', required=True)
 parser.add_argument('-fl','--feature_id_lower', type=int, help='Lower feature ID to process.', required=False)
 parser.add_argument('-fu','--feature_id_upper', type=int, help='Upper feature ID to process.', required=False)
+parser.add_argument('-ml','--mz_lower', type=float, help='Lower feature m/z to process.', required=True)
+parser.add_argument('-mu','--mz_upper', type=float, help='Upper feature m/z to process.', required=True)
 parser.add_argument('-mf','--noise_threshold', type=int, default=2, help='Minimum number of MS2 frames a point must appear in to be processed.', required=False)
 parser.add_argument('-mcs','--minimum_charge_state', type=int, default=2, help='Minimum charge state to process.', required=False)
 parser.add_argument('-ms2ce','--ms2_collision_energy', type=float, help='Collision energy used for MS2.', required=True)
@@ -71,9 +73,13 @@ if len(ms2_frame_ids_v) > 0:
     frame_summing_offset = int(row[0])
     print("Number of source frames that were summed {} with offset".format(frames_to_sum, frame_summing_offset))
 
+    # Take the ms1 features within the m/z band of interest, and sum the ms2 frames over the whole m/z range (as we don't know where the fragments will be in ms2)
+
     print("Loading the MS1 features")
-    features_df = pd.read_sql_query("select feature_id,start_frame,end_frame,scan_lower,scan_upper,mz_lower,mz_upper from features where feature_id >= {} and feature_id <= {} and charge_state >= {} order by feature_id ASC;".format(args.feature_id_lower, args.feature_id_upper, args.minimum_charge_state), dest_conn)
+    features_df = pd.read_sql_query("""select feature_id,start_frame,end_frame,scan_lower,scan_upper,mz_lower,mz_upper from features where feature_id >= {} and 
+        feature_id <= {} and charge_state >= {} and mz_lower <= {} and mz_upper >= {} order by feature_id ASC;""".format(args.feature_id_lower, args.feature_id_upper, args.minimum_charge_state, args.mz_upper, args.mz_lower), dest_conn)
     features_v = features_df.values
+    print("{} MS1 features loaded".format(len(features_v)))
 
     points = []
     for feature in features_v:
@@ -125,9 +131,6 @@ if len(ms2_frame_ids_v) > 0:
 
     stop_run = time.time()
     print("{} seconds to process run".format(stop_run-start_run))
-
-    ms2_feature_info.append(("ms1_feature_id_lower", min(points, key=itemgetter(0))[0]))
-    ms2_feature_info.append(("ms1_feature_id_upper", max(points, key=itemgetter(0))[0]))
 
     ms2_feature_info.append(("run processing time (sec)", stop_run-start_run))
     ms2_feature_info.append(("processed", time.ctime()))

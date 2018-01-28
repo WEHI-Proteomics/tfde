@@ -58,28 +58,30 @@ def findNearestLessThan(searchVal, inputData):
     return idx, inputData[idx]
 
 parser = argparse.ArgumentParser(description='Detect peaks in MS1 feature regions.')
-parser.add_argument('-fl','--feature_id_lower', type=int, help='Lower feature ID to process.', required=True)
-parser.add_argument('-fu','--feature_id_upper', type=int, help='Upper feature ID to process.', required=True)
+parser.add_argument('-db','--database_name', type=str, help='The name of the source database.', required=True)
+parser.add_argument('-fl','--feature_id_lower', type=int, help='Lower feature ID to process.', required=False)
+parser.add_argument('-fu','--feature_id_upper', type=int, help='Upper feature ID to process.', required=False)
+parser.add_argument('-ml','--mz_lower', type=float, help='Lower feature m/z to process.', required=True)
+parser.add_argument('-mu','--mz_upper', type=float, help='Upper feature m/z to process.', required=True)
 parser.add_argument('-es','--empty_scans', type=int, default=2, help='Maximum number of empty scans to tolerate.', required=False)
 parser.add_argument('-sd','--standard_deviations', type=int, default=4, help='Number of standard deviations to look either side of a point.', required=False)
 parser.add_argument('-mcs','--minimum_charge_state', type=int, default=2, help='Minimum charge state to process.', required=False)
 args = parser.parse_args()
 
-source_conn = pymysql.connect(host='localhost', user='root', passwd='password', database='timsTOF')
+source_conn = pymysql.connect(host='mscypher-004', user='root', passwd='password', database="{}".format(args.database_name))
 src_c = source_conn.cursor()
 
-print("Setting up tables and indexes")
-src_c.execute("CREATE TABLE IF NOT EXISTS ms1_feature_region_peaks (feature_id INTEGER, peak_id INTEGER, centroid_mz REAL, centroid_scan REAL, intensity_sum INTEGER, scan_upper INTEGER, scan_lower INTEGER, std_dev_mz REAL, std_dev_scan REAL, rationale TEXT, intensity_max INTEGER, peak_max_mz REAL, peak_max_scan INTEGER, PRIMARY KEY (feature_id, peak_id))")
-src_c.execute("CREATE TABLE IF NOT EXISTS ms1_feature_region_peak_detect_info (item TEXT, value TEXT)")
-src_c.execute("CREATE TABLE IF NOT EXISTS feature_base_peaks (feature_id INTEGER, base_peak_id INTEGER, PRIMARY KEY (feature_id, base_peak_id))")
+if args.feature_id_lower is None:
+    src_c.execute("SELECT MIN(feature_id) FROM features")
+    row = src_c.fetchone()
+    args.feature_id_lower = int(row[0])
+    print("feature_id_lower set to {} from the data".format(args.feature_id_lower))
 
-# Remove any existing entries for this feature range
-src_c.execute("DELETE FROM ms1_feature_region_peaks WHERE feature_id >= {} and feature_id <= {}".format(args.feature_id_lower, args.feature_id_upper))
-src_c.execute("DELETE FROM feature_base_peaks WHERE feature_id >= {} and feature_id <= {}".format(args.feature_id_lower, args.feature_id_upper))
-src_c.execute("DELETE FROM ms1_feature_region_peak_detect_info WHERE item=\"features {}-{}\"".format(args.feature_id_lower, args.feature_id_upper))
-
-print("Resetting peak IDs")
-src_c.execute("update summed_ms1_regions set peak_id=0 where peak_id!=0")
+if args.feature_id_upper is None:
+    src_c.execute("SELECT MAX(feature_id) FROM features")
+    row = src_c.fetchone()
+    args.feature_id_upper = int(row[0])
+    print("feature_id_upper set to {} from the data".format(args.feature_id_upper))
 
 # Store the arguments as metadata in the database for later reference
 ms1_feature_region_peak_detect_info = []
@@ -91,8 +93,11 @@ point_updates = []
 base_peaks = []
 start_run = time.time()
 
+# Take the ms1 features within the m/z band of interest, and detect peaks in the summed regions
+
 print("Loading the MS1 features {}-{}".format(args.feature_id_lower, args.feature_id_upper))
-features_df = pd.read_sql_query("select feature_id,start_frame,end_frame,scan_lower,scan_upper,mz_lower,mz_upper from features where feature_id >= {} and feature_id <= {} and charge_state >= {} order by feature_id ASC;".format(args.feature_id_lower, args.feature_id_upper, args.minimum_charge_state), source_conn)
+features_df = pd.read_sql_query("""select feature_id,start_frame,end_frame,scan_lower,scan_upper,mz_lower,mz_upper from features where feature_id >= {} and 
+    feature_id <= {} and charge_state >= {} and mz_lower <= {} and mz_upper >= {} order by feature_id ASC;""".format(args.feature_id_lower, args.feature_id_upper, args.minimum_charge_state, args.mz_upper, args.mz_lower), source_conn)
 features_v = features_df.values
 
 for feature in features_v:
@@ -265,10 +270,6 @@ src_c.executemany("INSERT INTO feature_base_peaks VALUES (%s, %s)", base_peaks)
 
 stop_run = time.time()
 print("{} seconds to process features {} to {}".format(stop_run-start_run, args.feature_id_lower, args.feature_id_upper))
-
-# Keep a record of the features we actually processed
-ms1_feature_region_peak_detect_info.append(("feature_id_lower", args.feature_id_lower))
-ms1_feature_region_peak_detect_info.append(("feature_id_upper", args.feature_id_upper))
 
 # write out the processing info
 ms1_feature_region_peak_detect_info.append(("run processing time (sec)", stop_run-start_run))
