@@ -19,7 +19,9 @@ dest_c.execute("CREATE OR REPLACE TABLE summed_ms1_regions (feature_id INTEGER, 
 dest_c.execute("CREATE OR REPLACE TABLE summed_ms1_regions_info (item TEXT, value TEXT)")
 
 dest_c.execute("CREATE OR REPLACE INDEX idx_summed_ms1_regions_1 on features (feature_id, charge_state, mz_lower, mz_upper)")
-dest_c.execute("CREATE OR REPLACE INDEX idx_summed_ms1_regions_2 on summed_frames (frame_id, mz, scan)")
+dest_c.execute("CREATE OR REPLACE INDEX idx_summed_ms1_regions_2 on summed_frames (frame_id, peak_id)")
+dest_c.execute("CREATE OR REPLACE INDEX idx_summed_ms1_regions_3 on clusters (feature_id)")
+dest_c.execute("CREATE OR REPLACE INDEX idx_summed_ms1_regions_4 on peaks (frame_id, cluster_id)")
 
 dest_conn.commit()
 dest_conn.close()
