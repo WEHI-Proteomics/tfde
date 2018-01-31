@@ -78,12 +78,13 @@ for feature in features_v:
     feature_mz_upper = feature[FEATURE_MZ_UPPER_IDX]
     print("Processing feature ID {} ({} frames)".format(feature_id, feature_end_frame-feature_start_frame))
 
-    # Load the MS1 frame (summed) points for the feature's region
-    frame_df = pd.read_sql_query("select frame_id,mz,scan,intensity from summed_frames where frame_id >= {} and frame_id <= {} and mz <= {} and mz >= {} and scan <= {} and scan >= {} order by frame_id, mz, scan asc;".format(feature_start_frame, feature_end_frame, feature_mz_upper, feature_mz_lower, feature_scan_upper, feature_scan_lower), source_conn)
+    # Load the MS1 frame (summed) points for the feature's peaks
+    frame_df = pd.read_sql_query("""select frame_id,mz,scan,intensity from summed_frames where (frame_id,peak_id) in (select frame_id,peak_id from peaks where (frame_id,cluster_id) in 
+        (select frame_id,cluster_id from clusters where feature_id={}));""".format(feature_id), source_conn)
     frame_v = frame_df.values
     print("frame occupies {} bytes".format(frame_v.nbytes))
 
-    # Sum the points in the feature's region, just as we did for MS1 frames
+    # Sum the points, just as we did for MS1 frames
     pointId = 1
     for scan in range(feature_scan_lower, feature_scan_upper+1):
         points_v = frame_v[np.where(frame_v[:,FRAME_SCAN_IDX] == scan)]
@@ -95,14 +96,11 @@ for feature in features_v:
             # Find all the points in this point's std dev window
             nearby_point_indices = np.where((points_v[:,FRAME_MZ_IDX] >= point_mz-delta_mz) & (points_v[:,FRAME_MZ_IDX] <= point_mz+delta_mz))[0]
             nearby_points = points_v[nearby_point_indices]
-            # How many distinct frames do the points come from?
-            unique_frames = np.unique(nearby_points[:,FRAME_ID_IDX])
-            if len(unique_frames) >= args.noise_threshold:
-                # find the total intensity and centroid m/z
-                centroid_intensity = nearby_points[:,FRAME_INTENSITY_IDX].sum()
-                centroid_mz = peakutils.centroid(nearby_points[:,FRAME_MZ_IDX], nearby_points[:,FRAME_INTENSITY_IDX])
-                points.append((feature_id, pointId, float(centroid_mz), scan, int(round(centroid_intensity)), len(unique_frames), 0))
-                pointId += 1
+            # find the total intensity and centroid m/z
+            centroid_intensity = nearby_points[:,FRAME_INTENSITY_IDX].sum()
+            centroid_mz = peakutils.centroid(nearby_points[:,FRAME_MZ_IDX], nearby_points[:,FRAME_INTENSITY_IDX])
+            points.append((feature_id, pointId, float(centroid_mz), scan, int(round(centroid_intensity)), len(unique_frames), 0))
+            pointId += 1
             # remove the points we've processed
             points_v = np.delete(points_v, nearby_point_indices, 0)
 

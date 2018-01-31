@@ -1,0 +1,1 @@
+select mz,scan,intensity,frame_id from summed_frames where (frame_id,peak_id) in (select frame_id,peak_id from peaks where (frame_id,cluster_id) in (select frame_id,cluster_id from clusters where feature_id=10));
