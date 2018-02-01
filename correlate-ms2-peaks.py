@@ -28,8 +28,8 @@ def calculate_correlation(base_peak_points, ms2_peak_points):
     # find the maximum point of the base peak
     base_peak_max_idx = np.argmax(base_peak_points[:,BASE_PEAK_INTENSITY_IDX])
 
-    base_peak_lower_idx = base_peak_max_idx-BASE_PEAK_CORRELATION_SIDE_POINTS
-    base_peak_upper_idx = base_peak_max_idx+BASE_PEAK_CORRELATION_SIDE_POINTS
+    base_peak_lower_idx = max(base_peak_max_idx-BASE_PEAK_CORRELATION_SIDE_POINTS, 0)
+    base_peak_upper_idx = min(base_peak_max_idx+BASE_PEAK_CORRELATION_SIDE_POINTS, len(base_peak_points)-1)
 
     # find the scan numbers to reference
     corr_scan_lower = base_peak_points[base_peak_lower_idx,BASE_PEAK_SCAN_IDX]
