@@ -121,12 +121,11 @@ for feature in features_v:
             # Look for other points belonging to this peak
             std_dev_window = standard_deviation(mz) * args.standard_deviations
             # Look in the 'up' direction
-            scan_offset = 1
+            search_scan = scan
             missed_scans = 0
-            while (missed_scans <= args.empty_scans) and (scan-scan_offset >= scan_lower):
-                nearby_indices_up = np.where((ms1_feature_v[:,REGION_POINT_SCAN_IDX] == (scan-scan_offset)) & 
-                    (ms1_feature_v[:,REGION_POINT_MZ_IDX] >= (mz - std_dev_window)) & 
-                    (ms1_feature_v[:,REGION_POINT_MZ_IDX] <= (mz + std_dev_window)))[0]
+            while (missed_scans <= args.empty_scans) and (search_scan >= scan_lower):
+                nearby_indices_up = np.where((ms1_feature_v[:,REGION_POINT_SCAN_IDX] == search_scan) & 
+                    (abs(ms1_feature_v[:,REGION_POINT_MZ_IDX] - mz) <= std_dev_window))[0]
                 if len(nearby_indices_up) == 0:
                     missed_scans += 1
                 else:
@@ -135,14 +134,15 @@ for feature in features_v:
                     std_dev_window = standard_deviation(mz) * args.standard_deviations
                     missed_scans = 0
                     peak_indices = np.append(peak_indices, nearby_indices_up)
-                scan_offset += 1
+                search_scan -= 1
             # Look in the 'down' direction
-            scan_offset = 1
+            search_scan = scan+1    # don't count the points on the starting scan line again
             missed_scans = 0
             mz = ms1_feature_v[max_intensity_index][REGION_POINT_MZ_IDX]
             std_dev_window = standard_deviation(mz) * args.standard_deviations
-            while (missed_scans <= args.empty_scans) and (scan+scan_offset <= scan_upper):
-                nearby_indices_down = np.where((ms1_feature_v[:,REGION_POINT_SCAN_IDX] == (scan+scan_offset)) & (ms1_feature_v[:,REGION_POINT_MZ_IDX] >= (mz - std_dev_window)) & (ms1_feature_v[:,REGION_POINT_MZ_IDX] <= (mz + std_dev_window)))[0]
+            while (missed_scans <= args.empty_scans) and (search_scan <= scan_upper):
+                nearby_indices_down = np.where((ms1_feature_v[:,REGION_POINT_SCAN_IDX] == search_scan) & 
+                    (abs(ms1_feature_v[:,REGION_POINT_MZ_IDX] - mz) <= std_dev_window))[0]
                 if len(nearby_indices_down) == 0:
                     missed_scans += 1
                 else:
@@ -151,7 +151,7 @@ for feature in features_v:
                     std_dev_window = standard_deviation(mz) * args.standard_deviations
                     missed_scans = 0
                     peak_indices = np.append(peak_indices, nearby_indices_down)
-                scan_offset += 1
+                search_scan += 1
 
             if len(peak_indices) > 1:
                 # Add the peak to the collection
