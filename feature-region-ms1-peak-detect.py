@@ -63,7 +63,7 @@ parser.add_argument('-fl','--feature_id_lower', type=int, help='Lower feature ID
 parser.add_argument('-fu','--feature_id_upper', type=int, help='Upper feature ID to process.', required=False)
 parser.add_argument('-ml','--mz_lower', type=float, help='Lower feature m/z to process.', required=True)
 parser.add_argument('-mu','--mz_upper', type=float, help='Upper feature m/z to process.', required=True)
-parser.add_argument('-es','--empty_scans', type=int, default=2, help='Maximum number of empty scans to tolerate.', required=False)
+parser.add_argument('-es','--empty_scans', type=int, default=20, help='Maximum number of empty scans to tolerate.', required=False)
 parser.add_argument('-sd','--standard_deviations', type=int, default=4, help='Number of standard deviations to look either side of a point.', required=False)
 parser.add_argument('-mcs','--minimum_charge_state', type=int, default=2, help='Minimum charge state to process.', required=False)
 args = parser.parse_args()
@@ -136,86 +136,35 @@ for feature in features_v:
             # Look in the 'up' direction
             scan_offset = 1
             missed_scans = 0
-            while (missed_scans < args.empty_scans) and (scan-scan_offset >= scan_lower):
-                # print("looking in scan {}".format(scan-scan_offset))
+            while (missed_scans <= args.empty_scans) and (scan-scan_offset >= scan_lower):
                 nearby_indices_up = np.where((ms1_feature_v[:,REGION_POINT_SCAN_IDX] == scan-scan_offset) & (ms1_feature_v[:,REGION_POINT_MZ_IDX] >= mz - std_dev_window) & (ms1_feature_v[:,REGION_POINT_MZ_IDX] <= mz + std_dev_window))[0]
-                nearby_points_up = ms1_feature_v[nearby_indices_up]
-                # print("nearby indices: {}".format(nearby_indices_up))
                 if len(nearby_indices_up) == 0:
                     missed_scans += 1
-                    # print("found no points")
                 else:
-                    if len(nearby_indices_up) > 1:
-                        # take the most intense point if there's more than one point found on this scan
-                        ms1_feature_v_index_to_use = nearby_indices_up[np.argmax(nearby_points_up[:,REGION_POINT_INTENSITY_IDX])]
-                    else:
-                        ms1_feature_v_index_to_use = nearby_indices_up[0]
                     # Update the m/z window
-                    mz = ms1_feature_v[ms1_feature_v_index_to_use][REGION_POINT_MZ_IDX]
+                    mz = ms1_feature_v[nearby_indices_up][REGION_POINT_MZ_IDX]
                     std_dev_window = standard_deviation(mz) * args.standard_deviations
                     missed_scans = 0
-                    # print("found {} points".format(len(nearby_indices_up)))
-                    peak_indices = np.append(peak_indices, ms1_feature_v_index_to_use)
+                    peak_indices = np.append(peak_indices, nearby_indices_up)
                 scan_offset += 1
             # Look in the 'down' direction
             scan_offset = 1
             missed_scans = 0
             mz = ms1_feature_v[max_intensity_index][REGION_POINT_MZ_IDX]
             std_dev_window = standard_deviation(mz) * args.standard_deviations
-            while (missed_scans < args.empty_scans) and (scan+scan_offset <= scan_upper):
-                # print("looking in scan {}".format(scan+scan_offset))
+            while (missed_scans <= args.empty_scans) and (scan+scan_offset <= scan_upper):
                 nearby_indices_down = np.where((ms1_feature_v[:,REGION_POINT_SCAN_IDX] == scan+scan_offset) & (ms1_feature_v[:,REGION_POINT_MZ_IDX] >= mz - std_dev_window) & (ms1_feature_v[:,REGION_POINT_MZ_IDX] <= mz + std_dev_window))[0]
-                nearby_points_down = ms1_feature_v[nearby_indices_down]
                 if len(nearby_indices_down) == 0:
                     missed_scans += 1
-                    # print("found no points")
                 else:
-                    if len(nearby_indices_down) > 1:
-                        # take the most intense point if there's more than one point found on this scan
-                        ms1_feature_v_index_to_use = nearby_indices_down[np.argmax(nearby_points_down[:,REGION_POINT_INTENSITY_IDX])]
-                    else:
-                        ms1_feature_v_index_to_use = nearby_indices_down[0]
-                    
                     # Update the m/z window
-                    mz = ms1_feature_v[ms1_feature_v_index_to_use][REGION_POINT_MZ_IDX]
+                    mz = ms1_feature_v[nearby_indices_down][REGION_POINT_MZ_IDX]
                     std_dev_window = standard_deviation(mz) * args.standard_deviations
                     missed_scans = 0
-                    peak_indices = np.append(peak_indices, ms1_feature_v_index_to_use)
+                    peak_indices = np.append(peak_indices, nearby_indices_down)
                 scan_offset += 1
 
             if len(peak_indices) > 1:
-
-                if len(peak_indices) > MIN_POINTS_IN_PEAK_TO_CHECK_FOR_TROUGHS:
-                    # Check whether it has more than one peak
-                    # filter the intensity with a Gaussian filter
-                    sorted_peaks_indexes = np.argsort(ms1_feature_v[peak_indices][:,REGION_POINT_SCAN_IDX])
-                    peaks_sorted = ms1_feature_v[peak_indices[sorted_peaks_indexes]]
-                    rationale["point ids"] = peaks_sorted[:,REGION_POINT_ID_IDX].astype(int).tolist()
-                    filtered = signal.savgol_filter(peaks_sorted[:,REGION_POINT_INTENSITY_IDX], 9, 5)
-                    max_index = np.argmax(peaks_sorted[:,REGION_POINT_INTENSITY_IDX])
-
-                    peak_maxima_indexes = peakutils.indexes(filtered, thres=0.05, min_dist=2)
-                    peak_minima_indexes = []
-                    if len(peak_maxima_indexes) > 1:
-                        for idx,peak_maxima_index in enumerate(peak_maxima_indexes):
-                            if idx>0:
-                                intensities_between_maxima = filtered[peak_maxima_indexes[idx-1]:peak_maxima_indexes[idx]+1]
-                                minimum_intensity_index = np.argmin(intensities_between_maxima)+peak_maxima_indexes[idx-1]
-                                peak_minima_indexes.append(minimum_intensity_index)
-
-                    indices_to_delete = np.empty(0)
-                    if len(peak_minima_indexes) > 0:
-                        idx,lower_snip = findNearestLessThan(max_index, peak_minima_indexes)
-                        idx,upper_snip = findNearestGreaterThan(max_index, peak_minima_indexes)
-                        if lower_snip < max_index:
-                            indices_to_delete = np.concatenate((indices_to_delete,np.arange(lower_snip)))
-                        if upper_snip > max_index:
-                            indices_to_delete = np.concatenate((indices_to_delete,np.arange(upper_snip+1,len(peaks_sorted))))
-                        sorted_peaks_indexes = np.delete(sorted_peaks_indexes, indices_to_delete, 0)
-                        peak_indices = peak_indices[sorted_peaks_indexes]
-                        peaks_sorted = ms1_feature_v[peak_indices]
-                        rationale["point ids after trimming"] = peaks_sorted[:,REGION_POINT_ID_IDX].astype(int).tolist()
-
                 # Add the peak to the collection
                 peak_mz = []
                 peak_scan = []
@@ -246,8 +195,8 @@ for feature in features_v:
 
                 peak_id += 1
 
-            # remove the points we've processed
-            ms1_feature_v = np.delete(ms1_feature_v, peak_indices, 0)
+                # remove the points we've processed
+                ms1_feature_v = np.delete(ms1_feature_v, peak_indices, 0)
 
         # Remember the base peak for the feature
         if len(mono_peaks) > 0:

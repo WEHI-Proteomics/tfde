@@ -36,6 +36,7 @@ parser.add_argument('-ml','--mz_lower', type=float, help='Lower feature m/z to p
 parser.add_argument('-mu','--mz_upper', type=float, help='Upper feature m/z to process.', required=True)
 parser.add_argument('-mf','--noise_threshold', type=int, default=2, help='Minimum number of frames a point must appear in to be processed.', required=False)
 parser.add_argument('-mcs','--minimum_charge_state', type=int, default=2, help='Minimum charge state to process.', required=False)
+parser.add_argument('-sd','--standard_deviations', type=int, default=4, help='Number of standard deviations in m/z to look either side of a point.', required=False)
 args = parser.parse_args()
 
 source_conn = pymysql.connect(host='mscypher-004', user='root', passwd='password', database="{}".format(args.database_name))
@@ -92,7 +93,7 @@ for feature in features_v:
             max_intensity_index = np.argmax(points_v[:,FRAME_INTENSITY_IDX])
             point_mz = points_v[max_intensity_index, FRAME_MZ_IDX]
             # print("m/z {}, intensity {}".format(point_mz, points_v[max_intensity_index, 3]))
-            delta_mz = standard_deviation(point_mz) * 4.0
+            delta_mz = standard_deviation(point_mz) * args.standard_deviations
             # Find all the points in this point's std dev window
             nearby_point_indices = np.where((points_v[:,FRAME_MZ_IDX] >= point_mz-delta_mz) & (points_v[:,FRAME_MZ_IDX] <= point_mz+delta_mz))[0]
             nearby_points = points_v[nearby_point_indices]
