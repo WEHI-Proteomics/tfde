@@ -21,12 +21,6 @@ REGION_POINT_INTENSITY_IDX = 3
 
 # feature array indices
 FEATURE_ID_IDX = 0
-FEATURE_START_FRAME_IDX = 1
-FEATURE_END_FRAME_IDX = 2
-FEATURE_SCAN_LOWER_IDX = 3
-FEATURE_SCAN_UPPER_IDX = 4
-FEATURE_MZ_LOWER_IDX = 5
-FEATURE_MZ_UPPER_IDX = 6
 
 MIN_POINTS_IN_PEAK_TO_CHECK_FOR_TROUGHS = 10
 
@@ -96,18 +90,13 @@ start_run = time.time()
 # Take the ms1 features within the m/z band of interest, and detect peaks in the summed regions
 
 print("Loading the MS1 features {}-{}".format(args.feature_id_lower, args.feature_id_upper))
-features_df = pd.read_sql_query("""select feature_id,start_frame,end_frame,scan_lower,scan_upper,mz_lower,mz_upper from features where feature_id >= {} and 
-    feature_id <= {} and charge_state >= {} and mz_lower <= {} and mz_upper >= {} order by feature_id ASC;""".format(args.feature_id_lower, args.feature_id_upper, args.minimum_charge_state, args.mz_upper, args.mz_lower), source_conn)
+features_df = pd.read_sql_query("""select feature_id from features where feature_id >= {} and 
+    feature_id <= {} and charge_state >= {} and mz_lower <= {} and mz_upper >= {} order by feature_id ASC;"""
+    .format(args.feature_id_lower, args.feature_id_upper, args.minimum_charge_state, args.mz_upper, args.mz_lower), source_conn)
 features_v = features_df.values
 
 for feature in features_v:
     feature_id = int(feature[FEATURE_ID_IDX])
-    feature_start_frame = int(feature[FEATURE_START_FRAME_IDX])
-    feature_end_frame = int(feature[FEATURE_END_FRAME_IDX])
-    feature_scan_lower = int(feature[FEATURE_SCAN_LOWER_IDX])
-    feature_scan_upper = int(feature[FEATURE_SCAN_UPPER_IDX])
-    feature_mz_lower = feature[FEATURE_MZ_LOWER_IDX]
-    feature_mz_upper = feature[FEATURE_MZ_UPPER_IDX]
 
     peak_id = 1
     ms1_feature_df = pd.read_sql_query("select point_id,mz,scan,intensity from summed_ms1_regions where feature_id={} order by mz, scan asc;".format(feature_id), source_conn)
@@ -115,15 +104,13 @@ for feature in features_v:
     if len(ms1_feature_v) > 0:
         print("Processing MS1 feature {}".format(feature_id))
         start_feature = time.time()
-        print("frame occupies {} bytes".format(ms1_feature_v.nbytes))
         scan_lower = int(np.min(ms1_feature_v[:,REGION_POINT_SCAN_IDX]))
         scan_upper = int(np.max(ms1_feature_v[:,REGION_POINT_SCAN_IDX]))
-        print("scan range {}-{}".format(scan_lower,scan_upper))
         while len(ms1_feature_v) > 0:
             peak_indices = np.empty(0, dtype=int)
 
             rationale = collections.OrderedDict()
-            max_intensity_index = ms1_feature_v.argmax(axis=0)[REGION_POINT_INTENSITY_IDX]
+            max_intensity_index = np.argmax(ms1_feature_v[:,REGION_POINT_INTENSITY_IDX])
             mz = ms1_feature_v[max_intensity_index][REGION_POINT_MZ_IDX]
             scan = int(ms1_feature_v[max_intensity_index][REGION_POINT_SCAN_IDX])
             intensity = int(ms1_feature_v[max_intensity_index][REGION_POINT_INTENSITY_IDX])
@@ -137,12 +124,14 @@ for feature in features_v:
             scan_offset = 1
             missed_scans = 0
             while (missed_scans <= args.empty_scans) and (scan-scan_offset >= scan_lower):
-                nearby_indices_up = np.where((ms1_feature_v[:,REGION_POINT_SCAN_IDX] == scan-scan_offset) & (ms1_feature_v[:,REGION_POINT_MZ_IDX] >= mz - std_dev_window) & (ms1_feature_v[:,REGION_POINT_MZ_IDX] <= mz + std_dev_window))[0]
+                nearby_indices_up = np.where((ms1_feature_v[:,REGION_POINT_SCAN_IDX] == (scan-scan_offset)) & 
+                    (ms1_feature_v[:,REGION_POINT_MZ_IDX] >= (mz - std_dev_window)) & 
+                    (ms1_feature_v[:,REGION_POINT_MZ_IDX] <= (mz + std_dev_window)))[0]
                 if len(nearby_indices_up) == 0:
                     missed_scans += 1
                 else:
                     # Update the m/z window
-                    mz = ms1_feature_v[nearby_indices_up][REGION_POINT_MZ_IDX]
+                    mz = ms1_feature_v[nearby_indices_up[0],REGION_POINT_MZ_IDX]
                     std_dev_window = standard_deviation(mz) * args.standard_deviations
                     missed_scans = 0
                     peak_indices = np.append(peak_indices, nearby_indices_up)
@@ -153,12 +142,12 @@ for feature in features_v:
             mz = ms1_feature_v[max_intensity_index][REGION_POINT_MZ_IDX]
             std_dev_window = standard_deviation(mz) * args.standard_deviations
             while (missed_scans <= args.empty_scans) and (scan+scan_offset <= scan_upper):
-                nearby_indices_down = np.where((ms1_feature_v[:,REGION_POINT_SCAN_IDX] == scan+scan_offset) & (ms1_feature_v[:,REGION_POINT_MZ_IDX] >= mz - std_dev_window) & (ms1_feature_v[:,REGION_POINT_MZ_IDX] <= mz + std_dev_window))[0]
+                nearby_indices_down = np.where((ms1_feature_v[:,REGION_POINT_SCAN_IDX] == (scan+scan_offset)) & (ms1_feature_v[:,REGION_POINT_MZ_IDX] >= (mz - std_dev_window)) & (ms1_feature_v[:,REGION_POINT_MZ_IDX] <= (mz + std_dev_window)))[0]
                 if len(nearby_indices_down) == 0:
                     missed_scans += 1
                 else:
                     # Update the m/z window
-                    mz = ms1_feature_v[nearby_indices_down][REGION_POINT_MZ_IDX]
+                    mz = ms1_feature_v[nearby_indices_down[0],REGION_POINT_MZ_IDX]
                     std_dev_window = standard_deviation(mz) * args.standard_deviations
                     missed_scans = 0
                     peak_indices = np.append(peak_indices, nearby_indices_down)
@@ -188,15 +177,15 @@ for feature in features_v:
                 peak_mz_centroid, peak_std_dev_mz = weighted_avg_and_std(values=peak_mz, weights=peak_intensity)
                 peak_scan_centroid, peak_std_dev_scan = weighted_avg_and_std(values=peak_scan, weights=peak_intensity)
                 peak_points = ms1_feature_v[peak_indices]
-                peak_max_index = peak_points[:,REGION_POINT_INTENSITY_IDX].argmax()
+                peak_max_index = np.argmax(peak_points[:,REGION_POINT_INTENSITY_IDX])
                 peak_max_mz = float(peak_points[peak_max_index][REGION_POINT_MZ_IDX])
                 peak_max_scan = int(peak_points[peak_max_index][REGION_POINT_SCAN_IDX])
                 mono_peaks.append((feature_id, peak_id, peak_mz_centroid, peak_scan_centroid, peak_intensity_sum, peak_scan_upper, peak_scan_lower, peak_std_dev_mz, peak_std_dev_scan, json.dumps(rationale), peak_intensity_max, peak_max_mz, peak_max_scan))
 
                 peak_id += 1
 
-                # remove the points we've processed
-                ms1_feature_v = np.delete(ms1_feature_v, peak_indices, 0)
+            # remove the points we've processed
+            ms1_feature_v = np.delete(ms1_feature_v, peak_indices, 0)
 
         # Remember the base peak for the feature
         if len(mono_peaks) > 0:
@@ -204,18 +193,16 @@ for feature in features_v:
             base_peaks.append((feature_id, base_peak_id))
 
             # Write out the peaks for this feature
-            print("Writing out the peaks for this feature.")
             src_c.executemany("INSERT INTO ms1_feature_region_peaks VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)", mono_peaks)
             mono_peaks = []
 
         # Update the points in the summed_ms1_regions table
         if len(point_updates) > 0:
-            print("Updating the points in the summed_ms1_regions table.")
             src_c.executemany("UPDATE summed_ms1_regions SET peak_id=%s WHERE feature_id=%s AND point_id=%s", point_updates)
             point_updates = []
 
         stop_feature = time.time()
-        print("{} seconds to process feature {} ({} peaks)".format(stop_feature-start_feature, feature_id, peak_id))
+        # print("{} seconds to process feature {} ({} peaks)".format(stop_feature-start_feature, feature_id, peak_id))
 
 print("Write out the base peaks")
 src_c.executemany("INSERT INTO feature_base_peaks VALUES (%s, %s)", base_peaks)
