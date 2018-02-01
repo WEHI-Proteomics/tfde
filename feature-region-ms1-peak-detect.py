@@ -250,18 +250,20 @@ for feature in features_v:
             ms1_feature_v = np.delete(ms1_feature_v, peak_indices, 0)
 
         # Remember the base peak for the feature
-        base_peak_id = max(mono_peaks, key=itemgetter(4))[1]    # find the max peak_intensity_sum, return its peak_id
-        base_peaks.append((feature_id, base_peak_id))
+        if len(mono_peaks) > 0:
+            base_peak_id = max(mono_peaks, key=itemgetter(4))[1]    # find the max peak_intensity_sum, return its peak_id
+            base_peaks.append((feature_id, base_peak_id))
 
-        # Write out the peaks for this feature
-        print("Writing out the peaks for this feature.")
-        src_c.executemany("INSERT INTO ms1_feature_region_peaks VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)", mono_peaks)
-        mono_peaks = []
+            # Write out the peaks for this feature
+            print("Writing out the peaks for this feature.")
+            src_c.executemany("INSERT INTO ms1_feature_region_peaks VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)", mono_peaks)
+            mono_peaks = []
 
         # Update the points in the summed_ms1_regions table
-        print("Updating the points in the summed_ms1_regions table.")
-        src_c.executemany("UPDATE summed_ms1_regions SET peak_id=%s WHERE feature_id=%s AND point_id=%s", point_updates)
-        point_updates = []
+        if len(point_updates) > 0:
+            print("Updating the points in the summed_ms1_regions table.")
+            src_c.executemany("UPDATE summed_ms1_regions SET peak_id=%s WHERE feature_id=%s AND point_id=%s", point_updates)
+            point_updates = []
 
         stop_feature = time.time()
         print("{} seconds to process feature {} ({} peaks)".format(stop_feature-start_feature, feature_id, peak_id))
