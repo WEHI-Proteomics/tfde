@@ -57,7 +57,28 @@ def calculate_correlation(base_peak_points, ms2_peak_points):
 
 parser = argparse.ArgumentParser(description='Calculate correlation between MS1 and MS2 peaks for features.')
 parser.add_argument('-db','--database_name', type=str, help='The name of the source database.', required=True)
+parser.add_argument('-fl','--feature_id_lower', type=int, help='Lower feature ID to process.', required=False)
+parser.add_argument('-fu','--feature_id_upper', type=int, help='Upper feature ID to process.', required=False)
 args = parser.parse_args()
+
+if args.feature_id_lower is None:
+    src_c.execute("SELECT MIN(feature_id) FROM features")
+    row = src_c.fetchone()
+    args.feature_id_lower = int(row[0])
+    print("feature_id_lower set to {} from the data".format(args.feature_id_lower))
+
+if args.feature_id_upper is None:
+    src_c.execute("SELECT MAX(feature_id) FROM features")
+    row = src_c.fetchone()
+    args.feature_id_upper = int(row[0])
+    print("feature_id_upper set to {} from the data".format(args.feature_id_upper))
+
+# Store the arguments as metadata in the database for later reference
+peak_correlation_info = []
+for arg in vars(args):
+    peak_correlation_info.append((arg, getattr(args, arg)))
+
+start_run = time.time()
 
 source_conn = pymysql.connect(host='mscypher-004', user='root', passwd='password', database="{}".format(args.database_name))
 src_c = source_conn.cursor()
@@ -76,6 +97,7 @@ print("Finding peak correlations")
 for feature in features_v:
     feature_id = int(feature[FEATURE_ID_IDX])
     base_peak_id = int(feature[FEATURE_BASE_PEAK_ID_IDX])
+    print("Processing feature {}".format(feature_id))
 
     feature_base_peak_points_df = pd.read_sql_query("""select point_id,mz,scan,intensity from summed_ms1_regions where feature_id={} and peak_id={} order by scan ASC;"""
         .format(feature_id,base_peak_id), source_conn)
@@ -102,6 +124,18 @@ for feature in features_v:
 
 print("Writing out the peak correlations")
 src_c.executemany("INSERT INTO peak_correlation VALUES (%s, %s, %s, %s)", peak_correlation)
+
+stop_run = time.time()
+print("{} seconds to process features {} to {}".format(stop_run-start_run, args.feature_id_lower, args.feature_id_upper))
+
+# write out the processing info
+peak_correlation_info.append(("run processing time (sec)", stop_run-start_run))
+peak_correlation_info.append(("processed", time.ctime()))
+
+peak_correlation_info_entry = []
+peak_correlation_info_entry.append(("features {}-{}".format(args.feature_id_lower, args.feature_id_upper), ' '.join(str(e) for e in peak_correlation_info)))
+
+src_c.executemany("INSERT INTO peak_correlation_info VALUES (%s, %s)", peak_correlation_info_entry)
 
 source_conn.commit()
 source_conn.close()
