@@ -58,7 +58,7 @@ parser.add_argument('-fu','--feature_id_upper', type=int, help='Upper feature ID
 parser.add_argument('-ml','--mz_lower', type=float, help='Lower feature m/z to process.', required=True)
 parser.add_argument('-mu','--mz_upper', type=float, help='Upper feature m/z to process.', required=True)
 parser.add_argument('-es','--empty_scans', type=int, default=20, help='Maximum number of empty scans to tolerate.', required=False)
-parser.add_argument('-sd','--standard_deviations', type=int, default=4, help='Number of standard deviations to look either side of a point.', required=False)
+parser.add_argument('-sd','--standard_deviations', type=int, default=8, help='Number of standard deviations to look either side of a point.', required=False)
 parser.add_argument('-mcs','--minimum_charge_state', type=int, default=2, help='Minimum charge state to process.', required=False)
 args = parser.parse_args()
 
