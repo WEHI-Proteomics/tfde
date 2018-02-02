@@ -121,3 +121,22 @@ if (args.operation == 'all') or (args.operation == 'peak-ms1-region'):
                     .format(args.database_name, first_feature_id, last_feature_id, args.mz_lower, args.mz_upper, args.database_name, i, first_feature_id, last_feature_id))
     else:
         print("ERROR: mandatory parameters missing.")
+
+#
+# Peak correlation
+#
+if (args.operation == 'all') or (args.operation == 'peak-correlation'):
+    print("")
+    print("python ./correlate-ms2-peaks-prep.py -db {}".format(args.database_name))
+    for i in range(args.number_of_batches):
+        first_feature_id = i*batch_size+1
+        last_feature_id = first_feature_id + batch_size - 1
+        if last_feature_id > number_of_features:
+            last_feature_id = number_of_features
+
+        if args.operating_system == 'windows':
+            print("start \"Summing {}-{}\" python -u correlate-ms2-peaks.py -db {} -fl {} -fu {}"
+                .format(first_feature_id, last_feature_id, args.database_name, first_feature_id, last_feature_id, args.mz_lower, args.mz_upper))
+        else:
+            print("nohup python -u ./correlate-ms2-peaks.py -db {} -fl {} -fu {} > ../logs/{}-correlate-ms2-peaks-batch-{}-{}-{}.log 2>&1 &"
+                .format(args.database_name, first_feature_id, last_feature_id, args.database_name, i, first_feature_id, last_feature_id))

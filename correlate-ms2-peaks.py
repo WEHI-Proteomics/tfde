@@ -2,6 +2,7 @@ import pandas as pd
 import argparse
 import numpy as np
 import pymysql
+import time
 
 
 # feature / base peak array indices
@@ -61,6 +62,9 @@ parser.add_argument('-fl','--feature_id_lower', type=int, help='Lower feature ID
 parser.add_argument('-fu','--feature_id_upper', type=int, help='Upper feature ID to process.', required=False)
 args = parser.parse_args()
 
+source_conn = pymysql.connect(host='mscypher-004', user='root', passwd='password', database="{}".format(args.database_name))
+src_c = source_conn.cursor()
+
 if args.feature_id_lower is None:
     src_c.execute("SELECT MIN(feature_id) FROM features")
     row = src_c.fetchone()
@@ -80,14 +84,8 @@ for arg in vars(args):
 
 start_run = time.time()
 
-source_conn = pymysql.connect(host='mscypher-004', user='root', passwd='password', database="{}".format(args.database_name))
-src_c = source_conn.cursor()
-
-print("Setting up tables and indexes")
-src_c.execute("CREATE OR REPLACE TABLE peak_correlation (feature_id INTEGER, base_peak_id INTEGER, ms2_peak_id INTEGER, correlation REAL, PRIMARY KEY (feature_id, base_peak_id, ms2_peak_id))")
-
 print("Loading the MS1 base peaks")
-features_df = pd.read_sql_query("select feature_id,base_peak_id from feature_base_peaks order by feature_id ASC;", source_conn)
+features_df = pd.read_sql_query("select feature_id,base_peak_id from feature_base_peaks where feature_id >= {} and feature_id <= {} order by feature_id ASC;".format(args.feature_id_lower, args.feature_id_upper), source_conn)
 features_v = features_df.values
 print("found features {}-{}".format(int(np.min(features_v[:,FEATURE_ID_IDX])), int(np.max(features_v[:,FEATURE_ID_IDX]))))
 
@@ -99,8 +97,8 @@ for feature in features_v:
     base_peak_id = int(feature[FEATURE_BASE_PEAK_ID_IDX])
     print("Processing feature {}".format(feature_id))
 
-    feature_base_peak_points_df = pd.read_sql_query("""select point_id,mz,scan,intensity from summed_ms1_regions where feature_id={} and peak_id={} order by scan ASC;"""
-        .format(feature_id,base_peak_id), source_conn)
+    feature_base_peak_points_df = pd.read_sql_query("""select point_id,mz,scan,intensity from summed_ms1_regions where feature_id={} and 
+        peak_id={} order by scan ASC;""".format(feature_id,base_peak_id), source_conn)
     feature_base_peak_points_v = feature_base_peak_points_df.values
 
     # Load the MS2 peak points
@@ -118,7 +116,7 @@ for feature in features_v:
             # Calculate the correlation between this MS2 peak and the MS1 base peak
             correlation = calculate_correlation(feature_base_peak_points_v, points_v)
             # print("feature {}, ms1 base peak ID {}, ms2 peak ID {}, correlation {}".format(feature_id, base_peak_id, ms2_peak_id, correlation))
-            peak_correlation.append((feature_id, base_peak_id, ms2_peak_id, correlation))
+            peak_correlation.append((feature_id, base_peak_id, ms2_peak_id, float(correlation)))
     else:
         print("No MS2 peak points found for feature {}".format(feature_id))
 
