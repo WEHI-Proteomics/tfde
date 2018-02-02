@@ -35,7 +35,7 @@ parser.add_argument('-fu','--feature_id_upper', type=int, help='Upper feature ID
 parser.add_argument('-ml','--mz_lower', type=float, help='Lower feature m/z to process.', required=True)
 parser.add_argument('-mu','--mz_upper', type=float, help='Upper feature m/z to process.', required=True)
 parser.add_argument('-mcs','--minimum_charge_state', type=int, default=2, help='Minimum charge state to process.', required=False)
-parser.add_argument('-sd','--standard_deviations', type=int, default=6, help='Number of standard deviations in m/z to look either side of a point.', required=False)
+parser.add_argument('-sd','--standard_deviations', type=int, default=8, help='Number of standard deviations in m/z to look either side of a point.', required=False)
 args = parser.parse_args()
 
 source_conn = pymysql.connect(host='mscypher-004', user='root', passwd='password', database="{}".format(args.database_name))
