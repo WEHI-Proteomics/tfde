@@ -24,7 +24,8 @@ if (batch_size * args.number_of_batches) < number_of_frames:
     args.number_of_batches += 1
 
 print("number of frames {}, batch size {}, number of batches {}".format(number_of_frames, batch_size, args.number_of_batches))
-
+print("")
+print("python ./peak-detect-ms1-prep.py -db {}".format(args.database_name))
 for i in range(args.number_of_batches):
     first_frame_id = i*batch_size+1
     last_frame_id = first_frame_id + batch_size - 1
@@ -37,7 +38,7 @@ for i in range(args.number_of_batches):
     print("nohup python -u ./peak-detect-ms1.py -db {} -fl {} -fu {} > ../logs/{}-peak-batch-{}-{}-{}.log 2>&1 &".format(args.database_name, first_frame_id, last_frame_id, args.database_name, i, first_frame_id, last_frame_id))
 
 print("")
-
+print("python ./cluster-detect-ms1-prep.py -db {}".format(args.database_name))
 for i in range(args.number_of_batches):
     first_frame_id = i*batch_size+1
     last_frame_id = first_frame_id + batch_size - 1
