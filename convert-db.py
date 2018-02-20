@@ -20,10 +20,12 @@ FRAME_NUMSCAN_IDX = 1
 FRAME_ID_IDX = 0
 FRAME_COLLISION_ENERGY_IDX = 1
 
+BATCH_SIZE = 25000
 
 parser = argparse.ArgumentParser(description='Convert the Bruker database to a detection database.')
 parser.add_argument('-sdb','--source_database_name', type=str, help='The name of the source database.', required=True)
 parser.add_argument('-ddb','--destination_database_name', type=str, help='The name of the destination database.', required=True)
+parser.add_argument('-hn','--hostname', default='mscypher-004', type=str, help='The hostname of the database.', required=False)
 args = parser.parse_args()
 
 analysis_dir = args.source_database_name
@@ -52,7 +54,7 @@ collision_energies_df = pd.read_sql_query("SELECT Frame,Value FROM FrameProperti
 collision_energies_v = collision_energies_df.values
 
 # Connect to the destination database
-dest_conn = pymysql.connect(host='mscypher-004', user='root', passwd='password', database="{}".format(args.destination_database_name))
+dest_conn = pymysql.connect(host="{}".format(args.hostname), user='root', passwd='password', database="{}".format(args.destination_database_name))
 dest_c = dest_conn.cursor()
 
 # Create the table
@@ -90,8 +92,8 @@ for frame in frames_v:
                 points.append((int(frame_id), int(pointId), float(mz_values[i]), int(scan_line), int(intensity_values[i]), int(peak_id)))
 
     # Check whether we've done a chunk to write out to the database
-    if frame_id % 1000 == 0:
-        print("Writing 1000 frames...")
+    if frame_id % BATCH_SIZE == 0:
+        print("Writing {} frames...".format(BATCH_SIZE))
         dest_c.executemany("INSERT INTO frames VALUES (%s, %s, %s, %s, %s, %s)", points)
         dest_conn.commit()
         points = []
