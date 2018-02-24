@@ -63,6 +63,7 @@ print("Setting up tables and indexes")
 dest_c.execute("CREATE OR REPLACE TABLE frames (frame_id INTEGER, point_id INTEGER, mz REAL, scan INTEGER, intensity INTEGER, peak_id INTEGER)")
 dest_c.execute("CREATE OR REPLACE TABLE frame_properties (frame_id INTEGER, collision_energy REAL)")
 dest_c.execute("CREATE OR REPLACE TABLE convert_info (item TEXT, value TEXT)")
+dest_conn.close()
 
 points = []
 frame_properties = []
@@ -94,9 +95,15 @@ for frame in frames_v:
     # Check whether we've done a chunk to write out to the database
     if frame_id % BATCH_SIZE == 0:
         print("Writing {} frames...".format(BATCH_SIZE))
+        dest_conn = pymysql.connect(host="{}".format(args.hostname), user='root', passwd='password', database="{}".format(args.destination_database_name))
+        dest_c = dest_conn.cursor()
         dest_c.executemany("INSERT INTO frames VALUES (%s, %s, %s, %s, %s, %s)", points)
         dest_conn.commit()
+        dest_conn.close()
         points = []
+
+dest_conn = pymysql.connect(host="{}".format(args.hostname), user='root', passwd='password', database="{}".format(args.destination_database_name))
+dest_c = dest_conn.cursor()
 
 # Write what we have left
 if len(points) > 0:
