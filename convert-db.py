@@ -20,7 +20,7 @@ FRAME_NUMSCAN_IDX = 1
 FRAME_ID_IDX = 0
 FRAME_COLLISION_ENERGY_IDX = 1
 
-BATCH_SIZE = 25000
+BATCH_SIZE = 10000
 
 parser = argparse.ArgumentParser(description='Convert the Bruker database to a detection database.')
 parser.add_argument('-sdb','--source_database_name', type=str, help='The name of the source database.', required=True)
@@ -107,13 +107,16 @@ dest_c = dest_conn.cursor()
 
 # Write what we have left
 if len(points) > 0:
+    print("Writing {} frames...".format(len(points)))
     dest_c.executemany("INSERT INTO frames VALUES (%s, %s, %s, %s, %s, %s)", points)
 
+print("Creating the index on frame_id")
 dest_c.execute("CREATE OR REPLACE INDEX idx_frames ON frames (frame_id)")
 
 for collision_energy in collision_energies_v:
     frame_properties.append((int(collision_energy[FRAME_ID_IDX]), float(collision_energy[FRAME_COLLISION_ENERGY_IDX])))
 
+print("Writing frame properties")
 dest_c.executemany("INSERT INTO frame_properties VALUES (%s, %s)", frame_properties)
 dest_c.execute("CREATE OR REPLACE INDEX idx_frame_properties ON frame_properties (frame_id)")
 
