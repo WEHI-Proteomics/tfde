@@ -109,6 +109,7 @@ dest_c = dest_conn.cursor()
 if len(points) > 0:
     print("Writing {} frames...".format(len(points)))
     dest_c.executemany("INSERT INTO frames VALUES (%s, %s, %s, %s, %s, %s)", points)
+    del points[:]
 
 print("Creating the index on frame_id")
 dest_c.execute("CREATE OR REPLACE INDEX idx_frames ON frames (frame_id)")
