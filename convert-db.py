@@ -100,7 +100,7 @@ for frame in frames_v:
         dest_c.executemany("INSERT INTO frames VALUES (%s, %s, %s, %s, %s, %s)", points)
         dest_conn.commit()
         dest_conn.close()
-        points = []
+        del points[:]
 
 dest_conn = pymysql.connect(host="{}".format(args.hostname), user='root', passwd='password', database="{}".format(args.destination_database_name))
 dest_c = dest_conn.cursor()
