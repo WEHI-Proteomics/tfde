@@ -17,10 +17,11 @@ parser.add_argument('-fts','--frames_to_sum', type=int, default=150, help='The n
 parser.add_argument('-fso','--frame_summing_offset', type=int, default=25, help='The number of MS1 source frames to shift for each summation.', required=False)
 parser.add_argument('-mf','--noise_threshold', type=int, default=2, help='Minimum number of frames a point must appear in to be processed.', required=False)
 parser.add_argument('-ce','--collision_energy', type=int, help='Collision energy, in eV.', required=True)
+parser.add_argument('-hn','--hostname', default='mscypher-004', type=str, help='The hostname of the database.', required=False)
 args = parser.parse_args()
 
 # Connect to the database
-source_conn = pymysql.connect(host='mscypher-004', user='root', passwd='password', database="{}".format(args.database_name))
+source_conn = pymysql.connect(host="{}".format(args.hostname), user='root', passwd='password', database="{}".format(args.database_name))
 src_c = source_conn.cursor()
 
 print("Setting up tables and indexes")
