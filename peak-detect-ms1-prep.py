@@ -4,9 +4,10 @@ import argparse
 
 parser = argparse.ArgumentParser(description='Prepare the database for MS1 peak detection.')
 parser.add_argument('-db','--database_name', type=str, help='The name of the source database.', required=True)
+parser.add_argument('-hn','--hostname', default='mscypher-004', type=str, help='The hostname of the database.', required=False)
 args = parser.parse_args()
 
-source_conn = pymysql.connect(host='mscypher-004', user='root', passwd='password', database="{}".format(args.database_name))
+source_conn = pymysql.connect(host="{}".format(args.hostname), user='root', passwd='password', database="{}".format(args.database_name))
 src_c = source_conn.cursor()
 
 print("Setting up tables and indexes")

@@ -5,10 +5,11 @@ import pymysql
 parser = argparse.ArgumentParser(description='Generates the commands to run MS1 peak detection in parallel.')
 parser.add_argument('-db','--database_name', type=str, help='The name of the database.', required=True)
 parser.add_argument('-fbs','--number_of_batches', type=int, default=12, help='The number of batches.', required=False)
+parser.add_argument('-hn','--hostname', default='mscypher-004', type=str, help='The hostname of the database.', required=False)
 args = parser.parse_args()
 
 # Connect to the database
-source_conn = pymysql.connect(host='mscypher-004', user='root', passwd='password', database="{}".format(args.database_name))
+source_conn = pymysql.connect(host="{}".format(args.hostname), user='root', passwd='password', database="{}".format(args.database_name))
 src_c = source_conn.cursor()
 
 # Find out the number of summed MS1 frames in the database
