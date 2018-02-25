@@ -1,5 +1,6 @@
 import argparse
 import pymysql
+import pandas as pd
 
 # Process the command line arguments
 parser = argparse.ArgumentParser(description='Generates the commands to run MS1 peak detection in parallel.')
