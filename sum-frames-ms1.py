@@ -109,6 +109,10 @@ summing_info.append(("scan_upper", scan_upper))
 
 summing_info.append(("run processing time (sec)", stop_run-start_run))
 summing_info.append(("processed", time.ctime()))
-src_c.executemany("INSERT INTO summing_info VALUES (%s, %s)", summing_info)
+
+summing_info_entry = []
+summing_info_entry.append(("summed frames {}-{}".format(args.frame_lower, args.frame_upper), ' '.join(str(e) for e in summing_info)))
+
+src_c.executemany("INSERT INTO summing_info VALUES (%s, %s)", summing_info_entry)
 source_conn.commit()
 source_conn.close()
