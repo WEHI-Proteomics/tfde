@@ -26,6 +26,20 @@ if (batch_size * args.number_of_batches) < number_of_frames:
 
 print("number of frames {}, batch size {}, number of batches {}".format(number_of_frames, batch_size, args.number_of_batches))
 print("")
+print("python ./sum-frames-ms1-prep.py -db {}".format(args.database_name))
+for i in range(args.number_of_batches):
+    first_frame_id = i*batch_size+1
+    last_frame_id = first_frame_id + batch_size - 1
+    if last_frame_id > number_of_frames:
+        last_frame_id = number_of_frames
+
+    # print("start \"Summing {}-{}\" python sum-frames-intensity-descent.py -sdb \"{}/{}\" -ddb \"{}/summed-{}-{}-{}\" -n {} -bf {} -sf {}".format(base_feature_id, last_summed_frame_id, args.source_directory, 
+    #     args.base_database_name, args.destination_directory, base_feature_id, last_summed_frame_id, args.base_database_name, number_of_features_required_this_batch, 
+    #     base_feature_id, base_source_frame_index))
+    # print("nohup python -u ./peak-detect-ms1.py -db {} -fl {} -fu {} > ../logs/{}-peak-batch-{}-{}-{}.log 2>&1 &".format(args.database_name, first_frame_id, last_frame_id, args.database_name, i, first_frame_id, last_frame_id))
+    print("qsub -l nodes=1:ppn=12,mem=12gb ./py.sh -F \"./otf-peak-detect/sum-frames-ms1.py -db {} -fl {} -fu {}\"".format(args.database_name, first_frame_id, last_frame_id, args.database_name, i, first_frame_id, last_frame_id))
+
+print("")
 print("python ./peak-detect-ms1-prep.py -db {}".format(args.database_name))
 for i in range(args.number_of_batches):
     first_frame_id = i*batch_size+1
