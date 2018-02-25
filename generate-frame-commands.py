@@ -6,16 +6,19 @@ parser = argparse.ArgumentParser(description='Generates the commands to run MS1 
 parser.add_argument('-db','--database_name', type=str, help='The name of the database.', required=True)
 parser.add_argument('-fbs','--number_of_batches', type=int, default=12, help='The number of batches.', required=False)
 parser.add_argument('-hn','--hostname', default='mscypher-004', type=str, help='The hostname of the database.', required=False)
+parser.add_argument('-fts','--frames_to_sum', type=int, default=150, help='The number of MS1 source frames to sum.', required=False)
+parser.add_argument('-fso','--frame_summing_offset', type=int, default=25, help='The number of MS1 source frames to shift for each summation.', required=False)
+parser.add_argument('-ce','--collision_energy', type=int, help='Collision energy, in eV.', required=True)
 args = parser.parse_args()
 
 # Connect to the database
 source_conn = pymysql.connect(host="{}".format(args.hostname), user='root', passwd='password', database="{}".format(args.database_name))
 src_c = source_conn.cursor()
 
-# Find out the number of summed MS1 frames in the database
-src_c.execute("SELECT value FROM summing_info WHERE item=\"frame_upper\"")
-row = src_c.fetchone()
-number_of_frames = int(row[0])
+# Find the complete set of frame ids to be processed
+frame_ids_df = pd.read_sql_query("select frame_id from frame_properties where collision_energy={} order by frame_id ASC;".format(args.collision_energy), source_conn)
+frame_ids = tuple(frame_ids_df.values[:,0])
+number_of_frames = 1 + int(((len(frame_ids) - args.frames_to_sum) / args.frame_summing_offset))
 
 # Close the database connection
 source_conn.close()
