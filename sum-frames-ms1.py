@@ -18,17 +18,13 @@ parser.add_argument('-fso','--frame_summing_offset', type=int, default=25, help=
 parser.add_argument('-mf','--noise_threshold', type=int, default=2, help='Minimum number of frames a point must appear in to be processed.', required=False)
 parser.add_argument('-ce','--collision_energy', type=int, help='Collision energy, in eV.', required=True)
 parser.add_argument('-hn','--hostname', default='mscypher-004', type=str, help='The hostname of the database.', required=False)
+parser.add_argument('-fl','--frame_lower', type=int, help='The lower frame number.', required=False)
+parser.add_argument('-fu','--frame_upper', type=int, help='The upper frame number.', required=False)
 args = parser.parse_args()
 
 # Connect to the database
 source_conn = pymysql.connect(host="{}".format(args.hostname), user='root', passwd='password', database="{}".format(args.database_name))
 src_c = source_conn.cursor()
-
-print("Setting up tables and indexes")
-
-src_c.execute("CREATE OR REPLACE TABLE summed_frames (frame_id INTEGER, point_id INTEGER, mz REAL, scan INTEGER, intensity INTEGER, peak_id INTEGER)")
-src_c.execute("CREATE OR REPLACE TABLE summing_info (item TEXT, value TEXT)")
-src_c.execute("CREATE OR REPLACE TABLE elution_profile (frame_id INTEGER, intensity INTEGER)")
 
 src_c.execute("SELECT value from convert_info where item=\"num_scans\"")
 row = src_c.fetchone()
@@ -47,13 +43,19 @@ frame_ids = tuple(frame_ids_df.values[:,0])
 number_of_summed_frames = 1 + int(((len(frame_ids) - args.frames_to_sum) / args.frame_summing_offset))
 print("summing {} source frames with collision energy {} to create {} summed frames".format(len(frame_ids), args.collision_energy, number_of_summed_frames))
 
-frame_lower = 1
-frame_upper = number_of_summed_frames
+if args.frame_lower is None:
+    args.frame_lower = 1
+    print("lower frame_id set to {} from the data".format(args.frame_lower))
+
+if args.frame_upper is None:
+    args.frame_upper = number_of_summed_frames
+    print("upper frame_id set to {} from the data".format(args.frame_upper))
+
 baseFrameIdsIndex = 0
 
 start_run = time.time()
 # Step through the source frames and sum them
-for summedFrameId in range(1,number_of_summed_frames+1):
+for summedFrameId in range(args.frame_lower,args.frame_upper+1):
     frameIdsToSum = frame_ids[baseFrameIdsIndex:baseFrameIdsIndex+args.frames_to_sum]
     print("Processing {} frames ({}) to create summed frame {}".format(len(frameIdsToSum), frameIdsToSum, summedFrameId))
     frame_df = pd.read_sql_query("select frame_id,mz,scan,intensity from frames where frame_id in {} order by frame_id, mz, scan asc;".format(frameIdsToSum), source_conn)
@@ -104,8 +106,6 @@ print("{} seconds to process run".format(stop_run-start_run))
 
 summing_info.append(("scan_lower", scan_lower))
 summing_info.append(("scan_upper", scan_upper))
-summing_info.append(("frame_lower", frame_lower))
-summing_info.append(("frame_upper", frame_upper))
 
 summing_info.append(("run processing time (sec)", stop_run-start_run))
 summing_info.append(("processed", time.ctime()))
