@@ -54,7 +54,8 @@ for i in range(args.number_of_batches):
     # print("start \"Summing {}-{}\" python sum-frames-intensity-descent.py -sdb \"{}/{}\" -ddb \"{}/summed-{}-{}-{}\" -n {} -bf {} -sf {}".format(base_feature_id, last_summed_frame_id, args.source_directory, 
     #     args.base_database_name, args.destination_directory, base_feature_id, last_summed_frame_id, args.base_database_name, number_of_features_required_this_batch, 
     #     base_feature_id, base_source_frame_index))
-    print("nohup python -u ./peak-detect-ms1.py -db {} -fl {} -fu {} > ../logs/{}-peak-batch-{}-{}-{}.log 2>&1 &".format(args.database_name, first_frame_id, last_frame_id, args.database_name, i, first_frame_id, last_frame_id))
+    # print("nohup python -u ./peak-detect-ms1.py -db {} -fl {} -fu {} > ../logs/{}-peak-batch-{}-{}-{}.log 2>&1 &".format(args.database_name, first_frame_id, last_frame_id, args.database_name, i, first_frame_id, last_frame_id))
+    print("qsub -l nodes=1:ppn=12,mem=4gb -F \"./otf-peak-detect/peak-detect-ms1.py -db {} -fl {} -fu {}\" ./py.sh".format(args.database_name, first_frame_id, last_frame_id))
 
 print("")
 print("python ./cluster-detect-ms1-prep.py -db {}".format(args.database_name))
@@ -67,4 +68,5 @@ for i in range(args.number_of_batches):
     # print("start \"Summing {}-{}\" python sum-frames-intensity-descent.py -sdb \"{}/{}\" -ddb \"{}/summed-{}-{}-{}\" -n {} -bf {} -sf {}".format(base_feature_id, last_summed_frame_id, args.source_directory, 
     #     args.base_database_name, args.destination_directory, base_feature_id, last_summed_frame_id, args.base_database_name, number_of_features_required_this_batch, 
     #     base_feature_id, base_source_frame_index))
-    print("nohup python -u ./cluster-detect-ms1.py -db {} -fl {} -fu {} > ../logs/{}-cluster-batch-{}-{}-{}.log 2>&1 &".format(args.database_name, first_frame_id, last_frame_id, args.database_name, i, first_frame_id, last_frame_id))
+    # print("nohup python -u ./cluster-detect-ms1.py -db {} -fl {} -fu {} > ../logs/{}-cluster-batch-{}-{}-{}.log 2>&1 &".format(args.database_name, first_frame_id, last_frame_id, args.database_name, i, first_frame_id, last_frame_id))
+    print("qsub -l nodes=1:ppn=12,mem=4gb -F \"./otf-peak-detect/cluster-detect-ms1.py -db {} -fl {} -fu {}\" ./py.sh".format(args.database_name, first_frame_id, last_frame_id))
