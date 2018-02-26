@@ -16,5 +16,9 @@ src_c.execute("CREATE OR REPLACE TABLE summed_frames (frame_id INTEGER, point_id
 src_c.execute("CREATE OR REPLACE TABLE summing_info (item TEXT, value TEXT)")
 src_c.execute("CREATE OR REPLACE TABLE elution_profile (frame_id INTEGER, intensity INTEGER)")
 
+# Indexes
+src_c.execute("CREATE INDEX idx_summed_frames ON summed_frames (frame_id)")
+src_c.execute("CREATE INDEX idx_summed_frames_2 ON summed_frames (frame_id,point_id)")
+
 source_conn.commit()
 source_conn.close()
