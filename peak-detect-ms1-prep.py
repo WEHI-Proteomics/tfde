@@ -15,8 +15,8 @@ print("Setting up tables and indexes")
 src_c.execute("CREATE OR REPLACE TABLE peaks (frame_id INTEGER, peak_id INTEGER, centroid_mz REAL, centroid_scan REAL, intensity_sum INTEGER, scan_upper INTEGER, scan_lower INTEGER, std_dev_mz REAL, std_dev_scan REAL, rationale TEXT, intensity_max INTEGER, peak_max_mz REAL, peak_max_scan INTEGER, cluster_id INTEGER, PRIMARY KEY (frame_id, peak_id))")
 src_c.execute("CREATE OR REPLACE TABLE peak_detect_info (item TEXT, value TEXT)")
 
-print("Resetting peak IDs")
-src_c.execute("update summed_frames set peak_id=0 where peak_id!=0")
+# print("Resetting peak IDs")
+# src_c.execute("update summed_frames set peak_id=0 where peak_id!=0")
 
 source_conn.commit()
 source_conn.close()
