@@ -37,8 +37,8 @@ src_c.execute("CREATE OR REPLACE TABLE cluster_detect_info (item TEXT, value TEX
 src_c.execute("CREATE INDEX IF NOT EXISTS idx_peaks ON peaks (frame_id)")
 src_c.execute("CREATE INDEX IF NOT EXISTS idx_peaks_2 ON peaks (frame_id,peak_id)")
 
-print("Resetting cluster IDs")
-src_c.execute("update peaks set cluster_id=0 where cluster_id!=0")
+# print("Resetting cluster IDs")
+# src_c.execute("update peaks set cluster_id=0 where cluster_id!=0")
 
 source_conn.commit()
 source_conn.close()
