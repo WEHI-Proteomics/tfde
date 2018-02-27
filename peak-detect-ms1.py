@@ -68,13 +68,11 @@ if args.frame_upper is None:
     print("upper frame_id set to {} from the data".format(args.frame_upper))
 
 if args.scan_lower is None:
-    src_c.execute("SELECT value FROM summing_info WHERE item=\"scan_lower\"")
-    row = src_c.fetchone()
-    args.scan_lower = int(row[0])
+    args.scan_lower = 1
     print("lower scan set to {} from the data".format(args.scan_lower))
 
 if args.scan_upper is None:
-    src_c.execute("SELECT value FROM summing_info WHERE item=\"scan_upper\"")
+    src_c.execute("SELECT value FROM convert_info WHERE item=\"num_scans\"")
     row = src_c.fetchone()
     args.scan_upper = int(row[0])
     print("upper scan set to {} from the data".format(args.scan_upper))
