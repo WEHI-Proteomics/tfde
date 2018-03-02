@@ -51,7 +51,7 @@ if args.frame_upper is None:
     args.frame_upper = number_of_summed_frames
     print("upper frame_id set to {} from the data".format(args.frame_upper))
 
-baseFrameIdsIndex = 0
+baseFrameIdsIndex = (args.frame_lower-1)*args.frame_summing_offset
 
 start_run = time.time()
 # Step through the source frames and sum them
