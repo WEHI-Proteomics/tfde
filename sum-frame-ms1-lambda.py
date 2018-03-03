@@ -6,6 +6,10 @@ import pandas as pd
 import time
 import numpy as np
 
+def standard_deviation(mz):
+    instrument_resolution = 40000.0
+    return (mz / instrument_resolution) / 2.35482
+
 #rds settings
 rds_host  = "dwm-instance.cy0jiebct3t0.ap-southeast-2.rds.amazonaws.com"
 name = rds_config.db_username
