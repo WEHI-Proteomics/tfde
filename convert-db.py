@@ -6,7 +6,7 @@ import sqlite3
 import os
 import argparse
 import time
-import pymysql
+import sqlite3
 
 # Usage: python convert-db.py -sdb "S:\data\Projects\ProtemicsLab\Bruker timsTOF\databases\20170714_SN34_UPS2_yeast200ng_AIF15_Slot1-39_01_728.d" -ddb "S:\data\Projects\ProtemicsLab\Bruker timsTOF\converted\20170714_SN34_UPS2_yeast200ng_AIF15_Slot1-39_01_728.sqlite"
 
@@ -25,7 +25,6 @@ BATCH_SIZE = 10000
 parser = argparse.ArgumentParser(description='Convert the Bruker database to a detection database.')
 parser.add_argument('-sdb','--source_database_name', type=str, help='The name of the source database.', required=True)
 parser.add_argument('-ddb','--destination_database_name', type=str, help='The name of the destination database.', required=True)
-parser.add_argument('-hn','--hostname', default='mscypher-004', type=str, help='The hostname of the database.', required=False)
 args = parser.parse_args()
 
 analysis_dir = args.source_database_name
@@ -54,7 +53,7 @@ collision_energies_df = pd.read_sql_query("SELECT Frame,Value FROM FrameProperti
 collision_energies_v = collision_energies_df.values
 
 # Connect to the destination database
-dest_conn = pymysql.connect(host="{}".format(args.hostname), user='root', passwd='password', database="{}".format(args.destination_database_name))
+dest_conn = sqlite3.connect(args.destination_database_name)
 dest_c = dest_conn.cursor()
 
 # Create the table
@@ -99,11 +98,7 @@ for frame in frames_v:
         dest_c = dest_conn.cursor()
         dest_c.executemany("INSERT INTO frames VALUES (%s, %s, %s, %s, %s, %s)", points)
         dest_conn.commit()
-        dest_conn.close()
         del points[:]
-
-dest_conn = pymysql.connect(host="{}".format(args.hostname), user='root', passwd='password', database="{}".format(args.destination_database_name))
-dest_c = dest_conn.cursor()
 
 # Write what we have left
 if len(points) > 0:
