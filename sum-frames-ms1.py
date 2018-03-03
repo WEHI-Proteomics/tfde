@@ -51,11 +51,11 @@ if args.frame_upper is None:
     args.frame_upper = number_of_summed_frames
     print("upper frame_id set to {} from the data".format(args.frame_upper))
 
-baseFrameIdsIndex = (args.frame_lower-1)*args.frame_summing_offset
-
 start_run = time.time()
+
 # Step through the source frames and sum them
 for summedFrameId in range(args.frame_lower,args.frame_upper+1):
+    baseFrameIdsIndex = (summedFrameId-1)*args.frame_summing_offset
     frameIdsToSum = frame_ids[baseFrameIdsIndex:baseFrameIdsIndex+args.frames_to_sum]
     print("Processing {} frames ({}) to create summed frame {}".format(len(frameIdsToSum), frameIdsToSum, summedFrameId))
     frame_df = pd.read_sql_query("select frame_id,mz,scan,intensity from frames where frame_id in {} order by frame_id, mz, scan asc;".format(frameIdsToSum), source_conn)
@@ -97,9 +97,6 @@ for summedFrameId in range(args.frame_lower,args.frame_upper+1):
 
     frame_end = time.time()
     print("{} sec for frame {} ({} points)".format(frame_end-frame_start, summedFrameId, len(points)))
-
-    baseFrameIdsIndex += args.frame_summing_offset
-
 
 stop_run = time.time()
 print("{} seconds to process run".format(stop_run-start_run))
