@@ -75,6 +75,7 @@ start_run = time.time()
 peak_id = 0 # set the peak ID to be zero for now
 max_scans = 0
 
+print("Converting...")
 for frame in frames_v:
     frame_id = frame[FRAME_ID_IDX]
     num_scans = frame[FRAME_NUMSCAN_IDX]
@@ -83,7 +84,7 @@ for frame in frames_v:
     if num_scans > max_scans:
         max_scans = num_scans
 
-    print("Frame {:0>5} of {} ({} scans)".format(frame_id, frame_count, num_scans))
+    # print("Frame {:0>5} of {} ({} scans)".format(frame_id, frame_count, num_scans))
 
     for scan_line, scan in enumerate(td.readScans(frame_id, 0, num_scans)):
         index = np.array(scan[0], dtype=np.float64)
