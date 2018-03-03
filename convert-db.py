@@ -97,25 +97,29 @@ for frame in frames_v:
     # Check whether we've done a chunk to write out to the database
     if frame_id % BATCH_SIZE == 0:
         print("Writing {} frames...".format(BATCH_SIZE))
-        dest_c.executemany("INSERT INTO frames VALUES (%s, %s, %s, %s, %s, %s)", points)
+        dest_c.executemany("INSERT INTO frames VALUES (?, ?, ?, ?, ?, ?)", points)
         dest_conn.commit()
         del points[:]
 
 # Write what we have left
 if len(points) > 0:
     print("Writing {} frames...".format(len(points)))
-    dest_c.executemany("INSERT INTO frames VALUES (%s, %s, %s, %s, %s, %s)", points)
+    dest_c.executemany("INSERT INTO frames VALUES (?, ?, ?, ?, ?, ?)", points)
     del points[:]
 
 print("Creating the index on frame_id")
-dest_c.execute("CREATE OR REPLACE INDEX idx_frames ON frames (frame_id)")
+dest_c.execute("DROP INDEX IF EXISTS idx_frames")
+dest_c.execute("CREATE INDEX idx_frames ON frames (frame_id)")
 
 for collision_energy in collision_energies_v:
     frame_properties.append((int(collision_energy[FRAME_ID_IDX]), float(collision_energy[FRAME_COLLISION_ENERGY_IDX])))
 
 print("Writing frame properties")
-dest_c.executemany("INSERT INTO frame_properties VALUES (%s, %s)", frame_properties)
-dest_c.execute("CREATE OR REPLACE INDEX idx_frame_properties ON frame_properties (frame_id)")
+dest_c.executemany("INSERT INTO frame_properties VALUES (?, ?)", frame_properties)
+
+print("Indexing frame properties")
+dest_c.execute("DROP INDEX IF EXISTS idx_frame_properties")
+dest_c.execute("CREATE INDEX idx_frame_properties ON frame_properties (frame_id)")
 
 stop_run = time.time()
 print("{} seconds to process run".format(stop_run-start_run))
@@ -126,7 +130,7 @@ convert_info.append(("source_frame_count", int(frame_count)))
 convert_info.append(("num_scans", int(max_scans)))
 convert_info.append(("run processing time (sec)", float(stop_run-start_run)))
 convert_info.append(("processed", time.ctime()))
-dest_c.executemany("INSERT INTO convert_info VALUES (%s, %s)", convert_info)
+dest_c.executemany("INSERT INTO convert_info VALUES (?, ?)", convert_info)
 
 # Commit changes and close the connection
 dest_conn.commit()
