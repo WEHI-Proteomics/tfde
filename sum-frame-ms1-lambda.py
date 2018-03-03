@@ -3,6 +3,7 @@ import logging
 import rds_config
 import pymysql
 import pandas
+import time
 
 #rds settings
 rds_host  = "dwm-instance.cy0jiebct3t0.ap-southeast-2.rds.amazonaws.com"
