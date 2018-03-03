@@ -97,8 +97,6 @@ for frame in frames_v:
     # Check whether we've done a chunk to write out to the database
     if frame_id % BATCH_SIZE == 0:
         print("Writing {} frames...".format(BATCH_SIZE))
-        dest_conn = pymysql.connect(host="{}".format(args.hostname), user='root', passwd='password', database="{}".format(args.destination_database_name))
-        dest_c = dest_conn.cursor()
         dest_c.executemany("INSERT INTO frames VALUES (%s, %s, %s, %s, %s, %s)", points)
         dest_conn.commit()
         del points[:]
