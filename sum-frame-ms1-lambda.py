@@ -2,7 +2,7 @@ import sys
 import logging
 import rds_config
 import pymysql
-import pandas
+import pandas as pd
 import time
 
 #rds settings
