@@ -12,6 +12,12 @@ password = rds_config.db_password
 db_name = rds_config.db_name
 
 
+frames_to_sum=150
+frame_summing_offset=25
+noise_threshold=2
+collision_energy=7
+
+
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
@@ -41,14 +47,14 @@ def handler(event, context):
         start_run = time.time()
 
         # Find the complete set of frame ids to be processed
-        frame_ids_df = pd.read_sql_query("select frame_id from frame_properties where collision_energy={} order by frame_id ASC;".format(args.collision_energy), source_conn)
+        frame_ids_df = pd.read_sql_query("select frame_id from frame_properties where collision_energy={} order by frame_id ASC;".format(collision_energy), source_conn)
         frame_ids = tuple(frame_ids_df.values[:,0])
-        number_of_summed_frames = 1 + int(((len(frame_ids) - args.frames_to_sum) / args.frame_summing_offset))
+        number_of_summed_frames = 1 + int(((len(frame_ids) - frames_to_sum) / frame_summing_offset))
 
         summedFrameId = 2500  # the summed frame id (1-based) as a parameter
 
-        baseFrameIdsIndex = (summedFrameId-1)*args.frame_summing_offset
-        frameIdsToSum = frame_ids[baseFrameIdsIndex:baseFrameIdsIndex+args.frames_to_sum]
+        baseFrameIdsIndex = (summedFrameId-1)*frame_summing_offset
+        frameIdsToSum = frame_ids[baseFrameIdsIndex:baseFrameIdsIndex+frames_to_sum]
         logger.info("Processing {} frames ({}) to create summed frame {}".format(len(frameIdsToSum), frameIdsToSum, summedFrameId))
         frame_df = pd.read_sql_query("select frame_id,mz,scan,intensity from frames where frame_id in {} order by frame_id, mz, scan asc;".format(frameIdsToSum), source_conn)
         frame_v = frame_df.values
@@ -68,7 +74,7 @@ def handler(event, context):
                 nearby_points = points_v[nearby_point_indices]
                 # How many distinct frames do the points come from?
                 unique_frames = np.unique(nearby_points[:,0])
-                if len(unique_frames) >= args.noise_threshold:
+                if len(unique_frames) >= noise_threshold:
                     # find the total intensity and centroid m/z
                     centroid_intensity = nearby_points[:,3].sum()
                     centroid_mz = peakutils.centroid(nearby_points[:,1], nearby_points[:,3])
