@@ -59,10 +59,13 @@ dest_c = dest_conn.cursor()
 # Create the table
 print("Setting up tables and indexes")
 
-dest_c.execute("CREATE OR REPLACE TABLE frames (frame_id INTEGER, point_id INTEGER, mz REAL, scan INTEGER, intensity INTEGER, peak_id INTEGER)")
-dest_c.execute("CREATE OR REPLACE TABLE frame_properties (frame_id INTEGER, collision_energy REAL)")
-dest_c.execute("CREATE OR REPLACE TABLE convert_info (item TEXT, value TEXT)")
-dest_conn.close()
+dest_c.execute("DROP TABLE IF EXISTS frames")
+dest_c.execute("DROP TABLE IF EXISTS frame_properties")
+dest_c.execute("DROP TABLE IF EXISTS convert_info")
+
+dest_c.execute("CREATE TABLE frames (frame_id INTEGER, point_id INTEGER, mz REAL, scan INTEGER, intensity INTEGER, peak_id INTEGER)")
+dest_c.execute("CREATE TABLE frame_properties (frame_id INTEGER, collision_energy REAL)")
+dest_c.execute("CREATE TABLE convert_info (item TEXT, value TEXT)")
 
 points = []
 frame_properties = []
