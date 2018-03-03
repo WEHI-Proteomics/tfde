@@ -5,6 +5,7 @@ import pymysql
 import pandas as pd
 import time
 import numpy as np
+import peakutils
 
 def standard_deviation(mz):
     instrument_resolution = 40000.0
