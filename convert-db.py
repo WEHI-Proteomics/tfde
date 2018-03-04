@@ -110,13 +110,15 @@ if len(points) > 0:
     frame_count += len(points)
     print("{} frames converted...".format(frame_count))
 
+dest_conn.commit()
+
 for collision_energy in collision_energies_v:
     frame_properties.append((int(collision_energy[FRAME_ID_IDX]), float(collision_energy[FRAME_COLLISION_ENERGY_IDX])))
 
 print("Writing frame properties")
 dest_c.executemany("INSERT INTO frame_properties VALUES (?, ?)", frame_properties)
 
-xstop_run = time.time()
+stop_run = time.time()
 print("{} seconds to process run".format(stop_run-start_run))
 
 convert_info.append(("source_frame_lower", int(min_frame_id)))
