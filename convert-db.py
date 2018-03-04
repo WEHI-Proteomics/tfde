@@ -56,7 +56,7 @@ collision_energies_v = collision_energies_df.values
 dest_conn = sqlite3.connect(args.destination_database_name)
 dest_c = dest_conn.cursor()
 
-# Create the table
+# Create the tables
 print("Setting up tables and indexes")
 
 dest_c.execute("DROP TABLE IF EXISTS frames")
@@ -108,21 +108,13 @@ if len(points) > 0:
     dest_c.executemany("INSERT INTO frames VALUES (?, ?, ?, ?, ?, ?)", points)
     del points[:]
 
-print("Creating the index on frame_id")
-dest_c.execute("DROP INDEX IF EXISTS idx_frames")
-dest_c.execute("CREATE INDEX idx_frames ON frames (frame_id)")
-
 for collision_energy in collision_energies_v:
     frame_properties.append((int(collision_energy[FRAME_ID_IDX]), float(collision_energy[FRAME_COLLISION_ENERGY_IDX])))
 
 print("Writing frame properties")
 dest_c.executemany("INSERT INTO frame_properties VALUES (?, ?)", frame_properties)
 
-print("Indexing frame properties")
-dest_c.execute("DROP INDEX IF EXISTS idx_frame_properties")
-dest_c.execute("CREATE INDEX idx_frame_properties ON frame_properties (frame_id)")
-
-stop_run = time.time()
+xstop_run = time.time()
 print("{} seconds to process run".format(stop_run-start_run))
 
 convert_info.append(("source_frame_lower", int(min_frame_id)))
