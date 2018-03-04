@@ -30,7 +30,7 @@ number_of_frames = 1 + int(((len(frame_ids) - args.frames_to_sum) / args.frame_s
 # Close the database connection
 source_conn.close()
 
-batch_size = int(number_of_frames) / args.number_of_batches
+batch_size = int(number_of_frames / args.number_of_batches)
 if (batch_size * args.number_of_batches) < number_of_frames:
     args.number_of_batches += 1
 
