@@ -6,7 +6,6 @@ import sqlite3
 import os
 import argparse
 import time
-import sqlite3
 
 # Usage: python convert-db.py -sdb "S:\data\Projects\ProtemicsLab\Bruker timsTOF\databases\20170714_SN34_UPS2_yeast200ng_AIF15_Slot1-39_01_728.d" -ddb "S:\data\Projects\ProtemicsLab\Bruker timsTOF\converted\20170714_SN34_UPS2_yeast200ng_AIF15_Slot1-39_01_728.sqlite"
 
@@ -75,6 +74,8 @@ start_run = time.time()
 peak_id = 0 # set the peak ID to be zero for now
 max_scans = 0
 
+frame_count = 0
+
 print("Converting...")
 for frame in frames_v:
     frame_id = frame[FRAME_ID_IDX]
@@ -97,16 +98,17 @@ for frame in frames_v:
 
     # Check whether we've done a chunk to write out to the database
     if frame_id % BATCH_SIZE == 0:
-        print("Writing {} frames...".format(BATCH_SIZE))
         dest_c.executemany("INSERT INTO frames VALUES (?, ?, ?, ?, ?, ?)", points)
-        dest_conn.commit()
         del points[:]
+        frame_count += BATCH_SIZE
+        print("{} frames converted...".format(frame_count))
 
 # Write what we have left
 if len(points) > 0:
-    print("Writing {} frames...".format(len(points)))
     dest_c.executemany("INSERT INTO frames VALUES (?, ?, ?, ?, ?, ?)", points)
     del points[:]
+    frame_count += len(points)
+    print("{} frames converted...".format(frame_count))
 
 for collision_energy in collision_energies_v:
     frame_properties.append((int(collision_energy[FRAME_ID_IDX]), float(collision_energy[FRAME_COLLISION_ENERGY_IDX])))
