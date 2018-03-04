@@ -12,7 +12,7 @@ parser.add_argument('-ce','--collision_energy', type=int, help='Collision energy
 args = parser.parse_args()
 
 # Connect to the database
-source_conn = sqlite3.connect("{}.sqlite".format(args.database_name))
+source_conn = sqlite3.connect("..\/{}.sqlite".format(args.database_name))
 src_c = source_conn.cursor()
 
 # Find the complete set of frame ids to be processed

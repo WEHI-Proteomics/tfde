@@ -1,5 +1,5 @@
 import sys
-import pymysql
+import sqlite3
 import pandas as pd
 import argparse
 import numpy as np
@@ -12,7 +12,8 @@ def standard_deviation(mz):
 
 
 parser = argparse.ArgumentParser(description='An intensity descent method for summing frames.')
-parser.add_argument('-db','--database_name', type=str, help='The name of the source database.', required=True)
+parser.add_argument('-sdb','--source_database_name', type=str, help='The name of the source database.', required=True)
+parser.add_argument('-ddb','--destination_database_name', type=str, help='The name of the destination database.', required=True)
 parser.add_argument('-fts','--frames_to_sum', type=int, default=150, help='The number of MS1 source frames to sum.', required=False)
 parser.add_argument('-fso','--frame_summing_offset', type=int, default=25, help='The number of MS1 source frames to shift for each summation.', required=False)
 parser.add_argument('-mf','--noise_threshold', type=int, default=2, help='Minimum number of frames a point must appear in to be processed.', required=False)
@@ -22,9 +23,22 @@ parser.add_argument('-fl','--frame_lower', type=int, help='The lower frame numbe
 parser.add_argument('-fu','--frame_upper', type=int, help='The upper frame number.', required=False)
 args = parser.parse_args()
 
-# Connect to the database
-source_conn = pymysql.connect(host="{}".format(args.hostname), user='root', passwd='password', database="{}".format(args.database_name))
+# Connect to the databases
+source_conn = sqlite3.connect(args.source_database_name)
 src_c = source_conn.cursor()
+
+dest_conn = sqlite3.connect(args.destination_database_name)
+dest_c = dest_conn.cursor()
+
+print("Setting up tables...")
+
+dest_c.execute("DROP TABLE IF EXISTS summed_frames")
+dest_c.execute("DROP TABLE IF EXISTS summing_info")
+dest_c.execute("DROP TABLE IF EXISTS elution_profile")
+
+dest_c.execute("CREATE TABLE summed_frames (frame_id INTEGER, point_id INTEGER, mz REAL, scan INTEGER, intensity INTEGER, peak_id INTEGER)")
+dest_c.execute("CREATE TABLE summing_info (item TEXT, value TEXT)")
+dest_c.execute("CREATE TABLE elution_profile (frame_id INTEGER, intensity INTEGER)")
 
 src_c.execute("SELECT value from convert_info where item=\"num_scans\"")
 row = src_c.fetchone()
@@ -88,12 +102,12 @@ for summedFrameId in range(args.frame_lower,args.frame_upper+1):
             points_v = np.delete(points_v, nearby_point_indices, 0)
 
     if len(points) > 0:
-        src_c.executemany("INSERT INTO summed_frames VALUES (%s, %s, %s, %s, %s, %s)", points)
-        src_c.executemany("INSERT INTO elution_profile VALUES (%s, %s)", [(summedFrameId, sum(zip(*points)[4]))])
+        dest_c.executemany("INSERT INTO summed_frames VALUES (?, ?, ?, ?, ?, ?)", points)
+        dest_c.executemany("INSERT INTO elution_profile VALUES (?, ?)", [(summedFrameId, sum(zip(*points)[4]))])
     else:
         print("no points for summed frame id {}".format(summedFrameId))
-        src_c.executemany("INSERT INTO elution_profile VALUES (%s, %s)", [(summedFrameId, 0)])
-    source_conn.commit()
+        dest_c.executemany("INSERT INTO elution_profile VALUES (?, ?)", [(summedFrameId, 0)])
+    dest_conn.commit()
 
     frame_end = time.time()
     print("{} sec for frame {} ({} points)".format(frame_end-frame_start, summedFrameId, len(points)))
@@ -110,6 +124,9 @@ summing_info.append(("processed", time.ctime()))
 summing_info_entry = []
 summing_info_entry.append(("summed frames {}-{}".format(args.frame_lower, args.frame_upper), ' '.join(str(e) for e in summing_info)))
 
-src_c.executemany("INSERT INTO summing_info VALUES (%s, %s)", summing_info_entry)
-source_conn.commit()
+dest_c.executemany("INSERT INTO summing_info VALUES (?, ?)", summing_info_entry)
+
 source_conn.close()
+
+dest_conn.commit()
+dest_conn.close()

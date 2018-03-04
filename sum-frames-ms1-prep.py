@@ -1,24 +1,21 @@
 import sys
-import pymysql
+import sqlite3
 import argparse
 
 parser = argparse.ArgumentParser(description='Prepare the database for MS1 frame summing.')
-parser.add_argument('-db','--database_name', type=str, help='The name of the source database.', required=True)
-parser.add_argument('-hn','--hostname', default='mscypher-004', type=str, help='The hostname of the database.', required=False)
+parser.add_argument('-sdb','--source_database_name', type=str, help='The name of the source database.', required=True)
 args = parser.parse_args()
 
-source_conn = pymysql.connect(host="{}".format(args.hostname), user='root', passwd='password', database="{}".format(args.database_name))
+source_conn = sqlite3.connect(args.source_database_name)
 src_c = source_conn.cursor()
 
-print("Setting up tables and indexes")
+print("Setting up indexes...")
 
-src_c.execute("CREATE OR REPLACE TABLE summed_frames (frame_id INTEGER, point_id INTEGER, mz REAL, scan INTEGER, intensity INTEGER, peak_id INTEGER)")
-src_c.execute("CREATE OR REPLACE TABLE summing_info (item TEXT, value TEXT)")
-src_c.execute("CREATE OR REPLACE TABLE elution_profile (frame_id INTEGER, intensity INTEGER)")
+src_c.execute("DROP INDEX IF EXISTS idx_frames")
+src_c.execute("CREATE INDEX idx_frames ON frames (frame_id)")
 
-# Indexes
-src_c.execute("CREATE INDEX idx_summed_frames ON summed_frames (frame_id)")
-src_c.execute("CREATE INDEX idx_summed_frames_2 ON summed_frames (frame_id,point_id)")
+src_c.execute("DROP INDEX IF EXISTS idx_frame_properties")
+src_c.execute("CREATE INDEX idx_frame_properties ON frame_properties (frame_id)")
 
 source_conn.commit()
 source_conn.close()
