@@ -1,5 +1,5 @@
 import sys
-import pymysql
+import sqlite3
 import pandas as pd
 import argparse
 import numpy as np
@@ -52,7 +52,7 @@ parser.add_argument('-sd','--standard_deviations', type=int, default=4, help='Nu
 parser.add_argument('-hn','--hostname', default='mscypher-004', type=str, help='The hostname of the database.', required=False)
 args = parser.parse_args()
 
-source_conn = pymysql.connect(host="{}".format(args.hostname), user='root', passwd='password', database="{}".format(args.database_name))
+source_conn = sqlite3.connect(args.database_name)
 src_c = source_conn.cursor()
 
 if args.frame_lower is None:
@@ -248,11 +248,11 @@ for frame_id in range(args.frame_lower, args.frame_upper+1):
         frame_v = np.delete(frame_v, peak_indices, 0)
 
     # Write out the peaks we found in this frame
-    src_c.executemany("INSERT INTO peaks VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)", mono_peaks)
+    src_c.executemany("INSERT INTO peaks VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", mono_peaks)
     mono_peaks = []
 
     # Update the points in the frame table
-    src_c.executemany("UPDATE summed_frames SET peak_id=%s WHERE frame_id=%s AND point_id=%s", point_updates)
+    src_c.executemany("UPDATE summed_frames SET peak_id=? WHERE frame_id=? AND point_id=?", point_updates)
     point_updates = []
 
     source_conn.commit()
@@ -270,7 +270,7 @@ peak_detect_info.append(("processed", time.ctime()))
 peak_detect_info_entry = []
 peak_detect_info_entry.append(("summed frames {}-{}".format(args.frame_lower, args.frame_upper), ' '.join(str(e) for e in peak_detect_info)))
 
-src_c.executemany("INSERT INTO peak_detect_info VALUES (%s, %s)", peak_detect_info_entry)
+src_c.executemany("INSERT INTO peak_detect_info VALUES (?, ?)", peak_detect_info_entry)
 source_conn.commit()
 source_conn.close()
 
