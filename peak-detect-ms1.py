@@ -86,7 +86,7 @@ if args.scan_lower is None:
     print("lower scan set to {} from the data".format(args.scan_lower))
 
 if args.scan_upper is None:
-    conv_conn = sqlite3.connect(args.database_name)
+    conv_conn = sqlite3.connect(args.converted_database_name)
     conv_c = source_conn.cursor()
     conv_c.execute("SELECT value FROM convert_info WHERE item=\"num_scans\"")
     row = src_c.fetchone()
