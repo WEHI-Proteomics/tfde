@@ -70,6 +70,7 @@ def peak_ratio(monoisotopic_mass, peak_number, number_of_sulphur):
 
 parser = argparse.ArgumentParser(description='A tree descent method for clustering peaks.')
 parser.add_argument('-db','--database_name', type=str, help='The name of the source database.', required=True)
+parser.add_argument('-cdb','--converted_database_name', type=str, help='The name of the original converted database.', required=True)
 parser.add_argument('-fl','--frame_lower', type=int, help='The lower frame number to process.', required=False)
 parser.add_argument('-fu','--frame_upper', type=int, help='The upper frame number to process.', required=False)
 parser.add_argument('-sl','--scan_lower', type=int, help='The lower scan number to process.', required=False)
@@ -86,6 +87,37 @@ args = parser.parse_args()
 # Connect to the database file
 source_conn = sqlite3.connect(args.database_name)
 src_c = source_conn.cursor()
+
+src_c.execute("DROP TABLE IF EXISTS clusters")
+src_c.execute("DROP TABLE IF EXISTS cluster_detect_info")
+
+src_c.execute("""CREATE TABLE clusters (frame_id INTEGER, 
+                                                cluster_id INTEGER, 
+                                                charge_state INTEGER, 
+                                                base_isotope_peak_id INTEGER, 
+                                                base_peak_mz_centroid REAL, 
+                                                base_peak_mz_std_dev REAL, 
+                                                base_peak_scan_centroid REAL, 
+                                                base_peak_scan_std_dev REAL, 
+                                                base_peak_max_point_mz REAL, 
+                                                base_peak_max_point_scan INTEGER, 
+                                                monoisotopic_peak_id INTEGER, 
+                                                sulphides INTEGER, 
+                                                fit_error REAL, 
+                                                rationale TEXT, 
+                                                intensity_sum INTEGER, 
+                                                feature_id INTEGER, 
+                                                scan_lower INTEGER, 
+                                                scan_upper INTEGER, 
+                                                mz_lower REAL, 
+                                                mz_upper REAL, 
+                                                PRIMARY KEY(cluster_id,frame_id))""")
+src_c.execute("CREATE TABLE cluster_detect_info (item TEXT, value TEXT)")
+
+print("Setting up indexes...")
+
+src_c.execute("CREATE INDEX IF NOT EXISTS idx_peaks ON peaks (frame_id)")
+src_c.execute("CREATE INDEX IF NOT EXISTS idx_peaks_2 ON peaks (frame_id,peak_id)")
 
 if args.frame_lower is None:
     src_c.execute("SELECT value FROM summing_info WHERE item=\"frame_lower\"")
@@ -104,10 +136,13 @@ if args.scan_lower is None:
     print("lower scan set to {} from the data".format(args.scan_lower))
 
 if args.scan_upper is None:
-    src_c.execute("SELECT value FROM convert_info WHERE item=\"num_scans\"")
-    row = src_c.fetchone()
+    conv_conn = sqlite3.connect(args.converted_database_name)
+    conv_c = conv_conn.cursor()
+    conv_c.execute("SELECT value FROM convert_info WHERE item=\"num_scans\"")
+    row = conv_c.fetchone()
     args.scan_upper = int(row[0])
     print("upper scan set to {} from the data".format(args.scan_upper))
+    conv_conn.close()
 
 # Store the arguments as metadata in the database for later reference
 cluster_detect_info = []
