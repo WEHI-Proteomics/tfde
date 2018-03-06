@@ -2,7 +2,7 @@ import sys
 import numpy as np
 import pandas as pd
 import time
-import pymysql
+import sqlite3
 import copy
 import argparse
 import os.path
@@ -84,7 +84,7 @@ parser.add_argument('-md','--mz_std_dev', type=int, default=3, help='Number of w
 args = parser.parse_args()
 
 # Connect to the database file
-source_conn = pymysql.connect(host='mscypher-004', user='root', passwd='password', database="{}".format(args.database_name))
+source_conn = sqlite3.connect(args.database_name)
 src_c = source_conn.cursor()
 
 if args.frame_lower is None:
@@ -363,10 +363,10 @@ for frame_id in range(args.frame_lower, args.frame_upper+1):
     print("{} seconds to process frame - found {} clusters".format(stop_frame-start_frame, cluster_id))
 
 # Write out all the clusters to the database
-src_c.executemany("INSERT INTO clusters VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)", clusters)
+src_c.executemany("INSERT INTO clusters VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", clusters)
 
 # Update the peaks with their cluster IDs
-src_c.executemany("UPDATE peaks SET cluster_id=%s WHERE frame_id=%s AND peak_id=%s", peak_updates)
+src_c.executemany("UPDATE peaks SET cluster_id=? WHERE frame_id=? AND peak_id=?", peak_updates)
 
 stop_run = time.time()
 
@@ -377,7 +377,7 @@ cluster_detect_info.append(("processed", time.ctime()))
 cluster_detect_info_entry = []
 cluster_detect_info_entry.append(("summed frames {}-{}".format(args.frame_lower, args.frame_upper), ' '.join(str(e) for e in cluster_detect_info)))
 
-src_c.executemany("INSERT INTO cluster_detect_info VALUES (%s, %s)", cluster_detect_info_entry)
+src_c.executemany("INSERT INTO cluster_detect_info VALUES (?, ?)", cluster_detect_info_entry)
 
 source_conn.commit()
 source_conn.close()

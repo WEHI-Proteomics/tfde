@@ -1,16 +1,20 @@
 import sys
-import pymysql
+import sqlite3
 import argparse
 
 parser = argparse.ArgumentParser(description='Prepare the database for MS1 cluster detection.')
 parser.add_argument('-db','--database_name', type=str, help='The name of the source database.', required=True)
 args = parser.parse_args()
 
-source_conn = pymysql.connect(host='mscypher-004', user='root', passwd='password', database="{}".format(args.database_name))
+source_conn = sqlite3.connect(args.database_name)
 src_c = source_conn.cursor()
 
-print("Setting up tables and indexes")
-src_c.execute("""CREATE OR REPLACE TABLE clusters (frame_id INTEGER, 
+print("Setting up tables...")
+
+src_c.execute("DROP TABLE IF EXISTS clusters")
+src_c.execute("DROP TABLE IF EXISTS cluster_detect_info")
+
+src_c.execute("""CREATE TABLE clusters (frame_id INTEGER, 
                                                 cluster_id INTEGER, 
                                                 charge_state INTEGER, 
                                                 base_isotope_peak_id INTEGER, 
@@ -31,14 +35,12 @@ src_c.execute("""CREATE OR REPLACE TABLE clusters (frame_id INTEGER,
                                                 mz_lower REAL, 
                                                 mz_upper REAL, 
                                                 PRIMARY KEY(cluster_id,frame_id))""")
-src_c.execute("CREATE OR REPLACE TABLE cluster_detect_info (item TEXT, value TEXT)")
+src_c.execute("CREATE TABLE cluster_detect_info (item TEXT, value TEXT)")
 
-# Indexes
+print("Setting up indexes...")
+
 src_c.execute("CREATE INDEX IF NOT EXISTS idx_peaks ON peaks (frame_id)")
 src_c.execute("CREATE INDEX IF NOT EXISTS idx_peaks_2 ON peaks (frame_id,peak_id)")
-
-# print("Resetting cluster IDs")
-# src_c.execute("update peaks set cluster_id=0 where cluster_id!=0")
 
 source_conn.commit()
 source_conn.close()
