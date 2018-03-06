@@ -86,10 +86,13 @@ if args.scan_lower is None:
     print("lower scan set to {} from the data".format(args.scan_lower))
 
 if args.scan_upper is None:
-    src_c.execute("SELECT value FROM convert_info WHERE item=\"num_scans\"")
+    conv_conn = sqlite3.connect(args.database_name)
+    conv_c = source_conn.cursor()
+    conv_c.execute("SELECT value FROM convert_info WHERE item=\"num_scans\"")
     row = src_c.fetchone()
     args.scan_upper = int(row[0])
     print("upper scan set to {} from the data".format(args.scan_upper))
+    conv_conn.close()
 
 # Store the arguments as metadata in the database for later reference
 peak_detect_info = []
