@@ -43,7 +43,6 @@ def findNearestLessThan(searchVal, inputData):
 
 parser = argparse.ArgumentParser(description='A tree descent method for peak detection.')
 parser.add_argument('-db','--database_name', type=str, help='The name of the source database.', required=True)
-parser.add_argument('-cdb','--converted_database_name', type=str, help='The name of the original converted database.', required=True)
 parser.add_argument('-fl','--frame_lower', type=int, help='The lower frame number.', required=False)
 parser.add_argument('-fu','--frame_upper', type=int, help='The upper frame number.', required=False)
 parser.add_argument('-sl','--scan_lower', type=int, help='The lower scan number.', required=False)
