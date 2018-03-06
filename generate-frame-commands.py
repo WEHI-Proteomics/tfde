@@ -60,10 +60,10 @@ for i in range(args.number_of_batches):
         last_frame_id = number_of_frames
 
     print("nohup python -u ./otf-peak-detect/peak-detect-ms1.py -db {}-{}-{}-{}.sqlite "
-        "-fl {} -fu {} > ./logs/peak-detect-ms1-{}-{}.log 2>&1 &".format(
+        "-fl {} -fu {} > ./logs/peak-detect-ms1-{}-{}-{}.log 2>&1 &".format(
             args.database_name, i, first_frame_id, last_frame_id, 
             first_frame_id, last_frame_id, 
-            first_frame_id, last_frame_id))
+            i, first_frame_id, last_frame_id))
     # print("qsub -l nodes=1:ppn=12,mem=4gb -F \"./otf-peak-detect/peak-detect-ms1.py -db {} -fl {} -fu {}\" ./py.sh".format(args.database_name, first_frame_id, last_frame_id))
 
 print("")
