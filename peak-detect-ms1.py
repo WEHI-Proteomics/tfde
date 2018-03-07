@@ -43,14 +43,12 @@ def findNearestLessThan(searchVal, inputData):
 
 parser = argparse.ArgumentParser(description='A tree descent method for peak detection.')
 parser.add_argument('-db','--database_name', type=str, help='The name of the source database.', required=True)
-parser.add_argument('-cdb','--converted_database_name', type=str, help='The name of the original converted database.', required=True)
 parser.add_argument('-fl','--frame_lower', type=int, help='The lower frame number.', required=False)
 parser.add_argument('-fu','--frame_upper', type=int, help='The upper frame number.', required=False)
-parser.add_argument('-sl','--scan_lower', type=int, help='The lower scan number.', required=False)
-parser.add_argument('-su','--scan_upper', type=int, help='The upper scan number.', required=False)
+parser.add_argument('-sl','--scan_lower', type=int, default=1, help='The lower scan number.', required=False)
+parser.add_argument('-su','--scan_upper', type=int, default=176, help='The upper scan number.', required=False)
 parser.add_argument('-es','--empty_scans', type=int, default=2, help='Maximum number of empty scans to tolerate.', required=False)
 parser.add_argument('-sd','--standard_deviations', type=int, default=4, help='Number of standard deviations to look either side of a point.', required=False)
-parser.add_argument('-hn','--hostname', default='mscypher-004', type=str, help='The hostname of the database.', required=False)
 args = parser.parse_args()
 
 source_conn = sqlite3.connect(args.database_name)
@@ -80,19 +78,6 @@ if args.frame_upper is None:
     row = src_c.fetchone()
     args.frame_upper = int(row[0])
     print("upper frame_id set to {} from the data".format(args.frame_upper))
-
-if args.scan_lower is None:
-    args.scan_lower = 1
-    print("lower scan set to {} from the data".format(args.scan_lower))
-
-if args.scan_upper is None:
-    conv_conn = sqlite3.connect(args.converted_database_name)
-    conv_c = conv_conn.cursor()
-    conv_c.execute("SELECT value FROM convert_info WHERE item=\"num_scans\"")
-    row = conv_c.fetchone()
-    args.scan_upper = int(row[0])
-    print("upper scan set to {} from the data".format(args.scan_upper))
-    conv_conn.close()
 
 # Store the arguments as metadata in the database for later reference
 peak_detect_info = []
