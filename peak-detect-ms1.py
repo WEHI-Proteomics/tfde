@@ -256,7 +256,6 @@ for frame_id in range(args.frame_lower, args.frame_upper+1):
 
         # remove the points we've processed from the frame
         frame_v = np.delete(frame_v, peak_indices, 0)
-        del peak_indices[:]
 
     # Write out the peaks we found in this frame
     src_c.executemany("INSERT INTO peaks VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", mono_peaks)
