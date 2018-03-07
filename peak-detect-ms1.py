@@ -96,10 +96,14 @@ point_updates = []
 start_run = time.time()
 for frame_id in range(args.frame_lower, args.frame_upper+1):
     peak_id = 1
-    frame_df = pd.read_sql_query("select mz,scan,intensity,point_id from summed_frames where frame_id={} order by mz, scan asc;".format(frame_id), source_conn)
+    frame_df = pd.read_sql_query("select mz,scan,intensity,point_id from summed_frames where frame_id={} order by intensity desc;".format(frame_id), source_conn)
     print("Processing frame {}".format(frame_id))
     start_frame = time.time()
     frame_v = frame_df.values
+    # Find the intensity of the point at the bottom of the top tenth percentile of points
+    number_of_points = len(frame_v)
+    top_tenth_percentile_index = int(number_of_points / 10)
+    minimum_intensity = int(frame_v[top_tenth_percentile_index][FRAME_INTENSITY_IDX])
     print("frame occupies {} bytes".format(frame_v.nbytes))
     while len(frame_v) > 0:
         peak_indices = np.empty(0, dtype=int)
@@ -112,6 +116,10 @@ for frame_id in range(args.frame_lower, args.frame_upper+1):
         point_id = int(frame_v[max_intensity_index][FRAME_POINT_ID_IDX])
         peak_indices = np.append(peak_indices, max_intensity_index)
         rationale["highest intensity point id"] = point_id
+
+        # Stop looking for peaks if we've reached the bottom of the top tenth percentile of points
+        if intensity < minimum_intensity:
+            break
 
         # Look for other points belonging to this peak
         std_dev_window = standard_deviation(mz) * args.standard_deviations
@@ -248,14 +256,15 @@ for frame_id in range(args.frame_lower, args.frame_upper+1):
 
         # remove the points we've processed from the frame
         frame_v = np.delete(frame_v, peak_indices, 0)
+        del peak_indices[:]
 
     # Write out the peaks we found in this frame
     src_c.executemany("INSERT INTO peaks VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", mono_peaks)
-    mono_peaks = []
+    del mono_peaks[:]
 
     # Update the points in the frame table
     src_c.executemany("UPDATE summed_frames SET peak_id=? WHERE frame_id=? AND point_id=?", point_updates)
-    point_updates = []
+    del point_updates[:]
 
     source_conn.commit()
 
