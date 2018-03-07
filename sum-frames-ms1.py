@@ -112,6 +112,10 @@ for summedFrameId in range(args.frame_lower,args.frame_upper+1):
     frame_end = time.time()
     print("{} sec for frame {} ({} points)".format(frame_end-frame_start, summedFrameId, len(points)))
 
+    # clean up
+    del points[:]
+    del elution_profile[:]
+
 stop_run = time.time()
 print("{} seconds to process run".format(stop_run-start_run))
 
