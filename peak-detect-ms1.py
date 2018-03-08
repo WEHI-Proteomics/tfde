@@ -66,6 +66,7 @@ print("Setting up indexes...")
 
 src_c.execute("CREATE INDEX IF NOT EXISTS idx_summed_frames ON summed_frames (frame_id,intensity)")
 src_c.execute("CREATE INDEX IF NOT EXISTS idx_summed_frames_2 ON summed_frames (frame_id,point_id)")
+src_c.execute("CREATE INDEX IF NOT EXISTS idx_summed_frames_3 ON summed_frames (frame_id,peak_id)")
 
 if args.frame_lower is None:
     src_c.execute("SELECT value FROM summing_info WHERE item=\"frame_lower\"")
@@ -78,6 +79,8 @@ if args.frame_upper is None:
     row = src_c.fetchone()
     args.frame_upper = int(row[0])
     print("upper frame_id set to {} from the data".format(args.frame_upper))
+
+src_c.execute("update summed_frames set peak_id=0 where frame_id>={} and frame_id<={} and peak_id!=0".format(args.frame_lower, args.frame_upper))
 
 # Store the arguments as metadata in the database for later reference
 peak_detect_info = []
