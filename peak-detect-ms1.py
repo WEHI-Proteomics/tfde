@@ -64,7 +64,7 @@ src_c.execute("CREATE TABLE peak_detect_info (item TEXT, value TEXT)")
 
 print("Setting up indexes...")
 
-src_c.execute("CREATE INDEX IF NOT EXISTS idx_summed_frames ON summed_frames (frame_id)")
+src_c.execute("CREATE INDEX IF NOT EXISTS idx_summed_frames ON summed_frames (frame_id,intensity)")
 src_c.execute("CREATE INDEX IF NOT EXISTS idx_summed_frames_2 ON summed_frames (frame_id,point_id)")
 
 if args.frame_lower is None:
