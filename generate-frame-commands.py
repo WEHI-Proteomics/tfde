@@ -64,14 +64,14 @@ for i in range(args.number_of_batches):
     #         args.database_name, i, first_frame_id, last_frame_id, 
     #         first_frame_id, last_frame_id, 
     #         i, first_frame_id, last_frame_id))
-    logName = "./{}-{}-{}-{}.log".format(args.database_name, i, first_frame_id, last_frame_id)
+    logName = "{}-{}-{}-{}.log".format(args.database_name, i, first_frame_id, last_frame_id)
     jobName = "peak-detect-ms1-{}-{}-{}-{}".format(args.database_name, i, first_frame_id, last_frame_id)
-    print("qsub -l nodes=1:ppn=4,mem=2gb -N {} -e ./ -o ./ -F \"./otf-peak-detect/peak-detect-ms1.py -db {}-{}-{}-{}.sqlite "
-        " -fl {} -fu {}\" ./py.sh >> {} 2>&1".format(
+    print("qsub -o {} -j oe -l nodes=1:ppn=4,mem=2gb -N {} -e ./ -o ./ -F \"./otf-peak-detect/peak-detect-ms1.py -db {}-{}-{}-{}.sqlite "
+        " -fl {} -fu {}\" ./py.sh".format(
+            logName,
             jobName,
             args.database_name, i, first_frame_id, last_frame_id, 
-            first_frame_id, last_frame_id,
-            logName))
+            first_frame_id, last_frame_id))
 
 print("")
 for i in range(args.number_of_batches):
