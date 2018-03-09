@@ -70,11 +70,10 @@ def peak_ratio(monoisotopic_mass, peak_number, number_of_sulphur):
 
 parser = argparse.ArgumentParser(description='A tree descent method for clustering peaks.')
 parser.add_argument('-db','--database_name', type=str, help='The name of the source database.', required=True)
-parser.add_argument('-cdb','--converted_database_name', type=str, help='The name of the original converted database.', required=True)
 parser.add_argument('-fl','--frame_lower', type=int, help='The lower frame number to process.', required=False)
 parser.add_argument('-fu','--frame_upper', type=int, help='The upper frame number to process.', required=False)
-parser.add_argument('-sl','--scan_lower', type=int, help='The lower scan number to process.', required=False)
-parser.add_argument('-su','--scan_upper', type=int, help='The upper scan number to process.', required=False)
+parser.add_argument('-sl','--scan_lower', type=int, default=1, help='The lower scan number to process.', required=False)
+parser.add_argument('-su','--scan_upper', type=int, default=176, help='The upper scan number to process.', required=False)
 parser.add_argument('-ir','--isotope_number_right', type=int, default=5, help='Isotope numbers to look on the right.', required=False)
 parser.add_argument('-il','--isotope_number_left', type=int, default=2, help='Isotope numbers to look on the left.', required=False)
 parser.add_argument('-mi','--minimum_peak_intensity', type=int, default=250, help='Minimum peak intensity to process.', required=False)
@@ -118,6 +117,7 @@ print("Setting up indexes...")
 
 src_c.execute("CREATE INDEX IF NOT EXISTS idx_peaks ON peaks (frame_id)")
 src_c.execute("CREATE INDEX IF NOT EXISTS idx_peaks_2 ON peaks (frame_id,peak_id)")
+src_c.execute("CREATE INDEX IF NOT EXISTS idx_peaks_3 ON peaks (frame_id,cluster_id)")
 
 if args.frame_lower is None:
     src_c.execute("SELECT value FROM summing_info WHERE item=\"frame_lower\"")
@@ -136,13 +136,10 @@ if args.scan_lower is None:
     print("lower scan set to {} from the data".format(args.scan_lower))
 
 if args.scan_upper is None:
-    conv_conn = sqlite3.connect(args.converted_database_name)
-    conv_c = conv_conn.cursor()
-    conv_c.execute("SELECT value FROM convert_info WHERE item=\"num_scans\"")
-    row = conv_c.fetchone()
-    args.scan_upper = int(row[0])
-    print("upper scan set to {} from the data".format(args.scan_upper))
-    conv_conn.close()
+    args.scan_lower = 176
+    print("lower scan set to {} from the data".format(args.scan_lower))
+
+src_c.execute("update peaks set cluster_id=0 where frame_id>={} and frame_id<={} and cluster_id!=0".format(args.frame_lower, args.frame_upper))
 
 # Store the arguments as metadata in the database for later reference
 cluster_detect_info = []
