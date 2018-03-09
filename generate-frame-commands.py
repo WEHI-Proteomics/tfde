@@ -65,10 +65,8 @@ for i in range(args.number_of_batches):
     #         first_frame_id, last_frame_id, 
     #         i, first_frame_id, last_frame_id))
     logName = "./{}-{}-{}-{}.log".format(args.database_name, i, first_frame_id, last_frame_id)
-    print("qsub -l nodes=1:ppn=4,mem=2gb -e {} -o {} -F \"./otf-peak-detect/peak-detect-ms1.py -db {}-{}-{}-{}.sqlite "
+    print("qsub -l nodes=1:ppn=4,mem=2gb -e ./ -o ./ -F \"./otf-peak-detect/peak-detect-ms1.py -db {}-{}-{}-{}.sqlite "
         " -fl {} -fu {}\" ./py.sh >> {} 2>&1".format(
-            logName, 
-            logName, 
             args.database_name, i, first_frame_id, last_frame_id, 
             first_frame_id, last_frame_id,
             logName))
