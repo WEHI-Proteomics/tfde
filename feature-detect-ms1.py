@@ -411,9 +411,9 @@ while True:
 
     # save this in the database
     c.executemany("UPDATE clusters SET feature_id=? WHERE frame_id=? AND cluster_id=?", cluster_updates)
-    cluster_updates = []
+    del cluster_updates[:]
     c.executemany("INSERT INTO features VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", feature_updates)
-    feature_updates = []
+    del feature_updates[:]
     source_conn.commit()
 
     # check whether we have finished
