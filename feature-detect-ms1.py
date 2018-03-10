@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 import math
 import time
-import pymysql
+import sqlite3
 import copy
 import argparse
 import os.path
@@ -323,10 +323,10 @@ parser.add_argument('-md','--mz_std_dev', type=int, default=4, help='Number of s
 parser.add_argument('-sd','--scan_std_dev', type=int, default=4, help='Number of standard deviations to look either side of the base peak, in the scan dimension.', required=False)
 parser.add_argument('-ns','--number_of_seconds_each_side', type=int, default=20, help='Number of seconds to look either side of the maximum cluster.', required=False)
 parser.add_argument('-ml','--minimum_feature_length', type=float, default=3.0, help='Minimum number of seconds for a feature to be valid.', required=False)
-parser.add_argument('-gbp','--maximum_gap_between_points', type=float, help='Maximum number of seconds between points.', required=False)
+parser.add_argument('-gbp','--maximum_gap_between_points', type=float, help='Maximum number of seconds between points. Gap is ignored if this parameter is not set.', required=False)
 parser.add_argument('-mcs','--minimum_charge_state', type=int, default=2, help='Minimum charge state to process.', required=False)
 parser.add_argument('-mfe','--magnitude_for_feature_endpoints', type=float, default=0.8, help='Proportion of a feature\'s magnitude to take for its endpoints', required=False)
-parser.add_argument('-fps','--frames_per_second', type=float, default=1.0, help='Frame rate.', required=False)
+parser.add_argument('-fps','--frames_per_second', type=float, default=0.5, help='Frame rate.', required=False)
 args = parser.parse_args()
 
 NUMBER_OF_FRAMES_TO_LOOK = int(args.number_of_seconds_each_side * args.frames_per_second)
@@ -338,7 +338,7 @@ for arg in vars(args):
     feature_info.append((arg, getattr(args, arg)))
 
 # Connect to the database file
-source_conn = pymysql.connect(host='mscypher-004', user='root', passwd='password', database="{}".format(args.database_name))
+source_conn = sqlite3.connect(args.database_name)
 c = source_conn.cursor()
 
 print("Setting up tables...")
@@ -353,6 +353,7 @@ print("Setting up indexes...")
 
 src_c.execute("CREATE INDEX IF NOT EXISTS idx_clusters_1 ON clusters (feature_id)")
 src_c.execute("CREATE INDEX IF NOT EXISTS idx_clusters_2 ON clusters (frame_id, cluster_id)")
+src_c.execute("CREATE INDEX IF NOT EXISTS idx_clusters_3 ON clusters (charge_state, frame_id, cluster_id)")
 
 print("Resetting the feature IDs in the cluster table.")
 c.execute("update clusters set feature_id=0 where feature_id!=0;")
@@ -409,9 +410,9 @@ while True:
     clusters_v[cluster_indices, CLUSTER_INTENSITY_SUM_IDX] = -1
 
     # save this in the database
-    c.executemany("UPDATE clusters SET feature_id=%s WHERE frame_id=%s AND cluster_id=%s", cluster_updates)
+    c.executemany("UPDATE clusters SET feature_id=? WHERE frame_id=? AND cluster_id=?", cluster_updates)
     cluster_updates = []
-    c.executemany("INSERT INTO features VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)", feature_updates)
+    c.executemany("INSERT INTO features VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", feature_updates)
     feature_updates = []
     source_conn.commit()
 
@@ -429,7 +430,7 @@ print("found {} features in {} seconds".format(feature_id-1, stop_run-start_run)
 
 feature_info.append(("run processing time (sec)", stop_run-start_run))
 feature_info.append(("processed", time.ctime()))
-c.executemany("INSERT INTO feature_info VALUES (%s, %s)", feature_info)
+c.executemany("INSERT INTO feature_info VALUES (?, ?)", feature_info)
 
 source_conn.commit()
 source_conn.close()
