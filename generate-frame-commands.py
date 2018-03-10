@@ -64,8 +64,8 @@ for i in range(args.number_of_batches):
     #         args.database_name, i, first_frame_id, last_frame_id, 
     #         first_frame_id, last_frame_id, 
     #         i, first_frame_id, last_frame_id))
-    logName = "{}-{}-{}-{}.log".format(args.database_name, i, first_frame_id, last_frame_id)
     jobName = "peak-detect-ms1-{}-{}-{}-{}".format(args.database_name, i, first_frame_id, last_frame_id)
+    logName = "{}.log".format(jobName)
     print("qsub -o {} -j oe -l nodes=1:ppn=4,mem=2gb -N {} -F \"./otf-peak-detect/peak-detect-ms1.py -db {}-{}-{}-{}.sqlite "
         " -fl {} -fu {}\" ./py.sh".format(
             logName,
@@ -86,8 +86,8 @@ for i in range(args.number_of_batches):
     #         args.database_name, i, first_frame_id, last_frame_id, 
     #         first_frame_id, last_frame_id, 
     #         i, first_frame_id, last_frame_id))
-    logName = "{}-{}-{}-{}.log".format(args.database_name, i, first_frame_id, last_frame_id)
     jobName = "cluster-detect-ms1-{}-{}-{}-{}".format(args.database_name, i, first_frame_id, last_frame_id)
+    logName = "{}.log".format(jobName)
     print("qsub -o {} -j oe -l nodes=1:ppn=4,mem=2gb -N {} -F \"./otf-peak-detect/cluster-detect-ms1.py -db {}-{}-{}-{}.sqlite "
         " -fl {} -fu {}\" ./py.sh".format(
             logName,
