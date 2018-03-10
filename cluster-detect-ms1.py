@@ -87,6 +87,8 @@ args = parser.parse_args()
 source_conn = sqlite3.connect(args.database_name)
 src_c = source_conn.cursor()
 
+print("Setting up tables...")
+
 src_c.execute("DROP TABLE IF EXISTS clusters")
 src_c.execute("DROP TABLE IF EXISTS cluster_detect_info")
 

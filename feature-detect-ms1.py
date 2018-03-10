@@ -341,11 +341,18 @@ for arg in vars(args):
 source_conn = pymysql.connect(host='mscypher-004', user='root', passwd='password', database="{}".format(args.database_name))
 c = source_conn.cursor()
 
-print("Setting up tables and indexes")
+print("Setting up tables...")
+
 c.execute("DROP TABLE IF EXISTS features")
-c.execute("CREATE TABLE features (feature_id INTEGER, base_frame_id INTEGER, base_cluster_id INTEGER, charge_state INTEGER, start_frame INTEGER, end_frame INTEGER, quality_score REAL, summed_intensity INTEGER, scan_lower INTEGER, scan_upper INTEGER, mz_lower REAL, mz_upper REAL, PRIMARY KEY(feature_id))")
 c.execute("DROP TABLE IF EXISTS feature_info")
+
+c.execute("CREATE TABLE features (feature_id INTEGER, base_frame_id INTEGER, base_cluster_id INTEGER, charge_state INTEGER, start_frame INTEGER, end_frame INTEGER, quality_score REAL, summed_intensity INTEGER, scan_lower INTEGER, scan_upper INTEGER, mz_lower REAL, mz_upper REAL, PRIMARY KEY(feature_id))")
 c.execute("CREATE TABLE feature_info (item TEXT, value TEXT)")
+
+print("Setting up indexes...")
+
+src_c.execute("CREATE INDEX IF NOT EXISTS idx_clusters_1 ON clusters (feature_id)")
+src_c.execute("CREATE INDEX IF NOT EXISTS idx_clusters_2 ON clusters (frame_id, cluster_id)")
 
 print("Resetting the feature IDs in the cluster table.")
 c.execute("update clusters set feature_id=0 where feature_id!=0;")
