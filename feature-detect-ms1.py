@@ -351,9 +351,9 @@ c.execute("CREATE TABLE feature_info (item TEXT, value TEXT)")
 
 print("Setting up indexes...")
 
-src_c.execute("CREATE INDEX IF NOT EXISTS idx_clusters_1 ON clusters (feature_id)")
-src_c.execute("CREATE INDEX IF NOT EXISTS idx_clusters_2 ON clusters (frame_id, cluster_id)")
-src_c.execute("CREATE INDEX IF NOT EXISTS idx_clusters_3 ON clusters (charge_state, frame_id, cluster_id)")
+c.execute("CREATE INDEX IF NOT EXISTS idx_clusters_1 ON clusters (feature_id)")
+c.execute("CREATE INDEX IF NOT EXISTS idx_clusters_2 ON clusters (frame_id, cluster_id)")
+c.execute("CREATE INDEX IF NOT EXISTS idx_clusters_3 ON clusters (charge_state, frame_id, cluster_id)")
 
 print("Resetting the feature IDs in the cluster table.")
 c.execute("update clusters set feature_id=0 where feature_id!=0;")
