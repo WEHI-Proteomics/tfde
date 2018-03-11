@@ -1,6 +1,7 @@
 import argparse
 import sqlite3
 import pandas as pd
+from __future__ import print_function
 
 #
 # Run this script in the script directory.
@@ -94,3 +95,23 @@ for i in range(args.number_of_batches):
             jobName,
             args.database_name, i, first_frame_id, last_frame_id, 
             first_frame_id, last_frame_id))
+
+print("")
+sqlFile = open('../dump-all.sql', 'w+')
+for i in range(args.number_of_batches):
+    first_frame_id = i*batch_size+1
+    last_frame_id = first_frame_id + batch_size - 1
+    if last_frame_id > number_of_frames:
+        last_frame_id = number_of_frames
+
+    baseName = "{}-{}-{}-{}".format(args.database_name, i, first_frame_id, last_frame_id)
+    dbName = "{}.sqlite".format(baseName)
+    sqlName = "{}-dump.sql".format(baseName)
+    print(".open {}".format(dbName), file=sqlFile)
+    print(".mode insert", file=sqlFile)
+    print(".output {}".format(sqlName), file=sqlFile)
+    print(".dump", file=sqlFile)
+    print(".output", file=sqlFile)
+
+print(".quit", file=sqlFile)
+sqlFile.close()
