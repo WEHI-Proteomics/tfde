@@ -105,7 +105,9 @@ for summedFrameId in range(args.frame_lower,args.frame_upper+1):
                 pointId += 1
 
             # remove the points we've processed
-            points_v = cp.delete(points_v, nearby_point_indices, 0)
+            points_v_cpu = cp.asnumpy(points_v)
+            points_v_cpu = np.delete(points_v_cpu, nearby_point_indices, 0)
+            points_v = cp.asarray(points_v_cpu)
 
     if len(points) > 0:
         dest_c.executemany("INSERT INTO summed_frames VALUES (?, ?, ?, ?, ?, ?)", points)
