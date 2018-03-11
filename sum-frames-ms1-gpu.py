@@ -11,10 +11,10 @@ def standard_deviation(mz):
     instrument_resolution = 40000.0
     return (mz / instrument_resolution) / 2.35482
 
-def unique(xp, arr):
+def unique(arr):
     arr = arr.flatten()
     arr.sort()
-    flags = xp.concatenate((xp.array([True]), arr[1:] != arr[:-1]))
+    flags = cp.concatenate((cp.array([True]), arr[1:] != arr[:-1]))
     return arr[flags]
 
 parser = argparse.ArgumentParser(description='An intensity descent method for summing frames.')
