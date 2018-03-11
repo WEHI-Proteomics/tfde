@@ -11,6 +11,11 @@ def standard_deviation(mz):
     instrument_resolution = 40000.0
     return (mz / instrument_resolution) / 2.35482
 
+def unique(xp, arr):
+    arr = arr.flatten()
+    arr.sort()
+    flags = xp.concatenate((xp.array([True]), arr[1:] != arr[:-1]))
+    return arr[flags]
 
 parser = argparse.ArgumentParser(description='An intensity descent method for summing frames.')
 parser.add_argument('-sdb','--source_database_name', type=str, help='The name of the source database.', required=True)
@@ -91,7 +96,7 @@ for summedFrameId in range(args.frame_lower,args.frame_upper+1):
             nearby_point_indices = cp.where((points_v[:,1] >= point_mz-delta_mz) & (points_v[:,1] <= point_mz+delta_mz))[0]
             nearby_points = points_v[nearby_point_indices]
             # How many distinct frames do the points come from?
-            unique_frames = cp.unique(nearby_points[:,0])
+            unique_frames = unique(nearby_points[:,0])
             if len(unique_frames) >= args.noise_threshold:
                 # find the total intensity and centroid m/z
                 centroid_intensity = nearby_points[:,3].sum()
