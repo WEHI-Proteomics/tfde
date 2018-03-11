@@ -96,6 +96,9 @@ for i in range(args.number_of_batches):
             args.database_name, i, first_frame_id, last_frame_id, 
             first_frame_id, last_frame_id))
 
+#
+# Dump all the databases into .sql files
+#
 print("")
 sqlFile = open('../dump-all.sql', 'w+')
 for i in range(args.number_of_batches):
@@ -112,6 +115,27 @@ for i in range(args.number_of_batches):
     print(".output {}".format(sqlName), file=sqlFile)
     print(".dump", file=sqlFile)
     print(".output", file=sqlFile)
+
+print(".quit", file=sqlFile)
+sqlFile.close()
+
+#
+# Load the .sql files into a combined database
+# Run with: sqlite3 < file.sql
+#
+print("")
+sqlFile = open('../combine-into-features.sql', 'w+')
+dbName = "{}-features.sqlite".format(args.database_name)
+print(".open --new {}".format(dbName), file=sqlFile)
+for i in range(args.number_of_batches):
+    first_frame_id = i*batch_size+1
+    last_frame_id = first_frame_id + batch_size - 1
+    if last_frame_id > number_of_frames:
+        last_frame_id = number_of_frames
+
+    baseName = "{}-{}-{}-{}".format(args.database_name, i, first_frame_id, last_frame_id)
+    sqlName = "{}-dump.sql".format(baseName)
+    print(".read {}".format(sqlName), file=sqlFile)
 
 print(".quit", file=sqlFile)
 sqlFile.close()
