@@ -1,7 +1,7 @@
+from __future__ import print_function
 import argparse
 import sqlite3
 import pandas as pd
-from __future__ import print_function
 
 #
 # Run this script in the script directory.
