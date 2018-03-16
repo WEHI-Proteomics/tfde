@@ -21,6 +21,8 @@ parser.add_argument('-ce','--collision_energy', type=int, help='Collision energy
 parser.add_argument('-hn','--hostname', default='mscypher-004', type=str, help='The hostname of the database.', required=False)
 parser.add_argument('-fl','--frame_lower', type=int, help='The lower frame number.', required=False)
 parser.add_argument('-fu','--frame_upper', type=int, help='The upper frame number.', required=False)
+parser.add_argument('-sl','--scan_lower', type=int, default=1, help='The lower scan number.', required=False)
+parser.add_argument('-su','--scan_upper', type=int, default=176, help='The upper scan number.', required=False)
 args = parser.parse_args()
 
 # Connect to the databases
@@ -39,12 +41,6 @@ dest_c.execute("DROP TABLE IF EXISTS elution_profile")
 dest_c.execute("CREATE TABLE summed_frames (frame_id INTEGER, point_id INTEGER, mz REAL, scan INTEGER, intensity INTEGER, peak_id INTEGER)")
 dest_c.execute("CREATE TABLE summing_info (item TEXT, value TEXT)")
 dest_c.execute("CREATE TABLE elution_profile (frame_id INTEGER, intensity INTEGER)")
-
-src_c.execute("SELECT value from convert_info where item=\"num_scans\"")
-row = src_c.fetchone()
-scan_lower = 0
-scan_upper = int(row[0])
-print("scan range {}-{}".format(scan_lower, scan_upper))
 
 # Store the arguments as metadata in the database for later reference
 summing_info = []
@@ -78,7 +74,7 @@ for summedFrameId in range(args.frame_lower,args.frame_upper+1):
     frame_start = time.time()
     pointId = 1
     points = []
-    for scan in range(scan_lower, scan_upper+1):
+    for scan in range(args.scan_lower, args.scan_upper+1):
         points_v = frame_v[np.where(frame_v[:,2] == scan)]
         points_to_process = len(points_v)
         while len(points_v) > 0:
@@ -119,8 +115,8 @@ for summedFrameId in range(args.frame_lower,args.frame_upper+1):
 stop_run = time.time()
 print("{} seconds to process run".format(stop_run-start_run))
 
-summing_info.append(("scan_lower", scan_lower))
-summing_info.append(("scan_upper", scan_upper))
+summing_info.append(("scan_lower", args.scan_lower))
+summing_info.append(("scan_upper", args.scan_upper))
 
 summing_info.append(("run processing time (sec)", stop_run-start_run))
 summing_info.append(("processed", time.ctime()))
