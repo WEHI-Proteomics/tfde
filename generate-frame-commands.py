@@ -51,7 +51,7 @@ for i in range(args.number_of_batches):
     #         first_frame_id, last_frame_id, 
     #         args.collision_energy,
     #         first_frame_id, last_frame_id))
-    jobName = "sum-frames-ms1.py-{}-{}-{}-{}".format(args.database_name, i, first_frame_id, last_frame_id)
+    jobName = "sum-frames-ms1-{}-{}-{}-{}".format(args.database_name, i, first_frame_id, last_frame_id)
     logName = "{}.log".format(jobName)
     print("qsub -o {} -j oe -l nodes=1:ppn=4,mem=2gb -N {} -F \"./otf-peak-detect/sum-frames-ms1.py -sdb {}.sqlite -ddb {}-{}-{}-{}.sqlite "
         " -fl {} -fu {}\" ./py.sh".format(
