@@ -37,21 +37,29 @@ if (batch_size * args.number_of_batches) < number_of_frames:
 
 print("number of frames {}, batch size {}, number of batches {}".format(number_of_frames, batch_size, args.number_of_batches))
 print("")
-print("nohup python -u ./otf-peak-detect/sum-frames-ms1-prep.py -sdb {}.sqlite > ./logs/sum-frames-ms1-prep-{}.log 2>&1 &".format(args.database_name, args.database_name))
+print("python ./otf-peak-detect/sum-frames-ms1-prep.py -sdb {}.sqlite".format(args.database_name))
 for i in range(args.number_of_batches):
     first_frame_id = i*batch_size+1
     last_frame_id = first_frame_id + batch_size - 1
     if last_frame_id > number_of_frames:
         last_frame_id = number_of_frames
 
-    print("nohup python -u ./otf-peak-detect/sum-frames-ms1.py -sdb {}.sqlite -ddb {}-{}-{}-{}.sqlite "
-        "-fl {} -fu {} -ce {} > ./logs/sum-frames-ms1-{}-{}.log 2>&1 &".format(
-            args.database_name, 
+    # print("nohup python -u ./otf-peak-detect/sum-frames-ms1.py -sdb {}.sqlite -ddb {}-{}-{}-{}.sqlite "
+    #     "-fl {} -fu {} -ce {} > ./logs/sum-frames-ms1-{}-{}.log 2>&1 &".format(
+    #         args.database_name, 
+    #         args.database_name, i, first_frame_id, last_frame_id, 
+    #         first_frame_id, last_frame_id, 
+    #         args.collision_energy,
+    #         first_frame_id, last_frame_id))
+    jobName = "sum-frames-ms1.py-{}-{}-{}-{}".format(args.database_name, i, first_frame_id, last_frame_id)
+    logName = "{}.log".format(jobName)
+    print("qsub -o {} -j oe -l nodes=1:ppn=4,mem=2gb -N {} -F \"./otf-peak-detect/sum-frames-ms1.py -sdb {}.sqlite -ddb {}-{}-{}-{}.sqlite "
+        " -fl {} -fu {}\" ./py.sh".format(
+            logName,
+            jobName,
+            args.database_name,
             args.database_name, i, first_frame_id, last_frame_id, 
-            first_frame_id, last_frame_id, 
-            args.collision_energy,
             first_frame_id, last_frame_id))
-    # print("qsub -l nodes=1:ppn=12,mem=4gb -F \"./otf-peak-detect/sum-frames-ms1.py -db {} -fl {} -fu {} -ce {}\" ./py.sh".format(args.database_name, first_frame_id, last_frame_id, args.collision_energy))
 
 print("")
 for i in range(args.number_of_batches):
