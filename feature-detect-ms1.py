@@ -32,8 +32,10 @@ DELTA_MZ = 1.003355     # mass difference between Carbon-12 and Carbon-13 isotop
 NOISE_ASSESSMENT_WIDTH = 1      # length of time in seconds to average the noise level
 NOISE_ASSESSMENT_OFFSET = 1     # offset in seconds from the end of the feature frames
 
-TOLERANCE_OF_POOR_QUALITY = 1000
-COMMIT_BATCH_SIZE = 80          # save the features to the database every COMMIT_BATCH_SIZE features
+FEATURE_DISCOVERY_HISTORY_LENGTH = 100
+MAX_PROPORTION_POOR_QUALITY = 0.8   # stop looking if the proportion of poor quality features exceeds this level
+
+COMMIT_BATCH_SIZE = 200         # save the features to the database every COMMIT_BATCH_SIZE features
 EVALUATE_NOISE_LEVEL_RATE = 100 # evaluate the base noise level every EVALUATE_NOISE_LEVEL_RATE features
 
 feature_id = 1
@@ -41,7 +43,7 @@ feature_updates = []
 cluster_updates = []
 base_noise_level = 15000
 noise_level_readings = [base_noise_level]
-feature_discovery_history = deque(maxlen=TOLERANCE_OF_POOR_QUALITY)
+feature_discovery_history = deque(maxlen=FEATURE_DISCOVERY_HISTORY_LENGTH)
 
 def standard_deviation(mz):
     instrument_resolution = 40000.0
@@ -249,6 +251,7 @@ def find_feature(base_index):
         feature_mz_upper = float(max(clusters_v[feature_indices,CLUSTER_MZ_UPPER_IDX]))
 
         if feature_id % EVALUATE_NOISE_LEVEL_RATE == 0:
+            print("evaluating noise level...")
 
             # update the noise estimate from the lower window
             lower_noise_eval_frame_1 = feature_start_frame - int((NOISE_ASSESSMENT_OFFSET+NOISE_ASSESSMENT_WIDTH) * args.frames_per_second)
@@ -414,10 +417,11 @@ while True:
     if (cluster_intensity < int(np.average(noise_level_readings))):
         print("Reached base noise level")
         break
-    if (feature_discovery_history.count(0.0) == TOLERANCE_OF_POOR_QUALITY):
-        print("Reached maximum number of consecutive rejected features")
+    if ((feature_discovery_history.count(0.0) / FEATURE_DISCOVERY_HISTORY_LENGTH) > MAX_PROPORTION_POOR_QUALITY):
+        print("Exceeded max proportion of poor quality features")
         break
     if (args.number_of_features is not None) and (feature_id > args.number_of_features):
+        print("Found the specified number of features")
         break
 
 # Write what we have left
