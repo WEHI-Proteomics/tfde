@@ -35,8 +35,8 @@ NOISE_ASSESSMENT_OFFSET = 1     # offset in seconds from the end of the feature 
 FEATURE_DISCOVERY_HISTORY_LENGTH = 100
 MAX_PROPORTION_POOR_QUALITY = 0.8   # stop looking if the proportion of poor quality features exceeds this level
 
-COMMIT_BATCH_SIZE = 200         # save the features to the database every COMMIT_BATCH_SIZE features
-EVALUATE_NOISE_LEVEL_RATE = 100 # evaluate the base noise level every EVALUATE_NOISE_LEVEL_RATE features
+COMMIT_BATCH_SIZE = 1000         # save the features to the database every COMMIT_BATCH_SIZE features
+EVALUATE_NOISE_LEVEL_RATE = 500 # evaluate the base noise level every EVALUATE_NOISE_LEVEL_RATE features
 
 feature_id = 1
 feature_updates = []
@@ -385,6 +385,7 @@ while True:
     clusters_v[cluster_indices, CLUSTER_INTENSITY_SUM_IDX] = -1
 
     if feature_id % COMMIT_BATCH_SIZE == 0:
+        print("writing features out to the database...")
         # save this in the database
         c.executemany("UPDATE clusters SET feature_id=? WHERE frame_id=? AND cluster_id=?", cluster_updates)
         del cluster_updates[:]
