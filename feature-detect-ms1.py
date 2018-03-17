@@ -417,7 +417,7 @@ while True:
     if (cluster_intensity < int(np.average(noise_level_readings))):
         print("Reached base noise level")
         break
-    if ((feature_discovery_history.count(0.0) / FEATURE_DISCOVERY_HISTORY_LENGTH) > MAX_PROPORTION_POOR_QUALITY):
+    if ((float(feature_discovery_history.count(0.0)) / FEATURE_DISCOVERY_HISTORY_LENGTH) > MAX_PROPORTION_POOR_QUALITY):
         print("Exceeded max proportion of poor quality features")
         break
     if (args.number_of_features is not None) and (feature_id > args.number_of_features):
