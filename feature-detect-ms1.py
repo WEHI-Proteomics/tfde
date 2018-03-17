@@ -126,38 +126,17 @@ def find_feature(base_index):
     upper_isotope_mz = base_max_point_mz + (DELTA_MZ/charge_state)
 
     # look for other clusters that belong to this feature
-    nearby_indices = np.where(
+    feature_indices = np.where(
         (clusters_v[:, CLUSTER_INTENSITY_SUM_IDX] > 0) &
         (clusters_v[:, CLUSTER_FRAME_ID_IDX] >= search_start_frame) &
         (clusters_v[:, CLUSTER_FRAME_ID_IDX] <= search_end_frame) &
         (clusters_v[:, CLUSTER_CHARGE_STATE_IDX] == charge_state) &
-        (abs(clusters_v[:, CLUSTER_BASE_MAX_POINT_MZ_IDX] - base_max_point_mz) <= base_mz_std_dev_offset) &
+        (
+            (abs(clusters_v[:, CLUSTER_BASE_MAX_POINT_MZ_IDX] - base_max_point_mz) <= base_mz_std_dev_offset) | 
+            (abs(clusters_v[:, CLUSTER_BASE_MAX_POINT_MZ_IDX] - lower_isotope_mz) <= base_mz_std_dev_offset) | 
+            (abs(clusters_v[:, CLUSTER_BASE_MAX_POINT_MZ_IDX] - upper_isotope_mz) <= base_mz_std_dev_offset)
+        ) &
         (abs(clusters_v[:, CLUSTER_BASE_MAX_POINT_SCAN_IDX] - base_max_point_scan) <= base_scan_std_dev_offset))[0]
-
-    # look for other clusters one isotope number down that belong to this feature
-    nearby_lower_indices = np.where(
-        (clusters_v[:, CLUSTER_INTENSITY_SUM_IDX] > 0) &
-        (clusters_v[:, CLUSTER_FRAME_ID_IDX] >= search_start_frame) &
-        (clusters_v[:, CLUSTER_FRAME_ID_IDX] <= search_end_frame) &
-        (clusters_v[:, CLUSTER_CHARGE_STATE_IDX] == charge_state) &
-        (abs(clusters_v[:, CLUSTER_BASE_MAX_POINT_MZ_IDX] - lower_isotope_mz) <= base_mz_std_dev_offset) &
-        (abs(clusters_v[:, CLUSTER_BASE_MAX_POINT_SCAN_IDX] - base_max_point_scan) <= base_scan_std_dev_offset))[0]
-
-    # look for other clusters one isotope number up that belong to this feature
-    nearby_upper_indices = np.where(
-        (clusters_v[:, CLUSTER_INTENSITY_SUM_IDX] > 0) &
-        (clusters_v[:, CLUSTER_FRAME_ID_IDX] >= search_start_frame) &
-        (clusters_v[:, CLUSTER_FRAME_ID_IDX] <= search_end_frame) &
-        (clusters_v[:, CLUSTER_CHARGE_STATE_IDX] == charge_state) &
-        (abs(clusters_v[:, CLUSTER_BASE_MAX_POINT_MZ_IDX] - upper_isotope_mz) <= base_mz_std_dev_offset) &
-        (abs(clusters_v[:, CLUSTER_BASE_MAX_POINT_SCAN_IDX] - base_max_point_scan) <= base_scan_std_dev_offset))[0]
-
-    # join them all together. From https://stackoverflow.com/questions/12427146/combine-two-arrays-and-sort
-    c = np.concatenate((nearby_indices, nearby_lower_indices, nearby_upper_indices))
-    c.sort(kind='mergesort')
-    flag = np.ones(len(c), dtype=bool)
-    np.not_equal(c[1:], c[:-1], out=flag[1:])
-    feature_indices = c[flag]
 
     # make sure we don't have more than one cluster from each frame - take the most intense one if there is more than one
     frame_ids = clusters_v[feature_indices, CLUSTER_FRAME_ID_IDX]
