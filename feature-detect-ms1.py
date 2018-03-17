@@ -33,7 +33,7 @@ NOISE_ASSESSMENT_WIDTH = 1      # length of time in seconds to average the noise
 NOISE_ASSESSMENT_OFFSET = 1     # offset in seconds from the end of the feature frames
 
 TOLERANCE_OF_POOR_QUALITY = 1000
-COMMIT_BATCH_SIZE = 1000
+COMMIT_BATCH_SIZE = 80
 
 feature_id = 1
 feature_updates = []
