@@ -33,7 +33,8 @@ NOISE_ASSESSMENT_WIDTH = 1      # length of time in seconds to average the noise
 NOISE_ASSESSMENT_OFFSET = 1     # offset in seconds from the end of the feature frames
 
 TOLERANCE_OF_POOR_QUALITY = 1000
-COMMIT_BATCH_SIZE = 80
+COMMIT_BATCH_SIZE = 80          # save the features to the database every COMMIT_BATCH_SIZE features
+EVALUATE_NOISE_LEVEL_RATE = 100 # evaluate the base noise level every EVALUATE_NOISE_LEVEL_RATE features
 
 feature_id = 1
 feature_updates = []
@@ -247,40 +248,37 @@ def find_feature(base_index):
         feature_mz_lower = float(min(clusters_v[feature_indices,CLUSTER_MZ_LOWER_IDX]))
         feature_mz_upper = float(max(clusters_v[feature_indices,CLUSTER_MZ_UPPER_IDX]))
 
-        # update the noise estimate from the lower window
-        lower_noise_eval_frame_1 = feature_start_frame - int((NOISE_ASSESSMENT_OFFSET+NOISE_ASSESSMENT_WIDTH) * args.frames_per_second)
-        upper_noise_eval_frame_1 = feature_start_frame - int(NOISE_ASSESSMENT_OFFSET * args.frames_per_second)
-        if (lower_noise_eval_frame_1 >= int(np.min(clusters_v[:,CLUSTER_FRAME_ID_IDX]))):
-            # assess the noise level in this window
-            (lower_noise_frame_1_index, upper_noise_frame_1_index) = find_frame_indices(lower_noise_eval_frame_1, upper_noise_eval_frame_1)
-            if (lower_noise_frame_1_index is not None) and (upper_noise_frame_1_index is not None):
-                noise_indices = np.where(clusters_v[lower_noise_frame_1_index:upper_noise_frame_1_index,CLUSTER_INTENSITY_SUM_IDX] > 0)[0]
-                if len(noise_indices) > 0:
-                    noise_level_1 = int(np.average(clusters_v[lower_noise_frame_1_index:upper_noise_frame_1_index,CLUSTER_INTENSITY_SUM_IDX][noise_indices]))
-                    noise_level_readings.append(noise_level_1)
+        if feature_id % EVALUATE_NOISE_LEVEL_RATE == 0:
 
-        # update the noise estimate from the upper window
-        lower_noise_eval_frame_2 = feature_end_frame + int((NOISE_ASSESSMENT_OFFSET) * args.frames_per_second)
-        upper_noise_eval_frame_2 = feature_end_frame + int((NOISE_ASSESSMENT_OFFSET+NOISE_ASSESSMENT_WIDTH) * args.frames_per_second)
-        if (upper_noise_eval_frame_2 <= int(np.max(clusters_v[:,CLUSTER_FRAME_ID_IDX]))):
-            # assess the noise level in this window
-            (lower_noise_frame_2_index, upper_noise_frame_2_index) = find_frame_indices(lower_noise_eval_frame_2, upper_noise_eval_frame_2)
-            if (lower_noise_frame_2_index is not None) and (upper_noise_frame_2_index is not None):
-                noise_indices = np.where(clusters_v[lower_noise_frame_2_index:upper_noise_frame_2_index,CLUSTER_INTENSITY_SUM_IDX] > 0)[0]
-                if len(noise_indices) > 0:
-                    noise_level_2 = int(np.average(clusters_v[lower_noise_frame_2_index:upper_noise_frame_2_index,CLUSTER_INTENSITY_SUM_IDX][noise_indices]))
-                    noise_level_readings.append(noise_level_2)
+            # update the noise estimate from the lower window
+            lower_noise_eval_frame_1 = feature_start_frame - int((NOISE_ASSESSMENT_OFFSET+NOISE_ASSESSMENT_WIDTH) * args.frames_per_second)
+            upper_noise_eval_frame_1 = feature_start_frame - int(NOISE_ASSESSMENT_OFFSET * args.frames_per_second)
+            if (lower_noise_eval_frame_1 >= int(np.min(clusters_v[:,CLUSTER_FRAME_ID_IDX]))):
+                # assess the noise level in this window
+                (lower_noise_frame_1_index, upper_noise_frame_1_index) = find_frame_indices(lower_noise_eval_frame_1, upper_noise_eval_frame_1)
+                if (lower_noise_frame_1_index is not None) and (upper_noise_frame_1_index is not None):
+                    noise_indices = np.where(clusters_v[lower_noise_frame_1_index:upper_noise_frame_1_index,CLUSTER_INTENSITY_SUM_IDX] > 0)[0]
+                    if len(noise_indices) > 0:
+                        noise_level_1 = int(np.average(clusters_v[lower_noise_frame_1_index:upper_noise_frame_1_index,CLUSTER_INTENSITY_SUM_IDX][noise_indices]))
+                        noise_level_readings.append(noise_level_1)
+
+            # update the noise estimate from the upper window
+            lower_noise_eval_frame_2 = feature_end_frame + int((NOISE_ASSESSMENT_OFFSET) * args.frames_per_second)
+            upper_noise_eval_frame_2 = feature_end_frame + int((NOISE_ASSESSMENT_OFFSET+NOISE_ASSESSMENT_WIDTH) * args.frames_per_second)
+            if (upper_noise_eval_frame_2 <= int(np.max(clusters_v[:,CLUSTER_FRAME_ID_IDX]))):
+                # assess the noise level in this window
+                (lower_noise_frame_2_index, upper_noise_frame_2_index) = find_frame_indices(lower_noise_eval_frame_2, upper_noise_eval_frame_2)
+                if (lower_noise_frame_2_index is not None) and (upper_noise_frame_2_index is not None):
+                    noise_indices = np.where(clusters_v[lower_noise_frame_2_index:upper_noise_frame_2_index,CLUSTER_INTENSITY_SUM_IDX] > 0)[0]
+                    if len(noise_indices) > 0:
+                        noise_level_2 = int(np.average(clusters_v[lower_noise_frame_2_index:upper_noise_frame_2_index,CLUSTER_INTENSITY_SUM_IDX][noise_indices]))
+                        noise_level_readings.append(noise_level_2)
+
     else:
         print("length test {}, gap test {}".format(passed_minimum_length_test,passed_maximum_gap_test))
         quality = 0.0
         feature_start_frame = None
         feature_end_frame = None
-        lower_noise_eval_frame_1 = None
-        upper_noise_eval_frame_1 = None
-        lower_noise_eval_frame_2 = None
-        upper_noise_eval_frame_2 = None
-        noise_level_1 = None
-        noise_level_2 = None
         feature_summed_intensity = 0
         feature_scan_lower = 0
         feature_scan_upper = 0
@@ -302,11 +300,8 @@ def find_feature(base_index):
     results['base_cluster_frame_id'] = frame_id
     results['base_cluster_id'] = cluster_id
     results['feature_frames'] = (feature_start_frame, feature_end_frame)
-    results['noise_low_frames'] = (lower_noise_eval_frame_1, upper_noise_eval_frame_1)
-    results['noise_high_frames'] = (lower_noise_eval_frame_2, upper_noise_eval_frame_2)
     results['cluster_indices'] = feature_indices
     results['charge_state'] = charge_state
-    results['noise_readings'] = (noise_level_1, noise_level_2)
     results['quality'] = quality
     results['summed_intensity'] = feature_summed_intensity
     results['scan_range'] = (feature_scan_lower, feature_scan_upper)
@@ -380,21 +375,17 @@ while True:
     base_cluster_frame_id = feature['base_cluster_frame_id']
     base_cluster_id = feature['base_cluster_id']
     feature_frames = feature['feature_frames']
-    noise_low_frames = feature['noise_low_frames']
-    noise_high_frames = feature['noise_high_frames']
     cluster_indices = feature['cluster_indices']
     charge_state = feature['charge_state']
-    noise_readings = feature['noise_readings']
     quality = feature['quality']
     summed_intensity = feature['summed_intensity']
     scan_range = feature['scan_range']
     mz_range = feature['mz_range']
 
-    base_noise_level = int(np.average(noise_level_readings))
     feature_discovery_history.append(quality)
 
     if quality > 0.5:
-        print("feature {}, feature frames {}, intensity {}, length {}, noise low frames {}, noise high frames {}, noise readings {}, base noise level {}, scan range {}, m/z range {}".format(feature_id, feature_frames, cluster_intensity, len(cluster_indices), noise_low_frames, noise_high_frames, noise_readings, base_noise_level, scan_range, mz_range))
+        print("feature {}, feature frames {}, intensity {}, length {}, scan range {}, m/z range {}".format(feature_id, feature_frames, cluster_intensity, len(cluster_indices), scan_range, mz_range))
         # Assign this feature ID to all the clusters in the feature
         for cluster_idx in cluster_indices:
             values = (feature_id, int(clusters_v[cluster_idx][CLUSTER_FRAME_ID_IDX]), int(clusters_v[cluster_idx][CLUSTER_ID_IDX]))
@@ -420,7 +411,7 @@ while True:
         source_conn.commit()
 
     # check whether we have finished
-    if (cluster_intensity < base_noise_level):
+    if (cluster_intensity < int(np.average(noise_level_readings))):
         print("Reached base noise level")
         break
     if (feature_discovery_history.count(0.0) == TOLERANCE_OF_POOR_QUALITY):
