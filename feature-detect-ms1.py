@@ -33,6 +33,7 @@ NOISE_ASSESSMENT_WIDTH = 1      # length of time in seconds to average the noise
 NOISE_ASSESSMENT_OFFSET = 1     # offset in seconds from the end of the feature frames
 
 TOLERANCE_OF_POOR_QUALITY = 1000
+COMMIT_BATCH_SIZE = 1000
 
 feature_id = 1
 feature_updates = []
@@ -410,12 +411,13 @@ while True:
     # remove the features we've processed from the run
     clusters_v[cluster_indices, CLUSTER_INTENSITY_SUM_IDX] = -1
 
-    # save this in the database
-    c.executemany("UPDATE clusters SET feature_id=? WHERE frame_id=? AND cluster_id=?", cluster_updates)
-    del cluster_updates[:]
-    c.executemany("INSERT INTO features VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", feature_updates)
-    del feature_updates[:]
-    source_conn.commit()
+    if feature_id % COMMIT_BATCH_SIZE == 0:
+        # save this in the database
+        c.executemany("UPDATE clusters SET feature_id=? WHERE frame_id=? AND cluster_id=?", cluster_updates)
+        del cluster_updates[:]
+        c.executemany("INSERT INTO features VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", feature_updates)
+        del feature_updates[:]
+        source_conn.commit()
 
     # check whether we have finished
     if (cluster_intensity < base_noise_level):
@@ -426,6 +428,15 @@ while True:
         break
     if (args.number_of_features is not None) and (feature_id > args.number_of_features):
         break
+
+# Write what we have left
+if len(feature_updates) > 0:
+    c.executemany("INSERT INTO features VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", feature_updates)
+    del feature_updates[:]
+
+if len(cluster_updates) > 0:
+    c.executemany("UPDATE clusters SET feature_id=? WHERE frame_id=? AND cluster_id=?", cluster_updates)
+    del cluster_updates[:]
 
 stop_run = time.time()
 
