@@ -327,6 +327,7 @@ parser.add_argument('-gbp','--maximum_gap_between_points', type=float, help='Max
 parser.add_argument('-mcs','--minimum_charge_state', type=int, default=2, help='Minimum charge state to process.', required=False)
 parser.add_argument('-mfe','--magnitude_for_feature_endpoints', type=float, default=0.8, help='Proportion of a feature\'s magnitude to take for its endpoints', required=False)
 parser.add_argument('-fps','--frames_per_second', type=float, default=2.0, help='Frame rate.', required=False)
+parser.add_argument('-nbf','--number_of_features', type=int, help='The number of features to find.', required=False)
 args = parser.parse_args()
 
 NUMBER_OF_FRAMES_TO_LOOK = int(args.number_of_seconds_each_side * args.frames_per_second)
@@ -422,6 +423,8 @@ while True:
         break
     if (feature_discovery_history.count(0.0) == TOLERANCE_OF_POOR_QUALITY):
         print("Reached maximum number of consecutive rejected features")
+        break
+    if (args.number_of_features is not None) && (feature_id >= args.number_of_features):
         break
 
 stop_run = time.time()
