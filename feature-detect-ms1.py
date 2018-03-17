@@ -127,6 +127,7 @@ def find_feature(base_index):
 
     # look for other clusters that belong to this feature
     feature_indices = np.where(
+        (clusters_v[:, CLUSTER_INTENSITY_SUM_IDX] > 0) &
         (clusters_v[:, CLUSTER_FRAME_ID_IDX] >= search_start_frame) &
         (clusters_v[:, CLUSTER_FRAME_ID_IDX] <= search_end_frame) &
         (clusters_v[:, CLUSTER_CHARGE_STATE_IDX] == charge_state) &
@@ -380,8 +381,8 @@ while True:
     else:
         print("poor quality feature - discarding (intensity {}, base noise level {})".format(cluster_intensity, base_noise_level))
 
-    # remove the clusters we've processed from the run
-    clusters_v = np.delete(clusters_v, cluster_indices, 0)
+    # remove the features we've processed from the run
+    clusters_v[cluster_indices, CLUSTER_INTENSITY_SUM_IDX] = -1
 
     if feature_id % COMMIT_BATCH_SIZE == 0:
         # save this in the database
