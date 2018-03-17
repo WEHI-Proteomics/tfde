@@ -424,7 +424,7 @@ while True:
     if (feature_discovery_history.count(0.0) == TOLERANCE_OF_POOR_QUALITY):
         print("Reached maximum number of consecutive rejected features")
         break
-    if (args.number_of_features is not None) && (feature_id >= args.number_of_features):
+    if (args.number_of_features is not None) and (feature_id >= args.number_of_features):
         break
 
 stop_run = time.time()
