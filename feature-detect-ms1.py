@@ -263,146 +263,151 @@ def find_feature(base_index):
     return results
 
 
-#
-# Note: this script's scope is global - it will detect features across all the frames in the database
-#
+def main():
+    #
+    # Note: this script's scope is global - it will detect features across all the frames in the database
+    #
 
-parser = argparse.ArgumentParser(description='A method for tracking features through frames.')
-parser.add_argument('-db','--database_name', type=str, help='The name of the source database.', required=True)
-parser.add_argument('-md','--mz_std_dev', type=int, default=4, help='Number of standard deviations to look either side of the base peak, in the m/z dimension.', required=False)
-parser.add_argument('-sd','--scan_std_dev', type=int, default=4, help='Number of standard deviations to look either side of the base peak, in the scan dimension.', required=False)
-parser.add_argument('-ns','--number_of_seconds_each_side', type=int, default=20, help='Number of seconds to look either side of the maximum cluster.', required=False)
-parser.add_argument('-ml','--minimum_feature_length', type=float, default=3.0, help='Minimum number of seconds for a feature to be valid.', required=False)
-parser.add_argument('-gbp','--maximum_gap_between_points', type=float, help='Maximum number of seconds between points. Gap is ignored if this parameter is not set.', required=False)
-parser.add_argument('-mcs','--minimum_charge_state', type=int, default=2, help='Minimum charge state to process.', required=False)
-parser.add_argument('-mfe','--magnitude_for_feature_endpoints', type=float, default=0.8, help='Proportion of a feature\'s magnitude to take for its endpoints', required=False)
-parser.add_argument('-fps','--frames_per_second', type=float, default=2.0, help='Frame rate.', required=False)
-parser.add_argument('-nbf','--number_of_features', type=int, help='The number of features to find.', required=False)
-args = parser.parse_args()
+    parser = argparse.ArgumentParser(description='A method for tracking features through frames.')
+    parser.add_argument('-db','--database_name', type=str, help='The name of the source database.', required=True)
+    parser.add_argument('-md','--mz_std_dev', type=int, default=4, help='Number of standard deviations to look either side of the base peak, in the m/z dimension.', required=False)
+    parser.add_argument('-sd','--scan_std_dev', type=int, default=4, help='Number of standard deviations to look either side of the base peak, in the scan dimension.', required=False)
+    parser.add_argument('-ns','--number_of_seconds_each_side', type=int, default=20, help='Number of seconds to look either side of the maximum cluster.', required=False)
+    parser.add_argument('-ml','--minimum_feature_length', type=float, default=3.0, help='Minimum number of seconds for a feature to be valid.', required=False)
+    parser.add_argument('-gbp','--maximum_gap_between_points', type=float, help='Maximum number of seconds between points. Gap is ignored if this parameter is not set.', required=False)
+    parser.add_argument('-mcs','--minimum_charge_state', type=int, default=2, help='Minimum charge state to process.', required=False)
+    parser.add_argument('-mfe','--magnitude_for_feature_endpoints', type=float, default=0.8, help='Proportion of a feature\'s magnitude to take for its endpoints', required=False)
+    parser.add_argument('-fps','--frames_per_second', type=float, default=2.0, help='Frame rate.', required=False)
+    parser.add_argument('-nbf','--number_of_features', type=int, help='The number of features to find.', required=False)
+    args = parser.parse_args()
 
-NUMBER_OF_FRAMES_TO_LOOK = int(args.number_of_seconds_each_side * args.frames_per_second)
-MINIMUM_NUMBER_OF_FRAMES = int(args.minimum_feature_length * args.frames_per_second)
+    NUMBER_OF_FRAMES_TO_LOOK = int(args.number_of_seconds_each_side * args.frames_per_second)
+    MINIMUM_NUMBER_OF_FRAMES = int(args.minimum_feature_length * args.frames_per_second)
 
-# Store the arguments as metadata in the database for later reference
-feature_info = []
-for arg in vars(args):
-    feature_info.append((arg, getattr(args, arg)))
+    # Store the arguments as metadata in the database for later reference
+    feature_info = []
+    for arg in vars(args):
+        feature_info.append((arg, getattr(args, arg)))
 
-# Connect to the database file
-source_conn = sqlite3.connect(args.database_name)
-c = source_conn.cursor()
+    # Connect to the database file
+    source_conn = sqlite3.connect(args.database_name)
+    c = source_conn.cursor()
 
-# find out the frame range
-c.execute("SELECT min(frame_id) FROM clusters")
-row = c.fetchone()
-frame_lower = int(row[0])
+    # find out the frame range
+    c.execute("SELECT min(frame_id) FROM clusters")
+    row = c.fetchone()
+    frame_lower = int(row[0])
 
-c.execute("SELECT max(frame_id) FROM clusters")
-row = c.fetchone()
-frame_upper = int(row[0])
+    c.execute("SELECT max(frame_id) FROM clusters")
+    row = c.fetchone()
+    frame_upper = int(row[0])
 
-print("frame range: {} to {}".format(frame_lower, frame_upper))
+    print("frame range: {} to {}".format(frame_lower, frame_upper))
 
-print("Setting up tables...")
+    print("Setting up tables...")
 
-c.execute("DROP TABLE IF EXISTS features")
-c.execute("DROP TABLE IF EXISTS feature_info")
+    c.execute("DROP TABLE IF EXISTS features")
+    c.execute("DROP TABLE IF EXISTS feature_info")
 
-c.execute("CREATE TABLE features (feature_id INTEGER, base_frame_id INTEGER, base_cluster_id INTEGER, charge_state INTEGER, start_frame INTEGER, end_frame INTEGER, quality_score REAL, summed_intensity INTEGER, scan_lower INTEGER, scan_upper INTEGER, mz_lower REAL, mz_upper REAL, PRIMARY KEY(feature_id))")
-c.execute("CREATE TABLE feature_info (item TEXT, value TEXT)")
+    c.execute("CREATE TABLE features (feature_id INTEGER, base_frame_id INTEGER, base_cluster_id INTEGER, charge_state INTEGER, start_frame INTEGER, end_frame INTEGER, quality_score REAL, summed_intensity INTEGER, scan_lower INTEGER, scan_upper INTEGER, mz_lower REAL, mz_upper REAL, PRIMARY KEY(feature_id))")
+    c.execute("CREATE TABLE feature_info (item TEXT, value TEXT)")
 
-print("Setting up indexes...")
+    print("Setting up indexes...")
 
-c.execute("CREATE INDEX IF NOT EXISTS idx_clusters_1 ON clusters (feature_id)")
-c.execute("CREATE INDEX IF NOT EXISTS idx_clusters_2 ON clusters (frame_id, cluster_id)")
-c.execute("CREATE INDEX IF NOT EXISTS idx_clusters_3 ON clusters (charge_state, frame_id, cluster_id)")
+    c.execute("CREATE INDEX IF NOT EXISTS idx_clusters_1 ON clusters (feature_id)")
+    c.execute("CREATE INDEX IF NOT EXISTS idx_clusters_2 ON clusters (frame_id, cluster_id)")
+    c.execute("CREATE INDEX IF NOT EXISTS idx_clusters_3 ON clusters (charge_state, frame_id, cluster_id)")
 
-print("Resetting the feature IDs in the cluster table.")
-c.execute("update clusters set feature_id=0 where feature_id!=0;")
+    print("Resetting the feature IDs in the cluster table.")
+    c.execute("update clusters set feature_id=0 where feature_id!=0;")
 
-print("Loading the clusters information")
-c.execute("select frame_id, cluster_id, charge_state, base_peak_scan_std_dev, base_peak_max_point_mz, base_peak_max_point_scan, intensity_sum, scan_lower, scan_upper, mz_lower, mz_upper from clusters where charge_state >= {} order by frame_id, cluster_id asc;".format(args.minimum_charge_state))
-clusters_v = np.array(c.fetchall(), dtype=np.float32)
+    print("Loading the clusters information")
+    c.execute("select frame_id, cluster_id, charge_state, base_peak_scan_std_dev, base_peak_max_point_mz, base_peak_max_point_scan, intensity_sum, scan_lower, scan_upper, mz_lower, mz_upper from clusters where charge_state >= {} order by frame_id, cluster_id asc;".format(args.minimum_charge_state))
+    clusters_v = np.array(c.fetchall(), dtype=np.float32)
 
-print("clusters array occupies {} bytes".format(clusters_v.nbytes))
-print("Finding features")
+    print("clusters array occupies {} bytes".format(clusters_v.nbytes))
+    print("Finding features")
 
-start_run = time.time()
+    start_run = time.time()
 
-# go through each cluster and see whether it belongs to an existing feature
-while True:
-    # find the most intense cluster
-    cluster_max_index = np.argmax(clusters_v[:,CLUSTER_INTENSITY_SUM_IDX])
-    cluster = clusters_v[cluster_max_index]
-    cluster_intensity = int(cluster[CLUSTER_INTENSITY_SUM_IDX])
+    # go through each cluster and see whether it belongs to an existing feature
+    while True:
+        # find the most intense cluster
+        cluster_max_index = np.argmax(clusters_v[:,CLUSTER_INTENSITY_SUM_IDX])
+        cluster = clusters_v[cluster_max_index]
+        cluster_intensity = int(cluster[CLUSTER_INTENSITY_SUM_IDX])
 
-    feature = find_feature(base_index=cluster_max_index)
-    base_cluster_frame_id = feature['base_cluster_frame_id']
-    base_cluster_id = feature['base_cluster_id']
-    feature_frames = feature['feature_frames']
-    cluster_indices = feature['cluster_indices']
-    charge_state = feature['charge_state']
-    quality = feature['quality']
-    summed_intensity = feature['summed_intensity']
-    scan_range = feature['scan_range']
-    mz_range = feature['mz_range']
+        feature = find_feature(base_index=cluster_max_index)
+        base_cluster_frame_id = feature['base_cluster_frame_id']
+        base_cluster_id = feature['base_cluster_id']
+        feature_frames = feature['feature_frames']
+        cluster_indices = feature['cluster_indices']
+        charge_state = feature['charge_state']
+        quality = feature['quality']
+        summed_intensity = feature['summed_intensity']
+        scan_range = feature['scan_range']
+        mz_range = feature['mz_range']
 
-    feature_discovery_history.append(quality)
+        feature_discovery_history.append(quality)
 
-    if quality > 0.5:
-        print("feature {}, feature frames {}, intensity {}, length {}, scan range {}, m/z range {}".format(feature_id, feature_frames, cluster_intensity, len(cluster_indices), scan_range, mz_range))
-        # Assign this feature ID to all the clusters in the feature
-        for cluster_idx in cluster_indices:
-            values = (feature_id, int(clusters_v[cluster_idx][CLUSTER_FRAME_ID_IDX]), int(clusters_v[cluster_idx][CLUSTER_ID_IDX]))
-            cluster_updates.append(values)
+        if quality > 0.5:
+            print("feature {}, feature frames {}, intensity {}, length {}, scan range {}, m/z range {}".format(feature_id, feature_frames, cluster_intensity, len(cluster_indices), scan_range, mz_range))
+            # Assign this feature ID to all the clusters in the feature
+            for cluster_idx in cluster_indices:
+                values = (feature_id, int(clusters_v[cluster_idx][CLUSTER_FRAME_ID_IDX]), int(clusters_v[cluster_idx][CLUSTER_ID_IDX]))
+                cluster_updates.append(values)
 
-        # Add the feature's details to the collection
-        values = (int(feature_id), int(base_cluster_frame_id), int(base_cluster_id), int(charge_state), int(feature_frames[0]), int(feature_frames[1]), float(quality), int(summed_intensity), int(scan_range[0]), int(scan_range[1]), float(mz_range[0]), float(mz_range[1]))
-        feature_updates.append(values)
+            # Add the feature's details to the collection
+            values = (int(feature_id), int(base_cluster_frame_id), int(base_cluster_id), int(charge_state), int(feature_frames[0]), int(feature_frames[1]), float(quality), int(summed_intensity), int(scan_range[0]), int(scan_range[1]), float(mz_range[0]), float(mz_range[1]))
+            feature_updates.append(values)
 
-        feature_id += 1
-    else:
-        print("poor quality feature - discarding (intensity {}, base noise level {})".format(cluster_intensity, base_noise_level))
+            feature_id += 1
+        else:
+            print("poor quality feature - discarding (intensity {}, base noise level {})".format(cluster_intensity, base_noise_level))
 
-    # remove the features we've processed from the run
-    clusters_v[cluster_indices, CLUSTER_INTENSITY_SUM_IDX] = -1
+        # remove the features we've processed from the run
+        clusters_v[cluster_indices, CLUSTER_INTENSITY_SUM_IDX] = -1
 
-    if feature_id % COMMIT_BATCH_SIZE == 0:
-        print("writing features out to the database...")
-        # save this in the database
-        c.executemany("UPDATE clusters SET feature_id=? WHERE frame_id=? AND cluster_id=?", cluster_updates)
-        del cluster_updates[:]
+        if feature_id % COMMIT_BATCH_SIZE == 0:
+            print("writing features out to the database...")
+            # save this in the database
+            c.executemany("UPDATE clusters SET feature_id=? WHERE frame_id=? AND cluster_id=?", cluster_updates)
+            del cluster_updates[:]
+            c.executemany("INSERT INTO features VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", feature_updates)
+            del feature_updates[:]
+            source_conn.commit()
+
+        # check whether we have finished
+        if (cluster_intensity < int(np.average(noise_level_readings))):
+            print("Reached base noise level")
+            break
+        if ((float(feature_discovery_history.count(0.0)) / FEATURE_DISCOVERY_HISTORY_LENGTH) > MAX_PROPORTION_POOR_QUALITY):
+            print("Exceeded max proportion of poor quality features")
+            break
+        if (args.number_of_features is not None) and (feature_id > args.number_of_features):
+            print("Found the specified number of features")
+            break
+
+    # Write what we have left
+    if len(feature_updates) > 0:
         c.executemany("INSERT INTO features VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", feature_updates)
         del feature_updates[:]
-        source_conn.commit()
 
-    # check whether we have finished
-    if (cluster_intensity < int(np.average(noise_level_readings))):
-        print("Reached base noise level")
-        break
-    if ((float(feature_discovery_history.count(0.0)) / FEATURE_DISCOVERY_HISTORY_LENGTH) > MAX_PROPORTION_POOR_QUALITY):
-        print("Exceeded max proportion of poor quality features")
-        break
-    if (args.number_of_features is not None) and (feature_id > args.number_of_features):
-        print("Found the specified number of features")
-        break
+    if len(cluster_updates) > 0:
+        c.executemany("UPDATE clusters SET feature_id=? WHERE frame_id=? AND cluster_id=?", cluster_updates)
+        del cluster_updates[:]
 
-# Write what we have left
-if len(feature_updates) > 0:
-    c.executemany("INSERT INTO features VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", feature_updates)
-    del feature_updates[:]
+    stop_run = time.time()
 
-if len(cluster_updates) > 0:
-    c.executemany("UPDATE clusters SET feature_id=? WHERE frame_id=? AND cluster_id=?", cluster_updates)
-    del cluster_updates[:]
+    print("found {} features in {} seconds".format(feature_id-1, stop_run-start_run))
 
-stop_run = time.time()
+    feature_info.append(("run processing time (sec)", stop_run-start_run))
+    feature_info.append(("processed", time.ctime()))
+    c.executemany("INSERT INTO feature_info VALUES (?, ?)", feature_info)
 
-print("found {} features in {} seconds".format(feature_id-1, stop_run-start_run))
+    source_conn.commit()
+    source_conn.close()
 
-feature_info.append(("run processing time (sec)", stop_run-start_run))
-feature_info.append(("processed", time.ctime()))
-c.executemany("INSERT INTO feature_info VALUES (?, ?)", feature_info)
 
-source_conn.commit()
-source_conn.close()
+if __name__ == "__main__":
+    main()
