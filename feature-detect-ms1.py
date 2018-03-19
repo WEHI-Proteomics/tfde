@@ -350,7 +350,7 @@ while True:
     feature_discovery_history.append(quality)
 
     if quality > 0.5:
-        print("feature {}, feature frames {}, intensity {}, length {}, scan range {}, m/z range {}".format(feature_id, feature_frames, cluster_intensity, len(cluster_indices), scan_range, mz_range))
+        print("feature {}, intensity {}, length {}".format(feature_id, cluster_intensity, len(cluster_indices)))
         # Assign this feature ID to all the clusters in the feature
         for cluster_idx in cluster_indices:
             values = (feature_id, int(clusters_v[cluster_idx][CLUSTER_FRAME_ID_IDX]), int(clusters_v[cluster_idx][CLUSTER_ID_IDX]))
@@ -362,7 +362,7 @@ while True:
 
         feature_id += 1
     else:
-        print("poor quality feature - discarding (intensity {}, base noise level {})".format(cluster_intensity, base_noise_level))
+        print("poor quality feature - discarding (intensity {})".format(cluster_intensity))
 
     # remove the features we've processed from the run
     clusters_v[cluster_indices, CLUSTER_INTENSITY_SUM_IDX] = -1
