@@ -284,17 +284,6 @@ args = parser.parse_args()
 NUMBER_OF_FRAMES_TO_LOOK = int(args.number_of_seconds_each_side * args.frames_per_second)
 MINIMUM_NUMBER_OF_FRAMES = int(args.minimum_feature_length * args.frames_per_second)
 
-# find out the frame range
-src_c.execute("SELECT max(frame_id) FROM clusters")
-row = src_c.fetchone()
-frame_lower = int(row[0])
-
-src_c.execute("SELECT min(frame_id) FROM clusters")
-row = src_c.fetchone()
-frame_upper = int(row[0])
-
-print("frame range: {} to {}".format(frame_lower, frame_upper))
-
 # Store the arguments as metadata in the database for later reference
 feature_info = []
 for arg in vars(args):
@@ -303,6 +292,17 @@ for arg in vars(args):
 # Connect to the database file
 source_conn = sqlite3.connect(args.database_name)
 c = source_conn.cursor()
+
+# find out the frame range
+c.execute("SELECT max(frame_id) FROM clusters")
+row = c.fetchone()
+frame_lower = int(row[0])
+
+c.execute("SELECT min(frame_id) FROM clusters")
+row = c.fetchone()
+frame_upper = int(row[0])
+
+print("frame range: {} to {}".format(frame_lower, frame_upper))
 
 print("Setting up tables...")
 
