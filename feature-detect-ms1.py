@@ -63,46 +63,19 @@ def find_frame_indices(start_frame_id, end_frame_id):
         last_end_frame_index = None
     return (first_start_frame_index, last_end_frame_index)
 
-def find_nearest_low_index_below_threshold(values, threshold):
-    max_index = np.argmax(values)
-    values_below_threshold = (values - threshold) < 0
-    change_indices = np.where(np.roll(values_below_threshold,1) != values_below_threshold)[0]     # for when there is more than one cluster found in a frame, the first cluster will be the most intense
-    if len(change_indices) > 0:
-        distance_from_base = change_indices - max_index
-        distance_from_base[distance_from_base>0] = -sys.maxint
-        idx = change_indices[distance_from_base.argmax()]
-        if idx >= max_index:
-            idx = 0
-        # print("low - values {}, values_below_threshold {}, max_index {}, change_indices {}, distance_from_base {}, idx {}".format(values, values_below_threshold, max_index, change_indices, distance_from_base, idx))
-    else:
-        idx = None
-    return idx
-
-def find_nearest_high_index_below_threshold(values, threshold):
-    max_index = np.argmax(values)
-    values_below_threshold = (values - threshold) < 0
-    change_indices = np.where(np.roll(values_below_threshold,1) != values_below_threshold)[0]     # for when there is more than one cluster found in a frame, the first cluster will be the most intense
-    if len(change_indices) > 0:
-        distance_from_base = change_indices - max_index
-        distance_from_base[distance_from_base<0] = sys.maxint
-        idx = change_indices[distance_from_base.argmin()]
-        if idx <= max_index:
-            idx = len(values)-1
-        # print("high - values {}, values_below_threshold {}, max_index {}, change_indices {}, distance_from_base {}, idx {}".format(values, values_below_threshold, max_index, change_indices, distance_from_base, idx))
-    else:
-        idx = None
-    return idx
-
 # returns True if the gap between points is within acceptable limit
 def check_gap_between_points(feature_indices, max_gap_in_seconds):
     features_max_gap_in_seconds = np.max(np.diff(clusters_v[feature_indices, CLUSTER_FRAME_ID_IDX])) / args.frames_per_second
     # print("frame ids {}, max gap {}".format(clusters_v[feature_indices, CLUSTER_FRAME_ID_IDX], features_max_gap_in_seconds))
     return (features_max_gap_in_seconds <= max_gap_in_seconds)
 
+@profile
 def find_feature(base_index):
     global clusters_v
     global noise_level_readings
     global base_noise_level
+    global frame_lower
+    global frame_upper
 
     noise_level_1 = None
     noise_level_2 = None
@@ -113,8 +86,8 @@ def find_feature(base_index):
     cluster_id = int(cluster[CLUSTER_ID_IDX])
     charge_state = int(cluster[CLUSTER_CHARGE_STATE_IDX])
 
-    search_start_frame = max(frame_id-NUMBER_OF_FRAMES_TO_LOOK, int(np.min(clusters_v[:,CLUSTER_FRAME_ID_IDX])))    # make sure they are valid frame_ids
-    search_end_frame = min(frame_id+NUMBER_OF_FRAMES_TO_LOOK, int(np.max(clusters_v[:,CLUSTER_FRAME_ID_IDX])))
+    search_start_frame = max(frame_id-NUMBER_OF_FRAMES_TO_LOOK, int(frame_lower))    # make sure they are valid frame_ids
+    search_end_frame = min(frame_id+NUMBER_OF_FRAMES_TO_LOOK, int(frame_upper))
 
     # Seed the search bounds by the properties of the base peaks
     base_max_point_mz = cluster[CLUSTER_BASE_MAX_POINT_MZ_IDX]
@@ -310,6 +283,17 @@ args = parser.parse_args()
 
 NUMBER_OF_FRAMES_TO_LOOK = int(args.number_of_seconds_each_side * args.frames_per_second)
 MINIMUM_NUMBER_OF_FRAMES = int(args.minimum_feature_length * args.frames_per_second)
+
+# find out the frame range
+src_c.execute("SELECT max(frame_id) FROM clusters")
+row = src_c.fetchone()
+frame_lower = int(row[0])
+
+src_c.execute("SELECT min(frame_id) FROM clusters")
+row = src_c.fetchone()
+frame_upper = int(row[0])
+
+print("frame range: {} to {}".format(frame_lower, frame_upper))
 
 # Store the arguments as metadata in the database for later reference
 feature_info = []
