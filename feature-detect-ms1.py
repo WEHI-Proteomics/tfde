@@ -69,7 +69,6 @@ def check_gap_between_points(feature_indices, max_gap_in_seconds):
     # print("frame ids {}, max gap {}".format(clusters_v[feature_indices, CLUSTER_FRAME_ID_IDX], features_max_gap_in_seconds))
     return (features_max_gap_in_seconds <= max_gap_in_seconds)
 
-@profile
 def find_feature(base_index):
     global clusters_v
     global noise_level_readings
