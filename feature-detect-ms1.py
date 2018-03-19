@@ -294,11 +294,11 @@ source_conn = sqlite3.connect(args.database_name)
 c = source_conn.cursor()
 
 # find out the frame range
-c.execute("SELECT max(frame_id) FROM clusters")
+c.execute("SELECT min(frame_id) FROM clusters")
 row = c.fetchone()
 frame_lower = int(row[0])
 
-c.execute("SELECT min(frame_id) FROM clusters")
+c.execute("SELECT max(frame_id) FROM clusters")
 row = c.fetchone()
 frame_upper = int(row[0])
 
