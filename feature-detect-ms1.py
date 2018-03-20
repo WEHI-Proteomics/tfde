@@ -292,6 +292,9 @@ for arg in vars(args):
 source_conn = sqlite3.connect(args.database_name)
 c = source_conn.cursor()
 
+# from https://stackoverflow.com/questions/43741185/sqlite3-disk-io-error
+c.execute("PRAGMA journal_mode = TRUNCATE")
+
 # find out the frame range
 c.execute("SELECT min(frame_id) FROM clusters")
 row = c.fetchone()
