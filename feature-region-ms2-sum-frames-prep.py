@@ -26,8 +26,8 @@ dest_c.execute("CREATE TABLE summed_ms2_regions_info (item TEXT, value TEXT)")
 
 print("Setting up indexes")
 src_c.execute("CREATE INDEX IF NOT EXISTS idx_frame_properties_2 ON frame_properties (collision_energy, frame_id)")
-src_c.execute("CREATE INDEX IF NOT EXISTS idx_features_1 ON features (feature_id,charge_state,mz_lower,mz_upper)")
 src_c.execute("CREATE INDEX IF NOT EXISTS idx_frames_2 ON frames (frame_id,scan)")
+dest_c.execute("CREATE INDEX IF NOT EXISTS idx_features_1 ON features (feature_id,charge_state,mz_lower,mz_upper)")
 
 dest_conn.commit()
 dest_conn.close()
