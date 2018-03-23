@@ -352,8 +352,11 @@ while True:
 
     feature_discovery_history.append(quality)
 
+    poor_quality_rate = float(feature_discovery_history.count(0.0)) / FEATURE_DISCOVERY_HISTORY_LENGTH
+    estimated_noise_level = int(np.average(noise_level_readings))
+
     if quality > 0.5:
-        print("feature {}, intensity {}, length {}".format(feature_id, cluster_intensity, len(cluster_indices)))
+        print("feature {}, intensity {}, length {} (poor quality rate {}, base noise {})".format(feature_id, cluster_intensity, len(cluster_indices), poor_quality_rate, estimated_noise_level))
         # Assign this feature ID to all the clusters in the feature
         for cluster_idx in cluster_indices:
             values = (feature_id, int(clusters_v[cluster_idx][CLUSTER_FRAME_ID_IDX]), int(clusters_v[cluster_idx][CLUSTER_ID_IDX]))
@@ -365,7 +368,7 @@ while True:
 
         feature_id += 1
     else:
-        print("poor quality feature - discarding (intensity {})".format(cluster_intensity))
+        print("poor quality feature - discarding, intensity {}, length {} (poor quality rate {}, base noise {})".format(cluster_intensity, len(cluster_indices), poor_quality_rate, estimated_noise_level))
 
     # remove the features we've processed from the run
     clusters_v[cluster_indices, CLUSTER_INTENSITY_SUM_IDX] = -1
@@ -380,10 +383,10 @@ while True:
         source_conn.commit()
 
     # check whether we have finished
-    if (cluster_intensity < int(np.average(noise_level_readings))):
+    if (cluster_intensity < estimated_noise_level):
         print("Reached base noise level")
         break
-    if ((float(feature_discovery_history.count(0.0)) / FEATURE_DISCOVERY_HISTORY_LENGTH) > MAX_PROPORTION_POOR_QUALITY):
+    if (poor_quality_rate > MAX_PROPORTION_POOR_QUALITY):
         print("Exceeded max proportion of poor quality features")
         break
     if (args.number_of_features is not None) and (feature_id > args.number_of_features):
