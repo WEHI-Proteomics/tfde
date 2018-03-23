@@ -6,7 +6,7 @@ import time
 import pandas as pd
 import peakutils
 from operator import itemgetter
-import pymysql
+import sqlite3
 
 # feature array indices
 FEATURE_ID_IDX = 0
@@ -37,7 +37,9 @@ def ms2_frame_ids_from_ms1_frame_id(ms1_frame_id, frames_to_sum, frame_summing_o
 
 
 parser = argparse.ArgumentParser(description='Sum MS2 frames in the region of the MS1 feature\'s drift and retention time.')
-parser.add_argument('-db','--database_name', type=str, help='The name of the database.', required=True)
+parser.add_argument('-cdb','--converted_database_name', type=str, help='The name of the converted database.', required=True)
+parser.add_argument('-sdb','--source_database_name', type=str, help='The name of the ms1 source database.', required=True)
+parser.add_argument('-ddb','--destination_database_name', type=str, help='The name of the destination database.', required=True)
 parser.add_argument('-fl','--feature_id_lower', type=int, help='Lower feature ID to process.', required=False)
 parser.add_argument('-fu','--feature_id_upper', type=int, help='Upper feature ID to process.', required=False)
 parser.add_argument('-ml','--mz_lower', type=float, help='Lower feature m/z to process.', required=True)
@@ -47,8 +49,17 @@ parser.add_argument('-mcs','--minimum_charge_state', type=int, default=2, help='
 parser.add_argument('-ms2ce','--ms2_collision_energy', type=float, help='Collision energy used for MS2.', required=True)
 args = parser.parse_args()
 
-dest_conn = pymysql.connect(host='mscypher-004', user='root', passwd='password', database="{}".format(args.database_name))
+conv_conn = sqlite3.connect(args.converted_database_name)
+conv_c = conv_conn.cursor()
+
+src_conn = sqlite3.connect(args.source_database_name)
+src_c = src_conn.cursor()
+
+dest_conn = sqlite3.connect(args.destination_database_name)
 dest_c = dest_conn.cursor()
+
+# from https://stackoverflow.com/questions/43741185/sqlite3-disk-io-error
+dest_c.execute("PRAGMA journal_mode = TRUNCATE")
 
 # Store the arguments as metadata in the database for later reference
 ms2_feature_info = []
@@ -58,18 +69,18 @@ for arg in vars(args):
 start_run = time.time()
 
 print("Loading the MS2 frame IDs")
-ms2_frame_ids_df = pd.read_sql_query("select frame_id from frame_properties where collision_energy={} order by frame_id ASC;".format(args.ms2_collision_energy), dest_conn)
+ms2_frame_ids_df = pd.read_sql_query("select frame_id from frame_properties where collision_energy={} order by frame_id ASC;".format(args.ms2_collision_energy), conv_conn)
 ms2_frame_ids_v = ms2_frame_ids_df.values
 print("{} MS2 frames loaded".format(len(ms2_frame_ids_v)))
 
 if len(ms2_frame_ids_v) > 0:
     print("Getting some metadata about how the frames were summed")
-    dest_c.execute("SELECT value FROM summing_info WHERE item=\"frames_to_sum\"")
-    row = dest_c.fetchone()
+    src_c.execute("SELECT value FROM summing_info WHERE item=\"frames_to_sum\"")
+    row = src_c.fetchone()
     frames_to_sum = int(row[0])
 
-    dest_c.execute("SELECT value FROM summing_info WHERE item=\"frame_summing_offset\"")
-    row = dest_c.fetchone()
+    src_c.execute("SELECT value FROM summing_info WHERE item=\"frame_summing_offset\"")
+    row = src_c.fetchone()
     frame_summing_offset = int(row[0])
     print("Number of source frames that were summed {} with offset".format(frames_to_sum, frame_summing_offset))
 
@@ -77,7 +88,7 @@ if len(ms2_frame_ids_v) > 0:
 
     print("Loading the MS1 features")
     features_df = pd.read_sql_query("""select feature_id,start_frame,end_frame,scan_lower,scan_upper,mz_lower,mz_upper from features where feature_id >= {} and 
-        feature_id <= {} and charge_state >= {} and mz_lower <= {} and mz_upper >= {} order by feature_id ASC;""".format(args.feature_id_lower, args.feature_id_upper, args.minimum_charge_state, args.mz_upper, args.mz_lower), dest_conn)
+        feature_id <= {} and charge_state >= {} and mz_lower <= {} and mz_upper >= {} order by feature_id ASC;""".format(args.feature_id_lower, args.feature_id_upper, args.minimum_charge_state, args.mz_upper, args.mz_lower), src_conn)
     features_v = features_df.values
     print("{} MS1 features loaded".format(len(features_v)))
 
@@ -97,7 +108,7 @@ if len(ms2_frame_ids_v) > 0:
             ms2_frame_ids += ms2_frame_ids_from_ms1_frame_id(frame_id, frames_to_sum, frame_summing_offset)
         ms2_frame_ids = tuple(set(ms2_frame_ids))   # remove duplicates
         print("feature ID {}, MS1 frame IDs {}-{}, {} MS2 frames, scans {}-{}".format(feature_id, feature_start_frame, feature_end_frame, len(ms2_frame_ids), feature_scan_lower, feature_scan_upper))
-        frame_df = pd.read_sql_query("select frame_id,mz,scan,intensity from frames where frame_id in {} and scan <= {} and scan >= {};".format(ms2_frame_ids, feature_scan_upper, feature_scan_lower), dest_conn)
+        frame_df = pd.read_sql_query("select frame_id,mz,scan,intensity from frames where frame_id in {} and scan <= {} and scan >= {};".format(ms2_frame_ids, feature_scan_upper, feature_scan_lower), conv_conn)
         frame_v = frame_df.values
         print("frame occupies {} bytes".format(frame_v.nbytes))
 
@@ -127,7 +138,7 @@ if len(ms2_frame_ids_v) > 0:
         print("")
 
     # Store the points in the database
-    dest_c.executemany("INSERT INTO summed_ms2_regions (feature_id, point_id, mz, scan, intensity, number_frames, peak_id) VALUES (%s, %s, %s, %s, %s, %s, %s)", points)
+    dest_c.executemany("INSERT INTO summed_ms2_regions (feature_id, point_id, mz, scan, intensity, number_frames, peak_id) VALUES (?, ?, ?, ?, ?, ?, ?)", points)
 
     stop_run = time.time()
     print("{} seconds to process run".format(stop_run-start_run))
@@ -138,8 +149,10 @@ if len(ms2_frame_ids_v) > 0:
     ms2_feature_info_entry = []
     ms2_feature_info_entry.append(("features {}-{}".format(args.feature_id_lower, args.feature_id_upper), ' '.join(str(e) for e in ms2_feature_info)))
 
-    dest_c.executemany("INSERT INTO summed_ms2_regions_info VALUES (%s, %s)", ms2_feature_info_entry)
+    dest_c.executemany("INSERT INTO summed_ms2_regions_info VALUES (?, ?)", ms2_feature_info_entry)
 
     dest_conn.commit()
 
 dest_conn.close()
+src_conn.close()
+conv_conn.close()
