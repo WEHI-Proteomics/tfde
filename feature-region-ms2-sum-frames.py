@@ -55,16 +55,21 @@ def main():
     args = parser.parse_args()
 
     conv_conn = sqlite3.connect(args.converted_database_name)
-    conv_c = conv_conn.cursor()
 
     src_conn = sqlite3.connect(args.source_database_name)
-    src_c = src_conn.cursor()
 
     dest_conn = sqlite3.connect(args.destination_database_name)
     dest_c = dest_conn.cursor()
 
     # from https://stackoverflow.com/questions/43741185/sqlite3-disk-io-error
     dest_c.execute("PRAGMA journal_mode = TRUNCATE")
+
+    # Set up the tables if they don't exist already
+    print("Setting up tables")
+    dest_c.execute("DROP TABLE IF EXISTS summed_ms2_regions")
+    dest_c.execute("DROP TABLE IF EXISTS summed_ms2_regions_info")
+    dest_c.execute("CREATE TABLE summed_ms2_regions (feature_id INTEGER, point_id INTEGER, mz REAL, scan INTEGER, intensity INTEGER, number_frames INTEGER, peak_id INTEGER)")  # number_frames = number of source frames the point was found in
+    dest_c.execute("CREATE TABLE summed_ms2_regions_info (item TEXT, value TEXT)")
 
     # Store the arguments as metadata in the database for later reference
     ms2_feature_info = []
