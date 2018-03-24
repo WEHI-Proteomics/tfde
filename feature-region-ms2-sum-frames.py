@@ -77,10 +77,10 @@ def main():
 
     if len(ms2_frame_ids_v) > 0:
 
+        # Take the ms1 features within the m/z band of interest, and sum the ms2 frames over the whole m/z 
+        # range (as we don't know where the fragments will be in ms2)
+
         print("Number of source frames that were summed {}, with offset {}".format(args.frames_to_sum, args.frame_summing_offset))
-
-        # Take the ms1 features within the m/z band of interest, and sum the ms2 frames over the whole m/z range (as we don't know where the fragments will be in ms2)
-
         print("Loading the MS1 features")
         features_df = pd.read_sql_query("""select feature_id,start_frame,end_frame,scan_lower,scan_upper,mz_lower,mz_upper 
             from features where feature_id >= {} and feature_id <= {} and 
@@ -118,11 +118,10 @@ def main():
                 while np.max(points_v[:,FRAME_INTENSITY_IDX]) > 0:
                     max_intensity_index = np.argmax(points_v[:,FRAME_INTENSITY_IDX])
                     point_mz = points_v[max_intensity_index, FRAME_MZ_IDX]
-                    std_dev_point_mz = standard_deviation(point_mz)
-                    lower_mz = point_mz - (std_dev_point_mz * 4.0)
-                    upper_mz = point_mz + (std_dev_point_mz * 4.0)
+                    std_dev_point_mz_window = standard_deviation(point_mz) * 4.0
                     # Find all the points in this point's std dev window
-                    nearby_point_indices = np.where((points_v[:,FRAME_INTENSITY_IDX] > 0) & (points_v[:,FRAME_MZ_IDX] >= lower_mz) & (points_v[:,FRAME_MZ_IDX] <= upper_mz))[0]
+                    nearby_point_indices = np.where((points_v[:,FRAME_INTENSITY_IDX] > 0) 
+                    & (abs(point_mz - points_v[:, FRAME_MZ_IDX]) <= std_dev_point_mz_window))[0]
                     nearby_points = points_v[nearby_point_indices]
                     # How many distinct frames do the points come from?
                     unique_frames = np.unique(nearby_points[:,FRAME_ID_IDX])
