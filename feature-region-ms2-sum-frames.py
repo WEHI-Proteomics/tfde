@@ -99,8 +99,6 @@ def main():
             feature_end_frame = int(feature[FEATURE_END_FRAME_IDX])
             feature_scan_lower = int(feature[FEATURE_SCAN_LOWER_IDX])
             feature_scan_upper = int(feature[FEATURE_SCAN_UPPER_IDX])
-            feature_mz_lower = feature[FEATURE_MZ_LOWER_IDX]
-            feature_mz_upper = feature[FEATURE_MZ_UPPER_IDX]
 
             # Load the MS2 frame points for the feature's region
             ms2_frame_ids = ()
@@ -116,11 +114,10 @@ def main():
             pointId = 1
             for scan in range(feature_scan_lower, feature_scan_upper+1):
                 print("{},".format(scan), end="")
-                points_v = frame_v[np.where(frame_v[:,FRAME_SCAN_IDX] == scan)]
+                points_v = frame_v[np.where(frame_v[:,FRAME_SCAN_IDX] == scan)[0]]
                 while np.max(points_v[:,FRAME_INTENSITY_IDX]) > 0:
                     max_intensity_index = np.argmax(points_v[:,FRAME_INTENSITY_IDX])
                     point_mz = points_v[max_intensity_index, FRAME_MZ_IDX]
-                    # print("m/z {}, intensity {}".format(point_mz, points_v[max_intensity_index, 3]))
                     delta_mz = standard_deviation(point_mz) * 4.0
                     # Find all the points in this point's std dev window
                     nearby_point_indices = np.where((points_v[:,FRAME_INTENSITY_IDX] > 0) & (points_v[:,FRAME_MZ_IDX] >= point_mz-delta_mz) & (points_v[:,FRAME_MZ_IDX] <= point_mz+delta_mz))[0]
