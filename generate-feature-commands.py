@@ -53,7 +53,7 @@ if (args.operation == 'all') or (args.operation == 'sum-ms2-region'):
                 print("start \"Summing {}-{}\" python -u feature-region-ms2-sum-frames.py -db {} -fl {} -fu {} -ms2ce {} -ml {} -mu {}"
                     .format(first_feature_id, last_feature_id, args.database_name, first_feature_id, last_feature_id, args.ms2_collision_energy, args.mz_lower, args.mz_upper))
             else:
-                print("nohup python -u ./otf-peak-detect/feature-region-ms2-sum-frames.py -db {} -fl {} -fu {} -ms2ce {} -ml {} -mu {} > ../logs/{}-ms2-feature-region-sum-batch-{}-{}-{}.log 2>&1 &"
+                print("nohup python -u ./otf-peak-detect/feature-region-ms2-sum-frames.py -db {} -fl {} -fu {} -ms2ce {} -ml {} -mu {} > {}-ms2-feature-region-sum-batch-{}-{}-{}.log 2>&1 &"
                     .format(args.database_name, first_feature_id, last_feature_id, args.ms2_collision_energy, args.mz_lower, args.mz_upper, args.database_name, i, first_feature_id, last_feature_id))
     else:
         print("ERROR: mandatory parameters missing.")
