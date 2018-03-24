@@ -1,5 +1,5 @@
 import argparse
-import pymysql
+import sqlite3
 
 # Process the command line arguments
 parser = argparse.ArgumentParser(description='Generates the commands to run MS2 peak detection in parallel.')
@@ -10,16 +10,20 @@ parser.add_argument('-ml','--mz_lower', type=float, help='Lower feature m/z to p
 parser.add_argument('-mu','--mz_upper', type=float, help='Upper feature m/z to process.', required=False)
 parser.add_argument('-op','--operation', type=str, default='all', help='The operation to perform.', required=False)
 parser.add_argument('-os','--operating_system', type=str, default='unix', help='The operating system to target.', required=False)
+parser.add_argument('-nbf','--number_of_features', type=int, help='The number of features to process.', required=False)
 args = parser.parse_args()
 
 # Connect to the database
-source_conn = pymysql.connect(host='mscypher-004', user='root', passwd='password', database="{}".format(args.database_name))
+source_conn = sqlite3.connect(args.database_name)
 src_c = source_conn.cursor()
 
-# Find out the number of MS1 features in the database
-src_c.execute("SELECT MAX(feature_id) FROM features")
-row = src_c.fetchone()
-number_of_features = int(row[0])
+if args.number_of_features is None:
+    # Find out the number of MS1 features in the database
+    src_c.execute("SELECT MAX(feature_id) FROM features")
+    row = src_c.fetchone()
+    number_of_features = int(row[0])
+else:
+    number_of_features = args.number_of_features
 
 # Close the database connection
 source_conn.close()
