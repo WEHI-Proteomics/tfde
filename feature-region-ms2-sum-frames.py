@@ -30,12 +30,15 @@ def standard_deviation(mz):
 
 # Find the source MS2 frame IDs corresponding to the specified summed MS1 frame ID
 def ms2_frame_ids_from_ms1_frame_id(ms1_frame_id, frames_to_sum, frame_summing_offset):
+
     # find the set of frames summed to make this MS1 frame
     lower_source_frame_index = (ms1_frame_id-1) * frame_summing_offset
     upper_source_frame_index = lower_source_frame_index + frames_to_sum
     return tuple(ms2_frame_ids_v[lower_source_frame_index:upper_source_frame_index,0])
 
 def main():
+    global ms2_frame_ids_v
+
     parser = argparse.ArgumentParser(description='Sum MS2 frames in the region of the MS1 feature\'s drift and retention time.')
     parser.add_argument('-sdb','--source_database_name', type=str, help='The name of the source database.', required=True)
     parser.add_argument('-ddb','--destination_database_name', type=str, help='The name of the destination database.', required=True)
