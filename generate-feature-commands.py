@@ -3,7 +3,7 @@ import sqlite3
 
 # Process the command line arguments
 parser = argparse.ArgumentParser(description='Generates the commands to run MS2 peak detection in parallel.')
-parser.add_argument('-db','--base_database_name', type=str, help='The base name of the database.', required=True)
+parser.add_argument('-db','--database_name', type=str, help='The base name of the database.', required=True)
 parser.add_argument('-fbs','--number_of_batches', type=int, default=12, help='The number of batches.', required=False)
 parser.add_argument('-ms2ce','--ms2_collision_energy', type=float, help='Collision energy used for MS2.', required=False)
 parser.add_argument('-ml','--mz_lower', type=float, help='Lower feature m/z to process.', required=False)
@@ -13,8 +13,8 @@ parser.add_argument('-nbf','--number_of_features', type=int, help='The number of
 args = parser.parse_args()
 
 # Connect to the database
-converted_database_name = "{}.sqlite".format(args.base_database_name)
-source_database_name = "{}-features.sqlite".format(args.base_database_name)
+converted_database_name = "{}.sqlite".format(args.database_name)
+source_database_name = "{}-features.sqlite".format(args.database_name)
 
 conv_conn = sqlite3.connect(converted_database_name)
 conv_c = conv_conn.cursor()
