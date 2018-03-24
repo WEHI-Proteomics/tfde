@@ -41,7 +41,7 @@ if (args.operation == 'all') or (args.operation == 'sum-ms2-region'):
     if (args.mz_lower is not None) and (args.mz_upper is not None) and (args.ms2_collision_energy is not None):
 
         print("")
-        print("python ./feature-region-ms2-sum-frames-prep.py -db {}".format(args.database_name))
+        print("python ./otf-peak-detect/feature-region-ms2-sum-frames-prep.py -db {}".format(args.database_name))
 
         for i in range(args.number_of_batches):
             first_feature_id = i*batch_size+1
@@ -53,7 +53,7 @@ if (args.operation == 'all') or (args.operation == 'sum-ms2-region'):
                 print("start \"Summing {}-{}\" python -u feature-region-ms2-sum-frames.py -db {} -fl {} -fu {} -ms2ce {} -ml {} -mu {}"
                     .format(first_feature_id, last_feature_id, args.database_name, first_feature_id, last_feature_id, args.ms2_collision_energy, args.mz_lower, args.mz_upper))
             else:
-                print("nohup python -u ./feature-region-ms2-sum-frames.py -db {} -fl {} -fu {} -ms2ce {} -ml {} -mu {} > ../logs/{}-ms2-feature-region-sum-batch-{}-{}-{}.log 2>&1 &"
+                print("nohup python -u ./otf-peak-detect/feature-region-ms2-sum-frames.py -db {} -fl {} -fu {} -ms2ce {} -ml {} -mu {} > ../logs/{}-ms2-feature-region-sum-batch-{}-{}-{}.log 2>&1 &"
                     .format(args.database_name, first_feature_id, last_feature_id, args.ms2_collision_energy, args.mz_lower, args.mz_upper, args.database_name, i, first_feature_id, last_feature_id))
     else:
         print("ERROR: mandatory parameters missing.")
@@ -65,7 +65,7 @@ if (args.operation == 'all') or (args.operation == 'peak-ms2-region'):
     if (args.mz_lower is not None) and (args.mz_upper is not None):
 
         print("")
-        print("python ./feature-region-ms2-peak-detect-prep.py -db {}".format(args.database_name))
+        print("python ./otf-peak-detect/feature-region-ms2-peak-detect-prep.py -db {}".format(args.database_name))
 
         for i in range(args.number_of_batches):
             first_feature_id = i*batch_size+1
@@ -77,7 +77,7 @@ if (args.operation == 'all') or (args.operation == 'peak-ms2-region'):
                 print("start \"Summing {}-{}\" python -u feature-region-ms2-peak-detect.py -db {} -fl {} -fu {} -ml {} -mu {}"
                     .format(first_feature_id, last_feature_id, args.database_name, first_feature_id, last_feature_id, args.mz_lower, args.mz_upper))
             else:
-                print("nohup python -u ./feature-region-ms2-peak-detect.py -db {} -fl {} -fu {} -ml {} -mu {} > ../logs/{}-ms2-feature-region-peak-batch-{}-{}-{}.log 2>&1 &"
+                print("nohup python -u ./otf-peak-detect/feature-region-ms2-peak-detect.py -db {} -fl {} -fu {} -ml {} -mu {} > ../logs/{}-ms2-feature-region-peak-batch-{}-{}-{}.log 2>&1 &"
                     .format(args.database_name, first_feature_id, last_feature_id, args.mz_lower, args.mz_upper, args.database_name, i, first_feature_id, last_feature_id))
     else:
         print("ERROR: mandatory parameters missing.")
@@ -88,7 +88,7 @@ if (args.operation == 'all') or (args.operation == 'peak-ms2-region'):
 if (args.operation == 'all') or (args.operation == 'sum-ms1-region'):
     if (args.mz_lower is not None) and (args.mz_upper is not None):
         print("")
-        print("python ./feature-region-ms1-sum-frames-prep.py -db {}".format(args.database_name))
+        print("python ./otf-peak-detect/feature-region-ms1-sum-frames-prep.py -db {}".format(args.database_name))
         for i in range(args.number_of_batches):
             first_feature_id = i*batch_size+1
             last_feature_id = first_feature_id + batch_size - 1
@@ -99,7 +99,7 @@ if (args.operation == 'all') or (args.operation == 'sum-ms1-region'):
                 print("start \"Summing {}-{}\" python -u feature-region-ms1-sum-frames.py -db {} -fl {} -fu {} -ml {} -mu {}"
                     .format(first_feature_id, last_feature_id, args.database_name, first_feature_id, last_feature_id, args.mz_lower, args.mz_upper))
             else:
-                print("nohup python -u ./feature-region-ms1-sum-frames.py -db {} -fl {} -fu {} -ml {} -mu {} > ../logs/{}-ms1-feature-region-sum-batch-{}-{}-{}.log 2>&1 &"
+                print("nohup python -u ./otf-peak-detect/feature-region-ms1-sum-frames.py -db {} -fl {} -fu {} -ml {} -mu {} > ../logs/{}-ms1-feature-region-sum-batch-{}-{}-{}.log 2>&1 &"
                     .format(args.database_name, first_feature_id, last_feature_id, args.mz_lower, args.mz_upper, args.database_name, i, first_feature_id, last_feature_id))
     else:
         print("ERROR: mandatory parameters missing.")
@@ -110,7 +110,7 @@ if (args.operation == 'all') or (args.operation == 'sum-ms1-region'):
 if (args.operation == 'all') or (args.operation == 'peak-ms1-region'):
     if (args.mz_lower is not None) and (args.mz_upper is not None):
         print("")
-        print("python ./feature-region-ms1-peak-detect-prep.py -db {}".format(args.database_name))
+        print("python ./otf-peak-detect/feature-region-ms1-peak-detect-prep.py -db {}".format(args.database_name))
         for i in range(args.number_of_batches):
             first_feature_id = i*batch_size+1
             last_feature_id = first_feature_id + batch_size - 1
@@ -121,7 +121,7 @@ if (args.operation == 'all') or (args.operation == 'peak-ms1-region'):
                 print("start \"Summing {}-{}\" python -u feature-region-ms1-peak-detect.py -db {} -fl {} -fu {} -ml {} -mu {}"
                     .format(first_feature_id, last_feature_id, args.database_name, first_feature_id, last_feature_id, args.mz_lower, args.mz_upper))
             else:
-                print("nohup python -u ./feature-region-ms1-peak-detect.py -db {} -fl {} -fu {} -ml {} -mu {} > ../logs/{}-ms1-feature-region-peak-batch-{}-{}-{}.log 2>&1 &"
+                print("nohup python -u ./otf-peak-detect/feature-region-ms1-peak-detect.py -db {} -fl {} -fu {} -ml {} -mu {} > ../logs/{}-ms1-feature-region-peak-batch-{}-{}-{}.log 2>&1 &"
                     .format(args.database_name, first_feature_id, last_feature_id, args.mz_lower, args.mz_upper, args.database_name, i, first_feature_id, last_feature_id))
     else:
         print("ERROR: mandatory parameters missing.")
@@ -131,7 +131,7 @@ if (args.operation == 'all') or (args.operation == 'peak-ms1-region'):
 #
 if (args.operation == 'all') or (args.operation == 'peak-correlation'):
     print("")
-    print("python ./correlate-ms2-peaks-prep.py -db {}".format(args.database_name))
+    print("python ./otf-peak-detect/correlate-ms2-peaks-prep.py -db {}".format(args.database_name))
     for i in range(args.number_of_batches):
         first_feature_id = i*batch_size+1
         last_feature_id = first_feature_id + batch_size - 1
@@ -142,5 +142,5 @@ if (args.operation == 'all') or (args.operation == 'peak-correlation'):
             print("start \"Summing {}-{}\" python -u correlate-ms2-peaks.py -db {} -fl {} -fu {}"
                 .format(first_feature_id, last_feature_id, args.database_name, first_feature_id, last_feature_id, args.mz_lower, args.mz_upper))
         else:
-            print("nohup python -u ./correlate-ms2-peaks.py -db {} -fl {} -fu {} > ../logs/{}-correlate-ms2-peaks-batch-{}-{}-{}.log 2>&1 &"
+            print("nohup python -u ./otf-peak-detect/correlate-ms2-peaks.py -db {} -fl {} -fu {} > ../logs/{}-correlate-ms2-peaks-batch-{}-{}-{}.log 2>&1 &"
                 .format(args.database_name, first_feature_id, last_feature_id, args.database_name, i, first_feature_id, last_feature_id))
