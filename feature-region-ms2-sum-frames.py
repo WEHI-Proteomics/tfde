@@ -88,6 +88,8 @@ if len(ms2_frame_ids_v) > 0:
 
     points = []
     for feature in features_v:
+        feature_start_time = time.time()
+
         feature_id = int(feature[FEATURE_ID_IDX])
         feature_start_frame = int(feature[FEATURE_START_FRAME_IDX])
         feature_end_frame = int(feature[FEATURE_END_FRAME_IDX])
@@ -130,6 +132,8 @@ if len(ms2_frame_ids_v) > 0:
                 # remove the points we've processed
                 points_v = np.delete(points_v, nearby_point_indices, 0)
         print("")
+        feature_stop_time = time.time()
+        print("{} sec for feature {}".format(feature_stop_time-feature_start_time, feature_id))
 
     # Store the points in the database
     dest_c.executemany("INSERT INTO summed_ms2_regions (feature_id, point_id, mz, scan, intensity, number_frames, peak_id) VALUES (?, ?, ?, ?, ?, ?, ?)", points)
