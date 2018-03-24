@@ -40,6 +40,7 @@ def main():
     global ms2_frame_ids_v
 
     parser = argparse.ArgumentParser(description='Sum MS2 frames in the region of the MS1 feature\'s drift and retention time.')
+    parser.add_argument('-cdb','--converted_database_name', type=str, help='The name of the converted database.', required=True)
     parser.add_argument('-sdb','--source_database_name', type=str, help='The name of the source database.', required=True)
     parser.add_argument('-ddb','--destination_database_name', type=str, help='The name of the destination database.', required=True)
     parser.add_argument('-fl','--feature_id_lower', type=int, help='Lower feature ID to process.', required=False)
@@ -52,6 +53,9 @@ def main():
     parser.add_argument('-fts','--frames_to_sum', type=int, default=150, help='The number of MS2 source frames to sum.', required=False)
     parser.add_argument('-fso','--frame_summing_offset', type=int, default=25, help='The number of MS2 source frames to shift for each summation.', required=False)
     args = parser.parse_args()
+
+    conv_conn = sqlite3.connect(args.converted_database_name)
+    conv_c = conv_conn.cursor()
 
     src_conn = sqlite3.connect(args.source_database_name)
     src_c = src_conn.cursor()
@@ -70,7 +74,7 @@ def main():
     start_run = time.time()
 
     print("Loading the MS2 frame IDs")
-    ms2_frame_ids_df = pd.read_sql_query("select frame_id from frame_properties where collision_energy={} order by frame_id ASC;".format(args.ms2_collision_energy), src_conn)
+    ms2_frame_ids_df = pd.read_sql_query("select frame_id from frame_properties where collision_energy={} order by frame_id ASC;".format(args.ms2_collision_energy), conv_conn)
     ms2_frame_ids_v = ms2_frame_ids_df.values
     print("{} MS2 frames loaded".format(len(ms2_frame_ids_v)))
 
@@ -85,7 +89,7 @@ def main():
             from features where feature_id >= {} and feature_id <= {} and 
             charge_state >= {} and mz_lower <= {} and mz_upper >= {} order by feature_id ASC;""".format(
                 args.feature_id_lower, args.feature_id_upper, args.minimum_charge_state, args.mz_upper, args.mz_lower), 
-            dest_conn)
+            src_conn)
         features_v = features_df.values
         print("{} MS1 features loaded".format(len(features_v)))
 
@@ -105,7 +109,7 @@ def main():
                 ms2_frame_ids += ms2_frame_ids_from_ms1_frame_id(frame_id, args.frames_to_sum, args.frame_summing_offset)
             ms2_frame_ids = tuple(set(ms2_frame_ids))   # remove duplicates
             print("feature ID {}, MS1 frame IDs {}-{}, {} MS2 frames, scans {}-{}".format(feature_id, feature_start_frame, feature_end_frame, len(ms2_frame_ids), feature_scan_lower, feature_scan_upper))
-            frame_df = pd.read_sql_query("select frame_id,mz,scan,intensity from frames where frame_id in {} and scan <= {} and scan >= {} order by scan,mz;".format(ms2_frame_ids, feature_scan_upper, feature_scan_lower), src_conn)
+            frame_df = pd.read_sql_query("select frame_id,mz,scan,intensity from frames where frame_id in {} and scan <= {} and scan >= {} order by scan,mz;".format(ms2_frame_ids, feature_scan_upper, feature_scan_lower), conv_conn)
             frame_v = frame_df.values
             print("frame occupies {} bytes".format(frame_v.nbytes))
 
@@ -151,6 +155,7 @@ def main():
 
     dest_conn.close()
     src_conn.close()
+    conv_conn.close()
 
 if __name__ == "__main__":
     main()
