@@ -113,9 +113,9 @@ def main():
             # Sum the points in the feature's region, just as we did for MS1 frames
             pointId = 1
             for scan in range(feature_scan_lower, feature_scan_upper+1):
-                print("{},".format(scan), end="")
                 points_v = frame_v[np.where(frame_v[:,FRAME_SCAN_IDX] == scan)[0]]
-                while len(np.where(points_v[:,FRAME_INTENSITY_IDX] > 0)) > 0:
+                print("{} points on scan {}".format(len(points_v), scan))
+                while np.max(points_v[:,FRAME_INTENSITY_IDX]) > 0:
                     max_intensity_index = np.argmax(points_v[:,FRAME_INTENSITY_IDX])
                     point_mz = points_v[max_intensity_index, FRAME_MZ_IDX]
                     std_dev_point_mz = standard_deviation(point_mz)
