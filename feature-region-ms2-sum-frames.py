@@ -119,7 +119,7 @@ def main():
                     point_mz = points_v[max_intensity_index, FRAME_MZ_IDX]
                     std_dev_point_mz_window = standard_deviation(point_mz) * 4.0
                     # Find all the points in this point's std dev window
-                    nearby_point_indices = np.where((abs(point_mz - points_v[:, FRAME_MZ_IDX]) <= std_dev_point_mz_window))[0]
+                    nearby_point_indices = np.where((abs(points_v[:, FRAME_MZ_IDX] - point_mz) <= std_dev_point_mz_window))[0]
                     nearby_points = points_v[nearby_point_indices]
                     # find the total intensity and centroid m/z
                     centroid_intensity = nearby_points[:,FRAME_INTENSITY_IDX].sum()
