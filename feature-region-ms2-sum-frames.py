@@ -122,14 +122,12 @@ def main():
                     # Find all the points in this point's std dev window
                     nearby_point_indices = np.where((points_v[:,FRAME_INTENSITY_IDX] > 0) & (abs(point_mz - points_v[:, FRAME_MZ_IDX]) <= std_dev_point_mz_window))[0]
                     nearby_points = points_v[nearby_point_indices]
-                    # How many distinct frames do the points come from?
+                    # find the total intensity and centroid m/z
+                    centroid_intensity = nearby_points[:,FRAME_INTENSITY_IDX].sum()
+                    centroid_mz = peakutils.centroid(nearby_points[:,FRAME_MZ_IDX], nearby_points[:,FRAME_INTENSITY_IDX])
                     unique_frames = np.unique(nearby_points[:,FRAME_ID_IDX])
-                    if len(unique_frames) >= args.noise_threshold:
-                        # find the total intensity and centroid m/z
-                        centroid_intensity = nearby_points[:,FRAME_INTENSITY_IDX].sum()
-                        centroid_mz = peakutils.centroid(nearby_points[:,FRAME_MZ_IDX], nearby_points[:,FRAME_INTENSITY_IDX])
-                        points.append((feature_id, pointId, float(centroid_mz), scan, int(round(centroid_intensity)), len(unique_frames), 0))
-                        pointId += 1
+                    points.append((feature_id, pointId, float(centroid_mz), scan, int(round(centroid_intensity)), len(unique_frames), 0))
+                    pointId += 1
                     # flag the points we've processed
                     points_v[nearby_point_indices,FRAME_INTENSITY_IDX] = -1
             print("")
