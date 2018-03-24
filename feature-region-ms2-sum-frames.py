@@ -46,6 +46,8 @@ parser.add_argument('-mu','--mz_upper', type=float, help='Upper feature m/z to p
 parser.add_argument('-mf','--noise_threshold', type=int, default=2, help='Minimum number of MS2 frames a point must appear in to be processed.', required=False)
 parser.add_argument('-mcs','--minimum_charge_state', type=int, default=2, help='Minimum charge state to process.', required=False)
 parser.add_argument('-ms2ce','--ms2_collision_energy', type=float, help='Collision energy used for MS2.', required=True)
+parser.add_argument('-fts','--frames_to_sum', type=int, default=150, help='The number of MS2 source frames to sum.', required=False)
+parser.add_argument('-fso','--frame_summing_offset', type=int, default=25, help='The number of MS2 source frames to shift for each summation.', required=False)
 args = parser.parse_args()
 
 src_conn = sqlite3.connect(args.source_database_name)
@@ -70,15 +72,8 @@ ms2_frame_ids_v = ms2_frame_ids_df.values
 print("{} MS2 frames loaded".format(len(ms2_frame_ids_v)))
 
 if len(ms2_frame_ids_v) > 0:
-    print("Getting some metadata about how the frames were summed")
-    dest_c.execute("SELECT value FROM summing_info WHERE item=\"frames_to_sum\"")
-    row = dest_c.fetchone()
-    frames_to_sum = int(row[0])
 
-    dest_c.execute("SELECT value FROM summing_info WHERE item=\"frame_summing_offset\"")
-    row = dest_c.fetchone()
-    frame_summing_offset = int(row[0])
-    print("Number of source frames that were summed {} with offset".format(frames_to_sum, frame_summing_offset))
+    print("Number of source frames that were summed {} with offset".format(args.frames_to_sum, args.frame_summing_offset))
 
     # Take the ms1 features within the m/z band of interest, and sum the ms2 frames over the whole m/z range (as we don't know where the fragments will be in ms2)
 
@@ -101,7 +96,7 @@ if len(ms2_frame_ids_v) > 0:
         # Load the MS2 frame points for the feature's region
         ms2_frame_ids = ()
         for frame_id in range(feature_start_frame, feature_end_frame+1):
-            ms2_frame_ids += ms2_frame_ids_from_ms1_frame_id(frame_id, frames_to_sum, frame_summing_offset)
+            ms2_frame_ids += ms2_frame_ids_from_ms1_frame_id(frame_id, args.frames_to_sum, args.frame_summing_offset)
         ms2_frame_ids = tuple(set(ms2_frame_ids))   # remove duplicates
         print("feature ID {}, MS1 frame IDs {}-{}, {} MS2 frames, scans {}-{}".format(feature_id, feature_start_frame, feature_end_frame, len(ms2_frame_ids), feature_scan_lower, feature_scan_upper))
         frame_df = pd.read_sql_query("select frame_id,mz,scan,intensity from frames where frame_id in {} and scan <= {} and scan >= {};".format(ms2_frame_ids, feature_scan_upper, feature_scan_lower), src_conn)
