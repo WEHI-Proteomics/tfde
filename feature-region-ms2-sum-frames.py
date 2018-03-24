@@ -116,13 +116,13 @@ def main():
             for scan in range(feature_scan_lower, feature_scan_upper+1):
                 print("{},".format(scan), end="")
                 points_v = frame_v[np.where(frame_v[:,FRAME_SCAN_IDX] == scan)]
-                while len(points_v) > 0:
+                while np.max(points_v[:,FRAME_INTENSITY_IDX]) > 0:
                     max_intensity_index = np.argmax(points_v[:,FRAME_INTENSITY_IDX])
                     point_mz = points_v[max_intensity_index, FRAME_MZ_IDX]
                     # print("m/z {}, intensity {}".format(point_mz, points_v[max_intensity_index, 3]))
                     delta_mz = standard_deviation(point_mz) * 4.0
                     # Find all the points in this point's std dev window
-                    nearby_point_indices = np.where((points_v[:,FRAME_MZ_IDX] >= point_mz-delta_mz) & (points_v[:,FRAME_MZ_IDX] <= point_mz+delta_mz))[0]
+                    nearby_point_indices = np.where((points_v[:,FRAME_INTENSITY_IDX] > 0) & (points_v[:,FRAME_MZ_IDX] >= point_mz-delta_mz) & (points_v[:,FRAME_MZ_IDX] <= point_mz+delta_mz))[0]
                     nearby_points = points_v[nearby_point_indices]
                     # How many distinct frames do the points come from?
                     unique_frames = np.unique(nearby_points[:,FRAME_ID_IDX])
@@ -132,8 +132,8 @@ def main():
                         centroid_mz = peakutils.centroid(nearby_points[:,FRAME_MZ_IDX], nearby_points[:,FRAME_INTENSITY_IDX])
                         points.append((feature_id, pointId, float(centroid_mz), scan, int(round(centroid_intensity)), len(unique_frames), 0))
                         pointId += 1
-                    # remove the points we've processed
-                    points_v = np.delete(points_v, nearby_point_indices, 0)
+                    # flag the points we've processed
+                    points_v[nearby_point_indices,FRAME_INTENSITY_IDX] = -1
             print("")
             feature_stop_time = time.time()
             print("{} sec for feature {}".format(feature_stop_time-feature_start_time, feature_id))
