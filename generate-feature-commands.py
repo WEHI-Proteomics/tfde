@@ -45,7 +45,7 @@ if (args.operation == 'all') or (args.operation == 'sum-ms2-region'):
     if (args.mz_lower is not None) and (args.mz_upper is not None) and (args.ms2_collision_energy is not None):
 
         print("")
-        print("python ./otf-peak-detect/feature-region-ms2-sum-frames-prep.py -db {}".format(args.destination_database_name))
+        print("python ./otf-peak-detect/feature-region-ms2-sum-frames-prep.py -sdb {} -ddb {}".format(args.source_database_name, args.destination_database_name))
 
         for i in range(args.number_of_batches):
             first_feature_id = i*batch_size+1
