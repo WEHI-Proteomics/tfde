@@ -106,7 +106,7 @@ def main():
                 ms2_frame_ids += ms2_frame_ids_from_ms1_frame_id(frame_id, args.frames_to_sum, args.frame_summing_offset)
             ms2_frame_ids = tuple(set(ms2_frame_ids))   # remove duplicates
             print("feature ID {}, MS1 frame IDs {}-{}, {} MS2 frames, scans {}-{}".format(feature_id, feature_start_frame, feature_end_frame, len(ms2_frame_ids), feature_scan_lower, feature_scan_upper))
-            frame_df = pd.read_sql_query("select frame_id,mz,scan,intensity from frames where frame_id in {} and scan <= {} and scan >= {};".format(ms2_frame_ids, feature_scan_upper, feature_scan_lower), src_conn)
+            frame_df = pd.read_sql_query("select frame_id,mz,scan,intensity from frames where frame_id in {} and scan <= {} and scan >= {} order by scan,mz;".format(ms2_frame_ids, feature_scan_upper, feature_scan_lower), src_conn)
             frame_v = frame_df.values
             print("frame occupies {} bytes".format(frame_v.nbytes))
 
@@ -120,8 +120,7 @@ def main():
                     point_mz = points_v[max_intensity_index, FRAME_MZ_IDX]
                     std_dev_point_mz_window = standard_deviation(point_mz) * 4.0
                     # Find all the points in this point's std dev window
-                    nearby_point_indices = np.where((points_v[:,FRAME_INTENSITY_IDX] > 0) 
-                    & (abs(point_mz - points_v[:, FRAME_MZ_IDX]) <= std_dev_point_mz_window))[0]
+                    nearby_point_indices = np.where((points_v[:,FRAME_INTENSITY_IDX] > 0) & (abs(point_mz - points_v[:, FRAME_MZ_IDX]) <= std_dev_point_mz_window))[0]
                     nearby_points = points_v[nearby_point_indices]
                     # How many distinct frames do the points come from?
                     unique_frames = np.unique(nearby_points[:,FRAME_ID_IDX])
