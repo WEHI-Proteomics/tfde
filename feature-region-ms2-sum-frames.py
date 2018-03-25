@@ -115,29 +115,29 @@ def main():
             ms2_frame_ids = tuple(set(ms2_frame_ids))   # remove duplicates
             print("feature ID {}, MS1 frame IDs {}-{}, {} MS2 frames, scans {}-{}".format(feature_id, feature_start_frame, feature_end_frame, len(ms2_frame_ids), feature_scan_lower, feature_scan_upper))
             frame_df = pd.read_sql_query("select frame_id,mz,scan,intensity from frames where frame_id in {} and scan <= {} and scan >= {} order by scan,mz;".format(ms2_frame_ids, feature_scan_upper, feature_scan_lower), conv_conn)
-            frame_v = frame_df.values
+            frame_v = frame_df.to_records(index=False)
             print("frame occupies {} bytes".format(frame_v.nbytes))
 
             # Sum the points in the feature's region, just as we did for MS1 frames
             pointId = 1
             for scan in range(feature_scan_lower, feature_scan_upper+1):
-                points_v = frame_v[np.where(frame_v[:,FRAME_SCAN_IDX] == scan)[0]]
+                points_v = frame_v[np.where(frame_v.scan == scan)[0]]
                 print("{} points on scan {}".format(len(points_v), scan))
-                while np.max(points_v[:,FRAME_INTENSITY_IDX]) > 0:
-                    max_intensity_index = np.argmax(points_v[:,FRAME_INTENSITY_IDX])
-                    point_mz = points_v[max_intensity_index, FRAME_MZ_IDX]
+                while np.max(points_v.intensity) > 0:
+                    max_intensity_index = np.argmax(points_v.intensity)
+                    point_mz = points_v[max_intensity_index].mz
                     std_dev_point_mz_window = standard_deviation(point_mz) * 4.0
                     # Find all the points in this point's std dev window
-                    nearby_point_indices = np.where((abs(points_v[:, FRAME_MZ_IDX] - point_mz) <= std_dev_point_mz_window))[0]
+                    nearby_point_indices = np.where((abs(points_v.mz - point_mz) <= std_dev_point_mz_window))[0]
                     nearby_points = points_v[nearby_point_indices]
                     # find the total intensity and centroid m/z
-                    centroid_intensity = nearby_points[:,FRAME_INTENSITY_IDX].sum()
-                    centroid_mz = peakutils.centroid(nearby_points[:,FRAME_MZ_IDX], nearby_points[:,FRAME_INTENSITY_IDX])
-                    unique_frames = np.unique(nearby_points[:,FRAME_ID_IDX])
+                    centroid_intensity = nearby_points.intensity.sum()
+                    centroid_mz = peakutils.centroid(nearby_points.mz, nearby_points.intensity)
+                    unique_frames = np.unique(nearby_points.frame_id)
                     points.append((feature_id, pointId, float(centroid_mz), scan, int(round(centroid_intensity)), len(unique_frames), 0))
                     pointId += 1
                     # flag the points we've processed
-                    points_v[nearby_point_indices,FRAME_INTENSITY_IDX] = 0
+                    points_v[nearby_point_indices].intensity = 0
             print("")
             feature_stop_time = time.time()
             print("{} sec for feature {}".format(feature_stop_time-feature_start_time, feature_id))
