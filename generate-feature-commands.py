@@ -56,7 +56,7 @@ if (args.operation == 'all') or (args.operation == 'sum-ms2-region'):
                 last_feature_id = number_of_features
 
             destination_database_name = "{}-features-{}-{}-{}.sqlite".format(args.database_name, i, first_feature_id, last_feature_id)
-            log_file_name = "{}-features-{}-{}-{}.log".format(args.database_name, i, first_feature_id, last_feature_id)
+            log_file_name = "{}-features-sum-ms2-region-{}-{}-{}.log".format(args.database_name, i, first_feature_id, last_feature_id)
 
             print("nohup python -u ./otf-peak-detect/feature-region-ms2-sum-frames.py -cdb {} -sdb {} -ddb {} -fl {} -fu {} -ms2ce {} -ml {} -mu {} > {} 2>&1 &"
                 .format(converted_database_name, source_database_name, destination_database_name, first_feature_id, last_feature_id, args.ms2_collision_energy, args.mz_lower, args.mz_upper, log_file_name))
