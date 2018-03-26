@@ -135,7 +135,7 @@ def main():
                     window_low_mz = point_mz - std_dev_point_mz_window
                     window_high_mz = point_mz + std_dev_point_mz_window
                     # if there is more than one point, we need to work out the sum, centroid
-                    if len(frame_csr[scan,:].nonzero()[1]) > 1:
+                    if len(frame_csr[scan,window_low_mz:window_high_mz+1].nonzero()[1]) > 1:
                         window_mzs = np.arange(window_low_mz, window_high_mz+1)
                         window_intensities = scan_v[0,window_mzs]
                         centroid_intensity = window_intensities.sum()
