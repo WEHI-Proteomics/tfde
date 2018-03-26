@@ -39,6 +39,7 @@ def ms2_frame_ids_from_ms1_frame_id(ms1_frame_id, frames_to_sum, frame_summing_o
     upper_source_frame_index = lower_source_frame_index + frames_to_sum
     return tuple(ms2_frame_ids_v[lower_source_frame_index:upper_source_frame_index,0])
 
+@profile
 def main():
     global ms2_frame_ids_v
 
@@ -129,8 +130,9 @@ def main():
             for scan in range(feature_scan_lower, feature_scan_upper+1):
                 print("{} points on scan {}".format(len(frame_csr[scan,:].nonzero()[1]), scan))
                 scan_v = frame_csr[scan,:].toarray()
-                while scan_v.max() > 0:
-                    point_mz = scan_v.argmax()
+                index_of_max = scan_v.argmax()
+                while scan_v[index_of_max] > 0:
+                    point_mz = index_of_max
                     std_dev_point_mz_window = int(standard_deviation(point_mz) * 4.0)
                     window_low_mz = point_mz - std_dev_point_mz_window
                     window_high_mz = point_mz + std_dev_point_mz_window
@@ -144,6 +146,9 @@ def main():
                     pointId += 1
                     # flag the points we've processed
                     scan_v[0,mzs_in_window] = 0
+                    index_of_max = scan_v.argmax()
+                break
+                    
             print("")
             feature_stop_time = time.time()
             print("{} sec for feature {}".format(feature_stop_time-feature_start_time, feature_id))
