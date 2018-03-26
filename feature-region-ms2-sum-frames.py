@@ -133,7 +133,7 @@ def main():
                     std_dev_point_mz_window = int(standard_deviation(point_mz) * 4.0)
                     window_low_mz = point_mz - std_dev_point_mz_window
                     window_high_mz = point_mz + std_dev_point_mz_window
-                    window_mzs = frame_csr[scan,window_low_mz:window_high_mz+1].nonzero()[1] + window_low_mz
+                    window_mzs = np.arange(window_low_mz, window_high_mz+1)
                     window_intensities = frame_csr[scan,window_mzs]
                     centroid_intensity = window_intensities.sum()
                     centroid_mz = peakutils.centroid(window_mzs, window_intensities.toarray())
