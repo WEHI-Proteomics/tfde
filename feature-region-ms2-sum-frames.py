@@ -135,6 +135,7 @@ def main():
                     window_mzs = frame_csr[scan,window_low_mz:window_high_mz+1].nonzero()[1]
                     window_intensities = frame_csr[scan,window_mzs]
                     centroid_intensity = window_intensities.sum()
+                    print("mz {}, intensity {}".format(window_mzs, window_intensities))
                     centroid_mz = peakutils.centroid(window_mzs, window_intensities)
                     # add the summed point to the list
                     points.append((feature_id, pointId, centroid_mz/MZ_SCALING_FACTOR, scan, int(round(centroid_intensity)), 0, 0))
