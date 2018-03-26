@@ -129,7 +129,7 @@ def main():
             for scan in range(feature_scan_lower, feature_scan_upper+1):
                 print("{} points on scan {}".format(len(frame_csr[scan,:].nonzero()[1]), scan))
                 scan_v = frame_csr[scan,:].toarray()[0]
-                index_of_max = scan_v.argmax()
+                index_of_max = np.argmax(scan_v)
                 while scan_v[index_of_max] > 0:
                     point_mz = index_of_max
                     std_dev_point_mz_window = int(standard_deviation(point_mz) * 4.0)
@@ -144,7 +144,7 @@ def main():
                     pointId += 1
                     # flag the points we've processed
                     scan_v[mzs_in_window] = 0
-                    index_of_max = scan_v.argmax()
+                    index_of_max = np.argmax(scan_v)
                     
             print("")
             feature_stop_time = time.time()
