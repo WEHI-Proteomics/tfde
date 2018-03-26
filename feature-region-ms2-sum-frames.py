@@ -127,6 +127,7 @@ def main():
             # Sum the points in the feature's region, just as we did for MS1 frames
             pointId = 1
             for scan in range(feature_scan_lower, feature_scan_upper+1):
+                print("{} points on scan {}".format(len(frame_csr[scan,:].nonzero()[1]), scan))
                 while len(frame_csr[scan,:].nonzero()[1]) > 0:
                     point_mz = frame_csr[scan,:].argmax()
                     std_dev_point_mz_window = int(standard_deviation(point_mz) * 4.0)
