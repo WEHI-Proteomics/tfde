@@ -129,23 +129,22 @@ def main():
             pointId = 1
             for scan in range(feature_scan_lower, feature_scan_upper+1):
                 print("{} points on scan {}".format(len(frame_csr[scan,:].nonzero()[1]), scan))
-                scan_v = frame_csr[scan,:].toarray()
+                scan_v = frame_csr[scan,:].toarray()[0]
                 index_of_max = scan_v.argmax()
                 while scan_v[index_of_max] > 0:
                     point_mz = index_of_max
                     std_dev_point_mz_window = int(standard_deviation(point_mz) * 4.0)
                     window_low_mz = point_mz - std_dev_point_mz_window
                     window_high_mz = point_mz + std_dev_point_mz_window
-                    # if there is more than one point, we need to work out the sum, centroid
-                    mzs_in_window = frame_csr[scan,window_low_mz:window_high_mz+1].nonzero()[1] + window_low_mz
-                    window_intensities = scan_v[0,mzs_in_window]
+                    mzs_in_window = scan_v[window_low_mz:window_high_mz+1].nonzero() + window_low_mz
+                    window_intensities = scan_v[mzs_in_window]
                     centroid_intensity = window_intensities.sum()
                     centroid_mz = peakutils.centroid(mzs_in_window, window_intensities)
                     # add the summed point to the list
                     points.append((feature_id, pointId, centroid_mz/MZ_SCALING_FACTOR, scan, int(round(centroid_intensity)), 0, 0))
                     pointId += 1
                     # flag the points we've processed
-                    scan_v[0,mzs_in_window] = 0
+                    scan_v[mzs_in_window] = 0
                     index_of_max = scan_v.argmax()
                 break
                     
