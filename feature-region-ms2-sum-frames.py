@@ -128,20 +128,21 @@ def main():
             pointId = 1
             for scan in range(feature_scan_lower, feature_scan_upper+1):
                 print("{} points on scan {}".format(len(frame_csr[scan,:].nonzero()[1]), scan))
-                while len(frame_csr[scan,:].nonzero()[1]) > 0:
-                    point_mz = frame_csr[scan,:].argmax()
+                scan_v = frame_csr[scan,:].toarray()
+                while scan_v.max() > 0:
+                    point_mz = scan_v.argmax()
                     std_dev_point_mz_window = int(standard_deviation(point_mz) * 4.0)
                     window_low_mz = point_mz - std_dev_point_mz_window
                     window_high_mz = point_mz + std_dev_point_mz_window
                     window_mzs = np.arange(window_low_mz, window_high_mz+1)
-                    window_intensities = frame_csr[scan,window_mzs]
+                    window_intensities = scan_v[window_mzs]
                     centroid_intensity = window_intensities.sum()
-                    centroid_mz = peakutils.centroid(window_mzs, window_intensities.toarray())
+                    centroid_mz = peakutils.centroid(window_mzs, window_intensities)
                     # add the summed point to the list
                     points.append((feature_id, pointId, centroid_mz/MZ_SCALING_FACTOR, scan, int(round(centroid_intensity)), 0, 0))
                     pointId += 1
                     # flag the points we've processed
-                    frame_csr[scan,window_mzs] = 0
+                    scan_v[window_mzs] = 0
             print("")
             feature_stop_time = time.time()
             print("{} sec for feature {}".format(feature_stop_time-feature_start_time, feature_id))
