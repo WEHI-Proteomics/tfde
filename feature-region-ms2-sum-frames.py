@@ -129,6 +129,7 @@ def main():
             for scan in range(feature_scan_lower, feature_scan_upper+1):
                 while len(frame_csr[scan,:].nonzero()[1]) > 0:
                     point_mz = frame_csr[scan,:].argmax()
+                    print("point_mz {}".format(point_mz))
                     std_dev_point_mz_window = int(standard_deviation(point_mz) * 4.0)
                     window_low_mz = point_mz - std_dev_point_mz_window
                     window_high_mz = point_mz + std_dev_point_mz_window
