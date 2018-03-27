@@ -127,8 +127,8 @@ def main():
             # Sum the points in the feature's region, just as we did for MS1 frames
             pointId = 1
             for scan in range(feature_scan_lower, feature_scan_upper+1):
+                # print("{} points in df".format(len(frame_df[frame_df.scan==scan]), scan))
                 print("{} points on scan {}".format(len(frame_csr[scan,:].nonzero()[1]), scan))
-                print("{} points in df".format(len(frame_df[frame_df.scan==scan]), scan))
                 scan_v = frame_csr[scan,:].toarray()[0]
                 index_of_max = np.argmax(scan_v)
                 while scan_v[index_of_max] > 0:
@@ -146,7 +146,7 @@ def main():
                     # flag the points we've processed
                     scan_v[mzs_in_window] = 0
                     index_of_max = np.argmax(scan_v)
-                print("{} summed points".format(pointId-1))
+                # print("{} summed points".format(pointId-1))
                     
             print("")
             feature_stop_time = time.time()
