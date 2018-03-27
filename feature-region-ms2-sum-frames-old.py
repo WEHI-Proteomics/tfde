@@ -123,8 +123,8 @@ def main():
             for scan in range(feature_scan_lower, feature_scan_upper+1):
                 points_v = frame_v[np.where(frame_v[:,FRAME_SCAN_IDX] == scan)[0]]
                 print("{} points on scan {}".format(len(points_v), scan))
-                while np.max(points_v[:,FRAME_INTENSITY_IDX]) > 0:
-                    max_intensity_index = np.argmax(points_v[:,FRAME_INTENSITY_IDX])
+                max_intensity_index = np.argmax(points_v[:,FRAME_INTENSITY_IDX])
+                while points_v[max_intensity_index,FRAME_INTENSITY_IDX] > 0:
                     point_mz = points_v[max_intensity_index, FRAME_MZ_IDX]
                     std_dev_point_mz_window = standard_deviation(point_mz) * 4.0
                     # Find all the points in this point's std dev window
@@ -138,6 +138,7 @@ def main():
                     pointId += 1
                     # flag the points we've processed
                     points_v[nearby_point_indices,FRAME_INTENSITY_IDX] = 0
+                    max_intensity_index = np.argmax(points_v[:,FRAME_INTENSITY_IDX])
             print("")
             feature_stop_time = time.time()
             print("{} sec for feature {}".format(feature_stop_time-feature_start_time, feature_id))
