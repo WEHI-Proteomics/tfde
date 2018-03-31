@@ -110,7 +110,7 @@ def main():
             random_feature_indexes_file.close()
             features_df = features_df.iloc[random_feature_indexes]
         features_v = features_df.values
-        print("{} MS1 features loaded ({})".format(len(features_v), features_df.feature_id.values))
+        print("{} MS1 features loaded (feature IDs {})".format(len(features_v), features_df.feature_id.values))
 
         points = []
         for feature in features_v:
