@@ -28,9 +28,6 @@ FRAME_MZ_IDX = 1
 FRAME_SCAN_IDX = 2
 FRAME_INTENSITY_IDX = 3
 
-MZ_SCALING_FACTOR = 10.
-
-
 def standard_deviation(mz):
     instrument_resolution = 40000.0
     return int((mz / instrument_resolution) / 2.35482)
@@ -60,6 +57,7 @@ def main():
     parser.add_argument('-ms2ce','--ms2_collision_energy', type=float, help='Collision energy used for MS2.', required=True)
     parser.add_argument('-fts','--frames_to_sum', type=int, default=150, help='The number of MS2 source frames to sum.', required=False)
     parser.add_argument('-fso','--frame_summing_offset', type=int, default=25, help='The number of MS2 source frames to shift for each summation.', required=False)
+    parser.add_argument('-mzsf','--mz_scaling_factor', type=float, default=100.0, help='Scaling factor to convert m/z range to integers.', required=False)
     args = parser.parse_args()
 
     conv_conn = sqlite3.connect(args.converted_database_name)
