@@ -33,7 +33,7 @@ MZ_SCALING_FACTOR = 1000.
 
 def standard_deviation(mz):
     instrument_resolution = 40000.0
-    return (mz / instrument_resolution) / 2.35482
+    return int((mz / instrument_resolution) / 2.35482)
 
 # Find the source MS2 frame IDs corresponding to the specified summed MS1 frame ID
 def ms2_frame_ids_from_ms1_frame_id(ms1_frame_id, frames_to_sum, frame_summing_offset):
@@ -139,7 +139,7 @@ def main():
                 max_intensity_index = np.argmax(points_v[:,FRAME_INTENSITY_IDX])
                 while points_v[max_intensity_index,FRAME_INTENSITY_IDX] > 0:
                     point_mz = points_v[max_intensity_index, FRAME_MZ_IDX]
-                    std_dev_point_mz_window = (standard_deviation(point_mz) * 4.0).astype(np.uint32)
+                    std_dev_point_mz_window = standard_deviation(point_mz) * 4
                     # Find all the points in this point's std dev window
                     nearby_point_indices = np.where((abs(points_v[:, FRAME_MZ_IDX] - point_mz) <= std_dev_point_mz_window))[0]
                     nearby_points = points_v[nearby_point_indices]
