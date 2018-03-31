@@ -129,7 +129,7 @@ def main():
             ms2_frame_ids = tuple(set(ms2_frame_ids))   # remove duplicates
             print("feature ID {}, MS1 frame IDs {}-{}, {} MS2 frames, scans {}-{}".format(feature_id, feature_start_frame, feature_end_frame, len(ms2_frame_ids), feature_scan_lower, feature_scan_upper))
             frame_df = pd.read_sql_query("select frame_id,mz,scan,intensity from frames where frame_id in {} and scan <= {} and scan >= {} order by scan,mz;".format(ms2_frame_ids, feature_scan_upper, feature_scan_lower), conv_conn)
-            frame_df.mz = frame_df.mz * MZ_SCALING_FACTOR
+            frame_df.mz = frame_df.mz * args.mz_scaling_factor
             frame_df = frame_df.astype(np.int32)
             frame_v = frame_df.values
             print("frame occupies {} bytes".format(frame_v.nbytes))
@@ -150,7 +150,7 @@ def main():
                     centroid_intensity = nearby_points[:,FRAME_INTENSITY_IDX].sum()
                     centroid_mz = peakutils.centroid(nearby_points[:,FRAME_MZ_IDX], nearby_points[:,FRAME_INTENSITY_IDX])
                     unique_frames = np.unique(nearby_points[:,FRAME_ID_IDX])
-                    points.append((feature_id, pointId, float(centroid_mz / MZ_SCALING_FACTOR), scan, int(round(centroid_intensity)), len(unique_frames), 0))
+                    points.append((feature_id, pointId, float(centroid_mz / args.mz_scaling_factor), scan, int(round(centroid_intensity)), len(unique_frames), 0))
                     pointId += 1
                     # flag the points we've processed
                     points_v[nearby_point_indices,FRAME_INTENSITY_IDX] = 0
