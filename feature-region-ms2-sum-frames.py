@@ -58,7 +58,12 @@ def main():
     parser.add_argument('-fts','--frames_to_sum', type=int, default=150, help='The number of MS2 source frames to sum.', required=False)
     parser.add_argument('-fso','--frame_summing_offset', type=int, default=25, help='The number of MS2 source frames to shift for each summation.', required=False)
     parser.add_argument('-mzsf','--mz_scaling_factor', type=float, default=100.0, help='Scaling factor to convert m/z range to integers.', required=False)
+    parser.add_argument('-rff','--random_features_file', type=str, help='A text file containing the feature indexes to process.', required=False)
     args = parser.parse_args()
+
+    if (args.random_features_file is not None) and (args.number_of_random_features is not None):
+        print("Error: cannot specify -nrf and -rff at the same time.")
+        exit
 
     conv_conn = sqlite3.connect(args.converted_database_name)
 
@@ -107,6 +112,12 @@ def main():
             random_feature_indexes_file = open('random_feature_indexes.txt', 'w')
             for item in random_feature_indexes:
                 random_feature_indexes_file.write("%s\n" % item)
+            random_feature_indexes_file.close()
+            features_df = features_df.iloc[random_feature_indexes]
+        if args.random_features_file is not None:
+            # read the file of feature indexes
+            random_feature_indexes_file = open(args.random_features_file, 'r')
+            random_feature_indexes = list(map(int, random_feature_indexes_file.read().splitlines()))
             random_feature_indexes_file.close()
             features_df = features_df.iloc[random_feature_indexes]
         features_v = features_df.values
