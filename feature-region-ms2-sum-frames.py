@@ -9,6 +9,10 @@ from operator import itemgetter
 import sqlite3
 import random
 
+#
+# python -u ./otf-peak-detect/feature-region-ms2-sum-frames.py -cdb /media/data-drive/Hela_20A_20R_500.sqlite -sdb /media/data-drive/Hela_20A_20R_500-features.sqlite -ddb /media/data-drive/Hela_20A_20R_500-features-5-4546-5454.sqlite -fl 4546 -fu 5454 -ms2ce 27.0 -ml 440.0 -mu 555.0
+#
+
 # feature array indices
 FEATURE_ID_IDX = 0
 FEATURE_START_FRAME_IDX = 1
@@ -101,7 +105,7 @@ def main():
             # Create a subset of features selected at random
             features_df = features_df.iloc[random.sample(range(len(features_df)), args.number_of_random_features)]
         features_v = features_df.values
-        print("{} MS1 features loaded".format(len(features_v)))
+        print("{} MS1 features loaded ({})".format(len(features_v), features_df.feature_id))
 
         points = []
         for feature in features_v:
