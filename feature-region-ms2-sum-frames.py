@@ -136,7 +136,7 @@ def main():
                 max_intensity_index = np.argmax(points_v[:,FRAME_INTENSITY_IDX])
                 while points_v[max_intensity_index,FRAME_INTENSITY_IDX] > 0:
                     point_mz = points_v[max_intensity_index, FRAME_MZ_IDX]
-                    std_dev_point_mz_window = standard_deviation(point_mz) * 4.0
+                    std_dev_point_mz_window = int(standard_deviation(point_mz) * 4.0)
                     # Find all the points in this point's std dev window
                     nearby_point_indices = np.where((abs(points_v[:, FRAME_MZ_IDX] - point_mz) <= std_dev_point_mz_window))[0]
                     nearby_points = points_v[nearby_point_indices]
