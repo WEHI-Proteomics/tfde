@@ -105,7 +105,7 @@ def main():
             # Create a subset of features selected at random
             features_df = features_df.iloc[random.sample(range(len(features_df)), args.number_of_random_features)]
         features_v = features_df.values
-        print("{} MS1 features loaded ({})".format(len(features_v), features_df.feature_id))
+        print("{} MS1 features loaded ({})".format(len(features_v), features_df.feature_id.values))
 
         points = []
         for feature in features_v:
