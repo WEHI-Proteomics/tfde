@@ -124,6 +124,7 @@ def main():
             ms2_frame_ids = tuple(set(ms2_frame_ids))   # remove duplicates
             print("feature ID {}, MS1 frame IDs {}-{}, {} MS2 frames, scans {}-{}".format(feature_id, feature_start_frame, feature_end_frame, len(ms2_frame_ids), feature_scan_lower, feature_scan_upper))
             frame_df = pd.read_sql_query("select frame_id,mz,scan,intensity from frames where frame_id in {} and scan <= {} and scan >= {} order by scan,mz;".format(ms2_frame_ids, feature_scan_upper, feature_scan_lower), conv_conn)
+            frame_df.mz = (frame_df.mz*100).astype(np.int64)
             frame_v = frame_df.values
             print("frame occupies {} bytes".format(frame_v.nbytes))
 
