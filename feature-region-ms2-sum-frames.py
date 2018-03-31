@@ -7,6 +7,7 @@ import pandas as pd
 import peakutils
 from operator import itemgetter
 import sqlite3
+import random
 
 # feature array indices
 FEATURE_ID_IDX = 0
@@ -45,6 +46,7 @@ def main():
     parser.add_argument('-ddb','--destination_database_name', type=str, help='The name of the destination database.', required=True)
     parser.add_argument('-fl','--feature_id_lower', type=int, help='Lower feature ID to process.', required=False)
     parser.add_argument('-fu','--feature_id_upper', type=int, help='Upper feature ID to process.', required=False)
+    parser.add_argument('-nrf','--number_of_random_features', type=int, help='Randomly select this many features from the specified feature range.', required=False)
     parser.add_argument('-ml','--mz_lower', type=float, help='Lower feature m/z to process.', required=True)
     parser.add_argument('-mu','--mz_upper', type=float, help='Upper feature m/z to process.', required=True)
     parser.add_argument('-mf','--noise_threshold', type=int, default=2, help='Minimum number of MS2 frames a point must appear in to be processed.', required=False)
@@ -95,6 +97,9 @@ def main():
             charge_state >= {} and mz_lower <= {} and mz_upper >= {} order by feature_id ASC;""".format(
                 args.feature_id_lower, args.feature_id_upper, args.minimum_charge_state, args.mz_upper, args.mz_lower), 
             src_conn)
+        if args.number_of_random_features is not None:
+            # Create a subset of features selected at random
+            features_df = features_df.iloc[random.sample(range(len(features_df)), args.number_of_random_features)]
         features_v = features_df.values
         print("{} MS1 features loaded".format(len(features_v)))
 
