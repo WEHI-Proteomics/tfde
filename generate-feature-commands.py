@@ -1,7 +1,9 @@
 import argparse
 import sqlite3
 
-# python ./otf-peak-detect/generate-feature-commands.py -db Hela_20A_20R_500 -ms2ce 27 -ml 440 -mu 555 -nbf 100000
+#
+# python ./otf-peak-detect/generate-feature-commands.py -db /media/data-drive/Hela_20A_20R_500 -ms2ce 27 -ml 440 -mu 555 -nbf 10000 -fbs 11
+#
 
 # Process the command line arguments
 parser = argparse.ArgumentParser(description='Generates the commands to run MS2 peak detection in parallel.')
