@@ -103,7 +103,12 @@ def main():
             src_conn)
         if args.number_of_random_features is not None:
             # Create a subset of features selected at random
-            features_df = features_df.iloc[random.sample(range(len(features_df)), args.number_of_random_features)]
+            random_feature_indexes = random.sample(range(len(features_df)), args.number_of_random_features)
+            random_feature_indexes_file = open('random_feature_indexes.txt', 'w')
+            for item in random_feature_indexes:
+                random_feature_indexes_file.write("%s\n" % item)
+            random_feature_indexes_file.close()
+            features_df = features_df.iloc[random_feature_indexes]
         features_v = features_df.values
         print("{} MS1 features loaded ({})".format(len(features_v), features_df.feature_id.values))
 
