@@ -148,9 +148,9 @@ def main():
                     # flag the points we've processed
                     points_v[nearby_point_indices,FRAME_INTENSITY_IDX] = 0
                     max_intensity_index = np.argmax(points_v[:,FRAME_INTENSITY_IDX])
-            print("")
             feature_stop_time = time.time()
             print("{} sec for feature {}".format(feature_stop_time-feature_start_time, feature_id))
+            print("")
 
         # Store the points in the database
         dest_c.executemany("INSERT INTO summed_ms2_regions (feature_id, point_id, mz, scan, intensity, number_frames, peak_id) VALUES (?, ?, ?, ?, ?, ?, ?)", points)
