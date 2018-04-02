@@ -166,8 +166,7 @@ def main():
                     nearby_points = points_v[nearby_point_indices]
                     # find the total intensity and centroid m/z
                     centroid_intensity = nearby_points[:,FRAME_INTENSITY_IDX].sum()
-                    centroid_mz = peakutils.centroid(nearby_points[:,FRAME_MZ_IDX], nearby_points[:,FRAME_INTENSITY_IDX])
-                    centroid_mz /= args.mz_scaling_factor
+                    centroid_mz = peakutils.centroid(nearby_points[:,FRAME_MZ_IDX] / args.mz_scaling_factor, nearby_points[:,FRAME_INTENSITY_IDX])
                     unique_frames = np.unique(nearby_points[:,FRAME_ID_IDX])
                     number_of_points_summed = len(nearby_points)
                     points.append((feature_id, pointId, centroid_mz, scan, int(round(centroid_intensity)), len(unique_frames), 0, number_of_points_summed))
