@@ -185,7 +185,8 @@ def main():
             print("")
 
             if feature_count % COMMIT_BATCH_SIZE == 0:
-                print("writing summed regions to the database...")
+                print("feature count {} - writing summed regions to the database...".format(feature_count))
+                print("")
                 # Store the points in the database
                 dest_c.executemany("INSERT INTO summed_ms2_regions (feature_id, point_id, mz, scan, intensity, number_frames, peak_id, points_summed) VALUES (?, ?, ?, ?, ?, ?, ?, ?)", points)
                 dest_conn.commit()
