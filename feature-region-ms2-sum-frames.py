@@ -64,7 +64,7 @@ def main():
     parser.add_argument('-ms2ce','--ms2_collision_energy', type=float, help='Collision energy used for MS2.', required=True)
     parser.add_argument('-fts','--frames_to_sum', type=int, default=150, help='The number of MS2 source frames to sum.', required=False)
     parser.add_argument('-fso','--frame_summing_offset', type=int, default=25, help='The number of MS2 source frames to shift for each summation.', required=False)
-    parser.add_argument('-mzsf','--mz_scaling_factor', type=float, default=100.0, help='Scaling factor to convert m/z range to integers.', required=False)
+    parser.add_argument('-mzsf','--mz_scaling_factor', type=float, default=1.0, help='Scaling factor to convert m/z range to integers.', required=False)
     parser.add_argument('-rff','--random_features_file', type=str, help='A text file containing the feature indexes to process.', required=False)
     args = parser.parse_args()
 
@@ -148,7 +148,9 @@ def main():
             print("feature ID {}, MS1 frame IDs {}-{}, {} MS2 frames, scans {}-{}".format(feature_id, feature_start_frame, feature_end_frame, len(ms2_frame_ids), feature_scan_lower, feature_scan_upper))
             frame_df = pd.read_sql_query("select frame_id,mz,scan,intensity from frames where frame_id in {} and scan <= {} and scan >= {} order by scan,mz;".format(ms2_frame_ids, feature_scan_upper, feature_scan_lower), conv_conn)
             frame_df.mz = frame_df.mz * args.mz_scaling_factor
-            frame_df = frame_df.astype(np.int32)
+            # If we don't apply an m/z scaling factor, leave the m/z value as a float
+            if args.mz_scaling_factor > 1.0:
+                frame_df = frame_df.astype(np.int32)
             frame_v = frame_df.values
             print("frame occupies {} bytes".format(frame_v.nbytes))
 
