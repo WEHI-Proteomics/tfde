@@ -179,7 +179,7 @@ def main():
             print("")
 
         # Store the points in the database
-        dest_c.executemany("INSERT INTO summed_ms2_regions (feature_id, point_id, mz, scan, intensity, number_frames, peak_id) VALUES (?, ?, ?, ?, ?, ?, ?)", points)
+        dest_c.executemany("INSERT INTO summed_ms2_regions (feature_id, point_id, mz, scan, intensity, number_frames, peak_id, points_summed) VALUES (?, ?, ?, ?, ?, ?, ?, ?)", points)
 
         stop_run = time.time()
         print("{} seconds to process run".format(stop_run-start_run))
