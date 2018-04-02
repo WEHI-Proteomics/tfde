@@ -10,7 +10,14 @@ import sqlite3
 import random
 
 #
+# For processing all the features in a range...
 # python -u ./otf-peak-detect/feature-region-ms2-sum-frames.py -cdb /media/data-drive/Hela_20A_20R_500.sqlite -sdb /media/data-drive/Hela_20A_20R_500-features.sqlite -ddb /media/data-drive/Hela_20A_20R_500-features-5-4546-5454.sqlite -fl 4546 -fu 5454 -ms2ce 27.0 -ml 440.0 -mu 555.0
+#
+# For processing a random selection of feature indexes...
+# python -u ./otf-peak-detect/feature-region-ms2-sum-frames.py -cdb /media/data-drive/Hela_20A_20R_500.sqlite -sdb /media/data-drive/Hela_20A_20R_500-features.sqlite -ddb /media/data-drive/Hela_20A_20R_500-features-1-100000-random-1000-sf-100.sqlite -fl 1 -fu 100000 -ms2ce 27.0 -ml 440.0 -mu 555.0 -nrf 1000 -mzsf 100.0
+#
+# For processing a previously-generated file of feature indexes...
+# python -u ./otf-peak-detect/feature-region-ms2-sum-frames.py -cdb /media/data-drive/Hela_20A_20R_500.sqlite -sdb /media/data-drive/Hela_20A_20R_500-features.sqlite -ddb /media/data-drive/Hela_20A_20R_500-features-1-100000-random-1000-sf-100.sqlite -fl 1 -fu 100000 -ms2ce 27.0 -ml 440.0 -mu 555.0 -rff random_feature_indexes.txt -mzsf 100.0
 #
 
 # feature array indices
@@ -79,7 +86,7 @@ def main():
     print("Setting up tables")
     dest_c.execute("DROP TABLE IF EXISTS summed_ms2_regions")
     dest_c.execute("DROP TABLE IF EXISTS summed_ms2_regions_info")
-    dest_c.execute("CREATE TABLE summed_ms2_regions (feature_id INTEGER, point_id INTEGER, mz REAL, scan INTEGER, intensity INTEGER, number_frames INTEGER, peak_id INTEGER)")  # number_frames = number of source frames the point was found in
+    dest_c.execute("CREATE TABLE summed_ms2_regions (feature_id INTEGER, point_id INTEGER, mz REAL, scan INTEGER, intensity INTEGER, number_frames INTEGER, peak_id INTEGER, points_summed INTEGER)")  # number_frames = number of source frames the point was found in
     dest_c.execute("CREATE TABLE summed_ms2_regions_info (item TEXT, value TEXT)")
 
     # Store the arguments as metadata in the database for later reference
@@ -161,7 +168,8 @@ def main():
                     centroid_intensity = nearby_points[:,FRAME_INTENSITY_IDX].sum()
                     centroid_mz = peakutils.centroid(nearby_points[:,FRAME_MZ_IDX], nearby_points[:,FRAME_INTENSITY_IDX])
                     unique_frames = np.unique(nearby_points[:,FRAME_ID_IDX])
-                    points.append((feature_id, pointId, float(centroid_mz / args.mz_scaling_factor), scan, int(round(centroid_intensity)), len(unique_frames), 0))
+                    number_of_points_summed = len(nearby_points)
+                    points.append((feature_id, pointId, float(centroid_mz / args.mz_scaling_factor), scan, int(round(centroid_intensity)), len(unique_frames), 0, number_of_points_summed))
                     pointId += 1
                     # flag the points we've processed
                     points_v[nearby_point_indices,FRAME_INTENSITY_IDX] = 0
