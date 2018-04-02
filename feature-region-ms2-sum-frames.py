@@ -35,6 +35,8 @@ FRAME_MZ_IDX = 1
 FRAME_SCAN_IDX = 2
 FRAME_INTENSITY_IDX = 3
 
+COMMIT_BATCH_SIZE = 100
+
 def standard_deviation(mz):
     instrument_resolution = 40000.0
     return int((mz / instrument_resolution) / 2.35482)
@@ -49,6 +51,7 @@ def ms2_frame_ids_from_ms1_frame_id(ms1_frame_id, frames_to_sum, frame_summing_o
 
 def main():
     global ms2_frame_ids_v
+    feature_count = 0
 
     parser = argparse.ArgumentParser(description='Sum MS2 frames in the region of the MS1 feature\'s drift and retention time.')
     parser.add_argument('-cdb','--converted_database_name', type=str, help='The name of the converted database.', required=True)
@@ -147,9 +150,9 @@ def main():
             ms2_frame_ids = tuple(set(ms2_frame_ids))   # remove duplicates
             print("feature ID {}, MS1 frame IDs {}-{}, {} MS2 frames, scans {}-{}".format(feature_id, feature_start_frame, feature_end_frame, len(ms2_frame_ids), feature_scan_lower, feature_scan_upper))
             frame_df = pd.read_sql_query("select frame_id,mz,scan,intensity from frames where frame_id in {} and scan <= {} and scan >= {} order by scan,mz;".format(ms2_frame_ids, feature_scan_upper, feature_scan_lower), conv_conn)
-            frame_df.mz = frame_df.mz * args.mz_scaling_factor
             # If we don't apply an m/z scaling factor, leave the m/z value as a float
             if args.mz_scaling_factor > 1.0:
+                frame_df.mz = frame_df.mz * args.mz_scaling_factor
                 frame_df = frame_df.astype(np.int32)
             frame_v = frame_df.values
             print("frame occupies {} bytes".format(frame_v.nbytes))
@@ -177,11 +180,20 @@ def main():
                     points_v[nearby_point_indices,FRAME_INTENSITY_IDX] = 0
                     max_intensity_index = np.argmax(points_v[:,FRAME_INTENSITY_IDX])
             feature_stop_time = time.time()
+            feature_count += 1
             print("{} sec for feature {}".format(feature_stop_time-feature_start_time, feature_id))
             print("")
 
+            if feature_count % COMMIT_BATCH_SIZE == 0:
+                print("writing summed regions to the database...")
+                # Store the points in the database
+                dest_c.executemany("INSERT INTO summed_ms2_regions (feature_id, point_id, mz, scan, intensity, number_frames, peak_id, points_summed) VALUES (?, ?, ?, ?, ?, ?, ?, ?)", points)
+                dest_conn.commit()
+                del points[:]
+
         # Store the points in the database
-        dest_c.executemany("INSERT INTO summed_ms2_regions (feature_id, point_id, mz, scan, intensity, number_frames, peak_id, points_summed) VALUES (?, ?, ?, ?, ?, ?, ?, ?)", points)
+        if len(points) > 0:
+            dest_c.executemany("INSERT INTO summed_ms2_regions (feature_id, point_id, mz, scan, intensity, number_frames, peak_id, points_summed) VALUES (?, ?, ?, ?, ?, ?, ?, ?)", points)
 
         stop_run = time.time()
         print("{} seconds to process run".format(stop_run-start_run))
