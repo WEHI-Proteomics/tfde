@@ -57,6 +57,10 @@ def findNearestLessThan(searchVal, inputData):
     idx = diff.argmax()
     return idx, inputData[idx]
 
+#
+# python ./otf-peak-detect/feature-region-ms2-peak-detect.py -sdb /media/data-drive/Hela_20A_20R_500-features.sqlite -ddb /media/data-drive/Hela_20A_20R_500-features-1-100000-random-1000-mzsf-10.sqlite -fl 1 -fu 100000 -rff random_feature_indexes.txt -ml 440 -mu 555
+#
+
 parser = argparse.ArgumentParser(description='A tree descent method for MS2 peak detection.')
 parser.add_argument('-sdb','--source_database_name', type=str, help='The name of the source database.', required=True)
 parser.add_argument('-ddb','--destination_database_name', type=str, help='The name of the destination database.', required=True)
