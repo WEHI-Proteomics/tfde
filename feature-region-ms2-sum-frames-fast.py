@@ -192,7 +192,7 @@ def main():
                 intensities = np.array([frame_a_intensity_sum[scan,mz-2],frame_a_intensity_sum[scan,mz-1],frame_a_intensity_sum[scan,mz],frame_a_intensity_sum[scan,mz+1]])
                 centroid_mz = peakutils.centroid(mzs,intensities)
                 centroid_intensity = frame_a_intensity_sum[scan,centroid_mz]
-                points.append((feature_id, pointId, (centroid_mz / args.mz_scaling_factor), scan, centroid_intensity, 0))
+                points.append((feature_id, pointId, (centroid_mz / args.mz_scaling_factor), scan, int(centroid_intensity), 0))
 
             feature_stop_time = time.time()
             feature_count += 1
