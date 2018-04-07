@@ -90,7 +90,7 @@ def main():
     print("Setting up tables")
     dest_c.execute("DROP TABLE IF EXISTS summed_ms2_regions")
     dest_c.execute("DROP TABLE IF EXISTS summed_ms2_regions_info")
-    dest_c.execute("CREATE TABLE summed_ms2_regions (feature_id INTEGER, point_id INTEGER, mz REAL, scan INTEGER, intensity INTEGER, number_frames INTEGER, peak_id INTEGER, points_summed INTEGER)")  # number_frames = number of source frames the point was found in
+    dest_c.execute("CREATE TABLE summed_ms2_regions (feature_id INTEGER, point_id INTEGER, mz REAL, scan INTEGER, intensity INTEGER, peak_id INTEGER)")
     dest_c.execute("CREATE TABLE summed_ms2_regions_info (item TEXT, value TEXT)")
 
     # Store the arguments as metadata in the database for later reference
@@ -173,38 +173,18 @@ def main():
             frame_a_derivative = d - e
             frame_a_intensity_sum = d + e
             # find the maxima by looking for zero crossings from +ve to -ve
-            point_indices = np.where((shift(np.sign(frame_a_derivative),shift=(0,1), cval=0) > np.sign(frame_a_derivative)) & (np.sign(frame_a_derivative) == -1))[0]
-            # for each point, find its centroid and add it to the list
-            for scan in range(frame_df.scan.min(), frame_df.scan.max()+1):
-                for point_index in point_indices[scan,:]:
-                    contributing_indices = np.array((point_index-2,point_index-1,point_index,point_index+1), dtype=np.int32)
-                    intensities = frame_a_intensity_sum[]
-                    centroid_mz = peakutils.centroid(, nearby_points[:,FRAME_INTENSITY_IDX])
-
-
-
-            # Sum and peak-detect the points in the feature's region, using the Bruker fast method
+            # result is in the form of rows,cols
+            point_scans, point_mzs = np.where((shift(np.sign(frame_a_derivative),shift=(0,1), cval=0) > np.sign(frame_a_derivative)) & (np.sign(frame_a_derivative) == -1))
             pointId = 1
-            for scan in range(feature_scan_lower, feature_scan_upper+1):
-                points_v = frame_v[np.where(frame_v[:,FRAME_SCAN_IDX] == scan)[0]]
-                print("{} points on scan {}".format(len(points_v), scan))
-                max_intensity_index = np.argmax(points_v[:,FRAME_INTENSITY_IDX])
-                while points_v[max_intensity_index,FRAME_INTENSITY_IDX] > 0:
-                    point_mz = points_v[max_intensity_index, FRAME_MZ_IDX]
-                    std_dev_point_mz_window = standard_deviation(point_mz) * 4
-                    # Find all the points in this point's std dev window
-                    nearby_point_indices = np.where((abs(points_v[:, FRAME_MZ_IDX] - point_mz) <= std_dev_point_mz_window))[0]
-                    nearby_points = points_v[nearby_point_indices]
-                    # find the total intensity and centroid m/z
-                    centroid_intensity = nearby_points[:,FRAME_INTENSITY_IDX].sum()
-                    centroid_mz = peakutils.centroid(nearby_points[:,FRAME_MZ_IDX] / args.mz_scaling_factor, nearby_points[:,FRAME_INTENSITY_IDX])
-                    unique_frames = np.unique(nearby_points[:,FRAME_ID_IDX])
-                    number_of_points_summed = len(nearby_points)
-                    points.append((feature_id, pointId, centroid_mz, scan, int(round(centroid_intensity)), len(unique_frames), 0, number_of_points_summed))
-                    pointId += 1
-                    # flag the points we've processed
-                    points_v[nearby_point_indices,FRAME_INTENSITY_IDX] = 0
-                    max_intensity_index = np.argmax(points_v[:,FRAME_INTENSITY_IDX])
+            for i in range(0,len(point_scans)):
+                scan = point_scans[i]
+                mz = point_mzs[i]
+                mzs = np.array([mz-2,mz-1,mz,mz+1])
+                intensities = np.array([frame_a_intensity_sum[scan,mz-2],frame_a_intensity_sum[scan,mz-1],frame_a_intensity_sum[scan,mz],frame_a_intensity_sum[scan,mz+1]])
+                centroid_mz = peakutils.centroid(mzs,intensities)
+                centroid_intensity = frame_a_intensity_sum[scan,centroid_mz]
+                points.append((feature_id, pointId, (centroid_mz / args.mz_scaling_factor), scan, centroid_intensity, 0))
+
             feature_stop_time = time.time()
             feature_count += 1
             print("{} sec for feature {}".format(feature_stop_time-feature_start_time, feature_id))
@@ -214,13 +194,13 @@ def main():
                 print("feature count {} - writing summed regions to the database...".format(feature_count))
                 print("")
                 # Store the points in the database
-                dest_c.executemany("INSERT INTO summed_ms2_regions (feature_id, point_id, mz, scan, intensity, number_frames, peak_id, points_summed) VALUES (?, ?, ?, ?, ?, ?, ?, ?)", points)
+                dest_c.executemany("INSERT INTO summed_ms2_regions (feature_id, point_id, mz, scan, intensity, number_frames, peak_id, points_summed) VALUES (?, ?, ?, ?, ?, ?)", points)
                 dest_conn.commit()
                 del points[:]
 
         # Store the points in the database
         if len(points) > 0:
-            dest_c.executemany("INSERT INTO summed_ms2_regions (feature_id, point_id, mz, scan, intensity, number_frames, peak_id, points_summed) VALUES (?, ?, ?, ?, ?, ?, ?, ?)", points)
+            dest_c.executemany("INSERT INTO summed_ms2_regions (feature_id, point_id, mz, scan, intensity, number_frames, peak_id, points_summed) VALUES (?, ?, ?, ?, ?, ?)", points)
 
         stop_run = time.time()
         print("{} seconds to process run".format(stop_run-start_run))
