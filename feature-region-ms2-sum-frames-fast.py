@@ -183,6 +183,7 @@ def main():
             # find the maxima by looking for zero crossings from +ve to -ve
             # result is in the form of rows,cols
             point_scans, point_mzs = np.where((shift(np.sign(frame_a_derivative),shift=(0,1), cval=0) > np.sign(frame_a_derivative)) & (np.sign(frame_a_derivative) == -1))
+            summing_complete_time = time.time()
             pointId = 1
             for i in range(0,len(point_scans)):
                 scan = point_scans[i]
@@ -195,20 +196,20 @@ def main():
 
             feature_stop_time = time.time()
             feature_count += 1
-            print("{} sec for feature {}".format(feature_stop_time-feature_start_time, feature_id))
+            print("{} sec to sum ms2 frames for feature {}, {} sec to write to database".format(summing_complete_time-feature_start_time, feature_id, feature_stop_time-summing_complete_time))
             print("")
 
             if feature_count % COMMIT_BATCH_SIZE == 0:
                 print("feature count {} - writing summed regions to the database...".format(feature_count))
                 print("")
                 # Store the points in the database
-                dest_c.executemany("INSERT INTO summed_ms2_regions (feature_id, point_id, mz, scan, intensity, number_frames, peak_id, points_summed) VALUES (?, ?, ?, ?, ?, ?)", points)
+                dest_c.executemany("INSERT INTO summed_ms2_regions (feature_id, point_id, mz, scan, intensity, peak_id) VALUES (?, ?, ?, ?, ?, ?)", points)
                 dest_conn.commit()
                 del points[:]
 
         # Store the points in the database
         if len(points) > 0:
-            dest_c.executemany("INSERT INTO summed_ms2_regions (feature_id, point_id, mz, scan, intensity, number_frames, peak_id, points_summed) VALUES (?, ?, ?, ?, ?, ?)", points)
+            dest_c.executemany("INSERT INTO summed_ms2_regions (feature_id, point_id, mz, scan, intensity, peak_id) VALUES (?, ?, ?, ?, ?, ?)", points)
 
         stop_run = time.time()
         print("{} seconds to process run".format(stop_run-start_run))
