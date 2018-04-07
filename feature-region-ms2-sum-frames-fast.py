@@ -77,8 +77,10 @@ def main():
         exit
 
     conv_conn = sqlite3.connect(args.converted_database_name)
+    conv_c = conv_conn.cursor()
 
     src_conn = sqlite3.connect(args.source_database_name)
+    src_c = src_conn.cursor()
 
     dest_conn = sqlite3.connect(args.destination_database_name)
     dest_c = dest_conn.cursor()
@@ -92,6 +94,12 @@ def main():
     dest_c.execute("DROP TABLE IF EXISTS summed_ms2_regions_info")
     dest_c.execute("CREATE TABLE summed_ms2_regions (feature_id INTEGER, point_id INTEGER, mz REAL, scan INTEGER, intensity INTEGER, peak_id INTEGER)")
     dest_c.execute("CREATE TABLE summed_ms2_regions_info (item TEXT, value TEXT)")
+
+    print("Setting up indexes")
+    conv_c.execute("CREATE INDEX IF NOT EXISTS idx_frame_properties_2 ON frame_properties (collision_energy, frame_id)")
+    conv_c.execute("CREATE INDEX IF NOT EXISTS idx_frames_2 ON frames (frame_id,scan)")
+
+    src_c.execute("CREATE INDEX IF NOT EXISTS idx_features_1 ON features (feature_id,charge_state,mz_lower,mz_upper)")
 
     # Store the arguments as metadata in the database for later reference
     ms2_feature_info = []
