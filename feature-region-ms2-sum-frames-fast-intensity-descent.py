@@ -181,8 +181,8 @@ def main():
                     point_mz = max_intensity_index
                     four_std_dev = standard_deviation(point_mz) * 4
                     # Find all the points in this point's std dev window
-                    lower_index = max_intensity_index - four_std_dev
-                    upper_index = max_intensity_index + four_std_dev
+                    lower_index = max(max_intensity_index - four_std_dev, frame_df.scaled_mz.min())
+                    upper_index = min(max_intensity_index + four_std_dev, frame_df.scaled_mz.max())
                     # find the total intensity and centroid m/z
                     mzs = np.arange(lower_index, upper_index+1)
                     intensities = points_v[mzs]
