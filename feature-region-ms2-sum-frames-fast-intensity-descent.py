@@ -175,27 +175,25 @@ def main():
             # sum the points in the feature's region, just as we did for MS1 frames
             pointId = 1
             for scan in range(frame_df.scan.min(), frame_df.scan.max()+1):
-                nonzero_elements_on_scan = np.nonzero(frame_a[scan,:])[0]
-                scan_mz_lower = nonzero_elements_on_scan[0]
-                scan_mz_upper = nonzero_elements_on_scan[len(nonzero_elements_on_scan)-1]
-                points_v = frame_a[scan,scan_mz_lower:scan_mz_upper+1]
+                points_v = frame_a[scan,:]
                 print("{} points on scan {}".format(len(np.where(points_v > 0)[0]), scan))
-                max_intensity_index = np.argmax(points_v)
-                while points_v[max_intensity_index] > 0:
-                    # calculate the indices for this point's std dev window
-                    four_std_dev = standard_deviation(scan_mz_lower+max_intensity_index) * 4
-                    lower_index = max(max_intensity_index - four_std_dev, 0)
-                    upper_index = min(max_intensity_index + four_std_dev, len(points_v)-1)
-                    # find the total intensity and centroid m/z
-                    mzs = np.arange(lower_index, upper_index+1)
-                    intensities = points_v[mzs]
-                    centroid_mz = scan_mz_lower + peakutils.centroid(mzs,intensities)
-                    centroid_intensity = intensities.sum()
-                    points.append((feature_id, pointId, (centroid_mz / args.mz_scaling_factor), scan, int(centroid_intensity), 0))
-                    pointId += 1
-                    # flag the points we've processed
-                    points_v[lower_index:upper_index+1] = 0
-                    max_intensity_index = np.argmax(points_v)
+                intensity_sorted_indices = np.argsort(points_v)[::-1]
+                first_zero_index = np.where(points_v[intensity_sorted_indices] == 0)[0][0]
+                for max_intensity_index in intensity_sorted_indices[:first_zero_index]:
+                    if points_v[max_intensity_index] > 0:  # as we may have already set this to zero on processing
+                        # calculate the indices for this point's std dev window
+                        four_std_dev = standard_deviation(max_intensity_index) * 4
+                        lower_index = max(max_intensity_index - four_std_dev, 0)
+                        upper_index = min(max_intensity_index + four_std_dev, len(points_v)-1)
+                        # find the total intensity and centroid m/z
+                        mzs = np.arange(lower_index, upper_index+1)
+                        intensities = points_v[mzs]
+                        centroid_mz = peakutils.centroid(mzs,intensities)
+                        centroid_intensity = intensities.sum()
+                        points.append((feature_id, pointId, (centroid_mz / args.mz_scaling_factor), scan, int(centroid_intensity), 0))
+                        pointId += 1
+                        # flag the points we've processed
+                        points_v[lower_index:upper_index+1] = 0
             feature_stop_time = time.time()
             feature_count += 1
             print("{} sec for feature {}".format(feature_stop_time-feature_start_time, feature_id))
