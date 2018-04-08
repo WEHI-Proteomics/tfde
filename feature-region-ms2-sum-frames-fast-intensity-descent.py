@@ -8,17 +8,16 @@ import peakutils
 from operator import itemgetter
 import sqlite3
 import random
-from scipy.ndimage.interpolation import shift
 
 #
 # For processing all the features in a range...
 # python -u ./otf-peak-detect/feature-region-ms2-sum-frames.py -cdb /media/data-drive/Hela_20A_20R_500.sqlite -sdb /media/data-drive/Hela_20A_20R_500-features.sqlite -ddb /media/data-drive/Hela_20A_20R_500-features-5-4546-5454.sqlite -fl 4546 -fu 5454 -ms2ce 27.0 -ml 440.0 -mu 555.0
 #
-# For processing a random selection of feature indexes...
-# python -u ./otf-peak-detect/feature-region-ms2-sum-frames.py -cdb /media/data-drive/Hela_20A_20R_500.sqlite -sdb /media/data-drive/Hela_20A_20R_500-features.sqlite -ddb /media/data-drive/Hela_20A_20R_500-features-1-100000-random-1000-sf-100.sqlite -fl 1 -fu 100000 -ms2ce 27.0 -ml 440.0 -mu 555.0 -nrf 1000 -mzsf 100.0
+# For picking and processing a random selection of feature indexes...
+# python -u ./otf-peak-detect/feature-region-ms2-sum-frames.py -cdb /media/data-drive/Hela_20A_20R_500.sqlite -sdb /media/data-drive/Hela_20A_20R_500-features.sqlite -ddb /media/data-drive/Hela_20A_20R_500-features-1-100000-random-1000-sf-100.sqlite -fl 1 -fu 100000 -ms2ce 27.0 -ml 440.0 -mu 555.0 -nrf 1000
 #
 # For processing a previously-generated file of feature indexes...
-# python -u ./otf-peak-detect/feature-region-ms2-sum-frames.py -cdb /media/data-drive/Hela_20A_20R_500.sqlite -sdb /media/data-drive/Hela_20A_20R_500-features.sqlite -ddb /media/data-drive/Hela_20A_20R_500-features-1-100000-random-1000-sf-100.sqlite -fl 1 -fu 100000 -ms2ce 27.0 -ml 440.0 -mu 555.0 -rff random_feature_indexes.txt -mzsf 100.0
+# python -u ./otf-peak-detect/feature-region-ms2-sum-frames.py -cdb /media/data-drive/Hela_20A_20R_500.sqlite -sdb /media/data-drive/Hela_20A_20R_500-features.sqlite -ddb /media/data-drive/Hela_20A_20R_500-features-1-100000-random-1000-sf-100.sqlite -fl 1 -fu 100000 -ms2ce 27.0 -ml 440.0 -mu 555.0 -rff random_feature_indexes.txt
 #
 
 # feature array indices
@@ -172,12 +171,12 @@ def main():
             # use scaled_mz as an index
             frame_a[frame_df.scan, frame_df.scaled_mz] = frame_df.intensity_combined
 
-            # sum the points in the feature's region, just as we did for MS1 frames
+            # sum the points in the feature's region
             pointId = 1
             for scan in range(frame_df.scan.min(), frame_df.scan.max()+1):
                 points_v = frame_a[scan,:]
                 print("{} points on scan {}".format(len(np.where(points_v > 0)[0]), scan))
-                intensity_sorted_indices = np.argsort(points_v)[::-1]
+                intensity_sorted_indices = np.argsort(points_v)[::-1]  # in order of descending intensity
                 first_zero_index = np.where(points_v[intensity_sorted_indices] == 0)[0][0]
                 for max_intensity_index in intensity_sorted_indices[:first_zero_index]:
                     if points_v[max_intensity_index] > 0:  # as we may have already set this to zero on processing
