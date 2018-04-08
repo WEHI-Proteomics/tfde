@@ -166,6 +166,8 @@ def main():
             frame_df['intensity_combined'] = frame_df.groupby(['scan', 'scaled_mz'])['intensity'].transform('sum')
             # drop the duplicate rows
             frame_df.drop_duplicates(subset=('scan','scaled_mz'), inplace=True)
+            frame_mz_lower = frame_df.scaled_mz.min()
+            frame_mz_upper = frame_df.scaled_mz.max()
             # create the frame array
             frame_a = np.zeros(shape=(frame_df.scan.max()+1,frame_df.scaled_mz.max()+1), dtype=np.int32)
             # use scaled_mz as an index
@@ -181,8 +183,8 @@ def main():
                     point_mz = max_intensity_index
                     four_std_dev = standard_deviation(point_mz) * 4
                     # Find all the points in this point's std dev window
-                    lower_index = max(max_intensity_index - four_std_dev, frame_df.scaled_mz.min())
-                    upper_index = min(max_intensity_index + four_std_dev, frame_df.scaled_mz.max())
+                    lower_index = max(max_intensity_index - four_std_dev, frame_mz_lower)
+                    upper_index = min(max_intensity_index + four_std_dev, frame_mz_upper)
                     # find the total intensity and centroid m/z
                     mzs = np.arange(lower_index, upper_index+1)
                     intensities = points_v[mzs]
