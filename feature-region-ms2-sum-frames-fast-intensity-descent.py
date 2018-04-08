@@ -185,7 +185,7 @@ def main():
                     upper_index = max_intensity_index + four_std_dev
                     # find the total intensity and centroid m/z
                     mzs = np.arange(lower_index, upper_index+1)
-                    intensities = points_v[lower_index:upper_index+1]
+                    intensities = points_v[mzs]
                     centroid_mz = peakutils.centroid(mzs,intensities)
                     centroid_intensity = intensities.sum()
                     points.append((feature_id, pointId, (centroid_mz / args.mz_scaling_factor), scan, int(centroid_intensity), 0))
