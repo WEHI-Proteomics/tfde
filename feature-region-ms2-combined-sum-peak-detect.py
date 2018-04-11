@@ -181,6 +181,7 @@ def main():
                 first_zero_index = zero_indices[0]
             else:
                 first_zero_index = len(sorted_mzs)-1
+            print("first zero index: {}".format(first_zero_index))
 
             points = []
             point_id = 1
