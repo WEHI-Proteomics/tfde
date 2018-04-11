@@ -49,7 +49,7 @@ def ms2_frame_ids_from_ms1_frame_id(ms1_frame_id, frames_to_sum, frame_summing_o
     upper_source_frame_index = lower_source_frame_index + frames_to_sum
     return tuple(ms2_frame_ids_v[lower_source_frame_index:upper_source_frame_index,0])
 
-# @profile
+@profile
 def main():
     global ms2_frame_ids_v
     feature_count = 0
@@ -181,7 +181,7 @@ def main():
                 first_zero_index = zero_indices[0]
             else:
                 first_zero_index = len(sorted_mzs)-1
-            print("first zero index: {}".format(first_zero_index))
+            print("first zero index: {} out of {}".format(first_zero_index, len(sorted_mzs)))
 
             points = []
             point_id = 1
