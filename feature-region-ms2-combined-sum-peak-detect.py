@@ -195,15 +195,15 @@ def main():
 
                     # find the centroid m/z
                     mzs = np.arange(lower_index, upper_index+1)
-                    summed_intensities_by_mz = frame_a[:,mzs].sum(axis=0)
-                    summed_intensities_by_scan = frame_a[:,mzs].sum(axis=1)
-                    total_peak_intensity = summed_intensities_by_mz.sum()  # total intensity of the peak
-                    centroid_mz = peakutils.centroid(mzs, summed_intensities_by_mz)
+                    peak_summed_intensities_by_mz = frame_a[:,mzs].sum(axis=0)
+                    peak_summed_intensities_by_scan = frame_a[:,mzs].sum(axis=1)
+                    total_peak_intensity = peak_summed_intensities_by_mz.sum()  # total intensity of the peak
+                    centroid_mz = peakutils.centroid(mzs, peak_summed_intensities_by_mz)
 
                     # for each point in the region, add an entry to the list
                     centroid_mz_descaled = float(centroid_mz) / args.mz_scaling_factor
-                    for scan_idx in range(0,len(summed_intensities_by_scan)):
-                        points.append((feature_id, peak_id, point_id, centroid_mz_descaled, scan_idx+feature_scan_lower, summed_intensities_by_scan[scan_idx]))
+                    for scan_idx in range(0,len(peak_summed_intensities_by_scan)):
+                        points.append((feature_id, peak_id, point_id, centroid_mz_descaled, scan_idx+feature_scan_lower, peak_summed_intensities_by_scan[scan_idx]))
                         point_id += 1
 
                     # add the peak to the list
