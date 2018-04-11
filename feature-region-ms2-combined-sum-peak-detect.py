@@ -211,7 +211,7 @@ def main():
                     peak_id += 1
 
                     # flag the points we've processed
-                    summed_intensities_by_mz[mzs] = 0
+                    summed_intensities_by_mz[mz] = 0
 
             feature_stop_time = time.time()
             feature_count += 1
