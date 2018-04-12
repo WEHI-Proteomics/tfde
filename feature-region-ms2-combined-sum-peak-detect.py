@@ -184,8 +184,8 @@ def main():
             frame_a[frame_df.scan, frame_df.scaled_mz] = frame_df.intensity_combined
             min_scan = frame_df.scan.min()
             max_scan = frame_df.scan.max()
-            min_mz = frame_df.mz.min()
-            max_mz = frame_df.mz.max()
+            min_mz = frame_df.scaled_mz.min()
+            max_mz = frame_df.scaled_mz.max()
             subset_frame_a = frame_a[min_scan:max_scan+1,min_mz:max_mz+1]
             print("frame subset shape: {}".format(subset_frame_a.shape))
 
