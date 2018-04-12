@@ -216,22 +216,16 @@ def main():
                     mzs = np.arange(lower_index, upper_index+1)
                     peak_summed_intensities_by_mz = subset_frame_a[:,mzs].sum(axis=0)
                     peak_summed_intensities_by_scan = subset_frame_a[:,mzs].sum(axis=1)
-                    print("peak_summed_intensities_by_scan shape: {}".format(peak_summed_intensities_by_scan.shape))
                     total_peak_intensity = peak_summed_intensities_by_mz.sum()  # total intensity of the peak
                     centroid_mz = peakutils.centroid(mzs, peak_summed_intensities_by_mz)
                     centroid_mz_descaled = (float(centroid_mz) / args.mz_scaling_factor) + min_mz
 
                     # for each point in the region, add an entry to the list
                     feature_column = np.full(shape=subset_frame_a.shape[0], fill_value=feature_id, dtype=np.int32)
-                    print("feature col shape: {}".format(feature_column.shape))
                     peak_column = np.full(shape=subset_frame_a.shape[0], fill_value=peak_id, dtype=np.int32)
-                    print("peak col shape: {}".format(peak_column.shape))
                     point_column = np.arange(start=point_id, stop=point_id+subset_frame_a.shape[0], dtype=np.int32)
-                    print("point col shape: {}".format(point_column.shape))
                     mz_column = np.full(shape=subset_frame_a.shape[0], fill_value=centroid_mz_descaled, dtype=np.float)
-                    print("mz col shape: {}".format(mz_column.shape))
                     scan_column = np.arange(start=min_scan, stop=min_scan+subset_frame_a.shape[0], dtype=np.int32)
-                    print("scan col shape: {}".format(scan_column.shape))
                     points_a = np.column_stack((feature_column, peak_column, point_column, mz_column, scan_column, peak_summed_intensities_by_scan))
                     points.append(points_a.tolist())
                     point_id += subset_frame_a.shape[0]
