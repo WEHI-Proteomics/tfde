@@ -214,8 +214,8 @@ def main():
 
                     # find the centroid m/z
                     mzs = np.arange(lower_index, upper_index+1)
-                    peak_summed_intensities_by_mz = frame_a[:,mzs].sum(axis=0)
-                    peak_summed_intensities_by_scan = frame_a[:,mzs].sum(axis=1)
+                    peak_summed_intensities_by_mz = subset_frame_a[:,mzs].sum(axis=0)
+                    peak_summed_intensities_by_scan = subset_frame_a[:,mzs].sum(axis=1)
                     print("peak_summed_intensities_by_scan shape: {}".format(peak_summed_intensities_by_scan.shape))
                     total_peak_intensity = peak_summed_intensities_by_mz.sum()  # total intensity of the peak
                     centroid_mz = peakutils.centroid(mzs, peak_summed_intensities_by_mz)
