@@ -37,6 +37,17 @@ FRAME_INTENSITY_IDX = 3
 
 COMMIT_BATCH_SIZE = 100
 
+# so we can use profiling without removing @profile
+import __builtin__
+
+try:
+    __builtin__.profile
+except AttributeError:
+    # No line profiler, provide a pass-through version
+    def profile(func): return func
+    __builtin__.profile = profile
+
+
 def standard_deviation(mz):
     instrument_resolution = 40000.0
     return int((mz / instrument_resolution) / 2.35482)
