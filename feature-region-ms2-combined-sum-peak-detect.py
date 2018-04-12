@@ -171,9 +171,14 @@ def main():
             frame_a = np.zeros(shape=(frame_df.scan.max()+1,frame_df.scaled_mz.max()+1), dtype=np.int32)
             # use scaled_mz as an index
             frame_a[frame_df.scan, frame_df.scaled_mz] = frame_df.intensity_combined
+            min_scan = frame_df.scan.min()
+            max_scan = frame_df.scan.max()
+            min_mz = frame_df.mz.min()
+            max_mz = frame_df.mz.max()
+            subset_frame_a = frame_a[min_scan:max_scan+1,min_mz:max_mz+1]
 
             # sum the feature region intensities by mz (i.e. column)
-            summed_intensities_by_mz = frame_a.sum(axis=0)
+            summed_intensities_by_mz = subset_frame_a.sum(axis=0)
             sorted_mzs = np.argsort(summed_intensities_by_mz)[::-1]
             # check where we should stop
             zero_indices = np.where(summed_intensities_by_mz[sorted_mzs] == 0)[0]
@@ -190,7 +195,7 @@ def main():
             for mz in sorted_mzs[:first_zero_index]:
                 if (summed_intensities_by_mz[mz] > 0):  # check if we've processed this mz already
                     # calculate the indices for this point's std dev window
-                    four_std_dev = standard_deviation(mz) * 4
+                    four_std_dev = standard_deviation(mz+min_mz) * 4
                     lower_index = max(mz - four_std_dev, 0)
                     upper_index = min(mz + four_std_dev, len(summed_intensities_by_mz)-1)
 
@@ -200,12 +205,17 @@ def main():
                     peak_summed_intensities_by_scan = frame_a[:,mzs].sum(axis=1)
                     total_peak_intensity = peak_summed_intensities_by_mz.sum()  # total intensity of the peak
                     centroid_mz = peakutils.centroid(mzs, peak_summed_intensities_by_mz)
+                    centroid_mz_descaled = (float(centroid_mz) / args.mz_scaling_factor) + min_mz
 
                     # for each point in the region, add an entry to the list
-                    centroid_mz_descaled = float(centroid_mz) / args.mz_scaling_factor
-                    for scan_idx in range(0,len(peak_summed_intensities_by_scan)):
-                        points.append((feature_id, peak_id, point_id, centroid_mz_descaled, scan_idx+feature_scan_lower, peak_summed_intensities_by_scan[scan_idx]))
-                        point_id += 1
+                    feature_column = np.full(shape=subset_frame_a.shape[0], fill_value=feature_id, dtype=np.int32)
+                    peak_column = np.full(shape=subset_frame_a.shape[0], fill_value=peak_id, dtype=np.int32)
+                    point_column = np.arange(start=point_id, stop=point_id+subset_frame_a.shape[0], dtype=np.int32)
+                    mz_column = np.full(shape=subset_frame_a.shape[0], fill_value=centroid_mz_descaled, dtype=np.float)
+                    scan_column = np.arange(start=min_scan, stop=min_scan+subset_frame_a.shape[0], dtype=np.int32)
+                    points_a = np.column_stack((feature_column, peak_column, point_column, mz_column, scan_column, peak_summed_intensities_by_scan))
+                    points.append(points_a.tolist())
+                    point_id += subset_frame_a.shape[0]
 
                     # add the peak to the list
                     peaks.append((feature_id, peak_id, centroid_mz_descaled, total_peak_intensity))
