@@ -187,19 +187,16 @@ def main():
             min_mz = frame_df.scaled_mz.min()
             max_mz = frame_df.scaled_mz.max()
             subset_frame_a = frame_a[min_scan:max_scan+1,min_mz:max_mz+1]
-            print("frame subset shape: {}".format(subset_frame_a.shape))
 
             # sum the feature region intensities by mz (i.e. column)
             summed_intensities_by_mz = subset_frame_a.sum(axis=0)
             sorted_mzs = np.argsort(summed_intensities_by_mz)[::-1]
             # check where we should stop
             zero_indices = np.where(summed_intensities_by_mz[sorted_mzs] == 0)[0]
-            print("zero indices {}".format(zero_indices))
             if len(zero_indices) > 0:
                 first_zero_index = zero_indices[0]
             else:
                 first_zero_index = len(sorted_mzs)-1
-            print("first zero index: {} out of {}".format(first_zero_index, len(sorted_mzs)))
 
             points = []
             point_id = 1
