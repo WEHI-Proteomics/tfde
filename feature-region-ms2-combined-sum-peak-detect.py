@@ -227,7 +227,7 @@ def main():
                     mz_column = np.full(shape=subset_frame_a.shape[0], fill_value=centroid_mz_descaled, dtype=np.float)
                     scan_column = np.arange(start=min_scan, stop=min_scan+subset_frame_a.shape[0], dtype=np.int32)
                     points_a = np.column_stack((feature_column, peak_column, point_column, mz_column, scan_column, peak_summed_intensities_by_scan))
-                    points.append(points_a.tolist())
+                    points += points_a.tolist()
                     point_id += subset_frame_a.shape[0]
 
                     # add the peak to the list
