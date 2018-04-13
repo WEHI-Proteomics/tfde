@@ -215,8 +215,7 @@ def main():
                     peak_summed_intensities_by_scan = subset_frame_a[:,mzs].sum(axis=1)
                     total_peak_intensity = peak_summed_intensities_by_mz.sum()  # total intensity of the peak
                     centroid_mz = peakutils.centroid(mzs, peak_summed_intensities_by_mz)
-                    centroid_mz_descaled = min_mz + (float(centroid_mz) / args.mz_scaling_factor)
-                    print("centroid mz {}, centroid mz descaled {}, min_mz {}, mz {}, scaling factor {}".format(centroid_mz, centroid_mz_descaled, min_mz, mz, args.mz_scaling_factor))
+                    centroid_mz_descaled = float(min_mz + centroid_mz) / args.mz_scaling_factor
 
                     # for each point in the region, add an entry to the list
                     feature_column = np.full(shape=subset_frame_a.shape[0], fill_value=feature_id, dtype=np.int32)
