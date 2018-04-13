@@ -190,8 +190,7 @@ def main():
 
             # sum the feature region intensities by mz (i.e. column)
             summed_intensities_by_mz = subset_frame_a.sum(axis=0)
-            sorted_mzs = np.argsort(summed_intensities_by_mz)[::-1]
-            print("sorted_mzs {}-{}".format(np.min(sorted_mzs), np.max(sorted_mzs)))
+            sorted_mzs = np.argsort(summed_intensities_by_mz)[::-1]  # need to add min_mz to get back to true mz
             # check where we should stop
             zero_indices = np.where(summed_intensities_by_mz[sorted_mzs] == 0)[0]
             if len(zero_indices) > 0:
@@ -217,6 +216,7 @@ def main():
                     total_peak_intensity = peak_summed_intensities_by_mz.sum()  # total intensity of the peak
                     centroid_mz = peakutils.centroid(mzs, peak_summed_intensities_by_mz)
                     centroid_mz_descaled = min_mz + (float(centroid_mz) / args.mz_scaling_factor)
+                    print("centroid mz {}, centroid mz descaled {}, min_mz {}, mz {}".format(centroid_mz, centroid_mz_descaled, min_mz, mz))
 
                     # for each point in the region, add an entry to the list
                     feature_column = np.full(shape=subset_frame_a.shape[0], fill_value=feature_id, dtype=np.int32)
