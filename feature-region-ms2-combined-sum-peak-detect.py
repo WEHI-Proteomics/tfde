@@ -191,6 +191,7 @@ def main():
             # sum the feature region intensities by mz (i.e. column)
             summed_intensities_by_mz = subset_frame_a.sum(axis=0)
             sorted_mzs = np.argsort(summed_intensities_by_mz)[::-1]
+            print("sorted_mzs {}-{}".format(np.min(sorted_mzs), np.max(sorted_mzs))
             # check where we should stop
             zero_indices = np.where(summed_intensities_by_mz[sorted_mzs] == 0)[0]
             if len(zero_indices) > 0:
@@ -203,7 +204,6 @@ def main():
             peaks = []
             peak_id = 1
             for mz in sorted_mzs[:first_zero_index]:
-                print("processing mz {}".format(mz))
                 if (summed_intensities_by_mz[mz] > 0):  # check if we've processed this mz already
                     # calculate the indices for this point's std dev window
                     four_std_dev = standard_deviation(min_mz + mz) * 4
