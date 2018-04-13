@@ -203,9 +203,10 @@ def main():
             peaks = []
             peak_id = 1
             for mz in sorted_mzs[:first_zero_index]:
+                print("processing mz {}".format(mz))
                 if (summed_intensities_by_mz[mz] > 0):  # check if we've processed this mz already
                     # calculate the indices for this point's std dev window
-                    four_std_dev = standard_deviation(mz+min_mz) * 4
+                    four_std_dev = standard_deviation(min_mz + mz) * 4
                     lower_index = max(mz - four_std_dev, 0)
                     upper_index = min(mz + four_std_dev, len(summed_intensities_by_mz)-1)
 
@@ -215,7 +216,7 @@ def main():
                     peak_summed_intensities_by_scan = subset_frame_a[:,mzs].sum(axis=1)
                     total_peak_intensity = peak_summed_intensities_by_mz.sum()  # total intensity of the peak
                     centroid_mz = peakutils.centroid(mzs, peak_summed_intensities_by_mz)
-                    centroid_mz_descaled = (float(centroid_mz) / args.mz_scaling_factor) + min_mz
+                    centroid_mz_descaled = min_mz + (float(centroid_mz) / args.mz_scaling_factor)
 
                     # for each point in the region, add an entry to the list
                     feature_column = np.full(shape=subset_frame_a.shape[0], fill_value=feature_id, dtype=np.int32)
