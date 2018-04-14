@@ -1,6 +1,6 @@
 from __future__ import print_function
 import sys
-import pymysql
+import sqlite3
 import pandas as pd
 import argparse
 import numpy as np
@@ -50,7 +50,8 @@ def findNearestLessThan(searchVal, inputData):
     return idx, inputData[idx]
 
 parser = argparse.ArgumentParser(description='Detect peaks in MS1 feature regions.')
-parser.add_argument('-db','--database_name', type=str, help='The name of the source database.', required=True)
+parser.add_argument('-sdb','--source_database_name', type=str, help='The name of the source database.', required=True)
+parser.add_argument('-ddb','--destination_database_name', type=str, help='The name of the destination database.', required=True)
 parser.add_argument('-fl','--feature_id_lower', type=int, help='Lower feature ID to process.', required=False)
 parser.add_argument('-fu','--feature_id_upper', type=int, help='Upper feature ID to process.', required=False)
 parser.add_argument('-ml','--mz_lower', type=float, help='Lower feature m/z to process.', required=True)
@@ -59,8 +60,11 @@ parser.add_argument('-sd','--standard_deviations', type=int, default=10, help='N
 parser.add_argument('-mcs','--minimum_charge_state', type=int, default=2, help='Minimum charge state to process.', required=False)
 args = parser.parse_args()
 
-source_conn = pymysql.connect(host='mscypher-004', user='root', passwd='password', database="{}".format(args.database_name))
-src_c = source_conn.cursor()
+src_conn = sqlite3.connect(args.source_database_name)
+src_c = src_conn.cursor()
+
+dest_conn = sqlite3.connect(args.destination_database_name)
+dest_c = dest_conn.cursor()
 
 if args.feature_id_lower is None:
     src_c.execute("SELECT MIN(feature_id) FROM features")
@@ -79,6 +83,18 @@ ms1_feature_region_peak_detect_info = []
 for arg in vars(args):
     ms1_feature_region_peak_detect_info.append((arg, getattr(args, arg)))
 
+print("Setting up tables and indexes")
+dest_c.execute("DROP TABLE IF EXISTS ms1_feature_region_peaks")
+dest_c.execute("DROP TABLE IF EXISTS ms1_feature_region_peak_detect_info")
+dest_c.execute("DROP TABLE IF EXISTS feature_base_peaks")
+
+dest_c.execute("CREATE ms1_feature_region_peaks (feature_id INTEGER, peak_id INTEGER, centroid_mz REAL, centroid_scan REAL, intensity_sum INTEGER, scan_upper INTEGER, scan_lower INTEGER, std_dev_mz REAL, std_dev_scan REAL, rationale TEXT, intensity_max INTEGER, peak_max_mz REAL, peak_max_scan INTEGER, PRIMARY KEY (feature_id, peak_id))")
+dest_c.execute("CREATE ms1_feature_region_peak_detect_info (item TEXT, value TEXT)")
+dest_c.execute("CREATE feature_base_peaks (feature_id INTEGER, base_peak_id INTEGER, PRIMARY KEY (feature_id, base_peak_id))")
+
+dest_c.execute("CREATE INDEX IF NOT EXISTS idx_ms1_region_peaks_1 ON summed_ms1_regions (feature_id)")
+dest_c.execute("CREATE INDEX IF NOT EXISTS idx_ms1_region_peaks_2 ON summed_ms1_regions (feature_id,point_id)")
+
 mono_peaks = []
 point_updates = []
 base_peaks = []
@@ -89,14 +105,14 @@ start_run = time.time()
 print("Loading the MS1 features {}-{}".format(args.feature_id_lower, args.feature_id_upper))
 features_df = pd.read_sql_query("""select feature_id from features where feature_id >= {} and 
     feature_id <= {} and charge_state >= {} and mz_lower <= {} and mz_upper >= {} order by feature_id ASC;"""
-    .format(args.feature_id_lower, args.feature_id_upper, args.minimum_charge_state, args.mz_upper, args.mz_lower), source_conn)
+    .format(args.feature_id_lower, args.feature_id_upper, args.minimum_charge_state, args.mz_upper, args.mz_lower), src_conn)
 features_v = features_df.values
 
 for feature in features_v:
     feature_id = int(feature[FEATURE_ID_IDX])
 
     peak_id = 1
-    ms1_feature_df = pd.read_sql_query("select point_id,mz,scan,intensity from summed_ms1_regions where feature_id={} order by mz, scan asc;".format(feature_id), source_conn)
+    ms1_feature_df = pd.read_sql_query("select point_id,mz,scan,intensity from summed_ms1_regions where feature_id={} order by mz, scan asc;".format(feature_id), dest_conn)
     ms1_feature_v = ms1_feature_df.values
     if len(ms1_feature_v) > 0:
         print("Processing MS1 feature {}".format(feature_id))
@@ -198,19 +214,19 @@ for feature in features_v:
             base_peaks.append((feature_id, base_peak_id))
 
             # Write out the peaks for this feature
-            src_c.executemany("INSERT INTO ms1_feature_region_peaks VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)", mono_peaks)
+            src_c.executemany("INSERT INTO ms1_feature_region_peaks VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", mono_peaks)
             mono_peaks = []
 
         # Update the points in the summed_ms1_regions table
         if len(point_updates) > 0:
-            src_c.executemany("UPDATE summed_ms1_regions SET peak_id=%s WHERE feature_id=%s AND point_id=%s", point_updates)
+            src_c.executemany("UPDATE summed_ms1_regions SET peak_id=? WHERE feature_id=? AND point_id=?", point_updates)
             point_updates = []
 
         stop_feature = time.time()
         # print("{} seconds to process feature {} ({} peaks)".format(stop_feature-start_feature, feature_id, peak_id))
 
 print("Write out the base peaks")
-src_c.executemany("INSERT INTO feature_base_peaks VALUES (%s, %s)", base_peaks)
+src_c.executemany("INSERT INTO feature_base_peaks VALUES (?, ?)", base_peaks)
 
 stop_run = time.time()
 print("{} seconds to process features {} to {}".format(stop_run-start_run, args.feature_id_lower, args.feature_id_upper))
@@ -222,9 +238,11 @@ ms1_feature_region_peak_detect_info.append(("processed", time.ctime()))
 ms1_feature_region_peak_detect_info_entry = []
 ms1_feature_region_peak_detect_info_entry.append(("features {}-{}".format(args.feature_id_lower, args.feature_id_upper), ' '.join(str(e) for e in ms1_feature_region_peak_detect_info)))
 
-src_c.executemany("INSERT INTO ms1_feature_region_peak_detect_info VALUES (%s, %s)", ms1_feature_region_peak_detect_info_entry)
+dest_c.executemany("INSERT INTO ms1_feature_region_peak_detect_info VALUES (?, ?)", ms1_feature_region_peak_detect_info_entry)
 
-source_conn.commit()
-source_conn.close()
+dest_conn.commit()
+dest_conn.close()
+
+src_conn.close()
 
 # plt.close('all')
