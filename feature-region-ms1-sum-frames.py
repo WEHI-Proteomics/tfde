@@ -58,10 +58,10 @@ dest_c.execute("DROP TABLE IF EXISTS summed_ms1_regions_info")
 dest_c.execute("CREATE TABLE summed_ms1_regions (feature_id INTEGER, point_id INTEGER, mz REAL, scan INTEGER, intensity INTEGER, number_frames INTEGER, peak_id INTEGER)")  # number_frames = number of source frames the point was found in
 dest_c.execute("CREATE TABLE summed_ms1_regions_info (item TEXT, value TEXT)")
 
-dest_c.execute("CREATE INDEX IF NOT EXISTS idx_summed_ms1_regions_1 on features (feature_id, charge_state, mz_lower, mz_upper)")
-dest_c.execute("CREATE INDEX IF NOT EXISTS idx_summed_ms1_regions_2 on summed_frames (frame_id, peak_id)")
-dest_c.execute("CREATE INDEX IF NOT EXISTS idx_summed_ms1_regions_3 on clusters (feature_id)")
-dest_c.execute("CREATE INDEX IF NOT EXISTS idx_summed_ms1_regions_4 on peaks (frame_id, cluster_id)")
+src_c.execute("CREATE INDEX IF NOT EXISTS idx_summed_ms1_regions_1 on features (feature_id, charge_state, mz_lower, mz_upper)")
+src_c.execute("CREATE INDEX IF NOT EXISTS idx_summed_ms1_regions_2 on summed_frames (frame_id, peak_id)")
+src_c.execute("CREATE INDEX IF NOT EXISTS idx_summed_ms1_regions_3 on clusters (feature_id)")
+src_c.execute("CREATE INDEX IF NOT EXISTS idx_summed_ms1_regions_4 on peaks (frame_id, cluster_id)")
 
 start_run = time.time()
 
