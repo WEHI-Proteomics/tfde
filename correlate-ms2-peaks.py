@@ -1,7 +1,7 @@
 import pandas as pd
 import argparse
 import numpy as np
-import pymysql
+import sqlite3
 import time
 
 
@@ -58,11 +58,11 @@ def calculate_correlation(base_peak_points, ms2_peak_points):
 
 parser = argparse.ArgumentParser(description='Calculate correlation between MS1 and MS2 peaks for features.')
 parser.add_argument('-db','--database_name', type=str, help='The name of the source database.', required=True)
-parser.add_argument('-fl','--feature_id_lower', type=int, help='Lower feature ID to process.', required=False)
-parser.add_argument('-fu','--feature_id_upper', type=int, help='Upper feature ID to process.', required=False)
+parser.add_argument('-fl','--feature_id_lower', type=int, help='Lower feature ID to process.', required=True)
+parser.add_argument('-fu','--feature_id_upper', type=int, help='Upper feature ID to process.', required=True)
 args = parser.parse_args()
 
-source_conn = pymysql.connect(host='mscypher-004', user='root', passwd='password', database="{}".format(args.database_name))
+source_conn = sqlite3.connect(args.database_name)
 src_c = source_conn.cursor()
 
 if args.feature_id_lower is None:
@@ -121,7 +121,7 @@ for feature in features_v:
         print("No MS2 peak points found for feature {}".format(feature_id))
 
 print("Writing out the peak correlations")
-src_c.executemany("INSERT INTO peak_correlation VALUES (%s, %s, %s, %s)", peak_correlation)
+src_c.executemany("INSERT INTO peak_correlation VALUES (?, ?, ?, ?)", peak_correlation)
 
 stop_run = time.time()
 print("{} seconds to process features {} to {}".format(stop_run-start_run, args.feature_id_lower, args.feature_id_upper))
@@ -133,7 +133,7 @@ peak_correlation_info.append(("processed", time.ctime()))
 peak_correlation_info_entry = []
 peak_correlation_info_entry.append(("features {}-{}".format(args.feature_id_lower, args.feature_id_upper), ' '.join(str(e) for e in peak_correlation_info)))
 
-src_c.executemany("INSERT INTO peak_correlation_info VALUES (%s, %s)", peak_correlation_info_entry)
+src_c.executemany("INSERT INTO peak_correlation_info VALUES (?, ?)", peak_correlation_info_entry)
 
 source_conn.commit()
 source_conn.close()
