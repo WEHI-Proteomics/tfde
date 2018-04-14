@@ -27,6 +27,9 @@ def standard_deviation(mz):
     instrument_resolution = 40000.0
     return (mz / instrument_resolution) / 2.35482
 
+#
+# python ./otf-peak-detect/feature-region-ms1-sum-frames.py -sdb /media/data-drive/Hela_20A_20R_500-features.sqlite -ddb /media/data-drive/Hela_20A_20R_500-features-1-100000-random-1000-sf-1000.sqlite -fl 1 -fu 100000 -ml 440.0 -mu 555.0 -rff random_feature_indexes.txt
+#
 
 parser = argparse.ArgumentParser(description='Sum all MS1 frames in the region of a MS1 feature\'s m/z, drift, and retention time.')
 parser.add_argument('-sdb','--source_database_name', type=str, help='The name of the source database.', required=True)
