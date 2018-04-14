@@ -1,6 +1,6 @@
 from __future__ import print_function
 import sys
-import pymysql
+import sqlite3
 import argparse
 import numpy as np
 import time
@@ -29,7 +29,8 @@ def standard_deviation(mz):
 
 
 parser = argparse.ArgumentParser(description='Sum all MS1 frames in the region of a MS1 feature\'s m/z, drift, and retention time.')
-parser.add_argument('-db','--database_name', type=str, help='The name of the source database.', required=True)
+parser.add_argument('-sdb','--source_database_name', type=str, help='The name of the source database.', required=True)
+parser.add_argument('-ddb','--destination_database_name', type=str, help='The name of the destination database.', required=True)
 parser.add_argument('-fl','--feature_id_lower', type=int, help='Lower feature ID to process.', required=False)
 parser.add_argument('-fu','--feature_id_upper', type=int, help='Upper feature ID to process.', required=False)
 parser.add_argument('-ml','--mz_lower', type=float, help='Lower feature m/z to process.', required=True)
@@ -38,20 +39,11 @@ parser.add_argument('-mcs','--minimum_charge_state', type=int, default=2, help='
 parser.add_argument('-sd','--standard_deviations', type=int, default=8, help='Number of standard deviations in m/z to look either side of a point.', required=False)
 args = parser.parse_args()
 
-source_conn = pymysql.connect(host='mscypher-004', user='root', passwd='password', database="{}".format(args.database_name))
-src_c = source_conn.cursor()
+src_conn = sqlite3.connect(args.source_database_name)
+src_c = src_conn.cursor()
 
-if args.feature_id_lower is None:
-    src_c.execute("SELECT MIN(feature_id) FROM features")
-    row = src_c.fetchone()
-    args.feature_id_lower = int(row[0])
-    print("feature_id_lower set to {} from the data".format(args.feature_id_lower))
-
-if args.feature_id_upper is None:
-    src_c.execute("SELECT MAX(feature_id) FROM features")
-    row = src_c.fetchone()
-    args.feature_id_upper = int(row[0])
-    print("feature_id_upper set to {} from the data".format(args.feature_id_upper))
+dest_conn = sqlite3.connect(args.destination_database_name)
+dest_c = dest_conn.cursor()
 
 # Store the arguments as metadata in the database for later reference
 ms1_feature_region_summing_info = []
@@ -64,7 +56,7 @@ start_run = time.time()
 
 print("Loading the MS1 features")
 features_df = pd.read_sql_query("""select feature_id,start_frame,end_frame,scan_lower,scan_upper,mz_lower,mz_upper from features where feature_id >= {} and 
-    feature_id <= {} and charge_state >= {} and mz_lower <= {} and mz_upper >= {} order by feature_id ASC;""".format(args.feature_id_lower, args.feature_id_upper, args.minimum_charge_state, args.mz_upper, args.mz_lower), source_conn)
+    feature_id <= {} and charge_state >= {} and mz_lower <= {} and mz_upper >= {} order by feature_id ASC;""".format(args.feature_id_lower, args.feature_id_upper, args.minimum_charge_state, args.mz_upper, args.mz_lower), src_conn)
 features_v = features_df.values
 
 points = []
@@ -80,7 +72,7 @@ for feature in features_v:
 
     # Load the MS1 frame (summed) points for the feature's peaks
     frame_df = pd.read_sql_query("""select frame_id,mz,scan,intensity from summed_frames where (frame_id,peak_id) in (select frame_id,peak_id from peaks where (frame_id,cluster_id) in 
-        (select frame_id,cluster_id from clusters where feature_id={}));""".format(feature_id), source_conn)
+        (select frame_id,cluster_id from clusters where feature_id={}));""".format(feature_id), src_conn)
     frame_v = frame_df.values
     print("frame occupies {} bytes".format(frame_v.nbytes))
 
@@ -106,7 +98,7 @@ for feature in features_v:
             # remove the points we've processed
             points_v = np.delete(points_v, nearby_point_indices, 0)
 
-src_c.executemany("INSERT INTO summed_ms1_regions VALUES (%s, %s, %s, %s, %s, %s, %s)", points)
+dest_c.executemany("INSERT INTO summed_ms1_regions VALUES (?, ?, ?, ?, ?, ?, ?)", points)
 
 stop_run = time.time()
 print("{} seconds to process run".format(stop_run-start_run))
@@ -117,6 +109,6 @@ ms1_feature_region_summing_info.append(("processed", time.ctime()))
 ms1_feature_region_summing_info_entry = []
 ms1_feature_region_summing_info_entry.append(("features {}-{}".format(args.feature_id_lower, args.feature_id_upper), ' '.join(str(e) for e in ms1_feature_region_summing_info)))
 
-src_c.executemany("INSERT INTO summed_ms1_regions_info VALUES (%s, %s)", ms1_feature_region_summing_info_entry)
-source_conn.commit()
-source_conn.close()
+dest_c.executemany("INSERT INTO summed_ms1_regions_info VALUES (?, ?)", ms1_feature_region_summing_info_entry)
+dest_conn.commit()
+dest_conn.close()
