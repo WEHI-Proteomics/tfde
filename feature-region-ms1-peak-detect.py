@@ -214,7 +214,7 @@ for feature in features_v:
         # print("{} seconds to process feature {} ({} peaks)".format(stop_feature-start_feature, feature_id, peak_id))
 
 print("Write out the base peaks")
-src_c.executemany("INSERT INTO feature_base_peaks VALUES (?, ?)", base_peaks)
+dest_c.executemany("INSERT INTO feature_base_peaks VALUES (?, ?)", base_peaks)
 
 stop_run = time.time()
 print("{} seconds to process features {} to {}".format(stop_run-start_run, args.feature_id_lower, args.feature_id_upper))
