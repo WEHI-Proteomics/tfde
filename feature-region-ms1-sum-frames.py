@@ -37,6 +37,7 @@ parser.add_argument('-ml','--mz_lower', type=float, help='Lower feature m/z to p
 parser.add_argument('-mu','--mz_upper', type=float, help='Upper feature m/z to process.', required=True)
 parser.add_argument('-mcs','--minimum_charge_state', type=int, default=2, help='Minimum charge state to process.', required=False)
 parser.add_argument('-sd','--standard_deviations', type=int, default=8, help='Number of standard deviations in m/z to look either side of a point.', required=False)
+parser.add_argument('-rff','--random_features_file', type=str, help='A text file containing the feature indexes to process.', required=False)
 args = parser.parse_args()
 
 src_conn = sqlite3.connect(args.source_database_name)
