@@ -88,9 +88,9 @@ dest_c.execute("DROP TABLE IF EXISTS ms1_feature_region_peaks")
 dest_c.execute("DROP TABLE IF EXISTS ms1_feature_region_peak_detect_info")
 dest_c.execute("DROP TABLE IF EXISTS feature_base_peaks")
 
-dest_c.execute("CREATE ms1_feature_region_peaks (feature_id INTEGER, peak_id INTEGER, centroid_mz REAL, centroid_scan REAL, intensity_sum INTEGER, scan_upper INTEGER, scan_lower INTEGER, std_dev_mz REAL, std_dev_scan REAL, rationale TEXT, intensity_max INTEGER, peak_max_mz REAL, peak_max_scan INTEGER, PRIMARY KEY (feature_id, peak_id))")
-dest_c.execute("CREATE ms1_feature_region_peak_detect_info (item TEXT, value TEXT)")
-dest_c.execute("CREATE feature_base_peaks (feature_id INTEGER, base_peak_id INTEGER, PRIMARY KEY (feature_id, base_peak_id))")
+dest_c.execute("CREATE TABLE ms1_feature_region_peaks (feature_id INTEGER, peak_id INTEGER, centroid_mz REAL, centroid_scan REAL, intensity_sum INTEGER, scan_upper INTEGER, scan_lower INTEGER, std_dev_mz REAL, std_dev_scan REAL, rationale TEXT, intensity_max INTEGER, peak_max_mz REAL, peak_max_scan INTEGER, PRIMARY KEY (feature_id, peak_id))")
+dest_c.execute("CREATE TABLE ms1_feature_region_peak_detect_info (item TEXT, value TEXT)")
+dest_c.execute("CREATE TABLE feature_base_peaks (feature_id INTEGER, base_peak_id INTEGER, PRIMARY KEY (feature_id, base_peak_id))")
 
 dest_c.execute("CREATE INDEX IF NOT EXISTS idx_ms1_region_peaks_1 ON summed_ms1_regions (feature_id)")
 dest_c.execute("CREATE INDEX IF NOT EXISTS idx_ms1_region_peaks_2 ON summed_ms1_regions (feature_id,point_id)")
