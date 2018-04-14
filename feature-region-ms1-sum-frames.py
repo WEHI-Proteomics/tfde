@@ -70,6 +70,12 @@ start_run = time.time()
 print("Loading the MS1 features")
 features_df = pd.read_sql_query("""select feature_id,start_frame,end_frame,scan_lower,scan_upper,mz_lower,mz_upper from features where feature_id >= {} and 
     feature_id <= {} and charge_state >= {} and mz_lower <= {} and mz_upper >= {} order by feature_id ASC;""".format(args.feature_id_lower, args.feature_id_upper, args.minimum_charge_state, args.mz_upper, args.mz_lower), src_conn)
+if args.random_features_file is not None:
+    # read the file of feature indexes
+    random_feature_indexes_file = open(args.random_features_file, 'r')
+    random_feature_indexes = list(map(int, random_feature_indexes_file.read().splitlines()))
+    random_feature_indexes_file.close()
+    features_df = features_df.iloc[random_feature_indexes]
 features_v = features_df.values
 
 points = []
