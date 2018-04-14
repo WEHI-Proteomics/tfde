@@ -130,22 +130,15 @@ for feature in features_v:
             point_id = int(ms1_feature_v[max_intensity_index][REGION_POINT_ID_IDX])
             peak_indices = np.append(peak_indices, max_intensity_index)
             rationale["highest intensity point id"] = point_id
-            print("\nmax point mz {}, scan {}".format(mz, scan))
-
 
             # Look for other points belonging to this peak
             std_dev_window = standard_deviation(mz) * args.standard_deviations
             # Look in the 'up' direction
-            print("looking up")
             search_scan = scan
             missed_scans = 0
             while (search_scan >= scan_lower):
-                print("scan {}".format(search_scan))
-                print("points on scan line {}".format(ms1_feature_v[:,REGION_POINT_SCAN_IDX] == search_scan))
-                print("distance from {}: {}".format(mz, abs(ms1_feature_v[:,REGION_POINT_MZ_IDX] - mz)))
                 nearby_indices_up = np.where((ms1_feature_v[:,REGION_POINT_SCAN_IDX] == search_scan) & 
                     (abs(ms1_feature_v[:,REGION_POINT_MZ_IDX] - mz) <= std_dev_window))[0]
-                print("found points {}".format(ms1_feature_v[nearby_indices_up,REGION_POINT_MZ_IDX]))
                 if len(nearby_indices_up) > 0:
                     # Update the m/z window
                     max_intensity_nearby_index = np.argmax(ms1_feature_v[nearby_indices_up, REGION_POINT_INTENSITY_IDX])
@@ -154,18 +147,13 @@ for feature in features_v:
                     peak_indices = np.append(peak_indices, nearby_indices_up)
                 search_scan -= 1
             # Look in the 'down' direction
-            print("\nlooking down")
             search_scan = scan+1    # don't count the points on the starting scan line again
             missed_scans = 0
             mz = ms1_feature_v[max_intensity_index][REGION_POINT_MZ_IDX]
             std_dev_window = standard_deviation(mz) * args.standard_deviations
             while (search_scan <= scan_upper):
-                print("scan {}".format(search_scan))
-                print("points on scan line {}".format(ms1_feature_v[:,REGION_POINT_SCAN_IDX] == search_scan))
-                print("distance from {}: {}".format(mz, abs(ms1_feature_v[:,REGION_POINT_MZ_IDX] - mz)))
                 nearby_indices_down = np.where((ms1_feature_v[:,REGION_POINT_SCAN_IDX] == search_scan) & 
                     (abs(ms1_feature_v[:,REGION_POINT_MZ_IDX] - mz) <= std_dev_window))[0]
-                print("found points {}".format(ms1_feature_v[nearby_indices_down,REGION_POINT_MZ_IDX]))
                 if len(nearby_indices_down) > 0:
                     # Update the m/z window
                     max_intensity_nearby_index = np.argmax(ms1_feature_v[nearby_indices_down, REGION_POINT_INTENSITY_IDX])
@@ -214,12 +202,12 @@ for feature in features_v:
             base_peaks.append((feature_id, base_peak_id))
 
             # Write out the peaks for this feature
-            src_c.executemany("INSERT INTO ms1_feature_region_peaks VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", mono_peaks)
+            dest_c.executemany("INSERT INTO ms1_feature_region_peaks VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", mono_peaks)
             mono_peaks = []
 
         # Update the points in the summed_ms1_regions table
         if len(point_updates) > 0:
-            src_c.executemany("UPDATE summed_ms1_regions SET peak_id=? WHERE feature_id=? AND point_id=?", point_updates)
+            dest_c.executemany("UPDATE summed_ms1_regions SET peak_id=? WHERE feature_id=? AND point_id=?", point_updates)
             point_updates = []
 
         stop_feature = time.time()
