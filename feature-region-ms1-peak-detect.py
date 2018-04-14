@@ -58,6 +58,7 @@ parser.add_argument('-ml','--mz_lower', type=float, help='Lower feature m/z to p
 parser.add_argument('-mu','--mz_upper', type=float, help='Upper feature m/z to process.', required=True)
 parser.add_argument('-sd','--standard_deviations', type=int, default=10, help='Number of standard deviations to look either side of a point.', required=False)
 parser.add_argument('-mcs','--minimum_charge_state', type=int, default=2, help='Minimum charge state to process.', required=False)
+parser.add_argument('-rff','--random_features_file', type=str, help='A text file containing the feature indexes to process.', required=False)
 args = parser.parse_args()
 
 src_conn = sqlite3.connect(args.source_database_name)
@@ -106,6 +107,12 @@ print("Loading the MS1 features {}-{}".format(args.feature_id_lower, args.featur
 features_df = pd.read_sql_query("""select feature_id from features where feature_id >= {} and 
     feature_id <= {} and charge_state >= {} and mz_lower <= {} and mz_upper >= {} order by feature_id ASC;"""
     .format(args.feature_id_lower, args.feature_id_upper, args.minimum_charge_state, args.mz_upper, args.mz_lower), src_conn)
+if args.random_features_file is not None:
+    # read the file of feature indexes
+    random_feature_indexes_file = open(args.random_features_file, 'r')
+    random_feature_indexes = list(map(int, random_feature_indexes_file.read().splitlines()))
+    random_feature_indexes_file.close()
+    features_df = features_df.iloc[random_feature_indexes]
 features_v = features_df.values
 
 for feature in features_v:
