@@ -66,13 +66,13 @@ source_conn = sqlite3.connect(args.database_name)
 src_c = source_conn.cursor()
 
 if args.feature_id_lower is None:
-    src_c.execute("SELECT MIN(feature_id) FROM feature_base_peaks")
+    src_c.execute("SELECT MIN(feature_id) FROM features")
     row = src_c.fetchone()
     args.feature_id_lower = int(row[0])
     print("feature_id_lower set to {} from the data".format(args.feature_id_lower))
 
 if args.feature_id_upper is None:
-    src_c.execute("SELECT MAX(feature_id) FROM feature_base_peaks")
+    src_c.execute("SELECT MAX(feature_id) FROM features")
     row = src_c.fetchone()
     args.feature_id_upper = int(row[0])
     print("feature_id_upper set to {} from the data".format(args.feature_id_upper))
