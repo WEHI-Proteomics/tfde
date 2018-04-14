@@ -11,13 +11,13 @@ import random
 
 #
 # For processing all the features in a range...
-# python -u ./otf-peak-detect/feature-region-ms2-sum-frames.py -cdb /media/data-drive/Hela_20A_20R_500.sqlite -sdb /media/data-drive/Hela_20A_20R_500-features.sqlite -ddb /media/data-drive/Hela_20A_20R_500-features-5-4546-5454.sqlite -fl 4546 -fu 5454 -ms2ce 27.0 -ml 440.0 -mu 555.0
+# python -u ./otf-peak-detect/feature-region-ms2-combined-sum-peak-detect.py -cdb /media/data-drive/Hela_20A_20R_500.sqlite -sdb /media/data-drive/Hela_20A_20R_500-features.sqlite -ddb /media/data-drive/Hela_20A_20R_500-features-5-4546-5454.sqlite -fl 4546 -fu 5454 -ms2ce 27.0 -ml 440.0 -mu 555.0
 #
 # For picking and processing a random selection of feature indexes...
-# python -u ./otf-peak-detect/feature-region-ms2-sum-frames.py -cdb /media/data-drive/Hela_20A_20R_500.sqlite -sdb /media/data-drive/Hela_20A_20R_500-features.sqlite -ddb /media/data-drive/Hela_20A_20R_500-features-1-100000-random-1000-sf-100.sqlite -fl 1 -fu 100000 -ms2ce 27.0 -ml 440.0 -mu 555.0 -nrf 1000
+# python -u ./otf-peak-detect/feature-region-ms2-combined-sum-peak-detect.py -cdb /media/data-drive/Hela_20A_20R_500.sqlite -sdb /media/data-drive/Hela_20A_20R_500-features.sqlite -ddb /media/data-drive/Hela_20A_20R_500-features-1-100000-random-1000-sf-1000.sqlite -fl 1 -fu 100000 -ms2ce 27.0 -ml 440.0 -mu 555.0 -nrf 1000
 #
 # For processing a previously-generated file of feature indexes...
-# python -u ./otf-peak-detect/feature-region-ms2-sum-frames.py -cdb /media/data-drive/Hela_20A_20R_500.sqlite -sdb /media/data-drive/Hela_20A_20R_500-features.sqlite -ddb /media/data-drive/Hela_20A_20R_500-features-1-100000-random-1000-sf-100.sqlite -fl 1 -fu 100000 -ms2ce 27.0 -ml 440.0 -mu 555.0 -rff random_feature_indexes.txt
+# python -u ./otf-peak-detect/feature-region-ms2-combined-sum-peak-detect.py -cdb /media/data-drive/Hela_20A_20R_500.sqlite -sdb /media/data-drive/Hela_20A_20R_500-features.sqlite -ddb /media/data-drive/Hela_20A_20R_500-features-1-100000-random-1000-sf-1000.sqlite -fl 1 -fu 100000 -ms2ce 27.0 -ml 440.0 -mu 555.0 -rff random_feature_indexes.txt
 #
 
 # feature array indices
