@@ -239,23 +239,21 @@ def main():
             print("{} sec for feature {}".format(feature_stop_time-feature_start_time, feature_id))
             print("")
 
-            if feature_count % COMMIT_BATCH_SIZE == 0:
-                print("feature count {} - writing summed regions to the database...".format(feature_count))
-                print("")
-                # Store the points in the database
-                dest_c.executemany("INSERT INTO summed_ms2_regions (feature_id, peak_id, point_id, mz, scan, intensity) VALUES (?, ?, ?, ?, ?, ?)", points)
-                dest_c.executemany("INSERT INTO ms2_peaks (feature_id, peak_id, centroid_mz, intensity) VALUES (?, ?, ?, ?)", peaks)
-                dest_conn.commit()
-                del points[:]
-                del peaks[:]
+            # if feature_count % COMMIT_BATCH_SIZE == 0:
+            #     print("feature count {} - writing summed regions to the database...".format(feature_count))
+            #     print("")
+            #     # Store the points in the database
+            #     dest_c.executemany("INSERT INTO summed_ms2_regions (feature_id, peak_id, point_id, mz, scan, intensity) VALUES (?, ?, ?, ?, ?, ?)", points)
+            #     dest_c.executemany("INSERT INTO ms2_peaks (feature_id, peak_id, centroid_mz, intensity) VALUES (?, ?, ?, ?)", peaks)
+            #     dest_conn.commit()
+            #     del points[:]
+            #     del peaks[:]
 
-        # Store any remaining points in the database
-        if len(points) > 0:
-            dest_c.executemany("INSERT INTO summed_ms2_regions (feature_id, peak_id, point_id, mz, scan, intensity) VALUES (?, ?, ?, ?, ?, ?)", points)
+        # Store points in the database
+        dest_c.executemany("INSERT INTO summed_ms2_regions (feature_id, peak_id, point_id, mz, scan, intensity) VALUES (?, ?, ?, ?, ?, ?)", points)
 
-        # Store any remaining peaks in the database
-        if len(peaks) > 0:
-            dest_c.executemany("INSERT INTO ms2_peaks (feature_id, peak_id, centroid_mz, intensity) VALUES (?, ?, ?, ?)", peaks)
+        # Store peaks in the database
+        dest_c.executemany("INSERT INTO ms2_peaks (feature_id, peak_id, centroid_mz, intensity) VALUES (?, ?, ?, ?)", peaks)
 
         stop_run = time.time()
         print("{} seconds to process run".format(stop_run-start_run))
