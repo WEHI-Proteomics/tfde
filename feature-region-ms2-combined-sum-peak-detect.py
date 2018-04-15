@@ -224,6 +224,8 @@ def main():
                     mz_column = np.full(shape=subset_frame_a.shape[0], fill_value=centroid_mz_descaled, dtype=np.float)
                     scan_column = np.arange(start=min_scan, stop=min_scan+subset_frame_a.shape[0], dtype=np.int32)
                     points_a = np.column_stack((feature_column, peak_column, point_column, mz_column, scan_column, peak_summed_intensities_by_scan))
+                    for p in points_a:
+                        print(p)
                     points += [tuple(l) for l in points_a]  # add these points to the list of tuples
                     point_id += subset_frame_a.shape[0]
 
@@ -243,8 +245,6 @@ def main():
                 print("feature count {} - writing summed regions to the database...".format(feature_count))
                 print("")
                 # Store the points in the database
-                for p in points:
-                    print(p)
                 dest_c.executemany("INSERT INTO summed_ms2_regions (feature_id, peak_id, point_id, mz, scan, intensity) VALUES (?, ?, ?, ?, ?, ?)", points)
                 dest_c.executemany("INSERT INTO ms2_peaks (feature_id, peak_id, centroid_mz, intensity) VALUES (?, ?, ?, ?)", peaks)
                 dest_conn.commit()
