@@ -228,6 +228,7 @@ def main():
                     point_id += subset_frame_a.shape[0]
 
                     # add the peak to the list
+                    print("adding feature {} peak {}".format(feature_id, peak_id))
                     peaks.append((feature_id, peak_id, centroid_mz_descaled, total_peak_intensity))
                     peak_id += 1
 
