@@ -102,11 +102,11 @@ def main():
     print("Setting up tables")
     dest_c.execute("DROP TABLE IF EXISTS summed_ms2_regions")
     dest_c.execute("DROP TABLE IF EXISTS summed_ms2_regions_info")
-    dest_c.execute("CREATE TABLE summed_ms2_regions (feature_id INTEGER, peak_id INTEGER, point_id INTEGER, mz REAL, scan INTEGER, intensity INTEGER)")
+    dest_c.execute("CREATE TABLE summed_ms2_regions (feature_id INTEGER, peak_id INTEGER, point_id INTEGER, mz REAL, scan INTEGER, intensity INTEGER, PRIMARY KEY (feature_id, peak_id, point_id))")
     dest_c.execute("CREATE TABLE summed_ms2_regions_info (item TEXT, value TEXT)")
 
     dest_c.execute("DROP TABLE IF EXISTS ms2_peaks")
-    dest_c.execute("CREATE TABLE ms2_peaks (feature_id INTEGER, peak_id INTEGER, centroid_mz REAL, intensity INTEGER)")
+    dest_c.execute("CREATE TABLE ms2_peaks (feature_id INTEGER, peak_id INTEGER, centroid_mz REAL, intensity INTEGER, PRIMARY KEY (feature_id, peak_id))")
 
     print("Setting up indexes")
     conv_c.execute("CREATE INDEX IF NOT EXISTS idx_frame_properties_2 ON frame_properties (collision_energy, frame_id)")
@@ -219,7 +219,6 @@ def main():
 
                     # for each point in the region, add an entry to the list
                     for scan in range(0,subset_frame_a.shape[0]):
-                        print((feature_id, peak_id, point_id, centroid_mz_descaled, min_scan+scan, peak_summed_intensities_by_scan[scan]))
                         points.append((feature_id, peak_id, point_id, centroid_mz_descaled, min_scan+scan, peak_summed_intensities_by_scan[scan]))
                         point_id += 1
 
