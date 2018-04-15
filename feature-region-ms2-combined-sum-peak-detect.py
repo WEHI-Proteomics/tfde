@@ -219,6 +219,7 @@ def main():
 
                     # for each point in the region, add an entry to the list
                     for scan in range(0,subset_frame_a.shape[0]):
+                        print((feature_id, peak_id, point_id, centroid_mz_descaled, min_scan+scan, peak_summed_intensities_by_scan[scan]))
                         points.append((feature_id, peak_id, point_id, centroid_mz_descaled, min_scan+scan, peak_summed_intensities_by_scan[scan]))
                         point_id += 1
 
