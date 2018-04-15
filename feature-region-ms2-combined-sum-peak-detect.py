@@ -224,7 +224,7 @@ def main():
                     mz_column = np.full(shape=subset_frame_a.shape[0], fill_value=centroid_mz_descaled, dtype=np.float)
                     scan_column = np.arange(start=min_scan, stop=min_scan+subset_frame_a.shape[0], dtype=np.int32)
                     points_a = np.column_stack((feature_column, peak_column, point_column, mz_column, scan_column, peak_summed_intensities_by_scan))
-                    points += points_a.tolist()
+                    points += [tuple(l) for l in points_a]  # add these points to the list of tuples
                     point_id += subset_frame_a.shape[0]
 
                     # add the peak to the list
@@ -239,21 +239,23 @@ def main():
             print("{} sec for feature {}".format(feature_stop_time-feature_start_time, feature_id))
             print("")
 
-            # if feature_count % COMMIT_BATCH_SIZE == 0:
-            #     print("feature count {} - writing summed regions to the database...".format(feature_count))
-            #     print("")
-            #     # Store the points in the database
-            #     dest_c.executemany("INSERT INTO summed_ms2_regions (feature_id, peak_id, point_id, mz, scan, intensity) VALUES (?, ?, ?, ?, ?, ?)", points)
-            #     dest_c.executemany("INSERT INTO ms2_peaks (feature_id, peak_id, centroid_mz, intensity) VALUES (?, ?, ?, ?)", peaks)
-            #     dest_conn.commit()
-            #     del points[:]
-            #     del peaks[:]
+            if feature_count % COMMIT_BATCH_SIZE == 0:
+                print("feature count {} - writing summed regions to the database...".format(feature_count))
+                print("")
+                # Store the points in the database
+                dest_c.executemany("INSERT INTO summed_ms2_regions (feature_id, peak_id, point_id, mz, scan, intensity) VALUES (?, ?, ?, ?, ?, ?)", points)
+                dest_c.executemany("INSERT INTO ms2_peaks (feature_id, peak_id, centroid_mz, intensity) VALUES (?, ?, ?, ?)", peaks)
+                dest_conn.commit()
+                del points[:]
+                del peaks[:]
 
-        # Store points in the database
-        dest_c.executemany("INSERT INTO summed_ms2_regions (feature_id, peak_id, point_id, mz, scan, intensity) VALUES (?, ?, ?, ?, ?, ?)", points)
+        # Store any remaining points in the database
+        if len(points) > 0:
+            dest_c.executemany("INSERT INTO summed_ms2_regions (feature_id, peak_id, point_id, mz, scan, intensity) VALUES (?, ?, ?, ?, ?, ?)", points)
 
-        # Store peaks in the database
-        dest_c.executemany("INSERT INTO ms2_peaks (feature_id, peak_id, centroid_mz, intensity) VALUES (?, ?, ?, ?)", peaks)
+        # Store any remaining peaks in the database
+        if len(peaks) > 0:
+            dest_c.executemany("INSERT INTO ms2_peaks (feature_id, peak_id, centroid_mz, intensity) VALUES (?, ?, ?, ?)", peaks)
 
         stop_run = time.time()
         print("{} seconds to process run".format(stop_run-start_run))
