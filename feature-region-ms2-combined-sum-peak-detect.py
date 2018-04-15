@@ -218,14 +218,8 @@ def main():
                     centroid_mz_descaled = float(min_mz + centroid_mz) / args.mz_scaling_factor
 
                     # for each point in the region, add an entry to the list
-                    feature_column = np.full(shape=subset_frame_a.shape[0], fill_value=feature_id, dtype=np.int32)
-                    peak_column = np.full(shape=subset_frame_a.shape[0], fill_value=peak_id, dtype=np.int32)
-                    point_column = np.arange(start=point_id, stop=point_id+subset_frame_a.shape[0], dtype=np.int32)
-                    mz_column = np.full(shape=subset_frame_a.shape[0], fill_value=centroid_mz_descaled, dtype=np.float)
-                    scan_column = np.arange(start=min_scan, stop=min_scan+subset_frame_a.shape[0], dtype=np.int32)
-                    points_a = np.column_stack((feature_column, peak_column, point_column, mz_column, scan_column, peak_summed_intensities_by_scan))
-                    for p in points_a:
-                        points.append(tuple(p))
+                    for scan in range(0,subset_frame_a.shape[0]):
+                        points.append((feature_id, peak_id, point_id, centroid_mz_descaled, min_scan+scan, peak_summed_intensities_by_scan[scan]))
                         point_id += 1
 
                     # add the peak to the list
