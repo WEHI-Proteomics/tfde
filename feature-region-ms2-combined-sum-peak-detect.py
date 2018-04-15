@@ -35,7 +35,7 @@ FRAME_MZ_IDX = 1
 FRAME_SCAN_IDX = 2
 FRAME_INTENSITY_IDX = 3
 
-COMMIT_BATCH_SIZE = 50
+COMMIT_BATCH_SIZE = 20
 
 # so we can use profiling without removing @profile
 import __builtin__
@@ -239,11 +239,11 @@ def main():
             print("{} sec for feature {}".format(feature_stop_time-feature_start_time, feature_id))
             print("")
 
-            if feature_count % COMMIT_BATCH_SIZE == 0:
+            if (feature_count % COMMIT_BATCH_SIZE) == 0:
                 print("feature count {} - writing summed regions to the database...".format(feature_count))
                 print("")
                 # Store the points in the database
-                print("writing {} points, {} peaks".format(len(points), len(peaks)))
+                print(points)
                 dest_c.executemany("INSERT INTO summed_ms2_regions (feature_id, peak_id, point_id, mz, scan, intensity) VALUES (?, ?, ?, ?, ?, ?)", points)
                 dest_c.executemany("INSERT INTO ms2_peaks (feature_id, peak_id, centroid_mz, intensity) VALUES (?, ?, ?, ?)", peaks)
                 dest_conn.commit()
