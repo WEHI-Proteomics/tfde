@@ -225,9 +225,8 @@ def main():
                     scan_column = np.arange(start=min_scan, stop=min_scan+subset_frame_a.shape[0], dtype=np.int32)
                     points_a = np.column_stack((feature_column, peak_column, point_column, mz_column, scan_column, peak_summed_intensities_by_scan))
                     for p in points_a:
-                        print(p)
-                    points += [tuple(l) for l in points_a]  # add these points to the list of tuples
-                    point_id += subset_frame_a.shape[0]
+                        points.append(tuple(p))
+                        point_id += 1
 
                     # add the peak to the list
                     peaks.append((feature_id, peak_id, centroid_mz_descaled, total_peak_intensity))
