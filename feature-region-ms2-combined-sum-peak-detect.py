@@ -35,7 +35,7 @@ FRAME_MZ_IDX = 1
 FRAME_SCAN_IDX = 2
 FRAME_INTENSITY_IDX = 3
 
-COMMIT_BATCH_SIZE = 20
+COMMIT_BATCH_SIZE = 200  # number of features to store in memory before writing to the database
 
 # so we can use profiling without removing @profile
 import __builtin__
