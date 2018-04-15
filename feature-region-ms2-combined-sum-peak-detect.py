@@ -35,7 +35,7 @@ FRAME_MZ_IDX = 1
 FRAME_SCAN_IDX = 2
 FRAME_INTENSITY_IDX = 3
 
-COMMIT_BATCH_SIZE = 100
+COMMIT_BATCH_SIZE = 50
 
 # so we can use profiling without removing @profile
 import __builtin__
@@ -228,7 +228,6 @@ def main():
                     point_id += subset_frame_a.shape[0]
 
                     # add the peak to the list
-                    print("adding feature {} peak {}".format(feature_id, peak_id))
                     peaks.append((feature_id, peak_id, centroid_mz_descaled, total_peak_intensity))
                     peak_id += 1
 
@@ -244,11 +243,13 @@ def main():
                 print("feature count {} - writing summed regions to the database...".format(feature_count))
                 print("")
                 # Store the points in the database
+                print("writing {} points, {} peaks".format(len(points), len(peaks)))
                 dest_c.executemany("INSERT INTO summed_ms2_regions (feature_id, peak_id, point_id, mz, scan, intensity) VALUES (?, ?, ?, ?, ?, ?)", points)
                 dest_c.executemany("INSERT INTO ms2_peaks (feature_id, peak_id, centroid_mz, intensity) VALUES (?, ?, ?, ?)", peaks)
                 dest_conn.commit()
                 del points[:]
                 del peaks[:]
+                break
 
         # Store any remaining points in the database
         if len(points) > 0:
