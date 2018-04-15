@@ -245,17 +245,14 @@ def main():
                 dest_c.executemany("INSERT INTO ms2_peaks (feature_id, peak_id, centroid_mz, intensity) VALUES (?, ?, ?, ?)", peaks)
                 dest_conn.commit()
                 del peaks[:]
-                break
 
         # Store any remaining points in the database
         if len(points) > 0:
             dest_c.executemany("INSERT INTO summed_ms2_regions (feature_id, peak_id, point_id, mz, scan, intensity) VALUES (?, ?, ?, ?, ?, ?)", points)
-            dest_conn.commit()
 
         # Store any remaining peaks in the database
         if len(peaks) > 0:
             dest_c.executemany("INSERT INTO ms2_peaks (feature_id, peak_id, centroid_mz, intensity) VALUES (?, ?, ?, ?)", peaks)
-            dest_conn.commit()
 
         stop_run = time.time()
         print("{} seconds to process run".format(stop_run-start_run))
