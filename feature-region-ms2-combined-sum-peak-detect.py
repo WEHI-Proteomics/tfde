@@ -155,6 +155,8 @@ def main():
         features_v = features_df.values
         print("{} MS1 features loaded (feature IDs {})".format(len(features_v), features_df.feature_id.values))
 
+        points = []
+        peaks = []
         for feature in features_v:
             feature_start_time = time.time()
 
@@ -163,6 +165,9 @@ def main():
             feature_end_frame = int(feature[FEATURE_END_FRAME_IDX])
             feature_scan_lower = int(feature[FEATURE_SCAN_LOWER_IDX])
             feature_scan_upper = int(feature[FEATURE_SCAN_UPPER_IDX])
+
+            point_id = 1
+            peak_id = 1
 
             # Load the MS2 frame points for the feature's region
             ms2_frame_ids = ()
@@ -198,10 +203,6 @@ def main():
             else:
                 first_zero_index = len(sorted_mzs)-1
 
-            points = []
-            point_id = 1
-            peaks = []
-            peak_id = 1
             for mz in sorted_mzs[:first_zero_index]:
                 if (summed_intensities_by_mz[mz] > 0):  # check if we've processed this mz already
                     # calculate the indices for this point's std dev window
