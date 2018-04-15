@@ -239,19 +239,22 @@ def main():
                 print("")
                 # Store the points in the database
                 dest_c.executemany("INSERT INTO summed_ms2_regions (feature_id, peak_id, point_id, mz, scan, intensity) VALUES (?, ?, ?, ?, ?, ?)", points)
-                dest_c.executemany("INSERT INTO ms2_peaks (feature_id, peak_id, centroid_mz, intensity) VALUES (?, ?, ?, ?)", peaks)
                 dest_conn.commit()
                 del points[:]
+                dest_c.executemany("INSERT INTO ms2_peaks (feature_id, peak_id, centroid_mz, intensity) VALUES (?, ?, ?, ?)", peaks)
+                dest_conn.commit()
                 del peaks[:]
                 break
 
         # Store any remaining points in the database
         if len(points) > 0:
             dest_c.executemany("INSERT INTO summed_ms2_regions (feature_id, peak_id, point_id, mz, scan, intensity) VALUES (?, ?, ?, ?, ?, ?)", points)
+            dest_conn.commit()
 
         # Store any remaining peaks in the database
         if len(peaks) > 0:
             dest_c.executemany("INSERT INTO ms2_peaks (feature_id, peak_id, centroid_mz, intensity) VALUES (?, ?, ?, ?)", peaks)
+            dest_conn.commit()
 
         stop_run = time.time()
         print("{} seconds to process run".format(stop_run-start_run))
@@ -263,7 +266,6 @@ def main():
         ms2_feature_info_entry.append(("features {}-{}".format(args.feature_id_lower, args.feature_id_upper), ' '.join(str(e) for e in ms2_feature_info)))
 
         dest_c.executemany("INSERT INTO summed_ms2_regions_info VALUES (?, ?)", ms2_feature_info_entry)
-
         dest_conn.commit()
 
     dest_conn.close()
