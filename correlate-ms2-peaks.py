@@ -56,7 +56,7 @@ def calculate_correlation(base_peak_points, ms2_peak_points):
     return correlation
 
 #
-# python ./otf-peak-detect/correlate-ms2-peaks.py -db /media/data-drive/Hela_20A_20R_500-features-1-100000-random-1000-sf-1000.sqlite -fl 1 -fu 100000
+# nohup python -u ./otf-peak-detect/correlate-ms2-peaks.py -db /media/data-drive/Hela_20A_20R_500-features-1-100000-random-1000-sf-1000.sqlite -fl 1 -fu 100000 > correlate-ms2-peaks.log 2>&1 &
 #
 
 parser = argparse.ArgumentParser(description='Calculate correlation between MS1 and MS2 peaks for features.')
