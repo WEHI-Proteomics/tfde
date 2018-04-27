@@ -15,6 +15,8 @@ parser = argparse.ArgumentParser(description='A tree descent method for MS2 peak
 parser.add_argument('-fdb','--features_database', type=str, help='The name of the features database.', required=True)
 parser.add_argument('-srdb','--summed_regions_database', type=str, help='The name of the summed regions database.', required=True)
 parser.add_argument('-bfn','--base_mgf_filename', type=str, help='The base name of the MGF.', required=True)
+parser.add_argument('-mgfd','--mgf_directory', type=str, default='./mgf', help='The MGF directory.', required=False)
+parser.add_argument('-hkd','--hk_directory', type=str, default='./hk', help='The HK directory.', required=False)
 parser.add_argument('-mc','--minimum_correlation', type=float, default=0.6, help='Process ms2 peaks with at least this much correlation with the feature''s ms1 base peak.')
 parser.add_argument('-fps','--frames_per_second', type=float, default=2.0, help='Effective frame rate.')
 args = parser.parse_args()
@@ -115,6 +117,11 @@ db_conn = sqlite3.connect(args.summed_regions_database)
 feature_ids_df = pd.read_sql_query("select distinct(feature_id) from peak_correlation", db_conn)
 db_conn.close()
 
+hk_commands_filename = "hardklor-commands.txt"
+if os.path.isfile(hk_commands_filename):
+    os.remove(hk_commands_filename)
+hk_commands_file = open(hk_commands_filename,'w')
+
 for feature_ids_idx in range(0,len(feature_ids_df)):
     feature_id = feature_ids_df.loc[feature_ids_idx].feature_id.astype(int)
     print("Processing feature {}".format(feature_id))
@@ -194,20 +201,23 @@ for feature_ids_idx in range(0,len(feature_ids_df)):
     spectrum["m/z array"] = pairs_df.centroid_mz.values
     spectrum["intensity array"] = pairs_df.intensity.values
     params = {}
-    params["TITLE"] = "Feature {}".format(feature_df.loc[0].feature_id.astype(int))
+    params["TITLE"] = "feature {}, file {}, correlation {}, model error {:.2f}, sulphurs {}".format(feature_id, args.base_mgf_filename, args.minimum_correlation, minimum_error, minimum_error_sulphur)
     params["INSTRUMENT"] = "Bruker timsTOF Pro"
     params["PEPMASS"] = "{} {}".format(monoisotopic_mass, cluster_summed_intensity)
-    params["CHARGE"] = "1+"
+    params["CHARGE"] = "{}+".format(charge_state)
     params["RTINSECONDS"] = "{}".format(retention_time_secs)
     params["SCANS"] = "{}-{}".format(feature_df.loc[0].scan_lower.astype(int), feature_df.loc[0].scan_upper.astype(int))
     spectrum["params"] = params
     spectra.append(spectrum)
 
     # Write out the MGF file
-    mgf_filename = "{}-feature-{}-correlation-{}.mgf".format(args.base_mgf_filename, feature_id, args.minimum_correlation)
+    mgf_filename = "{}/{}-feature-{}-correlation-{}.mgf".format(args.mgf_directory, args.base_mgf_filename, feature_id, args.minimum_correlation)
+    hk_filename = "{}/{}-feature-{}-correlation-{}.hk".format(args.hk_directory, args.base_mgf_filename, feature_id, args.minimum_correlation)
     if os.path.isfile(mgf_filename):
         os.remove(mgf_filename)
     mgf.write(output=mgf_filename, spectra=spectra)
 
     # Print the Hardklor command to process it
-    
+    print("./hardklor/hardklor -cmd -instrument TOF -resolution 40000 -centroided 1 -ms_level 2 -algorithm Version2 -charge_algorithm Quick -charge_min 1 -charge_max {} -correlation {} -mz_window 5.25 -sensitivity 2 -depth 2 -max_features 12 -distribution_area 1 -xml 0 {} {}".format(charge_state, args.minimum_correlation, mgf_filename, hk_filename), file=hk_commands_file)
+
+hk_commands_file.close()
