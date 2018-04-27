@@ -1,5 +1,5 @@
 #!/bin/sh
-files="../mgf/*.mgf"
+files="./mgf/*.mgf"
 for i in $files
 do
   sed '/^$/d' $i > $i.out
