@@ -100,6 +100,9 @@ dest_c.execute("CREATE TABLE feature_base_peaks (feature_id INTEGER, base_peak_i
 dest_c.execute("CREATE INDEX IF NOT EXISTS idx_ms1_region_peaks_1 ON summed_ms1_regions (feature_id)")
 dest_c.execute("CREATE INDEX IF NOT EXISTS idx_ms1_region_peaks_2 ON summed_ms1_regions (feature_id,point_id)")
 
+print("Resetting peak IDs")
+dest_c.execute("update summed_ms1_regions set peak_id=0 where peak_id!=0")
+
 mono_peaks = []
 point_updates = []
 base_peaks = []
