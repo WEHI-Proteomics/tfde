@@ -17,6 +17,7 @@ parser.add_argument('-srdb','--summed_regions_database', type=str, help='The nam
 parser.add_argument('-bfn','--base_mgf_filename', type=str, help='The base name of the MGF.', required=True)
 parser.add_argument('-mgfd','--mgf_directory', type=str, default='./mgf', help='The MGF directory.', required=False)
 parser.add_argument('-hkd','--hk_directory', type=str, default='./hk', help='The HK directory.', required=False)
+parser.add_argument('-shd','--search_headers_directory', type=str, default='./mgf_headers', help='The directory for the headers used to build the search MGF.', required=False)
 parser.add_argument('-mc','--minimum_correlation', type=float, default=0.6, help='Process ms2 peaks with at least this much correlation with the feature''s ms1 base peak.')
 parser.add_argument('-fps','--frames_per_second', type=float, default=2.0, help='Effective frame rate.')
 args = parser.parse_args()
@@ -189,7 +190,6 @@ for feature_ids_idx in range(0,len(feature_ids_df)):
     cluster_summed_intensity = cluster_df.summed_intensity.sum()
 
     monoisotopic_mass = (cluster_mz_centroid - PROTON_MASS) * charge_state
-    print("mono index: {}, sulphurs {}, monoisotopic mass {}, minimum error {}".format(minimum_error_mono_index, minimum_error_sulphur, monoisotopic_mass, minimum_error))
 
     retention_time_secs = feature_df.loc[0].base_frame_id / args.frames_per_second
 
@@ -203,19 +203,32 @@ for feature_ids_idx in range(0,len(feature_ids_df)):
     params = {}
     params["TITLE"] = "feature {}, file {}, correlation {}, model error {:.2f}, sulphurs {}".format(feature_id, args.base_mgf_filename, args.minimum_correlation, minimum_error, minimum_error_sulphur)
     params["INSTRUMENT"] = "Bruker timsTOF Pro"
-    params["PEPMASS"] = "{} {}".format(monoisotopic_mass, cluster_summed_intensity)
+    params["PEPMASS"] = "{} {}".format(cluster_mz_centroid, cluster_summed_intensity)
     params["CHARGE"] = "{}+".format(charge_state)
     params["RTINSECONDS"] = "{}".format(retention_time_secs)
     params["SCANS"] = "{}-{}".format(feature_df.loc[0].scan_lower.astype(int), feature_df.loc[0].scan_upper.astype(int))
     spectrum["params"] = params
     spectra.append(spectrum)
 
-    # Write out the MGF file
     mgf_filename = "{}/{}-feature-{}-correlation-{}.mgf".format(args.mgf_directory, args.base_mgf_filename, feature_id, args.minimum_correlation)
     hk_filename = "{}/{}-feature-{}-correlation-{}.hk".format(args.hk_directory, args.base_mgf_filename, feature_id, args.minimum_correlation)
+    header_filename = "{}/{}-feature-{}-correlation-{}.txt".format(args.search_headers_directory, args.base_mgf_filename, feature_id, args.minimum_correlation)
+
+    # write out the MGF file
     if os.path.isfile(mgf_filename):
         os.remove(mgf_filename)
+    if os.path.isfile(hk_filename):
+        os.remove(hk_filename)
+    if os.path.isfile(header_filename):
+        os.remove(header_filename)
     mgf.write(output=mgf_filename, spectra=spectra)
+
+    # write out the header with no fragment ions (with which to build the search MGF)
+    spectra = []
+    spectrum["m/z array"] = np.empty(0)
+    spectrum["intensity array"] = np.empty(0)
+    spectra.append(spectrum)
+    mgf.write(output=header_filename, spectra=spectra)
 
     # Print the Hardklor command to process it
     print("./hardklor/hardklor -cmd -instrument TOF -resolution 40000 -centroided 1 -ms_level 2 -algorithm Version2 -charge_algorithm Quick -charge_min 1 -charge_max {} -correlation {} -mz_window 5.25 -sensitivity 2 -depth 2 -max_features 12 -distribution_area 1 -xml 0 {} {}".format(charge_state, args.minimum_correlation, mgf_filename, hk_filename), file=hk_commands_file)
