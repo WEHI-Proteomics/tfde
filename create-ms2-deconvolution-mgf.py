@@ -202,11 +202,11 @@ for feature_ids_idx in range(0,len(feature_ids_df)):
     spectrum["intensity array"] = pairs_df.intensity.values
     params = {}
     params["TITLE"] = "feature {}, file {}, correlation {}, model error {:.2f}, sulphurs {}".format(feature_id, args.base_mgf_filename, args.minimum_correlation, minimum_error, minimum_error_sulphur)
-    params["INSTRUMENT"] = "Bruker timsTOF Pro"
-    params["PEPMASS"] = "{} {}".format(cluster_mz_centroid, cluster_summed_intensity)
+    params["INSTRUMENT"] = "Bruker_timsTOF_Pro"
+    params["PEPMASS"] = "{} {}".format(round(cluster_mz_centroid,6), cluster_summed_intensity)
     params["CHARGE"] = "{}+".format(charge_state)
     params["RTINSECONDS"] = "{}".format(retention_time_secs)
-    params["SCANS"] = "{}-{}".format(feature_df.loc[0].scan_lower.astype(int), feature_df.loc[0].scan_upper.astype(int))
+    params["SCANS"] = "{}".format(feature_df.loc[0].base_frame_id.astype(int))
     spectrum["params"] = params
     spectra.append(spectrum)
 

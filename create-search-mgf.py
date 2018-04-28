@@ -7,7 +7,7 @@ import operator
 import os.path
 import argparse
 
-PROTON_MASS = 1.007276  # Mass of a proton in unified atomic mass units, or Da. For calculating the monoisotopic mass.
+PROTON_MASS = 1.0073  # Mass of a proton in unified atomic mass units, or Da. For calculating the monoisotopic mass.
 
 parser = argparse.ArgumentParser(description='A tree descent method for MS2 peak detection.')
 parser.add_argument('-srdb','--summed_regions_database', type=str, help='The name of the summed regions database.', required=True)
@@ -48,7 +48,7 @@ for feature_ids_idx in range(0,len(feature_ids_df)):
     fragments = []
     for row in fragments_df.iterrows():
         index, data = row
-        fragments.append("{} {}\n".format(data.monoisotopic_mass, data.intensity.astype(int)))
+        fragments.append("{} {}\n".format(round(data.monoisotopic_mass,4), data.intensity.astype(int)))
 
     with open(mgf_filename, 'a') as file_handler:
         # write the header
