@@ -36,27 +36,28 @@ for feature_ids_idx in range(0,len(feature_ids_df)):
     # parse the Hardklor output to create the search MGF
     # see https://proteome.gs.washington.edu/software/hardklor/docs/hardklorresults.html
     hk_results_df = pd.read_table(hk_filename, skiprows=1, header=None, names=['monoisotopic_mass','charge','intensity','base_isotope_peak','analysis_window','deprecated','modifications','correlation'])
-    fragments_df = hk_results_df[['monoisotopic_mass', 'intensity']].copy().sort_values(by=['monoisotopic_mass'], ascending=True)
-    fragments_df.monoisotopic_mass += PROTON_MASS  # the monoisotopic_mass from Hardklor is the zero charge M, so we add the proton mass to get M+H
+    if len(hk_results_df) > 0:
+        fragments_df = hk_results_df[['monoisotopic_mass', 'intensity']].copy().sort_values(by=['monoisotopic_mass'], ascending=True)
+        fragments_df.monoisotopic_mass += PROTON_MASS  # the monoisotopic_mass from Hardklor is the zero charge M, so we add the proton mass to get M+H
 
-    # read the header for this feature
-    with open(header_filename) as f:
-        header_content = f.readlines()
-    header_content = header_content[:-1]  # remove the last line
+        # read the header for this feature
+        with open(header_filename) as f:
+            header_content = f.readlines()
+        header_content = header_content[:-1]  # remove the last line
 
-    # compile the fragments from the Hardklor deconvolution
-    fragments = []
-    for row in fragments_df.iterrows():
-        index, data = row
-        fragments.append("{} {}\n".format(round(data.monoisotopic_mass,4), data.intensity.astype(int)))
+        # compile the fragments from the Hardklor deconvolution
+        fragments = []
+        for row in fragments_df.iterrows():
+            index, data = row
+            fragments.append("{} {}\n".format(round(data.monoisotopic_mass,4), data.intensity.astype(int)))
 
-    with open(mgf_filename, 'a') as file_handler:
-        # write the header
-        for item in header_content[:len(header_content)-1]:
-            file_handler.write("{}".format(item))
-        # write the fragments
-        for item in fragments:
-            file_handler.write("{}".format(item))
-        # close off the feature
-        for item in header_content[len(header_content)-1:]:
-            file_handler.write("{}".format(item))
+        with open(mgf_filename, 'a') as file_handler:
+            # write the header
+            for item in header_content[:len(header_content)-1]:
+                file_handler.write("{}".format(item))
+            # write the fragments
+            for item in fragments:
+                file_handler.write("{}".format(item))
+            # close off the feature
+            for item in header_content[len(header_content)-1:]:
+                file_handler.write("{}".format(item))
