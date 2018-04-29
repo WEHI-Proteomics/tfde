@@ -43,7 +43,7 @@ for feature_ids_idx in range(0,len(feature_ids_df)):
         # read the header for this feature
         with open(header_filename) as f:
             header_content = f.readlines()
-        header_content = header_content[:-1]  # remove the last line
+        header_content = [x for x in header_content if not x == '\n']  # remove the empty lines
 
         # compile the fragments from the Hardklor deconvolution
         fragments = []

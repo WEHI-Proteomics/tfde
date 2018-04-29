@@ -223,6 +223,13 @@ for feature_ids_idx in range(0,len(feature_ids_df)):
         os.remove(header_filename)
     mgf.write(output=mgf_filename, spectra=spectra)
 
+    # remove blank lines from the MGF file
+    with open(mgf_filename, 'r') as file_handler:
+        file_content = file_handler.readlines()
+    file_content = [x for x in file_content if not x == '\n']
+    with open(mgf_filename, 'w') as file_handler:
+        file_handler.writelines(file_content)
+
     # write out the header with no fragment ions (with which to build the search MGF)
     spectra = []
     spectrum["m/z array"] = np.empty(0)
