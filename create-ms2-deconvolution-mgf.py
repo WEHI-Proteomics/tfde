@@ -118,7 +118,7 @@ db_conn = sqlite3.connect(args.summed_regions_database)
 feature_ids_df = pd.read_sql_query("select distinct(feature_id) from peak_correlation", db_conn)
 db_conn.close()
 
-hk_commands_filename = "hardklor-commands.txt"
+hk_commands_filename = "{}-hardklor-commands-correlation-{}.txt".format(args.base_mgf_filename, args.minimum_correlation)
 if os.path.isfile(hk_commands_filename):
     os.remove(hk_commands_filename)
 hk_commands_file = open(hk_commands_filename,'w')
