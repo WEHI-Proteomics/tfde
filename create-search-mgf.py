@@ -18,6 +18,13 @@ parser.add_argument('-shd','--search_headers_directory', type=str, default='./mg
 parser.add_argument('-mc','--minimum_correlation', type=float, default=0.6, help='Process ms2 peaks with at least this much correlation with the feature''s ms1 base peak.')
 args = parser.parse_args()
 
+print("Setting up tables and indexes")
+db_conn = sqlite3.connect(args.summed_regions_database)
+# db_conn.cursor().execute("DROP TABLE IF EXISTS deconvoluted_ions")
+db_conn.cursor().execute("CREATE TABLE IF NOT EXISTS deconvoluted_ions (feature_id INTEGER, minimum_correlation REAL, ion_id INTEGER, mz REAL, intensity INTEGER, PRIMARY KEY (feature_id, minimum_correlation, ion_id))")
+db_conn.cursor().execute("delete from deconvoluted_ions where minimum_correlation={}".format(args.minimum_correlation))
+db_conn.close()
+
 db_conn = sqlite3.connect(args.summed_regions_database)
 feature_ids_df = pd.read_sql_query("select distinct(feature_id) from peak_correlation", db_conn)
 db_conn.close()
@@ -26,8 +33,11 @@ mgf_filename = "{}/{}-search-correlation-{}.mgf".format(args.mgf_directory, args
 if os.path.isfile(mgf_filename):
     os.remove(mgf_filename)
 
+deconvoluted_ions = []
+
 for feature_ids_idx in range(0,len(feature_ids_df)):
     feature_id = feature_ids_df.loc[feature_ids_idx].feature_id.astype(int)
+    ion_id = 0
     print("Processing feature {}".format(feature_id))
 
     hk_filename = "{}/{}-feature-{}-correlation-{}.hk".format(args.hk_directory, args.base_mgf_filename, feature_id, args.minimum_correlation)
@@ -50,6 +60,8 @@ for feature_ids_idx in range(0,len(feature_ids_df)):
         for row in fragments_df.iterrows():
             index, data = row
             fragments.append("{} {}\n".format(round(data.monoisotopic_mass,4), data.intensity.astype(int)))
+            ion_id += 1
+            deconvoluted_ions.append((int(feature_id), float(args.minimum_correlation), int(ion_id), round(data.monoisotopic_mass,4), int(data.intensity)))
 
         with open(mgf_filename, 'a') as file_handler:
             # write the header
@@ -61,3 +73,9 @@ for feature_ids_idx in range(0,len(feature_ids_df)):
             # close off the feature
             for item in header_content[len(header_content)-1:]:
                 file_handler.write("{}".format(item))
+
+print("Write out the deconvoluted ions")
+db_conn = sqlite3.connect(args.summed_regions_database)
+db_conn.cursor().executemany("INSERT INTO deconvoluted_ions (feature_id, minimum_correlation, ion_id, mz, intensity) VALUES (?, ?, ?, ?, ?)", deconvoluted_ions)
+db_conn.commit()
+db_conn.close()
