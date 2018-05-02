@@ -46,7 +46,7 @@ frame_ids = tuple(frame_ids_df.values[:,0])
 number_of_frames = 1 + int(((len(frame_ids) - args.frames_to_sum) / args.frame_summing_offset))
 source_conn.close()
 
-# Work out how many batches we can run
+# Work out how many batches the available cores will support
 batch_size = int(number_of_frames / number_of_batches)
 if (batch_size * number_of_cores) < number_of_frames:
     number_of_batches += 1
@@ -61,6 +61,10 @@ for batch_number in range(number_of_batches):
         last_frame_id = number_of_frames
     frame_ranges.append((first_frame_id, last_frame_id))
 
+# prepare to sum the ms1 frames
+prep_sum_frame_ms1_processes = []
+prep_sum_frame_ms1_processes.append("./otf-peak-detect/sum-frames-ms1-prep.py -sdb {}".format(converted_db_name))
+
 # sum the ms1 frames
 sum_frame_ms1_processes = []
 for frame_range in frame_ranges:
@@ -68,4 +72,5 @@ for frame_range in frame_ranges:
     sum_frame_ms1_processes.append("./otf-peak-detect/sum-frames-ms1.py -sdb {} -ddb {} -ce {} -fl {} -fu {}".format(converted_db_name, destination_db_name, args.ms1_collision_energy, frame_range[0], frame_range[1]))
 
 # Execute the pipeline
+pool.map(run_process, prep_sum_frame_ms1_processes)
 pool.map(run_process, sum_frame_ms1_processes)
