@@ -96,10 +96,11 @@ for frame in frames_v:
                 pointId += 1
                 points.append((int(frame_id), int(pointId), float(mz_values[i]), int(scan_line), int(intensity_values[i]), int(peak_id)))
 
+    frame_count += 1
+    
     # Check whether we've done a chunk to write out to the database
     if (frame_id % args.batch_size) == 0:
         dest_c.executemany("INSERT INTO frames VALUES (?, ?, ?, ?, ?, ?)", points)
-        frame_count += args.batch_size
         print("{} frames converted...".format(frame_count))
         del points[:]
 
@@ -110,7 +111,6 @@ for frame in frames_v:
 # Write what we have left
 if len(points) > 0:
     dest_c.executemany("INSERT INTO frames VALUES (?, ?, ?, ?, ?, ?)", points)
-    frame_count += len(points)
     print("{} frames converted...".format(frame_count))
     del points[:]
 
