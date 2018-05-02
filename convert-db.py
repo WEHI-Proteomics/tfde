@@ -23,7 +23,6 @@ parser = argparse.ArgumentParser(description='Convert the Bruker database to a d
 parser.add_argument('-sdb','--source_database_name', type=str, help='The name of the source database.', required=True)
 parser.add_argument('-ddb','--destination_database_name', type=str, help='The name of the destination database.', required=True)
 parser.add_argument('-bs','--batch_size', type=int, default=10000, help='The size of the frames to be written to the database.', required=False)
-parser.add_argument('-nf','--number_of_frames', type=int, help='The number of frames to convert.', required=False)
 args = parser.parse_args()
 
 analysis_dir = args.source_database_name
@@ -97,16 +96,12 @@ for frame in frames_v:
                 points.append((int(frame_id), int(pointId), float(mz_values[i]), int(scan_line), int(intensity_values[i]), int(peak_id)))
 
     frame_count += 1
-    
+
     # Check whether we've done a chunk to write out to the database
     if (frame_id % args.batch_size) == 0:
         dest_c.executemany("INSERT INTO frames VALUES (?, ?, ?, ?, ?, ?)", points)
         print("{} frames converted...".format(frame_count))
         del points[:]
-
-    # Check if we've done enough
-    if (args.number_of_frames is not None) and (frame_id >= args.number_of_frames):
-        break
 
 # Write what we have left
 if len(points) > 0:
