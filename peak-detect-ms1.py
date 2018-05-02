@@ -49,6 +49,7 @@ parser.add_argument('-sl','--scan_lower', type=int, default=1, help='The lower s
 parser.add_argument('-su','--scan_upper', type=int, default=176, help='The upper scan number.', required=False)
 parser.add_argument('-es','--empty_scans', type=int, default=2, help='Maximum number of empty scans to tolerate.', required=False)
 parser.add_argument('-sd','--standard_deviations', type=int, default=4, help='Number of standard deviations to look either side of a point.', required=False)
+parser.add_argument('-bs','--batch_size', type=int, default=10000, help='The size of the frames to be written to the database.', required=False)
 args = parser.parse_args()
 
 source_conn = sqlite3.connect(args.database_name)
@@ -130,13 +131,10 @@ for frame_id in range(args.frame_lower, args.frame_upper+1):
         scan_offset = 1
         missed_scans = 0
         while (missed_scans < args.empty_scans) and (scan-scan_offset >= args.scan_lower):
-            # print("looking in scan {}".format(scan-scan_offset))
             nearby_indices_up = np.where((frame_v[:,FRAME_SCAN_IDX] == scan-scan_offset) & (frame_v[:,FRAME_MZ_IDX] >= mz - std_dev_window) & (frame_v[:,FRAME_MZ_IDX] <= mz + std_dev_window))[0]
             nearby_points_up = frame_v[nearby_indices_up]
-            # print("nearby indices: {}".format(nearby_indices_up))
             if len(nearby_indices_up) == 0:
                 missed_scans += 1
-                # print("found no points")
             else:
                 if len(nearby_indices_up) > 1:
                     # take the most intense point if there's more than one point found on this scan
@@ -147,7 +145,6 @@ for frame_id in range(args.frame_lower, args.frame_upper+1):
                 mz = frame_v[frame_v_index_to_use][FRAME_MZ_IDX]
                 std_dev_window = standard_deviation(mz) * args.standard_deviations
                 missed_scans = 0
-                # print("found {} points".format(len(nearby_indices_up)))
                 peak_indices = np.append(peak_indices, frame_v_index_to_use)
             scan_offset += 1
         # Look in the 'down' direction
@@ -156,12 +153,10 @@ for frame_id in range(args.frame_lower, args.frame_upper+1):
         mz = frame_v[max_intensity_index][FRAME_MZ_IDX]
         std_dev_window = standard_deviation(mz) * args.standard_deviations
         while (missed_scans < args.empty_scans) and (scan+scan_offset <= args.scan_upper):
-            # print("looking in scan {}".format(scan+scan_offset))
             nearby_indices_down = np.where((frame_v[:,FRAME_SCAN_IDX] == scan+scan_offset) & (frame_v[:,FRAME_MZ_IDX] >= mz - std_dev_window) & (frame_v[:,FRAME_MZ_IDX] <= mz + std_dev_window))[0]
             nearby_points_down = frame_v[nearby_indices_down]
             if len(nearby_indices_down) == 0:
                 missed_scans += 1
-                # print("found no points")
             else:
                 if len(nearby_indices_down) > 1:
                     # take the most intense point if there's more than one point found on this scan
@@ -186,44 +181,27 @@ for frame_id in range(args.frame_lower, args.frame_upper+1):
                 filtered = signal.savgol_filter(peaks_sorted[:,FRAME_INTENSITY_IDX], 9, 5)
                 max_index = np.argmax(peaks_sorted[:,FRAME_INTENSITY_IDX])
 
-                # f = plt.figure()
-                # ax1 = f.add_subplot(111)
-                # ax1.plot(peaks_sorted[:,1], peaks_sorted[:,2], 'o', markerfacecolor='green', markeredgecolor='black', markeredgewidth=0.0, markersize=6)
-                # ax1.plot(peaks_sorted[:,1], filtered, '-', markerfacecolor='blue', markeredgecolor='black', markeredgewidth=0.0, markersize=6)
-
                 peak_maxima_indexes = peakutils.indexes(filtered, thres=0.05, min_dist=2)
                 peak_minima_indexes = []
                 if len(peak_maxima_indexes) > 1:
                     for idx,peak_maxima_index in enumerate(peak_maxima_indexes):
-                        # ax1.plot(peaks_sorted[peak_maxima_index,1], peaks_sorted[peak_maxima_index,2], 'o', markerfacecolor='red', markeredgecolor='black', markeredgewidth=0.0, markersize=10, alpha=0.5)
                         if idx>0:
                             intensities_between_maxima = filtered[peak_maxima_indexes[idx-1]:peak_maxima_indexes[idx]+1]
                             minimum_intensity_index = np.argmin(intensities_between_maxima)+peak_maxima_indexes[idx-1]
                             peak_minima_indexes.append(minimum_intensity_index)
-                            # ax1.plot(peaks_sorted[minimum_intensity_index,1], peaks_sorted[minimum_intensity_index,2], 'x', markerfacecolor='purple', markeredgecolor='black', markeredgewidth=6.0, markersize=10, alpha=0.5)
-                # print("peak maximum: {}".format(max_index))
-                # print("peak minima: {}".format(peak_minima_indexes))
+
                 indices_to_delete = np.empty(0)
                 if len(peak_minima_indexes) > 0:
                     idx,lower_snip = findNearestLessThan(max_index, peak_minima_indexes)
                     idx,upper_snip = findNearestGreaterThan(max_index, peak_minima_indexes)
                     if lower_snip < max_index:
-                        # ax1.plot(peaks_sorted[lower_snip,1], peaks_sorted[lower_snip,2], '+', markerfacecolor='purple', markeredgecolor='red', markeredgewidth=2.0, markersize=20, alpha=1.0)
                         indices_to_delete = np.concatenate((indices_to_delete,np.arange(lower_snip)))
                     if upper_snip > max_index:
-                        # ax1.plot(peaks_sorted[upper_snip,1], peaks_sorted[upper_snip,2], '+', markerfacecolor='purple', markeredgecolor='red', markeredgewidth=2.0, markersize=20, alpha=1.0)
                         indices_to_delete = np.concatenate((indices_to_delete,np.arange(upper_snip+1,len(peaks_sorted))))
                     sorted_peaks_indexes = np.delete(sorted_peaks_indexes, indices_to_delete, 0)
                     peak_indices = peak_indices[sorted_peaks_indexes]
                     peaks_sorted = frame_v[peak_indices]
-                    # ax1.plot(peaks_sorted[:,1], peaks_sorted[:,2], 'o', markerfacecolor='blue', markeredgecolor='black', markeredgewidth=0.0, markersize=6)
                     rationale["point ids after trimming"] = peaks_sorted[:,FRAME_POINT_ID_IDX].astype(int).tolist()
-
-                # plt.title("Peak {}".format(peak_id))
-                # plt.xlabel('scan')
-                # plt.ylabel('intensity')
-                # plt.margins(0.02)
-                # plt.show()
 
             # Add the peak to the collection
             peak_mz = []
@@ -260,18 +238,32 @@ for frame_id in range(args.frame_lower, args.frame_upper+1):
         # remove the points we've processed from the frame
         frame_v = np.delete(frame_v, peak_indices, 0)
 
-    # Write out the peaks we found in this frame
+    stop_frame = time.time()
+    print("{} seconds to process frame {} - {} peaks".format(stop_frame-start_frame, frame_id, peak_id))
+
+    # check if we've processed a batch number of frames - store in database if so
+    if ((frame_id - args.frame_lower) % args.batch_size == 0):
+        print("frame count {} - writing peaks to the database...".format(frame_id - args.frame_lower))
+
+        # Write out the peaks
+        src_c.executemany("INSERT INTO peaks VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", mono_peaks)
+        del mono_peaks[:]
+
+        # Update the points in the frame table
+        src_c.executemany("UPDATE summed_frames SET peak_id=? WHERE frame_id=? AND point_id=?", point_updates)
+        del point_updates[:]
+
+        source_conn.commit()
+
+if len(mono_peaks) > 0:
+    # Write out the remaining peaks
     src_c.executemany("INSERT INTO peaks VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", mono_peaks)
     del mono_peaks[:]
 
+if len(point_updates) > 0:
     # Update the points in the frame table
     src_c.executemany("UPDATE summed_frames SET peak_id=? WHERE frame_id=? AND point_id=?", point_updates)
     del point_updates[:]
-
-    source_conn.commit()
-
-    stop_frame = time.time()
-    print("{} seconds to process frame {} - {} peaks".format(stop_frame-start_frame, frame_id, peak_id))
 
 stop_run = time.time()
 print("{} seconds to process frames {} to {}".format(stop_run-start_run, args.frame_lower, args.frame_upper))
@@ -286,5 +278,3 @@ peak_detect_info_entry.append(("summed frames {}-{}".format(args.frame_lower, ar
 src_c.executemany("INSERT INTO peak_detect_info VALUES (?, ?)", peak_detect_info_entry)
 source_conn.commit()
 source_conn.close()
-
-# plt.close('all')
