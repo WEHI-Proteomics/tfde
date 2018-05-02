@@ -19,11 +19,10 @@ FRAME_NUMSCAN_IDX = 1
 FRAME_ID_IDX = 0
 FRAME_COLLISION_ENERGY_IDX = 1
 
-BATCH_SIZE = 10000
-
 parser = argparse.ArgumentParser(description='Convert the Bruker database to a detection database.')
 parser.add_argument('-sdb','--source_database_name', type=str, help='The name of the source database.', required=True)
 parser.add_argument('-ddb','--destination_database_name', type=str, help='The name of the destination database.', required=True)
+parser.add_argument('-bs','--batch_size', type=int, default=10000, help='The size of the batches written to the database.', required=False)
 args = parser.parse_args()
 
 analysis_dir = args.source_database_name
@@ -97,10 +96,10 @@ for frame in frames_v:
                 points.append((int(frame_id), int(pointId), float(mz_values[i]), int(scan_line), int(intensity_values[i]), int(peak_id)))
 
     # Check whether we've done a chunk to write out to the database
-    if frame_id % BATCH_SIZE == 0:
+    if frame_id % args.batch_size == 0:
         dest_c.executemany("INSERT INTO frames VALUES (?, ?, ?, ?, ?, ?)", points)
         del points[:]
-        frame_count += BATCH_SIZE
+        frame_count += args.batch_size
         print("{} frames converted...".format(frame_count))
 
 # Write what we have left
