@@ -35,8 +35,6 @@ FRAME_MZ_IDX = 1
 FRAME_SCAN_IDX = 2
 FRAME_INTENSITY_IDX = 3
 
-COMMIT_BATCH_SIZE = 200  # number of features to store in memory before writing to the database
-
 # so we can use profiling without removing @profile
 import __builtin__
 
@@ -80,6 +78,7 @@ def main():
     parser.add_argument('-fso','--frame_summing_offset', type=int, default=25, help='The number of MS2 source frames to shift for each summation.', required=False)
     parser.add_argument('-mzsf','--mz_scaling_factor', type=float, default=1000.0, help='Scaling factor to convert m/z range to integers.', required=False)
     parser.add_argument('-rff','--random_features_file', type=str, help='A text file containing the feature indexes to process.', required=False)
+    parser.add_argument('-bs','--batch_size', type=int, default=10000, help='The number of features to be written to the database.', required=False)
     args = parser.parse_args()
 
     if (args.random_features_file is not None) and (args.number_of_random_features is not None):
@@ -235,7 +234,7 @@ def main():
             print("{} sec for feature {}".format(feature_stop_time-feature_start_time, feature_id))
             print("")
 
-            if (feature_count % COMMIT_BATCH_SIZE) == 0:
+            if (feature_count % args.batch_size) == 0:
                 print("feature count {} - writing summed regions to the database...".format(feature_count))
                 print("")
                 # Store the points in the database
