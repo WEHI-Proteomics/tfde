@@ -119,7 +119,7 @@ print("Setting up indexes...")
 
 src_c.execute("CREATE INDEX IF NOT EXISTS idx_peaks ON peaks (frame_id)")
 src_c.execute("CREATE INDEX IF NOT EXISTS idx_peaks_2 ON peaks (frame_id,peak_id)")
-src_c.execute("CREATE INDEX IF NOT EXISTS idx_peaks_3 ON peaks (frame_id,cluster_id)")
+src_c.execute("CREATE INDEX IF NOT EXISTS idx_peaks_3 ON peaks (cluster_id)")
 
 if args.frame_lower is None:
     src_c.execute("SELECT value FROM summing_info WHERE item=\"frame_lower\"")
@@ -141,7 +141,7 @@ if args.scan_upper is None:
     args.scan_lower = 176
     print("lower scan set to {} from the data".format(args.scan_lower))
 
-src_c.execute("update peaks set cluster_id=0 where frame_id>={} and frame_id<={} and cluster_id!=0".format(args.frame_lower, args.frame_upper))
+src_c.execute("update peaks set cluster_id=0 where cluster_id!=0")
 
 # Store the arguments as metadata in the database for later reference
 cluster_detect_info = []
