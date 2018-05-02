@@ -112,6 +112,7 @@ for summedFrameId in range(args.frame_lower,args.frame_upper+1):
 
     # check if we've processed a batch number of frames - store in database if so
     if ((summedFrameId - args.frame_lower) % args.batch_size == 0):
+        print("frame count {} - writing summed frames to the database...".format(summedFrameId - args.frame_lower))
         dest_c.executemany("INSERT INTO summed_frames VALUES (?, ?, ?, ?, ?, ?)", points)
         dest_c.executemany("INSERT INTO elution_profile VALUES (?, ?)", elution_profile)
         dest_conn.commit()
