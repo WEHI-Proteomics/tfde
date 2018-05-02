@@ -1,16 +1,67 @@
 import os
+import multiprocessing as mp
 from multiprocessing import Pool
-
-processes = (
-    './otf-peak-detect/sum-frames-ms1.py -sdb /media/data-drive/Hela_20A_20R_500.sqlite -ddb test-Hela_20A_20R_500-1-5.sqlite -ce 7 -fl 1 -fu 5', 
-    './otf-peak-detect/sum-frames-ms1.py -sdb /media/data-drive/Hela_20A_20R_500.sqlite -ddb test-Hela_20A_20R_500-6-10.sqlite -ce 7 -fl 6 -fu 10',
-    )
-# other = ('process3.py',)
+import sqlite3
+import pandas as pd
+import argparse
 
 def run_process(process):
     os.system('python {}'.format(process))
 
+# Process the command line arguments
+parser = argparse.ArgumentParser(description='Generates the search MGF from the instrument database.')
+parser.add_argument('-dbd','--database_directory_name', type=str, help='The directory for the databases.', required=True)
+parser.add_argument('-idb','--instrument_database_name', type=str, help='The name of the instrument database.', required=True)
+parser.add_argument('-dbn','--database_base_name', type=str, help='The base name of the destination databases.', required=True)
+parser.add_argument('-smgf','--search_mgf_name', type=str, help='File name of the generated search MGF.', required=True)
+parser.add_argument('-fts','--frames_to_sum', type=int, default=150, help='The number of MS1 source frames to sum.', required=False)
+parser.add_argument('-fso','--frame_summing_offset', type=int, default=25, help='The number of MS1 source frames to shift for each summation.', required=False)
+parser.add_argument('-cems1','--ms1_collision_energy', type=int, help='Collision energy for ms1, in eV.', required=True)
+parser.add_argument('-cems2','--ms2_collision_energy', type=int, help='Collision energy for ms2, in eV.', required=True)
+args = parser.parse_args()
 
-pool = Pool(processes=3)
-pool.map(run_process, processes)
-# pool.map(run_process, other)
+converted_db_name = "{}/{}.sqlite".format(args.database_directory_name, args.database_base_name)
+frame_database_name = "{}/{}-frames".format(args.database_directory_name, args.database_base_name)
+feature_database_name = "{}/{}-features".format(args.database_directory_name, args.database_base_name)
+
+# find out about the compute environment
+number_of_batches = number_of_cores = mp.cpu_count()
+
+# convert the database
+convert_db_processes = []
+convert_db_processes.append("./otf-peak-detect/convert-db.py -sdb {} -ddb {}".format(args.instrument_database_name, converted_db_name))
+
+# Set up the processing pool
+pool = Pool()
+pool.map(run_process, convert_db_processes)
+
+# Find the complete set of ms1 frame ids to be processed
+source_conn = sqlite3.connect(converted_db_name)
+frame_ids_df = pd.read_sql_query("select frame_id from frame_properties where collision_energy={} order by frame_id ASC;".format(args.ms1_collision_energy), source_conn)
+frame_ids = tuple(frame_ids_df.values[:,0])
+number_of_frames = 1 + int(((len(frame_ids) - args.frames_to_sum) / args.frame_summing_offset))
+source_conn.close()
+
+# Work out how many batches we can run
+batch_size = int(number_of_frames / number_of_batches)
+if (batch_size * number_of_cores) < number_of_frames:
+    number_of_batches += 1
+
+print("number of frames {}, batch size {}, number of batches {}".format(number_of_frames, batch_size, number_of_batches))
+
+frame_ranges = []
+for batch_number in range(number_of_batches):
+    first_frame_id = (batch_number * batch_size) + 1
+    last_frame_id = first_frame_id + batch_size - 1
+    if last_frame_id > number_of_frames:
+        last_frame_id = number_of_frames
+    frame_ranges.append((first_frame_id, last_frame_id))
+
+# sum the ms1 frames
+sum_frame_ms1_processes = []
+for frame_range in frame_ranges:
+    destination_db_name = "{}-{}-{}.sqlite".format(frame_database_name, frame_range[0], frame_range[1])
+    sum_frame_ms1_processes.append("./otf-peak-detect/sum-frames-ms1.py -sdb {} -ddb {} -ce {} -fl {} -fu {}".format(converted_db_name, destination_db_name, args.ms1_collision_energy, frame_range[0], frame_range[1]))
+
+# Execute the pipeline
+pool.map(run_process, sum_frame_ms1_processes)
