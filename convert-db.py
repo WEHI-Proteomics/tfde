@@ -101,6 +101,7 @@ for frame in frames_v:
     if (frame_id % args.batch_size) == 0:
         dest_c.executemany("INSERT INTO frames VALUES (?, ?, ?, ?, ?, ?)", points)
         print("{} frames converted...".format(frame_count))
+        dest_conn.commit()
         del points[:]
 
 # Write what we have left
