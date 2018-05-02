@@ -18,11 +18,11 @@ parser.add_argument('-fts','--frames_to_sum', type=int, default=150, help='The n
 parser.add_argument('-fso','--frame_summing_offset', type=int, default=25, help='The number of MS1 source frames to shift for each summation.', required=False)
 parser.add_argument('-mf','--noise_threshold', type=int, default=2, help='Minimum number of frames a point must appear in to be processed.', required=False)
 parser.add_argument('-ce','--collision_energy', type=int, help='Collision energy, in eV.', required=True)
-parser.add_argument('-hn','--hostname', default='mscypher-004', type=str, help='The hostname of the database.', required=False)
 parser.add_argument('-fl','--frame_lower', type=int, help='The lower frame number.', required=False)
 parser.add_argument('-fu','--frame_upper', type=int, help='The upper frame number.', required=False)
 parser.add_argument('-sl','--scan_lower', type=int, default=1, help='The lower scan number.', required=False)
 parser.add_argument('-su','--scan_upper', type=int, default=176, help='The upper scan number.', required=False)
+parser.add_argument('-bs','--batch_size', type=int, default=10000, help='The size of the frames to be written to the database.', required=False)
 args = parser.parse_args()
 
 # Connect to the databases
@@ -64,6 +64,8 @@ if args.frame_upper is None:
 start_run = time.time()
 
 # Step through the source frames and sum them
+elution_profile = []
+points = []
 for summedFrameId in range(args.frame_lower,args.frame_upper+1):
     baseFrameIdsIndex = (summedFrameId-1)*args.frame_summing_offset
     frameIdsToSum = frame_ids[baseFrameIdsIndex:baseFrameIdsIndex+args.frames_to_sum]
@@ -73,7 +75,7 @@ for summedFrameId in range(args.frame_lower,args.frame_upper+1):
 
     frame_start = time.time()
     pointId = 1
-    points = []
+    frame_points = []
     for scan in range(args.scan_lower, args.scan_upper+1):
         points_v = frame_v[np.where(frame_v[:,2] == scan)]
         points_to_process = len(points_v)
@@ -91,25 +93,36 @@ for summedFrameId in range(args.frame_lower,args.frame_upper+1):
                 # find the total intensity and centroid m/z
                 centroid_intensity = nearby_points[:,3].sum()
                 centroid_mz = peakutils.centroid(nearby_points[:,1], nearby_points[:,3])
-                points.append((int(summedFrameId), int(pointId), float(centroid_mz), int(scan), int(round(centroid_intensity)), 0))
+                frame_points.append((int(summedFrameId), int(pointId), float(centroid_mz), int(scan), int(round(centroid_intensity)), 0))
                 pointId += 1
 
             # remove the points we've processed
             points_v = np.delete(points_v, nearby_point_indices, 0)
 
-    if len(points) > 0:
-        dest_c.executemany("INSERT INTO summed_frames VALUES (?, ?, ?, ?, ?, ?)", points)
-        dest_c.executemany("INSERT INTO elution_profile VALUES (?, ?)", [(summedFrameId, sum(zip(*points)[4]))])
+    if len(frame_points) > 0:
+        elution_profile.append((summedFrameId, sum(zip(*frame_points)[4])))
     else:
-        print("no points for summed frame id {}".format(summedFrameId))
-        dest_c.executemany("INSERT INTO elution_profile VALUES (?, ?)", [(summedFrameId, 0)])
-    dest_conn.commit()
+        elution_profile.append((summedFrameId, 0))
 
+    # add the frame's points to the set
+    points += frame_points
     frame_end = time.time()
-    print("{} sec for frame {} ({} points)".format(frame_end-frame_start, summedFrameId, len(points)))
+    print("{} sec for frame {} ({} points)".format(frame_end-frame_start, summedFrameId, len(frame_points)))
+    del frame_points[:]
 
-    # clean up
-    del points[:]
+    # check if we've processed a batch number of frames - store in database if so
+    if ((summedFrameId - args.frame_lower) % args.batch_size == 0):
+        dest_c.executemany("INSERT INTO summed_frames VALUES (?, ?, ?, ?, ?, ?)", points)
+        dest_c.executemany("INSERT INTO elution_profile VALUES (?, ?)", elution_profile)
+        dest_conn.commit()
+        del points[:]
+        del elution_profile[:]
+
+if len(points) > 0:
+    dest_c.executemany("INSERT INTO summed_frames VALUES (?, ?, ?, ?, ?, ?)", points)
+
+if len(elution_profile) > 0:
+    dest_c.executemany("INSERT INTO elution_profile VALUES (?, ?)", elution_profile)
 
 stop_run = time.time()
 print("{} seconds to process run".format(stop_run-start_run))
