@@ -22,7 +22,7 @@ FRAME_COLLISION_ENERGY_IDX = 1
 parser = argparse.ArgumentParser(description='Convert the Bruker database to a detection database.')
 parser.add_argument('-sdb','--source_database_name', type=str, help='The name of the source database.', required=True)
 parser.add_argument('-ddb','--destination_database_name', type=str, help='The name of the destination database.', required=True)
-parser.add_argument('-bs','--batch_size', type=int, default=10000, help='The size of the batches written to the database.', required=False)
+parser.add_argument('-bs','--batch_size', type=int, default=10000, help='The size of the frames to be written to the database.', required=False)
 args = parser.parse_args()
 
 analysis_dir = args.source_database_name
