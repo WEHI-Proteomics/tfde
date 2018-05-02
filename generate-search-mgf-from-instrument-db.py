@@ -8,6 +8,10 @@ import argparse
 def run_process(process):
     os.system('python {}'.format(process))
 
+#
+# python ./otf-peak-detect/generate-search-mgf-from-instrument-db.py -dbd /Volumes/Samsung_T5/databases/ -idb /Volumes/Samsung_T5/instrument/Hela_20A_20R_500_1_01_398.d/ -dbn Hela_20A_20R_500 -smgf /Volumes/Samsung_T5/mgf/Hela_20A_20R_500-search.mgf -cems1 7 -cems2 27
+#
+
 # Process the command line arguments
 parser = argparse.ArgumentParser(description='Generates the search MGF from the instrument database.')
 parser.add_argument('-dbd','--database_directory_name', type=str, help='The directory for the databases.', required=True)
