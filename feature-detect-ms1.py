@@ -9,7 +9,6 @@ import argparse
 import os.path
 from scipy import signal
 import sys
-import matplotlib.pyplot as plt
 import peakutils
 from collections import deque
 from operator import itemgetter
@@ -35,7 +34,6 @@ NOISE_ASSESSMENT_OFFSET = 1     # offset in seconds from the end of the feature 
 FEATURE_DISCOVERY_HISTORY_LENGTH = 100
 MAX_PROPORTION_POOR_QUALITY = 0.8   # stop looking if the proportion of poor quality features exceeds this level
 
-COMMIT_BATCH_SIZE = 1000         # save the features to the database every COMMIT_BATCH_SIZE features
 EVALUATE_NOISE_LEVEL_RATE = 500 # evaluate the base noise level every EVALUATE_NOISE_LEVEL_RATE features
 
 feature_id = 1
@@ -66,7 +64,6 @@ def find_frame_indices(start_frame_id, end_frame_id):
 # returns True if the gap between points is within acceptable limit
 def check_gap_between_points(feature_indices, max_gap_in_seconds):
     features_max_gap_in_seconds = np.max(np.diff(clusters_v[feature_indices, CLUSTER_FRAME_ID_IDX])) / args.frames_per_second
-    # print("frame ids {}, max gap {}".format(clusters_v[feature_indices, CLUSTER_FRAME_ID_IDX], features_max_gap_in_seconds))
     return (features_max_gap_in_seconds <= max_gap_in_seconds)
 
 def find_feature(base_index):
@@ -123,11 +120,6 @@ def find_feature(base_index):
         filtered_max_index = np.argmax(filtered)
         filtered_max_value = filtered[filtered_max_index]
 
-        # f = plt.figure(figsize=(12,8))
-        # ax1 = f.add_subplot(111)
-        # ax1.plot(clusters_v[feature_indices, CLUSTER_FRAME_ID_IDX], clusters_v[feature_indices, CLUSTER_INTENSITY_SUM_IDX], 'o', markerfacecolor='green', markeredgecolor='black', markeredgewidth=0.0, markersize=6)
-        # ax1.plot(clusters_v[feature_indices, CLUSTER_FRAME_ID_IDX], filtered, '-', markerfacecolor='blue', markeredgecolor='black', markeredgewidth=0.0, markersize=6)
-
         low_snip_index = None
         high_snip_index = None
 
@@ -151,21 +143,6 @@ def find_feature(base_index):
         for idx in reversed(peak_minima_indexes):
             if (filtered[idx] < (filtered_max_value * args.magnitude_for_feature_endpoints) or (filtered[idx] < base_noise_level)) and (idx > filtered_max_index):
                 high_snip_index = idx
-
-        # visualise what's going on
-        # if low_snip_index is not None:
-        #     ax1.plot(clusters_v[feature_indices[low_snip_index], CLUSTER_FRAME_ID_IDX], filtered[low_snip_index], 'x', markerfacecolor='red', markeredgecolor='red', markeredgewidth=4.0, markersize=15, alpha=1.0)
-        # else:
-        #     ax1.plot(clusters_v[feature_indices[0], CLUSTER_FRAME_ID_IDX], filtered[0], 'x', markerfacecolor='red', markeredgecolor='red', markeredgewidth=4.0, markersize=15, alpha=1.0)
-
-        # if high_snip_index is not None:
-        #     ax1.plot(clusters_v[feature_indices[high_snip_index], CLUSTER_FRAME_ID_IDX], filtered[high_snip_index], 'x', markerfacecolor='red', markeredgecolor='red', markeredgewidth=4.0, markersize=15, alpha=1.0)
-        # else:
-        #     ax1.plot(clusters_v[feature_indices[len(filtered)-1], CLUSTER_FRAME_ID_IDX], filtered[len(filtered)-1], 'x', markerfacecolor='red', markeredgecolor='red', markeredgewidth=4.0, markersize=15, alpha=1.0)
-        # plt.xlabel('frame')
-        # plt.ylabel('intensity')
-        # plt.margins(0.02)
-        # plt.show()
 
         indices_to_delete = np.empty(0)
         if low_snip_index is not None:
@@ -239,15 +216,6 @@ def find_feature(base_index):
         feature_mz_lower = 0
         feature_mz_upper = 0
 
-        # f = plt.figure(figsize=(12,8))
-        # ax1 = f.add_subplot(111)
-        # ax1.plot(clusters_v[feature_indices, CLUSTER_FRAME_ID_IDX], clusters_v[feature_indices, CLUSTER_INTENSITY_SUM_IDX], 'o', markerfacecolor='green', markeredgecolor='black', markeredgewidth=0.0, markersize=6)
-        # plt.title("Rejected Feature")
-        # plt.xlabel('frame')
-        # plt.ylabel('intensity')
-        # plt.margins(0.02)
-        # plt.show()
-
     # package the result
     results = {}
     results['base_index'] = base_index
@@ -278,6 +246,7 @@ parser.add_argument('-mcs','--minimum_charge_state', type=int, default=2, help='
 parser.add_argument('-mfe','--magnitude_for_feature_endpoints', type=float, default=0.8, help='Proportion of a feature\'s magnitude to take for its endpoints', required=False)
 parser.add_argument('-fps','--frames_per_second', type=float, default=2.0, help='Frame rate.', required=False)
 parser.add_argument('-nbf','--number_of_features', type=int, help='The number of features to find.', required=False)
+parser.add_argument('-bs','--batch_size', type=int, default=10000, help='The number of features to be written to the database.', required=False)
 args = parser.parse_args()
 
 NUMBER_OF_FRAMES_TO_LOOK = int(args.number_of_seconds_each_side * args.frames_per_second)
@@ -373,7 +342,7 @@ while True:
     # remove the features we've processed from the run
     clusters_v[cluster_indices, CLUSTER_INTENSITY_SUM_IDX] = -1
 
-    if feature_id % COMMIT_BATCH_SIZE == 0:
+    if (feature_id % args.batch_size) == 0:
         print("writing features out to the database...")
         # save this in the database
         c.executemany("UPDATE clusters SET feature_id=? WHERE frame_id=? AND cluster_id=?", cluster_updates)
