@@ -98,16 +98,16 @@ for frame in frames_v:
     # Check whether we've done a chunk to write out to the database
     if frame_id % args.batch_size == 0:
         dest_c.executemany("INSERT INTO frames VALUES (?, ?, ?, ?, ?, ?)", points)
-        del points[:]
         frame_count += args.batch_size
         print("{} frames converted...".format(frame_count))
+        del points[:]
 
 # Write what we have left
 if len(points) > 0:
     dest_c.executemany("INSERT INTO frames VALUES (?, ?, ?, ?, ?, ?)", points)
-    del points[:]
     frame_count += len(points)
     print("{} frames converted...".format(frame_count))
+    del points[:]
 
 dest_conn.commit()
 
