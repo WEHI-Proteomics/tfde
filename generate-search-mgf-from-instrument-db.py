@@ -109,7 +109,7 @@ sqlFile.close()
 #
 combine_sql_command_file_name = "{}/{}-combine.sql".format(args.database_directory_name, args.database_base_name)
 sqlFile = open(combine_sql_command_file_name, 'w+')
-feature_db_name = "{}-features.sqlite".format(frame_database_name)
+feature_db_name = "{}.sqlite".format(feature_database_name)
 print(".open --new {}".format(feature_db_name), file=sqlFile)
 for frame_range in frame_ranges:
     db_sql_name = "{}-{}-{}-dump.sql".format(frame_database_name, frame_range[0], frame_range[1])
