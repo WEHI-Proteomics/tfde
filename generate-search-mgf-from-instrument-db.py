@@ -37,7 +37,7 @@ convert_db_processes.append("./otf-peak-detect/convert-db.py -sdb {} -ddb {} -nf
 
 # Set up the processing pool
 pool = Pool()
-pool.map(run_process, convert_db_processes)
+# pool.map(run_process, convert_db_processes)
 
 # Find the complete set of ms1 frame ids to be processed
 source_conn = sqlite3.connect(converted_db_name)
@@ -61,16 +61,42 @@ for batch_number in range(number_of_batches):
         last_frame_id = number_of_frames
     frame_ranges.append((first_frame_id, last_frame_id))
 
-# prepare to sum the ms1 frames
+# prepare to process the ms1 frames
 prep_sum_frame_ms1_processes = []
 prep_sum_frame_ms1_processes.append("./otf-peak-detect/sum-frames-ms1-prep.py -sdb {}".format(converted_db_name))
 
-# sum the ms1 frames
+# process the ms1 frames
 sum_frame_ms1_processes = []
+peak_detect_ms1_processes = []
+cluster_detect_ms1_processes = []
 for frame_range in frame_ranges:
     destination_db_name = "{}-{}-{}.sqlite".format(frame_database_name, frame_range[0], frame_range[1])
     sum_frame_ms1_processes.append("./otf-peak-detect/sum-frames-ms1.py -sdb {} -ddb {} -ce {} -fl {} -fu {}".format(converted_db_name, destination_db_name, args.ms1_collision_energy, frame_range[0], frame_range[1]))
+    peak_detect_ms1_processes.append("./otf-peak-detect/peak-detect-ms1.py -db {} -fl {} -fu {}".format(destination_db_name, frame_range[0], frame_range[1]))
+    cluster_detect_ms1_processes.append("./otf-peak-detect/cluster-detect-ms1.py -db {} -fl {} -fu {}".format(destination_db_name, frame_range[0], frame_range[1]))
+
+# detect features in the ms1 frames
+feature_detect_ms1_processes = []
+feature_detect_ms1_processes.append("./otf-peak-detect/feature-detect-ms1.py -sdb {}".format(converted_db_name))
 
 # Execute the pipeline
-pool.map(run_process, prep_sum_frame_ms1_processes)
-pool.map(run_process, sum_frame_ms1_processes)
+# pool.map(run_process, prep_sum_frame_ms1_processes)
+# pool.map(run_process, sum_frame_ms1_processes)
+# pool.map(run_process, peak_detect_ms1_processes)
+# pool.map(run_process, cluster_detect_ms1_processes)
+
+#
+# Generate a SQL command file to dump all the frame databases into .sql files
+#
+sql_command_file_name = "{}/{}-dump.sql".format(args.database_directory_name, args.database_base_name)
+sqlFile = open(sql_command_file_name, 'w+')
+for frame_range in frame_ranges:
+    destination_db_name = "{}-{}-{}.sqlite".format(frame_database_name, frame_range[0], frame_range[1])
+    db_sql_name = "{}-{}-{}-dump.sql".format(frame_database_name, frame_range[0], frame_range[1])
+    print(".open {}".format(destination_db_name), file=sqlFile)
+    print(".mode insert", file=sqlFile)
+    print(".output {}".format(db_sql_name), file=sqlFile)
+    print(".dump", file=sqlFile)
+    print(".output", file=sqlFile)
+print(".quit", file=sqlFile)
+sqlFile.close()
