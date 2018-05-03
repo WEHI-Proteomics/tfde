@@ -114,7 +114,6 @@ print(".open --new {}".format(feature_db_name), file=sqlFile)
 for frame_range in frame_ranges:
     db_sql_name = "{}-{}-{}-dump.sql".format(frame_database_name, frame_range[0], frame_range[1])
     print(".read {}".format(db_sql_name), file=sqlFile)
-
 print(".quit", file=sqlFile)
 sqlFile.close()
 
@@ -137,3 +136,16 @@ feature_detect_ms1_processes.append("python ./otf-peak-detect/feature-detect-ms1
 if (args.operation == 'all') or (args.operation == 'feature_detect_ms1'):
     print("detecting features...")
     pool.map(run_process, feature_detect_ms1_processes)
+
+# detect peaks in ms2 frames
+feature_region_ms2_sum_peak_detect_processes = []
+feature_detect_ms1_processes.append("python ./otf-peak-detect/feature-detect-ms1.py -db {}".format(feature_db_name))
+
+# find out how many features there are
+
+
+# work out how many batches the available cores will support
+number_of_batches = number_of_cores
+batch_size = int(number_of_features / number_of_batches)
+if (batch_size * number_of_cores) < number_of_features:
+    number_of_batches += 1

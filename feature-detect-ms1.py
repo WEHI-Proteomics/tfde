@@ -375,6 +375,7 @@ stop_run = time.time()
 
 print("found {} features in {} seconds".format(feature_id-1, stop_run-start_run))
 
+feature_info.append(("features found", feature_id-1))
 feature_info.append(("run processing time (sec)", stop_run-start_run))
 feature_info.append(("processed", time.ctime()))
 c.executemany("INSERT INTO feature_info VALUES (?, ?)", feature_info)
