@@ -126,11 +126,14 @@ combine_databases_processes = []
 combine_databases_processes.append("sqlite3 < {}".format(combine_sql_command_file_name))
 
 if (args.operation == 'all') or (args.operation == 'combine_frame_databases'):
+    print("dumping the frame databases...")
     pool.map(run_process, dump_databases_processes)
+    print("loading the frame databases into a combined database...")
     pool.map(run_process, combine_databases_processes)
 
 # detect features in the ms1 frames
 feature_detect_ms1_processes = []
-feature_detect_ms1_processes.append("python ./otf-peak-detect/feature-detect-ms1.py -sdb {}".format(feature_db_name))
+feature_detect_ms1_processes.append("python ./otf-peak-detect/feature-detect-ms1.py -db {}".format(feature_db_name))
 if (args.operation == 'all') or (args.operation == 'feature_detect_ms1'):
+    print("detecting features...")
     pool.map(run_process, feature_detect_ms1_processes)
