@@ -23,6 +23,7 @@ parser = argparse.ArgumentParser(description='Convert the Bruker database to a d
 parser.add_argument('-sdb','--source_database_name', type=str, help='The name of the source database.', required=True)
 parser.add_argument('-ddb','--destination_database_name', type=str, help='The name of the destination database.', required=True)
 parser.add_argument('-bs','--batch_size', type=int, default=10000, help='The size of the frames to be written to the database.', required=False)
+parser.add_argument('-nf','--number_of_frames', type=int, help='The number of frames to convert.', required=False)
 args = parser.parse_args()
 
 analysis_dir = args.source_database_name
@@ -104,6 +105,9 @@ for frame in frames_v:
         dest_conn.commit()
         del points[:]
 
+    if (args.number_of_frames is not None) and (frame_count >= args.number_of_frames):
+        break
+
 # Write what we have left
 if len(points) > 0:
     dest_c.executemany("INSERT INTO frames VALUES (?, ?, ?, ?, ?, ?)", points)
@@ -114,6 +118,8 @@ dest_conn.commit()
 
 for collision_energy in collision_energies_v:
     frame_properties.append((int(collision_energy[FRAME_ID_IDX]), float(collision_energy[FRAME_COLLISION_ENERGY_IDX])))
+    if (args.number_of_frames is not None) and (len(frame_properties) == args.number_of_frames):
+        break
 
 print("Writing frame properties")
 dest_c.executemany("INSERT INTO frame_properties VALUES (?, ?)", frame_properties)
