@@ -66,6 +66,7 @@ start_run = time.time()
 # Step through the source frames and sum them
 elution_profile = []
 points = []
+frame_count = 0
 for summedFrameId in range(args.frame_lower,args.frame_upper+1):
     baseFrameIdsIndex = (summedFrameId-1)*args.frame_summing_offset
     frameIdsToSum = frame_ids[baseFrameIdsIndex:baseFrameIdsIndex+args.frames_to_sum]
@@ -110,9 +111,11 @@ for summedFrameId in range(args.frame_lower,args.frame_upper+1):
     print("{} sec for frame {} ({} points)".format(frame_end-frame_start, summedFrameId, len(frame_points)))
     del frame_points[:]
 
+    frame_count += 1
+
     # check if we've processed a batch number of frames - store in database if so
-    if ((summedFrameId - args.frame_lower) % args.batch_size == 0):
-        print("frame count {} - writing summed frames to the database...".format(summedFrameId - args.frame_lower))
+    if (frame_count % args.batch_size == 0):
+        print("frame count {} - writing summed frames to the database...".format(frame_count))
         dest_c.executemany("INSERT INTO summed_frames VALUES (?, ?, ?, ?, ?, ?)", points)
         dest_c.executemany("INSERT INTO elution_profile VALUES (?, ?)", elution_profile)
         dest_conn.commit()
