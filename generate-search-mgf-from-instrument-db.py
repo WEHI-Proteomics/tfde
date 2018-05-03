@@ -79,11 +79,7 @@ for frame_range in frame_ranges:
     peak_detect_ms1_processes.append("./otf-peak-detect/peak-detect-ms1.py -db {} -fl {} -fu {}".format(destination_db_name, frame_range[0], frame_range[1]))
     cluster_detect_ms1_processes.append("./otf-peak-detect/cluster-detect-ms1.py -db {} -fl {} -fu {}".format(destination_db_name, frame_range[0], frame_range[1]))
 
-# detect features in the ms1 frames
-feature_detect_ms1_processes = []
-feature_detect_ms1_processes.append("./otf-peak-detect/feature-detect-ms1.py -sdb {}".format(converted_db_name))
-
-# Execute the pipeline
+# execute the pipeline
 if (args.operation == 'all') or (args.operation == 'sum_frame_ms1'):
     pool.map(run_process, prep_sum_frame_ms1_processes)
     pool.map(run_process, sum_frame_ms1_processes)
@@ -93,10 +89,10 @@ if (args.operation == 'all') or (args.operation == 'cluster_detect_ms1'):
     pool.map(run_process, cluster_detect_ms1_processes)
 
 #
-# Generate a SQL command file to dump all the frame databases into .sql files
+# generate a SQL command file to dump all the frame databases into .sql files
 #
-sql_command_file_name = "{}/{}-dump.sql".format(args.database_directory_name, args.database_base_name)
-sqlFile = open(sql_command_file_name, 'w+')
+dump_sql_command_file_name = "{}/{}-dump.sql".format(args.database_directory_name, args.database_base_name)
+sqlFile = open(dump_sql_command_file_name, 'w+')
 for frame_range in frame_ranges:
     destination_db_name = "{}-{}-{}.sqlite".format(frame_database_name, frame_range[0], frame_range[1])
     db_sql_name = "{}-{}-{}-dump.sql".format(frame_database_name, frame_range[0], frame_range[1])
@@ -107,3 +103,32 @@ for frame_range in frame_ranges:
     print(".output", file=sqlFile)
 print(".quit", file=sqlFile)
 sqlFile.close()
+
+#
+# generate a SQL command file to load the .sql files into a combined database
+#
+combine_sql_command_file_name = "{}/{}-combine.sql".format(args.database_directory_name, args.database_base_name)
+sqlFile = open(combine_sql_command_file_name, 'w+')
+feature_db_name = "{}-features.sqlite".format(frame_database_name)
+print(".open --new {}".format(feature_db_name), file=sqlFile)
+for frame_range in frame_ranges:
+    db_sql_name = "{}-{}-{}-dump.sql".format(frame_database_name, frame_range[0], frame_range[1])
+    print(".read {}".format(db_sql_name), file=sqlFile)
+
+print(".quit", file=sqlFile)
+sqlFile.close()
+
+# combine the interim processing databases into a feature database
+dump_databases_processes = []
+dump_databases_processes.append("sqlite3 < {}".format(dump_sql_command_file_name))
+
+combine_databases_processes = []
+combine_databases_processes.append("sqlite3 < {}".format(combine_sql_command_file_name))
+
+# detect features in the ms1 frames
+feature_detect_ms1_processes = []
+feature_detect_ms1_processes.append("./otf-peak-detect/feature-detect-ms1.py -sdb {}".format(feature_db_name))
+if (args.operation == 'all') or (args.operation == 'feature_detect_ms1'):
+    pool.map(run_process, dump_databases_processes)
+    pool.map(run_process, combine_databases_processes)
+    pool.map(run_process, feature_detect_ms1_processes)
