@@ -22,6 +22,7 @@ parser.add_argument('-fts','--frames_to_sum', type=int, default=150, help='The n
 parser.add_argument('-fso','--frame_summing_offset', type=int, default=25, help='The number of MS1 source frames to shift for each summation.', required=False)
 parser.add_argument('-cems1','--ms1_collision_energy', type=int, help='Collision energy for ms1, in eV.', required=True)
 parser.add_argument('-cems2','--ms2_collision_energy', type=int, help='Collision energy for ms2, in eV.', required=True)
+parser.add_argument('-op','--operation', type=str, default='all', help='The operation to perform.', required=False)
 args = parser.parse_args()
 
 converted_db_name = "{}/{}.sqlite".format(args.database_directory_name, args.database_base_name)
@@ -37,7 +38,8 @@ convert_db_processes.append("./otf-peak-detect/convert-db.py -sdb {} -ddb {} -nf
 
 # Set up the processing pool
 pool = Pool()
-# pool.map(run_process, convert_db_processes)
+if (args.operation == 'all') or (args.operation == 'convert'):
+    pool.map(run_process, convert_db_processes)
 
 # Find the complete set of ms1 frame ids to be processed
 source_conn = sqlite3.connect(converted_db_name)
@@ -80,10 +82,13 @@ feature_detect_ms1_processes = []
 feature_detect_ms1_processes.append("./otf-peak-detect/feature-detect-ms1.py -sdb {}".format(converted_db_name))
 
 # Execute the pipeline
-# pool.map(run_process, prep_sum_frame_ms1_processes)
-# pool.map(run_process, sum_frame_ms1_processes)
-# pool.map(run_process, peak_detect_ms1_processes)
-# pool.map(run_process, cluster_detect_ms1_processes)
+if (args.operation == 'all') or (args.operation == 'sum_frame_ms1'):
+    pool.map(run_process, prep_sum_frame_ms1_processes)
+    pool.map(run_process, sum_frame_ms1_processes)
+if (args.operation == 'all') or (args.operation == 'peak_detect_ms1'):
+    pool.map(run_process, peak_detect_ms1_processes)
+if (args.operation == 'all') or (args.operation == 'cluster_detect_ms1'):
+    pool.map(run_process, cluster_detect_ms1_processes)
 
 #
 # Generate a SQL command file to dump all the frame databases into .sql files
