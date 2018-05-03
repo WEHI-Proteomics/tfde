@@ -24,6 +24,7 @@ parser.add_argument('-fso','--frame_summing_offset', type=int, default=25, help=
 parser.add_argument('-cems1','--ms1_collision_energy', type=int, help='Collision energy for ms1, in eV.', required=True)
 parser.add_argument('-cems2','--ms2_collision_energy', type=int, help='Collision energy for ms2, in eV.', required=True)
 parser.add_argument('-op','--operation', type=str, default='all', help='The operation to perform.', required=False)
+parser.add_argument('-nf','--number_of_frames', type=int, help='The number of frames to convert.', required=False)
 args = parser.parse_args()
 
 converted_db_name = "{}/{}.sqlite".format(args.database_directory_name, args.database_base_name)
@@ -35,7 +36,7 @@ number_of_batches = number_of_cores = mp.cpu_count()
 
 # convert the database
 convert_db_processes = []
-convert_db_processes.append("./otf-peak-detect/convert-db.py -sdb {} -ddb {} -nf 15000".format(args.instrument_database_name, converted_db_name))
+convert_db_processes.append("./otf-peak-detect/convert-db.py -sdb {} -ddb {} -nf {}".format(args.instrument_database_name, converted_db_name, args.number_of_frames))
 
 # Set up the processing pool
 pool = Pool()
