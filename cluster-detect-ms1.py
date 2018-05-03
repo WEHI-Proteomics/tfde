@@ -165,10 +165,11 @@ PEAK_INTENSITY_MAX_IDX = 8
 
 clusters = []
 peak_updates = []
+frame_count = 0
 
 start_run = time.time()
 for frame_id in range(args.frame_lower, args.frame_upper+1):
-    print "Processing frame {}".format(frame_id)
+    print "Detecting clusters in frame {}".format(frame_id)
     start_frame = time.time()
     cluster_id = 1
     # Get all the peaks for this frame
@@ -395,6 +396,7 @@ for frame_id in range(args.frame_lower, args.frame_upper+1):
 
     stop_frame = time.time()
     print("{} seconds to process frame - found {} clusters".format(stop_frame-start_frame, cluster_id))
+    frame_count += 1
 
 # Write out all the clusters to the database
 src_c.executemany("INSERT INTO clusters VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", clusters)

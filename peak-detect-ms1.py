@@ -98,17 +98,18 @@ FRAME_POINT_ID_IDX = 3
 mono_peaks = []
 point_updates = []
 start_run = time.time()
+frame_count = 0
 for frame_id in range(args.frame_lower, args.frame_upper+1):
     peak_id = 1
     frame_df = pd.read_sql_query("select mz,scan,intensity,point_id from summed_frames where frame_id={} order by intensity desc;".format(frame_id), source_conn)
-    print("Processing frame {}".format(frame_id))
+    print("Detecting peaks in frame {}".format(frame_id))
     start_frame = time.time()
     frame_v = frame_df.values
     # Find the intensity of the point at the bottom of the top tenth percentile of points
     number_of_points = len(frame_v)
     top_tenth_percentile_index = int(number_of_points / 10)
     minimum_intensity = int(frame_v[top_tenth_percentile_index][FRAME_INTENSITY_IDX])
-    print("frame occupies {} bytes".format(frame_v.nbytes))
+    # print("frame occupies {} bytes".format(frame_v.nbytes))
     while len(frame_v) > 0:
         peak_indices = np.empty(0, dtype=int)
 
@@ -240,10 +241,10 @@ for frame_id in range(args.frame_lower, args.frame_upper+1):
 
     stop_frame = time.time()
     print("{} seconds to process frame {} - {} peaks".format(stop_frame-start_frame, frame_id, peak_id))
-
+    frame_count += 1
     # check if we've processed a batch number of frames - store in database if so
-    if ((frame_id - args.frame_lower) % args.batch_size == 0):
-        print("frame count {} - writing peaks to the database...".format(frame_id - args.frame_lower))
+    if (frame_count % args.batch_size == 0):
+        print("frame count {} - writing peaks to the database...".format(frame_count))
 
         # Write out the peaks
         src_c.executemany("INSERT INTO peaks VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", mono_peaks)
