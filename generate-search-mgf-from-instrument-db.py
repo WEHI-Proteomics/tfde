@@ -7,7 +7,7 @@ import pandas as pd
 import argparse
 
 def run_process(process):
-    os.system('python {}'.format(process))
+    os.system(process)
 
 #
 # python ./otf-peak-detect/generate-search-mgf-from-instrument-db.py -dbd /Volumes/Samsung_T5/databases/ -idb /Volumes/Samsung_T5/instrument/Hela_20A_20R_500_1_01_398.d/ -dbn Hela_20A_20R_500 -smgf /Volumes/Samsung_T5/mgf/Hela_20A_20R_500-search.mgf -cems1 7 -cems2 27
@@ -36,11 +36,11 @@ number_of_batches = number_of_cores = mp.cpu_count()
 
 # convert the database
 convert_db_processes = []
-convert_db_processes.append("./otf-peak-detect/convert-db.py -sdb {} -ddb {} -nf {}".format(args.instrument_database_name, converted_db_name, args.number_of_frames))
+convert_db_processes.append("python ./otf-peak-detect/convert-db.py -sdb {} -ddb {} -nf {}".format(args.instrument_database_name, converted_db_name, args.number_of_frames))
 
 # Set up the processing pool
 pool = Pool()
-if (args.operation == 'all') or (args.operation == 'convert'):
+if (args.operation == 'all') or (args.operation == 'convert_db'):
     pool.map(run_process, convert_db_processes)
 
 # Find the complete set of ms1 frame ids to be processed
@@ -67,7 +67,7 @@ for batch_number in range(number_of_batches):
 
 # prepare to process the ms1 frames
 prep_sum_frame_ms1_processes = []
-prep_sum_frame_ms1_processes.append("./otf-peak-detect/sum-frames-ms1-prep.py -sdb {}".format(converted_db_name))
+prep_sum_frame_ms1_processes.append("python ./otf-peak-detect/sum-frames-ms1-prep.py -sdb {}".format(converted_db_name))
 
 # process the ms1 frames
 sum_frame_ms1_processes = []
@@ -75,9 +75,9 @@ peak_detect_ms1_processes = []
 cluster_detect_ms1_processes = []
 for frame_range in frame_ranges:
     destination_db_name = "{}-{}-{}.sqlite".format(frame_database_name, frame_range[0], frame_range[1])
-    sum_frame_ms1_processes.append("./otf-peak-detect/sum-frames-ms1.py -sdb {} -ddb {} -ce {} -fl {} -fu {}".format(converted_db_name, destination_db_name, args.ms1_collision_energy, frame_range[0], frame_range[1]))
-    peak_detect_ms1_processes.append("./otf-peak-detect/peak-detect-ms1.py -db {} -fl {} -fu {}".format(destination_db_name, frame_range[0], frame_range[1]))
-    cluster_detect_ms1_processes.append("./otf-peak-detect/cluster-detect-ms1.py -db {} -fl {} -fu {}".format(destination_db_name, frame_range[0], frame_range[1]))
+    sum_frame_ms1_processes.append("python ./otf-peak-detect/sum-frames-ms1.py -sdb {} -ddb {} -ce {} -fl {} -fu {}".format(converted_db_name, destination_db_name, args.ms1_collision_energy, frame_range[0], frame_range[1]))
+    peak_detect_ms1_processes.append("python ./otf-peak-detect/peak-detect-ms1.py -db {} -fl {} -fu {}".format(destination_db_name, frame_range[0], frame_range[1]))
+    cluster_detect_ms1_processes.append("python ./otf-peak-detect/cluster-detect-ms1.py -db {} -fl {} -fu {}".format(destination_db_name, frame_range[0], frame_range[1]))
 
 # execute the pipeline
 if (args.operation == 'all') or (args.operation == 'sum_frame_ms1'):
