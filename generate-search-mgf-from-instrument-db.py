@@ -33,7 +33,7 @@ number_of_batches = number_of_cores = mp.cpu_count()
 
 # convert the database
 convert_db_processes = []
-convert_db_processes.append("./otf-peak-detect/convert-db.py -sdb {} -ddb {}".format(args.instrument_database_name, converted_db_name))
+convert_db_processes.append("./otf-peak-detect/convert-db.py -sdb {} -ddb {} -nf 15000".format(args.instrument_database_name, converted_db_name))
 
 # Set up the processing pool
 pool = Pool()

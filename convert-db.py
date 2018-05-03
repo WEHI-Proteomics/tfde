@@ -128,7 +128,7 @@ stop_run = time.time()
 print("{} seconds to process run".format(stop_run-start_run))
 
 convert_info.append(("source_frame_lower", int(min_frame_id)))
-convert_info.append(("source_frame_upper", int(max_frame_id)))
+convert_info.append(("source_frame_upper", int(frame_count)))
 convert_info.append(("source_frame_count", int(frame_count)))
 convert_info.append(("num_scans", int(max_scans)))
 convert_info.append(("run processing time (sec)", float(stop_run-start_run)))
