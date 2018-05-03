@@ -125,10 +125,12 @@ dump_databases_processes.append("sqlite3 < {}".format(dump_sql_command_file_name
 combine_databases_processes = []
 combine_databases_processes.append("sqlite3 < {}".format(combine_sql_command_file_name))
 
-# detect features in the ms1 frames
-feature_detect_ms1_processes = []
-feature_detect_ms1_processes.append("./otf-peak-detect/feature-detect-ms1.py -sdb {}".format(feature_db_name))
-if (args.operation == 'all') or (args.operation == 'feature_detect_ms1'):
+if (args.operation == 'all') or (args.operation == 'combine_frame_databases'):
     pool.map(run_process, dump_databases_processes)
     pool.map(run_process, combine_databases_processes)
+
+# detect features in the ms1 frames
+feature_detect_ms1_processes = []
+feature_detect_ms1_processes.append("python ./otf-peak-detect/feature-detect-ms1.py -sdb {}".format(feature_db_name))
+if (args.operation == 'all') or (args.operation == 'feature_detect_ms1'):
     pool.map(run_process, feature_detect_ms1_processes)
