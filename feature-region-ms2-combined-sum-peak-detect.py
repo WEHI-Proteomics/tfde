@@ -78,7 +78,7 @@ def main():
     parser.add_argument('-fso','--frame_summing_offset', type=int, default=25, help='The number of MS2 source frames to shift for each summation.', required=False)
     parser.add_argument('-mzsf','--mz_scaling_factor', type=float, default=1000.0, help='Scaling factor to convert m/z range to integers.', required=False)
     parser.add_argument('-rff','--random_features_file', type=str, help='A text file containing the feature indexes to process.', required=False)
-    parser.add_argument('-bs','--batch_size', type=int, default=10000, help='The number of features to be written to the database.', required=False)
+    parser.add_argument('-bs','--batch_size', type=int, default=5000, help='The number of features to be written to the database.', required=False)
     args = parser.parse_args()
 
     if (args.random_features_file is not None) and (args.number_of_random_features is not None):
