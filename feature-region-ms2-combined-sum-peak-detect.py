@@ -231,7 +231,7 @@ def main():
 
             feature_stop_time = time.time()
             feature_count += 1
-            print("{} sec for feature {}".format(feature_stop_time-feature_start_time, feature_id))
+            print("{} sec for feature {} ({} features completed)".format(feature_stop_time-feature_start_time, feature_id, feature_count))
             print("")
 
             if (feature_count % args.batch_size) == 0:
