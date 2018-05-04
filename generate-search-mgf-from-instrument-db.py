@@ -146,7 +146,7 @@ feature_detect_ms1_processes.append("python ./otf-peak-detect/feature-detect-ms1
 # find out how many features there are
 source_conn = sqlite3.connect(feature_db_name)
 feature_info_df = pd.read_sql_query("select value from feature_info where item='features found'", source_conn)
-number_of_features = feature_info_df.values[:,0]
+number_of_features = int(feature_info_df.values[:,0])
 source_conn.close()
 
 # work out how many batches the available cores will support
