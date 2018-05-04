@@ -25,6 +25,8 @@ parser.add_argument('-cems1','--ms1_collision_energy', type=int, help='Collision
 parser.add_argument('-cems2','--ms2_collision_energy', type=int, help='Collision energy for ms2, in eV.', required=True)
 parser.add_argument('-op','--operation', type=str, default='all', help='The operation to perform.', required=False)
 parser.add_argument('-nf','--number_of_frames', type=int, help='The number of frames to convert.', required=False)
+parser.add_argument('-ml','--mz_lower', type=float, help='Lower feature m/z to process.', required=True)
+parser.add_argument('-mu','--mz_upper', type=float, help='Upper feature m/z to process.', required=True)
 args = parser.parse_args()
 
 converted_db_name = "{}/{}.sqlite".format(args.database_directory_name, args.database_base_name)
@@ -142,10 +144,33 @@ feature_region_ms2_sum_peak_detect_processes = []
 feature_detect_ms1_processes.append("python ./otf-peak-detect/feature-detect-ms1.py -db {}".format(feature_db_name))
 
 # find out how many features there are
-
+source_conn = sqlite3.connect(feature_db_name)
+feature_info_df = pd.read_sql_query("select value from feature_info where item='features found'", source_conn)
+number_of_features = feature_info_df.values[:,0]
+source_conn.close()
 
 # work out how many batches the available cores will support
 number_of_batches = number_of_cores
 batch_size = int(number_of_features / number_of_batches)
 if (batch_size * number_of_cores) < number_of_features:
     number_of_batches += 1
+
+print("number of features {}, batch size {}, number of batches {}".format(number_of_features, batch_size, number_of_batches))
+
+# work out the feature ranges for each batch
+feature_ranges = []
+for batch_number in range(number_of_batches):
+    first_feature_id = (batch_number * batch_size) + 1
+    last_feature_id = first_feature_id + batch_size - 1
+    if last_feature_id > number_of_features:
+        last_feature_id = number_of_frames
+    feature_ranges.append((first_feature_id, last_feature_id))
+
+feature_region_ms2_sum_peak_processes = []
+for feature_range in feature_ranges:
+    destination_db_name = "{}-{}-{}.sqlite".format(feature_database_name, feature_range[0], feature_range[1])
+    feature_region_ms2_sum_peak_processes.append("python ./otf-peak-detect/feature-region-ms2-combined-peak-detect.py -cdb {} -sdb {} -ddb {} -ms2ce {} -fl {} -fu {} -ml {} -mu {}".format(converted_db_name, feature_db_name, destination_db_name, args.ms2_collision_energy, feature_range[0], feature_range[1]))
+
+if (args.operation == 'all') or (args.operation == 'feature_region_ms2_peak_detect'):
+    print("detecting ms2 peaks in the feature region...")
+    pool.map(run_process, feature_region_ms2_sum_peak_processes)
