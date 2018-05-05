@@ -122,6 +122,7 @@ if args.random_features_file is not None:
     features_df = features_df.iloc[random_feature_indexes]
 features_v = features_df.values
 
+print("Detecting peaks in the ms1 region for features {}-{}".format(args.feature_id_lower, args.feature_id_upper))
 for feature in features_v:
     feature_id = int(feature[FEATURE_ID_IDX])
 
@@ -129,7 +130,6 @@ for feature in features_v:
     ms1_feature_df = pd.read_sql_query("select point_id,mz,scan,intensity from summed_ms1_regions where feature_id={} order by mz, scan asc;".format(feature_id), dest_conn)
     ms1_feature_v = ms1_feature_df.values
     if len(ms1_feature_v) > 0:
-        print("Detecting peaks in the ms1 region for feature {}".format(feature_id))
         start_feature = time.time()
         scan_lower = int(np.min(ms1_feature_v[:,REGION_POINT_SCAN_IDX]))
         scan_upper = int(np.max(ms1_feature_v[:,REGION_POINT_SCAN_IDX]))
