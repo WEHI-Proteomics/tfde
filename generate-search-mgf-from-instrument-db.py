@@ -158,7 +158,7 @@ for batch_number in range(number_of_batches):
     first_feature_id = (batch_number * batch_size) + 1
     last_feature_id = first_feature_id + batch_size - 1
     if last_feature_id > number_of_features:
-        last_feature_id = number_of_frames
+        last_feature_id = number_of_features
     feature_ranges.append((first_feature_id, last_feature_id))
 
 #
