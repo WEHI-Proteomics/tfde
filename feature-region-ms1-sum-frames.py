@@ -87,13 +87,13 @@ for feature in features_v:
     feature_scan_upper = int(feature[FEATURE_SCAN_UPPER_IDX])
     feature_mz_lower = feature[FEATURE_MZ_LOWER_IDX]
     feature_mz_upper = feature[FEATURE_MZ_UPPER_IDX]
-    print("Processing feature ID {} ({} frames)".format(feature_id, feature_end_frame-feature_start_frame))
+    print("Summing ms1 feature region for feature ID {} ({} frames)".format(feature_id, feature_end_frame-feature_start_frame))
 
     # Load the MS1 frame (summed) points for the feature's peaks
     frame_df = pd.read_sql_query("""select frame_id,mz,scan,intensity from summed_frames where (frame_id,peak_id) in (select frame_id,peak_id from peaks where (frame_id,cluster_id) in 
         (select frame_id,cluster_id from clusters where feature_id={}));""".format(feature_id), src_conn)
     frame_v = frame_df.values
-    print("frame occupies {} bytes".format(frame_v.nbytes))
+    # print("frame occupies {} bytes".format(frame_v.nbytes))
 
     # Sum the points, just as we did for MS1 frames
     pointId = 1
