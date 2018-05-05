@@ -187,6 +187,7 @@ for feature_range in feature_ranges:
 
 if (args.operation == 'all') or (args.operation == 'feature_region_ms1_sum_peak_detect'):
     print("summing ms1 frames, detecting peaks in the feature region...")
+    run_process("python ./otf-peak-detect/feature-region-ms1-sum-frames-prep.py -sdb {}".format(feature_db_name))
     pool.map(run_process, feature_region_ms1_sum_processes)
     pool.map(run_process, feature_region_ms1_peak_processes)
 
