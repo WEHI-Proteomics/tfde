@@ -107,12 +107,6 @@ def main():
     dest_c.execute("DROP TABLE IF EXISTS ms2_peaks")
     dest_c.execute("CREATE TABLE ms2_peaks (feature_id INTEGER, peak_id INTEGER, centroid_mz REAL, intensity INTEGER, PRIMARY KEY (feature_id, peak_id))")
 
-    print("Setting up indexes")
-    conv_c.execute("CREATE INDEX IF NOT EXISTS idx_frame_properties_2 ON frame_properties (collision_energy, frame_id)")
-    conv_c.execute("CREATE INDEX IF NOT EXISTS idx_frames_2 ON frames (frame_id,scan)")
-
-    src_c.execute("CREATE INDEX IF NOT EXISTS idx_features_1 ON features (feature_id,charge_state,mz_lower,mz_upper)")
-
     # Store the arguments as metadata in the database for later reference
     ms2_feature_info = []
     for arg in vars(args):
