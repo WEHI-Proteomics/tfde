@@ -13,7 +13,7 @@ args = parser.parse_args()
 src_conn = sqlite3.connect(args.source_database_name)
 src_c = src_conn.cursor()
 
-conv_conn = sqlite3.connect(args.source_database_name)
+conv_conn = sqlite3.connect(args.converted_database_name)
 conv_c = conv_conn.cursor()
 
 # Set up the tables if they don't exist already
