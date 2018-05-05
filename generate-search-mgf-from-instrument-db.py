@@ -228,18 +228,15 @@ if (args.operation == 'all') or (args.operation == 'create_search_mgf'):
     sqlFile.close()
 
     # combine the interim processing databases into the feature database
-    if (args.operation == 'all') or (args.operation == 'combine_summed_region_databases'):
-        print("dumping the summed region databases...")
-        run_process("sqlite3 < {}".format(dump_sql_command_file_name))
-        print("loading the summed region databases into a combined database for MGF processing...")
-        run_process("sqlite3 < {}".format(combine_sql_command_file_name))
+    print("dumping the summed region databases...")
+    run_process("sqlite3 < {}".format(dump_sql_command_file_name))
+    print("loading the summed region databases into a combined database for MGF processing...")
+    run_process("sqlite3 < {}".format(combine_sql_command_file_name))
 
     # deconvolve the ms2 spectra with Hardklor
-    if (args.operation == 'all') or (args.operation == 'deconvolve_ms2_spectra'):
-        print("deconvolving ms2 spectra...")
-        run_process("python ./otf-peak-detect/deconvolve-ms2-spectra.py -fdb {} -srdb {} -bfn {} -mpc {}".format(feature_db_name, destination_db_name, args.database_base_name, args.minimum_peak_correlation))
+    print("deconvolving ms2 spectra...")
+    run_process("python ./otf-peak-detect/deconvolve-ms2-spectra.py -fdb {} -srdb {} -bfn {} -mpc {}".format(feature_db_name, destination_db_name, args.database_base_name, args.minimum_peak_correlation))
 
     # create search MGF
-    if (args.operation == 'all') or (args.operation == 'create_search_mgf'):
-        print("creating the search MGF...")
-        run_process("python ./otf-peak-detect/create_search_mgf.py -fdb {} -srdb {} -bfn {} -mpc {}".format(feature_db_name, destination_db_name, args.database_base_name, args.minimum_peak_correlation))
+    print("creating the search MGF...")
+    run_process("python ./otf-peak-detect/create_search_mgf.py -fdb {} -srdb {} -bfn {} -mpc {}".format(feature_db_name, destination_db_name, args.database_base_name, args.minimum_peak_correlation))
