@@ -78,6 +78,7 @@ if args.random_features_file is not None:
     features_df = features_df.iloc[random_feature_indexes]
 features_v = features_df.values
 
+print("Summing ms1 feature region for features {}-{}".format(args.feature_id_lower, args.feature_id_upper))
 points = []
 for feature in features_v:
     feature_id = int(feature[FEATURE_ID_IDX])
@@ -87,7 +88,6 @@ for feature in features_v:
     feature_scan_upper = int(feature[FEATURE_SCAN_UPPER_IDX])
     feature_mz_lower = feature[FEATURE_MZ_LOWER_IDX]
     feature_mz_upper = feature[FEATURE_MZ_UPPER_IDX]
-    print("Summing ms1 feature region for feature ID {} ({} frames)".format(feature_id, feature_end_frame-feature_start_frame))
 
     # Load the MS1 frame (summed) points for the feature's peaks
     frame_df = pd.read_sql_query("""select frame_id,mz,scan,intensity from summed_frames where (frame_id,peak_id) in (select frame_id,peak_id from peaks where (frame_id,cluster_id) in 
