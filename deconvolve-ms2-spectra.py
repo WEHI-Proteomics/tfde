@@ -7,20 +7,35 @@ from pyteomics import mgf
 import operator
 import os.path
 import argparse
+import os
 
 DELTA_MZ = 1.003355     # Mass difference between Carbon-12 and Carbon-13 isotopes, in Da. For calculating the spacing between isotopic peaks.
 PROTON_MASS = 1.007276  # Mass of a proton in unified atomic mass units, or Da. For calculating the monoisotopic mass.
 
-parser = argparse.ArgumentParser(description='A tree descent method for MS2 peak detection.')
+def run_process(process):
+    os.system(process)
+
+parser = argparse.ArgumentParser(description='Generate a text file containing the Hardklor commands.')
 parser.add_argument('-fdb','--features_database', type=str, help='The name of the features database.', required=True)
 parser.add_argument('-srdb','--summed_regions_database', type=str, help='The name of the summed regions database.', required=True)
-parser.add_argument('-bfn','--base_mgf_filename', type=str, help='The base name of the MGF.', required=True)
+parser.add_argument('-bfn','--base_mgf_filename', type=str, help='The base name of the MGF to give Hardklor.', required=True)
 parser.add_argument('-mgfd','--mgf_directory', type=str, default='./mgf', help='The MGF directory.', required=False)
 parser.add_argument('-hkd','--hk_directory', type=str, default='./hk', help='The HK directory.', required=False)
 parser.add_argument('-shd','--search_headers_directory', type=str, default='./mgf_headers', help='The directory for the headers used to build the search MGF.', required=False)
-parser.add_argument('-mc','--minimum_correlation', type=float, default=0.6, help='Process ms2 peaks with at least this much correlation with the feature''s ms1 base peak.')
+parser.add_argument('-hcd','--hardklor_commands_directory', type=str, default='./hk_commands', help='The directory for the Hardklor commands file.', required=False)
+parser.add_argument('-mpc','--minimum_peak_correlation', type=float, default=0.6, help='Process ms2 peaks with at least this much correlation with the feature''s ms1 base peak.')
 parser.add_argument('-fps','--frames_per_second', type=float, default=2.0, help='Effective frame rate.')
 args = parser.parse_args()
+
+# make sure the processing directories exist
+if not os.path.exists(args.mgf_directory):
+    os.makedirs(args.mgf_directory)    
+if not os.path.exists(args.hk_directory):
+    os.makedirs(args.hk_directory)    
+if not os.path.exists(args.search_headers_directory):
+    os.makedirs(args.search_headers_directory)    
+if not os.path.exists(args.hardklor_commands_directory):
+    os.makedirs(args.hardklor_commands_directory)    
 
 def standard_deviation(mz):
     instrument_resolution = 40000.0
@@ -37,16 +52,6 @@ def wavg(group, avg_name, weight_name):
         return (d * w).sum() / w.sum()
     except ZeroDivisionError:
         return d.mean()
-
-tableau20 = [(31, 119, 180), (174, 199, 232), (255, 127, 14), (255, 187, 120),  
-             (44, 160, 44), (152, 223, 138), (214, 39, 40), (255, 152, 150),  
-             (148, 103, 189), (197, 176, 213), (140, 86, 75), (196, 156, 148),  
-             (227, 119, 194), (247, 182, 210), (127, 127, 127), (199, 199, 199),  
-             (188, 189, 34), (219, 219, 141), (23, 190, 207), (158, 218, 229)]
-# Rescale to values between 0 and 1 
-for i in range(len(tableau20)):  
-    r, g, b = tableau20[i]  
-    tableau20[i] = (r / 255., g / 255., b / 255.)
 
 # From "A Model-Based Method for the Prediction of the Isotopic Distribution of Peptides", Dirk Valkenborg, 
 # Ivy Jansen, and Tomasz Burzykowski, J Am Soc Mass Spectrom 2008, 19, 703–712
@@ -118,10 +123,7 @@ db_conn = sqlite3.connect(args.summed_regions_database)
 feature_ids_df = pd.read_sql_query("select distinct(feature_id) from peak_correlation", db_conn)
 db_conn.close()
 
-hk_commands_filename = "{}-hardklor-commands-correlation-{}.txt".format(args.base_mgf_filename, args.minimum_correlation)
-if os.path.isfile(hk_commands_filename):
-    os.remove(hk_commands_filename)
-hk_commands_file = open(hk_commands_filename,'w')
+hk_processes = []
 
 for feature_ids_idx in range(0,len(feature_ids_df)):
     feature_id = feature_ids_df.loc[feature_ids_idx].feature_id.astype(int)
@@ -136,7 +138,7 @@ for feature_ids_idx in range(0,len(feature_ids_df)):
 
     db_conn = sqlite3.connect(args.summed_regions_database)
     peaks_df = pd.read_sql_query("select * from summed_ms1_regions where feature_id = {} order by peak_id".format(feature_id), db_conn)
-    ms2_peaks_df = pd.read_sql_query("select * from ms2_peaks where (feature_id,peak_id) in (select feature_id,ms2_peak_id from peak_correlation where feature_id={} and correlation > {})".format(feature_id, args.minimum_correlation), db_conn)
+    ms2_peaks_df = pd.read_sql_query("select * from ms2_peaks where (feature_id,peak_id) in (select feature_id,ms2_peak_id from peak_correlation where feature_id={} and correlation > {})".format(feature_id, args.minimum_peak_correlation), db_conn)
     db_conn.close()
 
     mzs = peaks_df.groupby('peak_id').apply(wavg, "mz", "intensity").reset_index(name='mz_centroid')
@@ -201,7 +203,7 @@ for feature_ids_idx in range(0,len(feature_ids_df)):
     spectrum["m/z array"] = pairs_df.centroid_mz.values
     spectrum["intensity array"] = pairs_df.intensity.values
     params = {}
-    params["TITLE"] = "feature {}, file {}, correlation {}, model error {:.2f}, sulphurs {}".format(feature_id, args.base_mgf_filename, args.minimum_correlation, minimum_error, minimum_error_sulphur)
+    params["TITLE"] = "feature {}, file {}, correlation {}, model error {:.2f}, sulphurs {}".format(feature_id, args.base_mgf_filename, args.minimum_peak_correlation, minimum_error, minimum_error_sulphur)
     params["INSTRUMENT"] = "Bruker_timsTOF_Pro"
     params["PEPMASS"] = "{} {}".format(round(cluster_mz_centroid,6), cluster_summed_intensity)
     params["CHARGE"] = "{}+".format(charge_state)
@@ -210,9 +212,9 @@ for feature_ids_idx in range(0,len(feature_ids_df)):
     spectrum["params"] = params
     spectra.append(spectrum)
 
-    mgf_filename = "{}/{}-feature-{}-correlation-{}.mgf".format(args.mgf_directory, args.base_mgf_filename, feature_id, args.minimum_correlation)
-    hk_filename = "{}/{}-feature-{}-correlation-{}.hk".format(args.hk_directory, args.base_mgf_filename, feature_id, args.minimum_correlation)
-    header_filename = "{}/{}-feature-{}-correlation-{}.txt".format(args.search_headers_directory, args.base_mgf_filename, feature_id, args.minimum_correlation)
+    mgf_filename = "{}/{}-feature-{}-correlation-{}.mgf".format(args.mgf_directory, args.base_mgf_filename, feature_id, args.minimum_peak_correlation)
+    hk_filename = "{}/{}-feature-{}-correlation-{}.hk".format(args.hk_directory, args.base_mgf_filename, feature_id, args.minimum_peak_correlation)
+    header_filename = "{}/{}-feature-{}-correlation-{}.txt".format(args.search_headers_directory, args.base_mgf_filename, feature_id, args.minimum_peak_correlation)
 
     # write out the MGF file
     if os.path.isfile(mgf_filename):
@@ -237,7 +239,8 @@ for feature_ids_idx in range(0,len(feature_ids_df)):
     spectra.append(spectrum)
     mgf.write(output=header_filename, spectra=spectra)
 
-    # Print the Hardklor command to process it
-    print("./hardklor/hardklor -cmd -instrument TOF -resolution 40000 -centroided 1 -ms_level 2 -algorithm Version2 -charge_algorithm Quick -charge_min 1 -charge_max {} -correlation {} -mz_window 5.25 -sensitivity 2 -depth 2 -max_features 12 -distribution_area 1 -xml 0 {} {}".format(charge_state, args.minimum_correlation, mgf_filename, hk_filename), file=hk_commands_file)
+    # append the Hardklor command to process it
+    hk_processes.append("./hardklor/hardklor -cmd -instrument TOF -resolution 40000 -centroided 1 -ms_level 2 -algorithm Version2 -charge_algorithm Quick -charge_min 1 -charge_max {} -correlation {} -mz_window 5.25 -sensitivity 2 -depth 2 -max_features 12 -distribution_area 1 -xml 0 {} {}".format(charge_state, args.minimum_peak_correlation, mgf_filename, hk_filename))
 
-hk_commands_file.close()
+print("running Hardklor...")
+pool.map(run_process, hk_processes)

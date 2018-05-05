@@ -23,6 +23,7 @@ parser.add_argument('-fts','--frames_to_sum', type=int, default=150, help='The n
 parser.add_argument('-fso','--frame_summing_offset', type=int, default=25, help='The number of MS1 source frames to shift for each summation.', required=False)
 parser.add_argument('-cems1','--ms1_collision_energy', type=int, help='Collision energy for ms1, in eV.', required=True)
 parser.add_argument('-cems2','--ms2_collision_energy', type=int, help='Collision energy for ms2, in eV.', required=True)
+parser.add_argument('-mpc','--minimum_peak_correlation', type=float, help='Minimum peak correlation', required=True)
 parser.add_argument('-op','--operation', type=str, default='all', help='The operation to perform.', required=False)
 parser.add_argument('-nf','--number_of_frames', type=int, help='The number of frames to convert.', required=False)
 parser.add_argument('-ml','--mz_lower', type=float, help='Lower feature m/z to process.', required=True)
@@ -129,21 +130,15 @@ combine_databases_processes.append("sqlite3 < {}".format(combine_sql_command_fil
 if (args.operation == 'all') or (args.operation == 'combine_frame_databases'):
     print("dumping the frame databases...")
     pool.map(run_process, dump_databases_processes)
-    print("loading the frame databases into a combined database...")
+    print("loading the frame databases into a combined database for feature-based processing...")
     pool.map(run_process, combine_databases_processes)
 
 # detect features in the ms1 frames
-feature_detect_ms1_processes = []
-feature_detect_ms1_processes.append("python ./otf-peak-detect/feature-detect-ms1.py -db {}".format(feature_db_name))
 if (args.operation == 'all') or (args.operation == 'feature_detect_ms1'):
     print("detecting features...")
-    pool.map(run_process, feature_detect_ms1_processes)
+    run_process("python ./otf-peak-detect/feature-detect-ms1.py -db {}".format(feature_db_name))
 
-# detect peaks in ms2 frames
-feature_region_ms2_sum_peak_detect_processes = []
-feature_detect_ms1_processes.append("python ./otf-peak-detect/feature-detect-ms1.py -db {}".format(feature_db_name))
-
-# find out how many features there are
+# find out how many features were detected
 source_conn = sqlite3.connect(feature_db_name)
 feature_info_df = pd.read_sql_query("select value from feature_info where item='features found'", source_conn)
 number_of_features = int(feature_info_df.values[0][0])
@@ -166,6 +161,11 @@ for batch_number in range(number_of_batches):
         last_feature_id = number_of_frames
     feature_ranges.append((first_feature_id, last_feature_id))
 
+#
+# from here, split the combined features database into feature range databases
+#
+
+# detect ms2 peaks in the feature's region
 feature_region_ms2_sum_peak_processes = []
 for feature_range in feature_ranges:
     destination_db_name = "{}-{}-{}.sqlite".format(feature_database_name, feature_range[0], feature_range[1])
@@ -174,3 +174,70 @@ for feature_range in feature_ranges:
 if (args.operation == 'all') or (args.operation == 'feature_region_ms2_peak_detect'):
     print("detecting ms2 peaks in the feature region...")
     pool.map(run_process, feature_region_ms2_sum_peak_processes)
+
+# re-detect ms1 peaks in the feature's region, and calculate ms2 peak correlation
+feature_region_ms1_sum_processes = []
+feature_region_ms1_peak_processes = []
+peak_correlation_processes = []
+for feature_range in feature_ranges:
+    destination_db_name = "{}-{}-{}.sqlite".format(feature_database_name, feature_range[0], feature_range[1])
+    feature_region_ms1_sum_processes.append("python ./otf-peak-detect/feature-region-ms1-sum-frames.py -sdb {} -ddb {} -fl {} -fu {} -ml {} -mu {}".format(feature_db_name, destination_db_name, feature_range[0], feature_range[1], args.mz_lower, args.mz_upper))
+    feature_region_ms1_peak_processes.append("python ./otf-peak-detect/feature-region-ms1-peak-detect.py -sdb {} -ddb {} -fl {} -fu {} -ml {} -mu {}".format(feature_db_name, destination_db_name, feature_range[0], feature_range[1], args.mz_lower, args.mz_upper))
+    peak_correlation_processes.append("python ./otf-peak-detect/correlate-ms2-peaks.py -db {} -fl {} -fu {}".format(destination_db_name, feature_range[0], feature_range[1]))
+
+if (args.operation == 'all') or (args.operation == 'feature_region_ms1_sum_peak_detect'):
+    print("summing ms1 frames, detecting peaks in the feature region...")
+    pool.map(run_process, feature_region_ms1_sum_processes)
+    pool.map(run_process, feature_region_ms1_peak_processes)
+
+if (args.operation == 'all') or (args.operation == 'correlate_peaks'):
+    print("correlating peaks...")
+    pool.map(run_process, peak_correlation_processes)
+
+if (args.operation == 'all') or (args.operation == 'create_search_mgf'):
+
+    #
+    # recombine the feature range databases back into a combined database
+    #
+
+    # generate a SQL command file to dump all the frame databases into .sql files
+    dump_sql_command_file_name = "{}/{}-summed-regions-dump.sql".format(args.database_directory_name, args.database_base_name)
+    sqlFile = open(dump_sql_command_file_name, 'w+')
+    for feature_range in feature_ranges:
+        destination_db_name = "{}-{}-{}.sqlite".format(feature_database_name, feature_range[0], feature_range[1])
+        db_sql_name = "{}-{}-{}-summed-regions-dump.sql".format(feature_database_name, feature_range[0], feature_range[1])
+        print(".open {}".format(destination_db_name), file=sqlFile)
+        print(".mode insert", file=sqlFile)
+        print(".output {}".format(db_sql_name), file=sqlFile)
+        print(".dump", file=sqlFile)
+        print(".output", file=sqlFile)
+    print(".quit", file=sqlFile)
+    sqlFile.close()
+
+    # generate a SQL command file to load the .sql files back into the feature database
+    combine_sql_command_file_name = "{}/{}-summed-regions-combine.sql".format(args.database_directory_name, args.database_base_name)
+    sqlFile = open(combine_sql_command_file_name, 'w+')
+    feature_db_name = "{}.sqlite".format(feature_database_name)
+    print(".open {}".format(feature_db_name), file=sqlFile)
+    for feature_range in feature_ranges:
+        db_sql_name = "{}-{}-{}-summed-regions-dump.sql".format(feature_database_name, feature_range[0], feature_range[1])
+        print(".read {}".format(db_sql_name), file=sqlFile)
+    print(".quit", file=sqlFile)
+    sqlFile.close()
+
+    # combine the interim processing databases into the feature database
+    if (args.operation == 'all') or (args.operation == 'combine_summed_region_databases'):
+        print("dumping the summed region databases...")
+        run_process("sqlite3 < {}".format(dump_sql_command_file_name))
+        print("loading the summed region databases into a combined database for MGF processing...")
+        run_process("sqlite3 < {}".format(combine_sql_command_file_name))
+
+    # deconvolve the ms2 spectra with Hardklor
+    if (args.operation == 'all') or (args.operation == 'deconvolve_ms2_spectra'):
+        print("deconvolving ms2 spectra...")
+        run_process("python ./otf-peak-detect/deconvolve-ms2-spectra.py -fdb {} -srdb {} -bfn {} -mpc {}".format(feature_db_name, destination_db_name, args.database_base_name, args.minimum_peak_correlation))
+
+    # create search MGF
+    if (args.operation == 'all') or (args.operation == 'create_search_mgf'):
+        print("creating the search MGF...")
+        run_process("python ./otf-peak-detect/create_search_mgf.py -fdb {} -srdb {} -bfn {} -mpc {}".format(feature_db_name, destination_db_name, args.database_base_name, args.minimum_peak_correlation))
