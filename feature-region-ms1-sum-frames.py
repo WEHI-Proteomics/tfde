@@ -53,6 +53,7 @@ dest_c = dest_conn.cursor()
 ms1_feature_region_summing_info = []
 for arg in vars(args):
     ms1_feature_region_summing_info.append((arg, getattr(args, arg)))
+print(ms1_feature_region_summing_info)
 
 # Set up the tables if they don't exist already
 print("Setting up tables and indexes")
