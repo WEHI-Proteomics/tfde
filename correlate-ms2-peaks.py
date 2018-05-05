@@ -107,7 +107,7 @@ print("Finding peak correlations")
 for feature in features_v:
     feature_id = int(feature[FEATURE_ID_IDX])
     base_peak_id = int(feature[FEATURE_BASE_PEAK_ID_IDX])
-    print("Processing feature {}".format(feature_id))
+    print("Correlating peaks for feature {}".format(feature_id))
 
     feature_base_peak_points_df = pd.read_sql_query("""select point_id,mz,scan,intensity from summed_ms1_regions where feature_id={} and 
         peak_id={} order by scan ASC;""".format(feature_id,base_peak_id), source_conn)
