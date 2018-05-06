@@ -9,6 +9,7 @@ import operator
 import os.path
 import argparse
 import os
+from multiprocessing import Pool
 
 DELTA_MZ = 1.003355     # Mass difference between Carbon-12 and Carbon-13 isotopes, in Da. For calculating the spacing between isotopic peaks.
 PROTON_MASS = 1.007276  # Mass of a proton in unified atomic mass units, or Da. For calculating the monoisotopic mass.
@@ -241,6 +242,9 @@ for feature_ids_idx in range(0,len(feature_ids_df)):
 
     # append the Hardklor command to process it
     hk_processes.append("./hardklor/hardklor -cmd -instrument TOF -resolution 40000 -centroided 1 -ms_level 2 -algorithm Version2 -charge_algorithm Quick -charge_min 1 -charge_max {} -correlation {} -mz_window 5.25 -sensitivity 2 -depth 2 -max_features 12 -distribution_area 1 -xml 0 {} {}".format(charge_state, args.minimum_peak_correlation, mgf_filename, hk_filename))
+
+# Set up the processing pool
+pool = Pool()
 
 print("running Hardklor...")
 pool.map(run_process, hk_processes)
