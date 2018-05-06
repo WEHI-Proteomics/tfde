@@ -264,7 +264,8 @@ def merge_summed_regions_prep(source_db_name, destination_db_name):
 if (args.operation == 'all') or (args.operation == 'create_search_mgf'):
 
     # recombine the feature range databases back into a combined database
-    template_db_name = "{}-{}-{}.sqlite".format(feature_database_name, feature_ranges[0][0], feature_ranges[0][1])
+    template_feature_range = feature_ranges[0]
+    template_db_name = "{}-{}-{}.sqlite".format(feature_database_name, template_feature_range[0], template_feature_range[1])
     merge_summed_regions_prep(template_db_name, feature_db_name)
     for feature_range in feature_ranges:
         source_db_name = "{}-{}-{}.sqlite".format(feature_database_name, feature_range[0], feature_range[1])
