@@ -196,47 +196,80 @@ if (args.operation == 'all') or (args.operation == 'correlate_peaks'):
     print("correlating peaks...")
     pool.map(run_process, peak_correlation_processes)
 
+# Modified from Vladimir Garvardt's code https://gist.github.com/vgarvardt/3272957
+def merge_summed_regions(source_db_name, destination_db_name):
+    source_conn = sqlite3.connect(source_db_name)
+    src_cur = source_conn.cursor()
+    destination_conn = sqlite3.connect(destination_db_name)
+    dst_cur = destination_conn.cursor()
+
+    src_cur.execute('SELECT * from sqlite_master')
+    src_master = src_cur.fetchall()
+
+    src_tables = filter(lambda r: r['type'] == 'table', src_master)
+
+    print('found tables: %d', len(src_tables))
+    for table in src_tables:
+        dst_cur.execute(table['sql'])
+
+        print("moving data from {} table {} to {}".format(source_db_name, table['name'], destination_db_name))
+        src_cur.execute('SELECT COUNT(1) AS cnt FROM %s' % table['name'])
+        total_rows = src_cur.fetchone()['cnt']
+
+        src_cur.execute('SELECT * FROM %s' % table['name'])
+        item = 0
+        for row in src_cur:
+            item += 1
+            if item % 50000 == 0:
+                print('Processing %d / %d', item, total_rows)
+                args.dst_db.commit()
+
+            cols = row.keys()
+            query = 'INSERT INTO %(tbl)s (%(cols)s) VALUES (%(phold)s)' % {
+                'tbl': table['name'],
+                'cols': ','.join(cols),
+                'phold': ','.join(('?',) * len(cols))
+                }
+            dst_cur.execute(query, [row[col] for col in cols])
+
+        args.dst_db.commit()
+
+    source_conn.close()
+    destination_conn.close()
+
+def merge_summed_regions_prep(source_db_name, destination_db_name):
+    source_conn = sqlite3.connect(source_db_name)
+    src_cur = source_conn.cursor()
+    destination_conn = sqlite3.connect(destination_db_name)
+    dst_cur = destination_conn.cursor()
+
+    src_cur.execute('SELECT * from sqlite_master')
+    src_master = src_cur.fetchall()
+
+    src_tables = filter(lambda r: r['type'] == 'table', src_master)
+
+    print('found tables: %d', len(src_tables))
+    for table in src_tables:
+        # delete table in the destination db, if it exists
+        dst_cur.execute("DROP TABLE IF EXISTS " + table['name'])
+
+        # create the table structure
+        dst_cur.execute(table['sql'])
+
+        destination_conn.commit()
+        
+    source_conn.close()
+    destination_conn.close()
+
 if (args.operation == 'all') or (args.operation == 'create_search_mgf'):
 
-    #
     # recombine the feature range databases back into a combined database
-    #
-
-    # for each feature range, generate a .SQL file to dump the contents
-    database_dump_processes = []
-    database_combine_processes = []
+    template_db_name = "{}-{}-{}.sqlite".format(feature_database_name, feature_ranges[0][0], feature_ranges[0][1])
+    merge_summed_regions_prep(template_db_name, feature_db_name)
     for feature_range in feature_ranges:
-        # generate the file
-        destination_db_name = "{}-{}-{}.sqlite".format(feature_database_name, feature_range[0], feature_range[1])
-        db_sql_dump_commands_name = "{}-{}-{}-summed-regions-dump-command.sql".format(feature_database_name, feature_range[0], feature_range[1])
-        db_sql_dump_output_name = "{}-{}-{}-summed-regions-dump-output.sql".format(feature_database_name, feature_range[0], feature_range[1])
-        sqlFile = open(db_sql_dump_commands_name, 'w+')
-        print(".open {}".format(destination_db_name), file=sqlFile)
-        print(".mode insert", file=sqlFile)
-        print(".output {}".format(db_sql_dump_output_name), file=sqlFile)
-        print(".dump", file=sqlFile)
-        print(".output", file=sqlFile)
-        print(".quit", file=sqlFile)
-        sqlFile.close()
-        # add it to the list for processing
-        database_dump_processes.append("sqlite3 < {}".format(db_sql_dump_commands_name))  # can be done in parallel
-
-        db_sql_combine_commands_name = "{}-{}-{}-summed-regions-combine-command.sql".format(feature_database_name, feature_range[0], feature_range[1])
-        sqlFile = open(db_sql_combine_commands_name, 'w+')
-        print(".open {}".format(feature_db_name), file=sqlFile)
-        print(".read {}".format(db_sql_dump_output_name), file=sqlFile)
-        print(".quit", file=sqlFile)
-        sqlFile.close()
-        # add it to the list for processing
-        database_combine_processes.append("sqlite3 < {}".format(db_sql_combine_commands_name))  # must be done in series
-
-    # combine the interim processing databases into the feature database
-    print("dumping the summed region databases...")
-    pool.map(run_process, database_dump_processes)
-    print("loading the summed region databases into a combined database for MGF processing...")
-    for database_combine_process in database_combine_processes:
-        print("loading {}".format(database_combine_process))
-        run_process(database_combine_process)
+        source_db_name = "{}-{}-{}.sqlite".format(feature_database_name, feature_range[0], feature_range[1])
+        print("merging {} into {}".format(source_db_name, feature_db_name))
+        merge_summed_regions(source_db_name, feature_db_name)
 
     # deconvolve the ms2 spectra with Hardklor
     print("deconvolving ms2 spectra...")
