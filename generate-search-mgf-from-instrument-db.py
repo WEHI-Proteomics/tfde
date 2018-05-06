@@ -245,6 +245,7 @@ def merge_summed_regions_prep(source_db_name, destination_db_name):
 
     src_cur.execute('SELECT * from sqlite_master')
     src_master = src_cur.fetchall()
+    print(src_master)
 
     src_tables = filter(lambda r: r['type'] == 'table', src_master)
 
