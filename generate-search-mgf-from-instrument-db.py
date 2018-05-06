@@ -210,7 +210,7 @@ if (args.operation == 'all') or (args.operation == 'create_search_mgf'):
         destination_db_name = "{}-{}-{}.sqlite".format(feature_database_name, feature_range[0], feature_range[1])
         db_sql_dump_commands_name = "{}-{}-{}-summed-regions-dump-command.sql".format(feature_database_name, feature_range[0], feature_range[1])
         db_sql_dump_output_name = "{}-{}-{}-summed-regions-dump-output.sql".format(feature_database_name, feature_range[0], feature_range[1])
-        sqlFile = open(db_sql_name, 'w+')
+        sqlFile = open(db_sql_dump_commands_name, 'w+')
         print(".open {}".format(destination_db_name), file=sqlFile)
         print(".mode insert", file=sqlFile)
         print(".output {}".format(db_sql_dump_output_name), file=sqlFile)
