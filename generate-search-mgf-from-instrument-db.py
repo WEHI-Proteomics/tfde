@@ -202,11 +202,11 @@ def merge_summed_regions(source_db_name, destination_db_name):
     destination_conn = sqlite3.connect(destination_db_name)
     dst_cur = destination_conn.cursor()
 
-    df = pd.read_sql_query("SELECT name,sql FROM sqlite_master WHERE type='table'", source_conn)
+    df = pd.read_sql_query("SELECT name,sql FROMtbl_ sqlite_master WHERE type='table'", source_conn)
     for t_idx in range(0,len(df)):
-        print("merging {}".format(df.loc[t_idx].name))
-        table_df = pd.read_sql_query("SELECT * FROM {}".format(df.loc[t_idx].name), source_conn)
-        table_df.to_sql(df.loc[t_idx].name, destination_conn, if_exists='append')
+        print("merging {}".format(df.loc[t_idx].tbl_name))
+        table_df = pd.read_sql_query("SELECT * FROM {}".format(df.loc[t_idx].tbl_name), source_conn)
+        table_df.to_sql(df.loc[t_idx].tbl_name, destination_conn, if_exists='append')
 
     source_conn.close()
     destination_conn.commit()
@@ -217,10 +217,10 @@ def merge_summed_regions_prep(source_db_name, destination_db_name):
     destination_conn = sqlite3.connect(destination_db_name)
     dst_cur = destination_conn.cursor()
 
-    df = pd.read_sql_query("SELECT name,sql FROM sqlite_master WHERE type='table'", source_conn)
+    df = pd.read_sql_query("SELECT tbl_name,sql FROM sqlite_master WHERE type='table'", source_conn)
     for t_idx in range(0,len(df)):
-        print("preparing {}".format(df.loc[t_idx].name))
-        dst_cur.execute("drop table if exists {}".format(df.loc[t_idx].name))
+        print("preparing {}".format(df.loc[t_idx].tbl_name))
+        dst_cur.execute("drop table if exists {}".format(df.loc[t_idx].tbl_name))
         dst_cur.execute(df.loc[t_idx].sql)
 
     source_conn.close()
