@@ -9,6 +9,37 @@ import argparse
 def run_process(process):
     os.system(process)
 
+def merge_summed_regions(source_db_name, destination_db_name):
+    source_conn = sqlite3.connect(source_db_name)
+    src_cur = source_conn.cursor()
+    destination_conn = sqlite3.connect(destination_db_name)
+    dst_cur = destination_conn.cursor()
+
+    df = pd.read_sql_query("SELECT tbl_name,sql FROM sqlite_master WHERE type='table'", source_conn)
+    for t_idx in range(0,len(df)):
+        print("merging {}".format(df.loc[t_idx].tbl_name))
+        table_df = pd.read_sql_query("SELECT * FROM {}".format(df.loc[t_idx].tbl_name), source_conn)
+        table_df.to_sql(name=df.loc[t_idx].tbl_name, con=destination_conn, if_exists='append', index=False, chunksize=10000)
+
+    source_conn.close()
+    destination_conn.commit()
+    destination_conn.close()
+
+def merge_summed_regions_prep(source_db_name, destination_db_name):
+    source_conn = sqlite3.connect(source_db_name)
+    destination_conn = sqlite3.connect(destination_db_name)
+    dst_cur = destination_conn.cursor()
+
+    df = pd.read_sql_query("SELECT tbl_name,sql FROM sqlite_master WHERE type='table'", source_conn)
+    for t_idx in range(0,len(df)):
+        print("preparing {}".format(df.loc[t_idx].tbl_name))
+        dst_cur.execute("drop table if exists {}".format(df.loc[t_idx].tbl_name))
+        dst_cur.execute(df.loc[t_idx].sql)
+
+    source_conn.close()
+    destination_conn.commit()
+    destination_conn.close()
+
 #
 # python ./otf-peak-detect/generate-search-mgf-from-instrument-db.py -dbd /Volumes/Samsung_T5/databases/ -idb /Volumes/Samsung_T5/instrument/Hela_20A_20R_500_1_01_398.d/ -dbn Hela_20A_20R_500 -smgf /Volumes/Samsung_T5/mgf/Hela_20A_20R_500-search.mgf -cems1 7 -cems2 27
 #
@@ -37,23 +68,21 @@ feature_database_name = "{}/{}-features".format(args.database_directory_name, ar
 # find out about the compute environment
 number_of_batches = number_of_cores = mp.cpu_count()
 
-# convert the database
-convert_db_processes = []
-convert_db_processes.append("python ./otf-peak-detect/convert-db.py -sdb {} -ddb {} -nf {}".format(args.instrument_database_name, converted_db_name, args.number_of_frames))
-
 # Set up the processing pool
 pool = Pool()
-if (args.operation == 'all') or (args.operation == 'convert_db'):
-    pool.map(run_process, convert_db_processes)
 
-# Find the complete set of ms1 frame ids to be processed
+# convert the instrument database
+if (args.operation == 'all') or (args.operation == 'convert_db'):
+    run_process("python ./otf-peak-detect/convert-db.py -sdb {} -ddb {} -nf {}".format(args.instrument_database_name, converted_db_name, args.number_of_frames))
+
+# find the complete set of ms1 frame ids to be processed
 source_conn = sqlite3.connect(converted_db_name)
 frame_ids_df = pd.read_sql_query("select frame_id from frame_properties where collision_energy={} order by frame_id ASC;".format(args.ms1_collision_energy), source_conn)
 frame_ids = tuple(frame_ids_df.values[:,0])
 number_of_frames = 1 + int(((len(frame_ids) - args.frames_to_sum) / args.frame_summing_offset))
 source_conn.close()
 
-# Work out how many batches the available cores will support
+# work out how many batches the available cores will support
 batch_size = int(number_of_frames / number_of_batches)
 if (batch_size * number_of_cores) < number_of_frames:
     number_of_batches += 1
@@ -68,10 +97,6 @@ for batch_number in range(number_of_batches):
         last_frame_id = number_of_frames
     frame_ranges.append((first_frame_id, last_frame_id))
 
-# prepare to process the ms1 frames
-prep_sum_frame_ms1_processes = []
-prep_sum_frame_ms1_processes.append("python ./otf-peak-detect/sum-frames-ms1-prep.py -sdb {}".format(converted_db_name))
-
 # process the ms1 frames
 sum_frame_ms1_processes = []
 peak_detect_ms1_processes = []
@@ -82,56 +107,21 @@ for frame_range in frame_ranges:
     peak_detect_ms1_processes.append("python ./otf-peak-detect/peak-detect-ms1.py -db {} -fl {} -fu {}".format(destination_db_name, frame_range[0], frame_range[1]))
     cluster_detect_ms1_processes.append("python ./otf-peak-detect/cluster-detect-ms1.py -db {} -fl {} -fu {}".format(destination_db_name, frame_range[0], frame_range[1]))
 
-# execute the pipeline
-if (args.operation == 'all') or (args.operation == 'sum_frame_ms1'):
-    pool.map(run_process, prep_sum_frame_ms1_processes)
-    pool.map(run_process, sum_frame_ms1_processes)
-if (args.operation == 'all') or (args.operation == 'peak_detect_ms1'):
-    pool.map(run_process, peak_detect_ms1_processes)
+# detect clusters in the ms1 frames
 if (args.operation == 'all') or (args.operation == 'cluster_detect_ms1'):
+    run_process("python ./otf-peak-detect/sum-frames-ms1-prep.py -sdb {}".format(converted_db_name))
+    pool.map(run_process, sum_frame_ms1_processes)
+    pool.map(run_process, peak_detect_ms1_processes)
     pool.map(run_process, cluster_detect_ms1_processes)
 
-#
-# generate a SQL command file to dump all the frame databases into .sql files
-#
-dump_sql_command_file_name = "{}/{}-dump.sql".format(args.database_directory_name, args.database_base_name)
-sqlFile = open(dump_sql_command_file_name, 'w+')
-for frame_range in frame_ranges:
-    destination_db_name = "{}-{}-{}.sqlite".format(frame_database_name, frame_range[0], frame_range[1])
-    db_sql_name = "{}-{}-{}-dump.sql".format(frame_database_name, frame_range[0], frame_range[1])
-    print(".open {}".format(destination_db_name), file=sqlFile)
-    print(".mode insert", file=sqlFile)
-    print(".output {}".format(db_sql_name), file=sqlFile)
-    print(".dump", file=sqlFile)
-    print(".output", file=sqlFile)
-print(".quit", file=sqlFile)
-sqlFile.close()
-
-#
-# generate a SQL command file to load the .sql files into a combined database
-#
-combine_sql_command_file_name = "{}/{}-combine.sql".format(args.database_directory_name, args.database_base_name)
-sqlFile = open(combine_sql_command_file_name, 'w+')
-feature_db_name = "{}.sqlite".format(feature_database_name)
-print(".open --new {}".format(feature_db_name), file=sqlFile)
-for frame_range in frame_ranges:
-    db_sql_name = "{}-{}-{}-dump.sql".format(frame_database_name, frame_range[0], frame_range[1])
-    print(".read {}".format(db_sql_name), file=sqlFile)
-print(".quit", file=sqlFile)
-sqlFile.close()
-
-# combine the interim processing databases into a feature database
-dump_databases_processes = []
-dump_databases_processes.append("sqlite3 < {}".format(dump_sql_command_file_name))
-
-combine_databases_processes = []
-combine_databases_processes.append("sqlite3 < {}".format(combine_sql_command_file_name))
-
-if (args.operation == 'all') or (args.operation == 'combine_frame_databases'):
-    print("dumping the frame databases...")
-    pool.map(run_process, dump_databases_processes)
-    print("loading the frame databases into a combined database for feature-based processing...")
-    pool.map(run_process, combine_databases_processes)
+    # recombine the frame range databases back into a combined database
+    template_frame_range = frame_ranges[0]
+    template_db_name = "{}-{}-{}.sqlite".format(frame_database_name, template_frame_range[0], template_frame_range[1])
+    merge_summed_regions_prep(template_db_name, frame_database_name)
+    for frame_range in frame_ranges:
+        source_db_name = "{}-{}-{}.sqlite".format(frame_database_name, frame_range[0], frame_range[1])
+        print("merging {} into {}".format(source_db_name, frame_database_name))
+        merge_summed_regions(source_db_name, frame_database_name)
 
 # detect features in the ms1 frames
 if (args.operation == 'all') or (args.operation == 'feature_detect_ms1'):
@@ -196,52 +186,21 @@ if (args.operation == 'all') or (args.operation == 'correlate_peaks'):
     print("correlating peaks...")
     pool.map(run_process, peak_correlation_processes)
 
-def merge_summed_regions(source_db_name, destination_db_name):
-    source_conn = sqlite3.connect(source_db_name)
-    src_cur = source_conn.cursor()
-    destination_conn = sqlite3.connect(destination_db_name)
-    dst_cur = destination_conn.cursor()
-
-    df = pd.read_sql_query("SELECT tbl_name,sql FROM sqlite_master WHERE type='table'", source_conn)
-    for t_idx in range(0,len(df)):
-        print("merging {}".format(df.loc[t_idx].tbl_name))
-        table_df = pd.read_sql_query("SELECT * FROM {}".format(df.loc[t_idx].tbl_name), source_conn)
-        table_df.to_sql(name=df.loc[t_idx].tbl_name, con=destination_conn, if_exists='append', index=False, chunksize=10000)
-
-    source_conn.close()
-    destination_conn.commit()
-    destination_conn.close()
-
-def merge_summed_regions_prep(source_db_name, destination_db_name):
-    source_conn = sqlite3.connect(source_db_name)
-    destination_conn = sqlite3.connect(destination_db_name)
-    dst_cur = destination_conn.cursor()
-
-    df = pd.read_sql_query("SELECT tbl_name,sql FROM sqlite_master WHERE type='table'", source_conn)
-    for t_idx in range(0,len(df)):
-        print("preparing {}".format(df.loc[t_idx].tbl_name))
-        dst_cur.execute("drop table if exists {}".format(df.loc[t_idx].tbl_name))
-        dst_cur.execute(df.loc[t_idx].sql)
-
-    source_conn.close()
-    destination_conn.commit()
-    destination_conn.close()
-
 if (args.operation == 'all') or (args.operation == 'create_search_mgf'):
-
     # recombine the feature range databases back into a combined database
     template_feature_range = feature_ranges[0]
+    destination_db_name = "{}.sqlite".format(feature_database_name)
     template_db_name = "{}-{}-{}.sqlite".format(feature_database_name, template_feature_range[0], template_feature_range[1])
-    merge_summed_regions_prep(template_db_name, feature_db_name)
+    merge_summed_regions_prep(template_db_name, destination_db_name)
     for feature_range in feature_ranges:
         source_db_name = "{}-{}-{}.sqlite".format(feature_database_name, feature_range[0], feature_range[1])
         print("merging {} into {}".format(source_db_name, feature_db_name))
-        merge_summed_regions(source_db_name, feature_db_name)
+        merge_summed_regions(source_db_name, destination_db_name)
 
     # deconvolve the ms2 spectra with Hardklor
     print("deconvolving ms2 spectra...")
-    run_process("python ./otf-peak-detect/deconvolve-ms2-spectra.py -fdb {} -srdb {} -bfn {} -mpc {}".format(feature_db_name, destination_db_name, args.database_base_name, args.minimum_peak_correlation))
+    run_process("python ./otf-peak-detect/deconvolve-ms2-spectra.py -fdb {} -bfn {} -mpc {}".format(destination_db_name, args.database_base_name, args.minimum_peak_correlation))
 
     # create search MGF
     print("creating the search MGF...")
-    run_process("python ./otf-peak-detect/create_search_mgf.py -fdb {} -srdb {} -bfn {} -mpc {}".format(feature_db_name, destination_db_name, args.database_base_name, args.minimum_peak_correlation))
+    run_process("python ./otf-peak-detect/create_search_mgf.py -fdb {} -bfn {} -mpc {}".format(destination_db_name, args.database_base_name, args.minimum_peak_correlation))
