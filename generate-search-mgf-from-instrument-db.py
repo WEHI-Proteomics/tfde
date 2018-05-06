@@ -213,7 +213,7 @@ if (args.operation == 'all') or (args.operation == 'create_search_mgf'):
         sqlFile = open(db_sql_name, 'w+')
         print(".open {}".format(destination_db_name), file=sqlFile)
         print(".mode insert", file=sqlFile)
-        print(".output {}".format(db_sql_output_name), file=sqlFile)
+        print(".output {}".format(db_sql_dump_output_name), file=sqlFile)
         print(".dump", file=sqlFile)
         print(".output", file=sqlFile)
         print(".quit", file=sqlFile)
