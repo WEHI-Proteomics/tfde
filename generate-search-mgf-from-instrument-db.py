@@ -202,36 +202,41 @@ if (args.operation == 'all') or (args.operation == 'create_search_mgf'):
     # recombine the feature range databases back into a combined database
     #
 
-    # generate a SQL command file to dump all the frame databases into .sql files
-    dump_sql_command_file_name = "{}/{}-summed-regions-dump.sql".format(args.database_directory_name, args.database_base_name)
-    sqlFile = open(dump_sql_command_file_name, 'w+')
+    # for each feature range, generate a .SQL file to dump the contents
+    database_dump_processes = []
+    database_combine_processes = []
     for feature_range in feature_ranges:
+        # generate the file
         destination_db_name = "{}-{}-{}.sqlite".format(feature_database_name, feature_range[0], feature_range[1])
-        db_sql_name = "{}-{}-{}-summed-regions-dump.sql".format(feature_database_name, feature_range[0], feature_range[1])
+        db_sql_dump_commands_name = "{}-{}-{}-summed-regions-dump-command.sql".format(feature_database_name, feature_range[0], feature_range[1])
+        db_sql_dump_output_name = "{}-{}-{}-summed-regions-dump-output.sql".format(feature_database_name, feature_range[0], feature_range[1])
+        sqlFile = open(db_sql_name, 'w+')
         print(".open {}".format(destination_db_name), file=sqlFile)
         print(".mode insert", file=sqlFile)
-        print(".output {}".format(db_sql_name), file=sqlFile)
+        print(".output {}".format(db_sql_output_name), file=sqlFile)
         print(".dump", file=sqlFile)
         print(".output", file=sqlFile)
-    print(".quit", file=sqlFile)
-    sqlFile.close()
+        print(".quit", file=sqlFile)
+        sqlFile.close()
+        # add it to the list for processing
+        database_dump_processes.append("sqlite3 < {}".format(db_sql_dump_commands_name))  # can be done in parallel
 
-    # generate a SQL command file to load the .sql files back into the feature database
-    combine_sql_command_file_name = "{}/{}-summed-regions-combine.sql".format(args.database_directory_name, args.database_base_name)
-    sqlFile = open(combine_sql_command_file_name, 'w+')
-    feature_db_name = "{}.sqlite".format(feature_database_name)
-    print(".open {}".format(feature_db_name), file=sqlFile)
-    for feature_range in feature_ranges:
-        db_sql_name = "{}-{}-{}-summed-regions-dump.sql".format(feature_database_name, feature_range[0], feature_range[1])
-        print(".read {}".format(db_sql_name), file=sqlFile)
-    print(".quit", file=sqlFile)
-    sqlFile.close()
+        db_sql_combine_commands_name = "{}-{}-{}-summed-regions-combine-command.sql".format(feature_database_name, feature_range[0], feature_range[1])
+        sqlFile = open(db_sql_combine_commands_name, 'w+')
+        print(".open {}".format(feature_db_name), file=sqlFile)
+        print(".read {}".format(db_sql_dump_output_name), file=sqlFile)
+        print(".quit", file=sqlFile)
+        sqlFile.close()
+        # add it to the list for processing
+        database_combine_processes.append("sqlite3 < {}".format(db_sql_combine_commands_name))  # must be done in series
 
     # combine the interim processing databases into the feature database
     print("dumping the summed region databases...")
-    run_process("sqlite3 < {}".format(dump_sql_command_file_name))
+    pool.map(run_process, database_dump_processes)
     print("loading the summed region databases into a combined database for MGF processing...")
-    run_process("sqlite3 < {}".format(combine_sql_command_file_name))
+    for database_combine_process in database_combine_processes:
+        print("loading {}".format(database_combine_process))
+        run_process(database_combine_process)
 
     # deconvolve the ms2 spectra with Hardklor
     print("deconvolving ms2 spectra...")
