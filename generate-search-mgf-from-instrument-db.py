@@ -196,70 +196,35 @@ if (args.operation == 'all') or (args.operation == 'correlate_peaks'):
     print("correlating peaks...")
     pool.map(run_process, peak_correlation_processes)
 
-# Modified from Vladimir Garvardt's code https://gist.github.com/vgarvardt/3272957
 def merge_summed_regions(source_db_name, destination_db_name):
     source_conn = sqlite3.connect(source_db_name)
     src_cur = source_conn.cursor()
     destination_conn = sqlite3.connect(destination_db_name)
     dst_cur = destination_conn.cursor()
 
-    src_cur.execute('SELECT * from sqlite_master')
-    src_master = src_cur.fetchall()
-
-    src_tables = filter(lambda r: r['type'] == 'table', src_master)
-
-    print('found tables: %d', len(src_tables))
-    for table in src_tables:
-        dst_cur.execute(table['sql'])
-
-        print("moving data from {} table {} to {}".format(source_db_name, table['name'], destination_db_name))
-        src_cur.execute('SELECT COUNT(1) AS cnt FROM %s' % table['name'])
-        total_rows = src_cur.fetchone()['cnt']
-
-        src_cur.execute('SELECT * FROM %s' % table['name'])
-        item = 0
-        for row in src_cur:
-            item += 1
-            if item % 50000 == 0:
-                print('Processing %d / %d', item, total_rows)
-                args.dst_db.commit()
-
-            cols = row.keys()
-            query = 'INSERT INTO %(tbl)s (%(cols)s) VALUES (%(phold)s)' % {
-                'tbl': table['name'],
-                'cols': ','.join(cols),
-                'phold': ','.join(('?',) * len(cols))
-                }
-            dst_cur.execute(query, [row[col] for col in cols])
-
-        args.dst_db.commit()
+    df = pd.read_sql_query("SELECT name,sql FROM sqlite_master WHERE type='table'", source_conn)
+    for t_idx in range(0,len(df)):
+        print("merging {}".format(df.loc[t_idx].name))
+        table_df = pd.read_sql_query("SELECT * FROM {}".format(df.loc[t_idx].name), source_conn)
+        table_df.to_sql(df.loc[t_idx].name, destination_conn, if_exists='append')
 
     source_conn.close()
+    destination_conn.commit()
     destination_conn.close()
 
 def merge_summed_regions_prep(source_db_name, destination_db_name):
     source_conn = sqlite3.connect(source_db_name)
-    src_cur = source_conn.cursor()
     destination_conn = sqlite3.connect(destination_db_name)
     dst_cur = destination_conn.cursor()
 
-    src_cur.execute('SELECT * from sqlite_master')
-    src_master = src_cur.fetchall()
-    print(src_master)
+    df = pd.read_sql_query("SELECT name,sql FROM sqlite_master WHERE type='table'", source_conn)
+    for t_idx in range(0,len(df)):
+        print("preparing {}".format(df.loc[t_idx].name))
+        dst_cur.execute("drop table if exists {}".format(df.loc[t_idx].name))
+        dst_cur.execute(df.loc[t_idx].sql)
 
-    src_tables = filter(lambda r: r['type'] == 'table', src_master)
-
-    print('found tables: %d', len(src_tables))
-    for table in src_tables:
-        # delete table in the destination db, if it exists
-        dst_cur.execute("DROP TABLE IF EXISTS " + table['name'])
-
-        # create the table structure
-        dst_cur.execute(table['sql'])
-
-        destination_conn.commit()
-        
     source_conn.close()
+    destination_conn.commit()
     destination_conn.close()
 
 if (args.operation == 'all') or (args.operation == 'create_search_mgf'):
