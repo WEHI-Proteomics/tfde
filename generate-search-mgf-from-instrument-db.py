@@ -198,7 +198,7 @@ if (args.operation == 'all') or (args.operation == 'recombine_feature_databases'
         print("merging {} into {}".format(source_db_name, feature_database_name))
         merge_summed_regions(source_db_name, feature_database_name)
 
-if (args.operation == 'all') or (args.operation == 'deconcolve_ms2_spectra'):
+if (args.operation == 'all') or (args.operation == 'deconvolve_ms2_spectra'):
     # deconvolve the ms2 spectra with Hardklor
     print("deconvolving ms2 spectra...")
     run_process("python ./otf-peak-detect/deconvolve-ms2-spectra.py -fdb {} -bfn {} -mpc {}".format(feature_database_name, args.database_base_name, args.minimum_peak_correlation))
