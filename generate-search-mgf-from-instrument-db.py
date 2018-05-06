@@ -188,7 +188,7 @@ if (args.operation == 'all') or (args.operation == 'correlate_peaks'):
     print("correlating peaks...")
     pool.map(run_process, peak_correlation_processes)
 
-if (args.operation == 'all') or (args.operation == 'create_search_mgf'):
+if (args.operation == 'all') or (args.operation == 'recombine_feature_databases'):
     # recombine the feature range databases back into a combined database
     template_feature_range = feature_ranges[0]
     template_db_name = "{}-{}-{}.sqlite".format(feature_database_root, template_feature_range[0], template_feature_range[1])
@@ -198,10 +198,12 @@ if (args.operation == 'all') or (args.operation == 'create_search_mgf'):
         print("merging {} into {}".format(source_db_name, feature_database_name))
         merge_summed_regions(source_db_name, feature_database_name)
 
+if (args.operation == 'all') or (args.operation == 'deconcolve_ms2_spectra'):
     # deconvolve the ms2 spectra with Hardklor
     print("deconvolving ms2 spectra...")
     run_process("python ./otf-peak-detect/deconvolve-ms2-spectra.py -fdb {} -bfn {} -mpc {}".format(feature_database_name, args.database_base_name, args.minimum_peak_correlation))
 
+if (args.operation == 'all') or (args.operation == 'create_search_mgf'):
     # create search MGF
     print("creating the search MGF...")
     run_process("python ./otf-peak-detect/create_search_mgf.py -fdb {} -bfn {} -mpc {}".format(feature_database_name, args.database_base_name, args.minimum_peak_correlation))
