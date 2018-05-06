@@ -10,7 +10,7 @@ import argparse
 PROTON_MASS = 1.0073  # Mass of a proton in unified atomic mass units, or Da. For calculating the monoisotopic mass.
 
 parser = argparse.ArgumentParser(description='A tree descent method for MS2 peak detection.')
-parser.add_argument('-srdb','--summed_regions_database', type=str, help='The name of the summed regions database.', required=True)
+parser.add_argument('-fdb','--features_database', type=str, help='The name of the features database.', required=True)
 parser.add_argument('-bfn','--base_mgf_filename', type=str, help='The base name of the MGF.', required=True)
 parser.add_argument('-mgfd','--mgf_directory', type=str, default='./mgf', help='The MGF directory.', required=False)
 parser.add_argument('-hkd','--hk_directory', type=str, default='./hk', help='The HK directory.', required=False)
@@ -24,13 +24,13 @@ if not os.path.exists(args.output_directory):
     os.makedirs(args.output_directory)    
 
 print("Setting up tables and indexes")
-db_conn = sqlite3.connect(args.summed_regions_database)
+db_conn = sqlite3.connect(args.features_database)
 # db_conn.cursor().execute("DROP TABLE IF EXISTS deconvoluted_ions")
 db_conn.cursor().execute("CREATE TABLE IF NOT EXISTS deconvoluted_ions (feature_id INTEGER, minimum_correlation REAL, ion_id INTEGER, mz REAL, intensity INTEGER, PRIMARY KEY (feature_id, minimum_correlation, ion_id))")
 db_conn.cursor().execute("delete from deconvoluted_ions where minimum_correlation={}".format(args.minimum_correlation))
 db_conn.close()
 
-db_conn = sqlite3.connect(args.summed_regions_database)
+db_conn = sqlite3.connect(args.features_database)
 feature_ids_df = pd.read_sql_query("select distinct(feature_id) from peak_correlation", db_conn)
 db_conn.close()
 
@@ -80,7 +80,7 @@ for feature_ids_idx in range(0,len(feature_ids_df)):
                 file_handler.write("{}".format(item))
 
 print("Write out the deconvoluted ions")
-db_conn = sqlite3.connect(args.summed_regions_database)
+db_conn = sqlite3.connect(args.features_database)
 db_conn.cursor().executemany("INSERT INTO deconvoluted_ions (feature_id, minimum_correlation, ion_id, mz, intensity) VALUES (?, ?, ?, ?, ?)", deconvoluted_ions)
 db_conn.commit()
 db_conn.close()

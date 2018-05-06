@@ -17,7 +17,6 @@ def run_process(process):
 
 parser = argparse.ArgumentParser(description='Generate a text file containing the Hardklor commands.')
 parser.add_argument('-fdb','--features_database', type=str, help='The name of the features database.', required=True)
-parser.add_argument('-srdb','--summed_regions_database', type=str, help='The name of the summed regions database.', required=True)
 parser.add_argument('-bfn','--base_mgf_filename', type=str, help='The base name of the MGF to give Hardklor.', required=True)
 parser.add_argument('-mgfd','--mgf_directory', type=str, default='./mgf', help='The MGF directory.', required=False)
 parser.add_argument('-hkd','--hk_directory', type=str, default='./hk', help='The HK directory.', required=False)
@@ -115,11 +114,11 @@ def peak_ratio(monoisotopic_mass, peak_number, number_of_sulphur):
     return ratio
 
 print("Setting up indexes")
-db_conn = sqlite3.connect(args.summed_regions_database)
+db_conn = sqlite3.connect(args.features_database)
 db_conn.cursor().execute("CREATE INDEX IF NOT EXISTS idx_peak_correlation_1 ON peak_correlation (feature_id)")
 db_conn.close()
 
-db_conn = sqlite3.connect(args.summed_regions_database)
+db_conn = sqlite3.connect(args.features_database)
 feature_ids_df = pd.read_sql_query("select distinct(feature_id) from peak_correlation", db_conn)
 db_conn.close()
 
@@ -136,7 +135,7 @@ for feature_ids_idx in range(0,len(feature_ids_df)):
     db_conn.close()
 
 
-    db_conn = sqlite3.connect(args.summed_regions_database)
+    db_conn = sqlite3.connect(args.features_database)
     peaks_df = pd.read_sql_query("select * from summed_ms1_regions where feature_id = {} order by peak_id".format(feature_id), db_conn)
     ms2_peaks_df = pd.read_sql_query("select * from ms2_peaks where (feature_id,peak_id) in (select feature_id,ms2_peak_id from peak_correlation where feature_id={} and correlation > {})".format(feature_id, args.minimum_peak_correlation), db_conn)
     db_conn.close()
