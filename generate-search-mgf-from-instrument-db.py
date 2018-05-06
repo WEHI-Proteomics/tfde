@@ -206,7 +206,7 @@ def merge_summed_regions(source_db_name, destination_db_name):
     for t_idx in range(0,len(df)):
         print("merging {}".format(df.loc[t_idx].tbl_name))
         table_df = pd.read_sql_query("SELECT * FROM {}".format(df.loc[t_idx].tbl_name), source_conn)
-        table_df.to_sql(df.loc[t_idx].tbl_name, destination_conn, if_exists='append')
+        table_df.to_sql(name=df.loc[t_idx].tbl_name, con=destination_conn, if_exists='append', index=False, chunksize=10000)
 
     source_conn.close()
     destination_conn.commit()
