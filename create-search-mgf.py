@@ -16,7 +16,7 @@ parser.add_argument('-mgfd','--mgf_directory', type=str, default='./mgf', help='
 parser.add_argument('-hkd','--hk_directory', type=str, default='./hk', help='The HK directory.', required=False)
 parser.add_argument('-shd','--search_headers_directory', type=str, default='./mgf_headers', help='The directory for the headers used to build the search MGF.', required=False)
 parser.add_argument('-od','--output_directory', type=str, default='./mgf/search/', help='The directory for the search MGF.', required=False)
-parser.add_argument('-mc','--minimum_correlation', type=float, default=0.6, help='Process ms2 peaks with at least this much correlation with the feature''s ms1 base peak.')
+parser.add_argument('-mpc','--minimum_peak_correlation', type=float, default=0.6, help='Process ms2 peaks with at least this much correlation with the feature''s ms1 base peak.')
 args = parser.parse_args()
 
 # make sure the output directory exist
@@ -27,14 +27,14 @@ print("Setting up tables and indexes")
 db_conn = sqlite3.connect(args.features_database)
 # db_conn.cursor().execute("DROP TABLE IF EXISTS deconvoluted_ions")
 db_conn.cursor().execute("CREATE TABLE IF NOT EXISTS deconvoluted_ions (feature_id INTEGER, minimum_correlation REAL, ion_id INTEGER, mz REAL, intensity INTEGER, PRIMARY KEY (feature_id, minimum_correlation, ion_id))")
-db_conn.cursor().execute("delete from deconvoluted_ions where minimum_correlation={}".format(args.minimum_correlation))
+db_conn.cursor().execute("delete from deconvoluted_ions where minimum_correlation={}".format(args.minimum_peak_correlation))
 db_conn.close()
 
 db_conn = sqlite3.connect(args.features_database)
 feature_ids_df = pd.read_sql_query("select distinct(feature_id) from peak_correlation", db_conn)
 db_conn.close()
 
-mgf_filename = "{}/{}-search-correlation-{}.mgf".format(args.output_directory, args.base_mgf_filename, args.minimum_correlation)
+mgf_filename = "{}/{}-search-correlation-{}.mgf".format(args.output_directory, args.base_mgf_filename, args.minimum_peak_correlation)
 if os.path.isfile(mgf_filename):
     os.remove(mgf_filename)
 
@@ -45,8 +45,8 @@ for feature_ids_idx in range(0,len(feature_ids_df)):
     ion_id = 0
     print("Processing feature {}".format(feature_id))
 
-    hk_filename = "{}/{}-feature-{}-correlation-{}.hk".format(args.hk_directory, args.base_mgf_filename, feature_id, args.minimum_correlation)
-    header_filename = "{}/{}-feature-{}-correlation-{}.txt".format(args.search_headers_directory, args.base_mgf_filename, feature_id, args.minimum_correlation)
+    hk_filename = "{}/{}-feature-{}-correlation-{}.hk".format(args.hk_directory, args.base_mgf_filename, feature_id, args.minimum_peak_correlation)
+    header_filename = "{}/{}-feature-{}-correlation-{}.txt".format(args.search_headers_directory, args.base_mgf_filename, feature_id, args.minimum_peak_correlation)
 
     # parse the Hardklor output to create the search MGF
     # see https://proteome.gs.washington.edu/software/hardklor/docs/hardklorresults.html
@@ -66,7 +66,7 @@ for feature_ids_idx in range(0,len(feature_ids_df)):
             index, data = row
             fragments.append("{} {}\n".format(round(data.monoisotopic_mass,4), data.intensity.astype(int)))
             ion_id += 1
-            deconvoluted_ions.append((int(feature_id), float(args.minimum_correlation), int(ion_id), round(data.monoisotopic_mass,4), int(data.intensity)))
+            deconvoluted_ions.append((int(feature_id), float(args.minimum_peak_correlation), int(ion_id), round(data.monoisotopic_mass,4), int(data.intensity)))
 
         with open(mgf_filename, 'a') as file_handler:
             # write the header
