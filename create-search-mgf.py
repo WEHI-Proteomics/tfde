@@ -15,7 +15,7 @@ parser.add_argument('-bfn','--base_mgf_filename', type=str, help='The base name 
 parser.add_argument('-mgfd','--mgf_directory', type=str, default='./mgf', help='The MGF directory.', required=False)
 parser.add_argument('-hkd','--hk_directory', type=str, default='./hk', help='The HK directory.', required=False)
 parser.add_argument('-shd','--search_headers_directory', type=str, default='./mgf_headers', help='The directory for the headers used to build the search MGF.', required=False)
-parser.add_argument('-od','--output_directory', type=str, default='./mgf/search/', help='The directory for the search MGF.', required=False)
+parser.add_argument('-od','--output_directory', type=str, default='./mgf/search', help='The directory for the search MGF.', required=False)
 parser.add_argument('-mpc','--minimum_peak_correlation', type=float, default=0.6, help='Process ms2 peaks with at least this much correlation with the feature''s ms1 base peak.')
 args = parser.parse_args()
 
