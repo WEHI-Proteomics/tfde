@@ -79,7 +79,9 @@ for feature_ids_idx in range(0,len(feature_ids_df)):
             for item in header_content[len(header_content)-1:]:
                 file_handler.write("{}".format(item))
 
-print("Write out the deconvoluted ions")
+print("writing out the search MGF to {}".format(mgf_filename))
+
+# store the deconvoluted ions in the database
 db_conn = sqlite3.connect(args.features_database)
 db_conn.cursor().executemany("INSERT INTO deconvoluted_ions (feature_id, minimum_correlation, ion_id, mz, intensity) VALUES (?, ?, ?, ?, ?)", deconvoluted_ions)
 db_conn.commit()
