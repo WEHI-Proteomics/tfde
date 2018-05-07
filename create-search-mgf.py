@@ -28,6 +28,7 @@ db_conn = sqlite3.connect(args.features_database)
 # db_conn.cursor().execute("DROP TABLE IF EXISTS deconvoluted_ions")
 db_conn.cursor().execute("CREATE TABLE IF NOT EXISTS deconvoluted_ions (feature_id INTEGER, minimum_correlation REAL, ion_id INTEGER, mz REAL, intensity INTEGER, PRIMARY KEY (feature_id, minimum_correlation, ion_id))")
 db_conn.cursor().execute("delete from deconvoluted_ions where minimum_correlation={}".format(args.minimum_peak_correlation))
+db_conn.commit()
 db_conn.close()
 
 db_conn = sqlite3.connect(args.features_database)
