@@ -206,4 +206,4 @@ if (args.operation == 'all') or (args.operation == 'deconvolve_ms2_spectra'):
 if (args.operation == 'all') or (args.operation == 'create_search_mgf'):
     # create search MGF
     print("creating the search MGF...")
-    run_process("python ./otf-peak-detect/create_search_mgf.py -fdb {} -bfn {} -mpc {}".format(feature_database_name, args.database_base_name, args.minimum_peak_correlation))
+    run_process("python ./otf-peak-detect/create-search-mgf.py -fdb {} -bfn {} -mpc {}".format(feature_database_name, args.database_base_name, args.minimum_peak_correlation))
