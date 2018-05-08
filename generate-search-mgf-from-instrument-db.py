@@ -5,6 +5,7 @@ from multiprocessing import Pool
 import sqlite3
 import pandas as pd
 import argparse
+import time
 
 def run_process(process):
     os.system(process)
@@ -61,11 +62,14 @@ parser.add_argument('-ml','--mz_lower', type=float, help='Lower feature m/z to p
 parser.add_argument('-mu','--mz_upper', type=float, help='Upper feature m/z to process.', required=True)
 args = parser.parse_args()
 
+processing_times = []
+processing_start_time = time.time()
+
 converted_db_name = "{}/{}.sqlite".format(args.database_directory_name, args.database_base_name)
-frame_database_root = "{}/{}-frames".format(args.database_directory_name, args.database_base_name)
-frame_database_name = "{}.sqlite".format(frame_database_root)
-feature_database_root = "{}/{}-features".format(args.database_directory_name, args.database_base_name)
-feature_database_name = "{}.sqlite".format(feature_database_root)
+frame_database_root = "{}/{}-frames".format(args.database_directory_name, args.database_base_name)  # used to split the data into frame-based sections
+frame_database_name = converted_db_name  # combined the frame-based sections back into the converted database
+feature_database_root = "{}/{}-features".format(args.database_directory_name, args.database_base_name)  # used to split the data into feature-based sections
+feature_database_name = converted_db_name  # combined the feature-based sections back into the converted database
 
 # find out about the compute environment
 number_of_batches = number_of_cores = mp.cpu_count()
@@ -73,9 +77,14 @@ number_of_batches = number_of_cores = mp.cpu_count()
 # Set up the processing pool
 pool = Pool()
 
+convert_start_time = time.time()
+
 # convert the instrument database
 if (args.operation == 'all') or (args.operation == 'convert_db'):
     run_process("python ./otf-peak-detect/convert-db.py -sdb {} -ddb {} -nf {}".format(args.instrument_database_name, converted_db_name, args.number_of_frames))
+
+convert_stop_time = time.time()
+processing_times.append(("database conversion", convert_stop_time-convert_start_time))
 
 # find the complete set of ms1 frame ids to be processed
 source_conn = sqlite3.connect(converted_db_name)
@@ -111,10 +120,18 @@ for frame_range in frame_ranges:
 
 # detect clusters in the ms1 frames
 if (args.operation == 'all') or (args.operation == 'cluster_detect_ms1'):
+
+    cluster_detect_start_time = time.time()
+
     run_process("python ./otf-peak-detect/sum-frames-ms1-prep.py -sdb {}".format(converted_db_name))
     pool.map(run_process, sum_frame_ms1_processes)
     pool.map(run_process, peak_detect_ms1_processes)
     pool.map(run_process, cluster_detect_ms1_processes)
+
+    cluster_detect_stop_time = time.time()
+    processing_times.append(("cluster detect", cluster_detect_stop_time-cluster_detect_start_time))
+
+    recombine_frames_start_time = time.time()
 
     # recombine the frame range databases back into a combined database
     template_frame_range = frame_ranges[0]
@@ -125,10 +142,18 @@ if (args.operation == 'all') or (args.operation == 'cluster_detect_ms1'):
         print("merging {} into {}".format(source_db_name, frame_database_name))
         merge_summed_regions(source_db_name, frame_database_name)
 
+    recombine_frames_stop_time = time.time()
+    processing_times.append(("frame-based recombine", recombine_frames_stop_time-recombine_frames_start_time))
+
 # detect features in the ms1 frames
 if (args.operation == 'all') or (args.operation == 'feature_detect_ms1'):
+    feature_detect_start_time = time.time()
+
     print("detecting features...")
     run_process("python ./otf-peak-detect/feature-detect-ms1.py -db {}".format(feature_database_name))
+
+    feature_detect_stop_time = time.time()
+    processing_times.append(("feature detect ms1", feature_detect_stop_time-feature_detect_start_time))
 
 # find out how many features were detected
 source_conn = sqlite3.connect(feature_database_name)
@@ -164,9 +189,12 @@ for feature_range in feature_ranges:
     feature_region_ms2_sum_peak_processes.append("python ./otf-peak-detect/feature-region-ms2-combined-sum-peak-detect.py -cdb {} -sdb {} -ddb {} -ms2ce {} -fl {} -fu {} -ml {} -mu {} -bs 20".format(converted_db_name, feature_database_name, destination_db_name, args.ms2_collision_energy, feature_range[0], feature_range[1], args.mz_lower, args.mz_upper))
 
 if (args.operation == 'all') or (args.operation == 'feature_region_ms2_peak_detect'):
+    ms2_peak_detect_start_time = time.time()
     run_process("python ./otf-peak-detect/feature-region-ms2-combined-sum-peak-detect-prep.py -cdb {} -sdb {}".format(converted_db_name, feature_database_name))
     print("detecting ms2 peaks in the feature region...")
     pool.map(run_process, feature_region_ms2_sum_peak_processes)
+    ms2_peak_detect_stop_time = time.time()
+    processing_times.append(("feature region ms2 peak detect", ms2_peak_detect_stop_time-ms2_peak_detect_start_time))
 
 # re-detect ms1 peaks in the feature's region, and calculate ms2 peak correlation
 feature_region_ms1_sum_processes = []
@@ -179,17 +207,24 @@ for feature_range in feature_ranges:
     peak_correlation_processes.append("python ./otf-peak-detect/correlate-ms2-peaks.py -db {} -fl {} -fu {}".format(destination_db_name, feature_range[0], feature_range[1]))
 
 if (args.operation == 'all') or (args.operation == 'feature_region_ms1_peak_detect'):
+    ms1_peak_detect_start_time = time.time()
     print("summing ms1 frames, detecting peaks in the feature region...")
     run_process("python ./otf-peak-detect/feature-region-ms1-sum-frames-prep.py -sdb {}".format(feature_database_name))
     pool.map(run_process, feature_region_ms1_sum_processes)
     pool.map(run_process, feature_region_ms1_peak_processes)
+    ms1_peak_detect_stop_time = time.time()
+    processing_times.append(("feature region ms1 peak detect", ms1_peak_detect_stop_time-ms1_peak_detect_start_time))
 
 if (args.operation == 'all') or (args.operation == 'correlate_peaks'):
+    peak_correlation_start_time = time.time()
     print("correlating peaks...")
     pool.map(run_process, peak_correlation_processes)
+    peak_correlation_stop_time = time.time()
+    processing_times.append(("peak correlation", peak_correlation_stop_time-peak_correlation_start_time))
 
 if (args.operation == 'all') or (args.operation == 'recombine_feature_databases'):
     # recombine the feature range databases back into a combined database
+    recombine_feature_databases_start_time = time.time()
     template_feature_range = feature_ranges[0]
     template_db_name = "{}-{}-{}.sqlite".format(feature_database_root, template_feature_range[0], template_feature_range[1])
     merge_summed_regions_prep(template_db_name, feature_database_name)
@@ -197,13 +232,26 @@ if (args.operation == 'all') or (args.operation == 'recombine_feature_databases'
         source_db_name = "{}-{}-{}.sqlite".format(feature_database_root, feature_range[0], feature_range[1])
         print("merging {} into {}".format(source_db_name, feature_database_name))
         merge_summed_regions(source_db_name, feature_database_name)
+    recombine_feature_databases_stop_time = time.time()
+    processing_times.append(("feature recombine", recombine_feature_databases_stop_time-recombine_feature_databases_start_time))
 
 if (args.operation == 'all') or (args.operation == 'deconvolve_ms2_spectra'):
     # deconvolve the ms2 spectra with Hardklor
+    deconvolve_ms2_spectra_start_time = time.time()
     print("deconvolving ms2 spectra...")
     run_process("python ./otf-peak-detect/deconvolve-ms2-spectra.py -fdb {} -bfn {} -mpc {}".format(feature_database_name, args.database_base_name, args.minimum_peak_correlation))
+    deconvolve_ms2_spectra_stop_time = time.time()
+    processing_times.append(("deconvolve ms2 spectra", deconvolve_ms2_spectra_stop_time-deconvolve_ms2_spectra_start_time))
 
 if (args.operation == 'all') or (args.operation == 'create_search_mgf'):
     # create search MGF
+    create_search_mgf_start_time = time.time()
     print("creating the search MGF...")
     run_process("python ./otf-peak-detect/create-search-mgf.py -fdb {} -bfn {} -mpc {}".format(feature_database_name, args.database_base_name, args.minimum_peak_correlation))
+    create_search_mgf_stop_time = time.time()
+    processing_times.append(("create search mgf", create_search_mgf_stop_time-create_search_mgf_stop_time))
+
+processing_stop_time = time.time()
+processing_times.append(("total processing", processing_stop_time-processing_start_time))
+for t in processing_times:
+    print("{}: {} seconds".format(t[0], t[1]))
