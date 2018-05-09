@@ -20,23 +20,25 @@ def run_process(process):
 parser = argparse.ArgumentParser(description='Generate a text file containing the Hardklor commands.')
 parser.add_argument('-fdb','--features_database', type=str, help='The name of the features database.', required=True)
 parser.add_argument('-bfn','--base_mgf_filename', type=str, help='The base name of the MGF to give Hardklor.', required=True)
-parser.add_argument('-mgfd','--mgf_directory', type=str, default='./mgf', help='The MGF directory.', required=False)
-parser.add_argument('-hkd','--hk_directory', type=str, default='./hk', help='The HK directory.', required=False)
-parser.add_argument('-shd','--search_headers_directory', type=str, default='./mgf_headers', help='The directory for the headers used to build the search MGF.', required=False)
-parser.add_argument('-hcd','--hardklor_commands_directory', type=str, default='./hk_commands', help='The directory for the Hardklor commands file.', required=False)
+parser.add_argument('-dbd','--data_directory', type=str, help='The directory for the processing data.', required=True)
 parser.add_argument('-mpc','--minimum_peak_correlation', type=float, default=0.6, help='Process ms2 peaks with at least this much correlation with the feature''s ms1 base peak.')
 parser.add_argument('-fps','--frames_per_second', type=float, default=2.0, help='Effective frame rate.')
 args = parser.parse_args()
 
+mgf_directory = "{}/mgf".format(args.data_directory)
+hk_directory = "{}/hk".format(args.data_directory)
+search_headers_directory = "{}/search-headers".format(args.data_directory)
+hardklor_commands_directory = "{}/hardklor-commands".format(args.data_directory)
+
 # make sure the processing directories exist
-if not os.path.exists(args.mgf_directory):
-    os.makedirs(args.mgf_directory)    
-if not os.path.exists(args.hk_directory):
-    os.makedirs(args.hk_directory)    
-if not os.path.exists(args.search_headers_directory):
-    os.makedirs(args.search_headers_directory)    
-if not os.path.exists(args.hardklor_commands_directory):
-    os.makedirs(args.hardklor_commands_directory)    
+if not os.path.exists(mgf_directory):
+    os.makedirs(mgf_directory)    
+if not os.path.exists(hk_directory):
+    os.makedirs(hk_directory)    
+if not os.path.exists(search_headers_directory):
+    os.makedirs(search_headers_directory)    
+if not os.path.exists(hardklor_commands_directory):
+    os.makedirs(hardklor_commands_directory)    
 
 def standard_deviation(mz):
     instrument_resolution = 40000.0
@@ -217,9 +219,9 @@ for feature_ids_idx in range(0,len(feature_ids_df)):
     spectrum["params"] = params
     spectra.append(spectrum)
 
-    mgf_filename = "{}/{}-feature-{}-correlation-{}.mgf".format(args.mgf_directory, args.base_mgf_filename, feature_id, args.minimum_peak_correlation)
-    hk_filename = "{}/{}-feature-{}-correlation-{}.hk".format(args.hk_directory, args.base_mgf_filename, feature_id, args.minimum_peak_correlation)
-    header_filename = "{}/{}-feature-{}-correlation-{}.txt".format(args.search_headers_directory, args.base_mgf_filename, feature_id, args.minimum_peak_correlation)
+    mgf_filename = "{}/{}-feature-{}-correlation-{}.mgf".format(mgf_directory, args.base_mgf_filename, feature_id, args.minimum_peak_correlation)
+    hk_filename = "{}/{}-feature-{}-correlation-{}.hk".format(hk_directory, args.base_mgf_filename, feature_id, args.minimum_peak_correlation)
+    header_filename = "{}/{}-feature-{}-correlation-{}.txt".format(search_headers_directory, args.base_mgf_filename, feature_id, args.minimum_peak_correlation)
 
     # write out the MGF file
     if os.path.isfile(mgf_filename):

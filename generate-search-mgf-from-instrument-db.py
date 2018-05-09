@@ -42,12 +42,13 @@ def merge_summed_regions_prep(source_db_name, destination_db_name):
     destination_conn.close()
 
 #
-# python ./otf-peak-detect/generate-search-mgf-from-instrument-db.py -dbd /Volumes/Samsung_T5/databases/ -idb /Volumes/Samsung_T5/instrument/Hela_20A_20R_500_1_01_398.d/ -dbn Hela_20A_20R_500 -smgf /Volumes/Samsung_T5/mgf/Hela_20A_20R_500-search.mgf -cems1 7 -cems2 27
+# source activate py27
+# nohup python -u ./otf-peak-detect/generate-search-mgf-from-instrument-db.py -dbd ./data -idb /media/data-drive/Hela_20A_20R_500_1_01_398.d/ -dbn subset-Hela_20A_20R_500 -smgf ./data/subset-Hela_20A_20R_500-search.mgf -cems1 7 -cems2 27 -nf 6000 -ml 440 -mu 550 -mpc 0.9 > subset-Hela_20A_20R_500.log &
 #
 
 # Process the command line arguments
 parser = argparse.ArgumentParser(description='Generates the search MGF from the instrument database.')
-parser.add_argument('-dbd','--database_directory_name', type=str, help='The directory for the databases.', required=True)
+parser.add_argument('-dbd','--data_directory', type=str, help='The directory for the processing data.', required=True)
 parser.add_argument('-idb','--instrument_database_name', type=str, help='The name of the instrument database.', required=True)
 parser.add_argument('-dbn','--database_base_name', type=str, help='The base name of the destination databases.', required=True)
 parser.add_argument('-smgf','--search_mgf_name', type=str, help='File name of the generated search MGF.', required=True)
@@ -65,10 +66,14 @@ args = parser.parse_args()
 processing_times = []
 processing_start_time = time.time()
 
-converted_db_name = "{}/{}.sqlite".format(args.database_directory_name, args.database_base_name)
-frame_database_root = "{}/{}-frames".format(args.database_directory_name, args.database_base_name)  # used to split the data into frame-based sections
+# make sure the processing directories exist
+if not os.path.exists(args.database_directory):
+    os.makedirs(args.database_directory)    
+
+converted_db_name = "{}/{}.sqlite".format(args.data_directory, args.database_base_name)
+frame_database_root = "{}/{}-frames".format(args.data_directory, args.database_base_name)  # used to split the data into frame-based sections
 frame_database_name = converted_db_name  # combined the frame-based sections back into the converted database
-feature_database_root = "{}/{}-features".format(args.database_directory_name, args.database_base_name)  # used to split the data into feature-based sections
+feature_database_root = "{}/{}-features".format(args.data_directory, args.database_base_name)  # used to split the data into feature-based sections
 feature_database_name = converted_db_name  # combined the feature-based sections back into the converted database
 
 # find out about the compute environment
@@ -239,7 +244,7 @@ if (args.operation == 'all') or (args.operation == 'deconvolve_ms2_spectra'):
     # deconvolve the ms2 spectra with Hardklor
     deconvolve_ms2_spectra_start_time = time.time()
     print("deconvolving ms2 spectra...")
-    run_process("python ./otf-peak-detect/deconvolve-ms2-spectra.py -fdb {} -bfn {} -mpc {}".format(feature_database_name, args.database_base_name, args.minimum_peak_correlation))
+    run_process("python ./otf-peak-detect/deconvolve-ms2-spectra.py -fdb {} -bfn {} -dbd {} -mpc {}".format(feature_database_name, args.database_base_name, args.data_directory, args.minimum_peak_correlation))
     deconvolve_ms2_spectra_stop_time = time.time()
     processing_times.append(("deconvolve ms2 spectra", deconvolve_ms2_spectra_stop_time-deconvolve_ms2_spectra_start_time))
 
@@ -247,11 +252,11 @@ if (args.operation == 'all') or (args.operation == 'create_search_mgf'):
     # create search MGF
     create_search_mgf_start_time = time.time()
     print("creating the search MGF...")
-    run_process("python ./otf-peak-detect/create-search-mgf.py -fdb {} -bfn {} -mpc {}".format(feature_database_name, args.database_base_name, args.minimum_peak_correlation))
+    run_process("python ./otf-peak-detect/create-search-mgf.py -fdb {} -bfn {} -dbd {} -mpc {}".format(feature_database_name, args.database_base_name, args.data_directory, args.minimum_peak_correlation))
     create_search_mgf_stop_time = time.time()
     processing_times.append(("create search mgf", create_search_mgf_stop_time-create_search_mgf_stop_time))
 
 processing_stop_time = time.time()
 processing_times.append(("total processing", processing_stop_time-processing_start_time))
 for t in processing_times:
-    print("{}: {} seconds".format(t[0], t[1]))
+    print("{}, {} seconds, {:.2f}%".format(t[0], t[1], t[1]/(processing_stop_time-processing_start_time)))

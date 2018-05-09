@@ -12,16 +12,24 @@ PROTON_MASS = 1.0073  # Mass of a proton in unified atomic mass units, or Da. Fo
 parser = argparse.ArgumentParser(description='A tree descent method for MS2 peak detection.')
 parser.add_argument('-fdb','--features_database', type=str, help='The name of the features database.', required=True)
 parser.add_argument('-bfn','--base_mgf_filename', type=str, help='The base name of the MGF.', required=True)
-parser.add_argument('-mgfd','--mgf_directory', type=str, default='./mgf', help='The MGF directory.', required=False)
-parser.add_argument('-hkd','--hk_directory', type=str, default='./hk', help='The HK directory.', required=False)
-parser.add_argument('-shd','--search_headers_directory', type=str, default='./mgf_headers', help='The directory for the headers used to build the search MGF.', required=False)
-parser.add_argument('-od','--output_directory', type=str, default='./mgf/search', help='The directory for the search MGF.', required=False)
+parser.add_argument('-dbd','--data_directory', type=str, help='The directory for the processing data.', required=True)
 parser.add_argument('-mpc','--minimum_peak_correlation', type=float, default=0.6, help='Process ms2 peaks with at least this much correlation with the feature''s ms1 base peak.')
 args = parser.parse_args()
 
+mgf_directory = "{}/mgf".format(args.data_directory)
+hk_directory = "{}/hk".format(args.data_directory)
+search_headers_directory = "{}/search-headers".format(args.data_directory)
+output_directory = "{}/search".format(mgf_directory)
+
 # make sure the output directory exist
-if not os.path.exists(args.output_directory):
-    os.makedirs(args.output_directory)    
+if not os.path.exists(mgf_directory):
+    os.makedirs(mgf_directory)    
+if not os.path.exists(hk_directory):
+    os.makedirs(hk_directory)    
+if not os.path.exists(search_headers_directory):
+    os.makedirs(search_headers_directory)    
+if not os.path.exists(output_directory):
+    os.makedirs(output_directory)    
 
 print("Setting up tables and indexes")
 db_conn = sqlite3.connect(args.features_database)
@@ -35,7 +43,7 @@ db_conn = sqlite3.connect(args.features_database)
 feature_ids_df = pd.read_sql_query("select distinct(feature_id) from peak_correlation", db_conn)
 db_conn.close()
 
-mgf_filename = "{}/{}-search-correlation-{}.mgf".format(args.output_directory, args.base_mgf_filename, args.minimum_peak_correlation)
+mgf_filename = "{}/{}-search-correlation-{}.mgf".format(output_directory, args.base_mgf_filename, args.minimum_peak_correlation)
 if os.path.isfile(mgf_filename):
     os.remove(mgf_filename)
 
@@ -46,8 +54,8 @@ for feature_ids_idx in range(0,len(feature_ids_df)):
     ion_id = 0
     print("Processing feature {}".format(feature_id))
 
-    hk_filename = "{}/{}-feature-{}-correlation-{}.hk".format(args.hk_directory, args.base_mgf_filename, feature_id, args.minimum_peak_correlation)
-    header_filename = "{}/{}-feature-{}-correlation-{}.txt".format(args.search_headers_directory, args.base_mgf_filename, feature_id, args.minimum_peak_correlation)
+    hk_filename = "{}/{}-feature-{}-correlation-{}.hk".format(hk_directory, args.base_mgf_filename, feature_id, args.minimum_peak_correlation)
+    header_filename = "{}/{}-feature-{}-correlation-{}.txt".format(search_headers_directory, args.base_mgf_filename, feature_id, args.minimum_peak_correlation)
 
     # parse the Hardklor output to create the search MGF
     # see https://proteome.gs.washington.edu/software/hardklor/docs/hardklorresults.html
