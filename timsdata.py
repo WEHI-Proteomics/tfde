@@ -98,14 +98,17 @@ class TimsData:
             
     def __callConversionFunc (self, frame_id, input_data, func):
 
-        if input_data.dtype != np.float64:
-            raise ValueError("input data must be a float64 np.array")
+        if type(input_data) is np.ndarray and input_data.dtype == np.float64:
+            # already "native" format understood by DLL -> avoid extra copy
+            in_array = input_data
+        else:
+            # convert data to format understood by DLL:
+            in_array = np.array(input_data, dtype=np.float64)
 
-        cnt = len(input_data)
-
+        cnt = len(in_array)
         out = np.empty(shape=cnt, dtype=np.float64)
         success = func(self.handle, frame_id,
-                       input_data.ctypes.data_as(POINTER(c_double)),
+                       in_array.ctypes.data_as(POINTER(c_double)),
                        out.ctypes.data_as(POINTER(c_double)),
                        cnt)
 
