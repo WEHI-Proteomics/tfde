@@ -67,8 +67,8 @@ processing_times = []
 processing_start_time = time.time()
 
 # make sure the processing directories exist
-if not os.path.exists(args.database_directory):
-    os.makedirs(args.database_directory)    
+if not os.path.exists(args.data_directory):
+    os.makedirs(args.data_directory)    
 
 converted_db_name = "{}/{}.sqlite".format(args.data_directory, args.database_base_name)
 frame_database_root = "{}/{}-frames".format(args.data_directory, args.database_base_name)  # used to split the data into frame-based sections
