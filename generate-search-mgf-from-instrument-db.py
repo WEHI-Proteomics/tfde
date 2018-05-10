@@ -51,7 +51,6 @@ parser = argparse.ArgumentParser(description='Generates the search MGF from the 
 parser.add_argument('-dbd','--data_directory', type=str, help='The directory for the processing data.', required=True)
 parser.add_argument('-idb','--instrument_database_name', type=str, help='The name of the instrument database.', required=True)
 parser.add_argument('-dbn','--database_base_name', type=str, help='The base name of the destination databases.', required=True)
-parser.add_argument('-smgf','--search_mgf_name', type=str, help='File name of the generated search MGF.', required=True)
 parser.add_argument('-fts','--frames_to_sum', type=int, default=150, help='The number of MS1 source frames to sum.', required=False)
 parser.add_argument('-fso','--frame_summing_offset', type=int, default=25, help='The number of MS1 source frames to shift for each summation.', required=False)
 parser.add_argument('-cems1','--ms1_collision_energy', type=int, help='Collision energy for ms1, in eV.', required=True)
@@ -86,7 +85,10 @@ convert_start_time = time.time()
 
 # convert the instrument database
 if (args.operation == 'all') or (args.operation == 'convert_db'):
-    run_process("python ./otf-peak-detect/convert-db.py -sdb {} -ddb {} -nf {}".format(args.instrument_database_name, converted_db_name, args.number_of_frames))
+    if args.number_of_frames is not None:
+        run_process("python ./otf-peak-detect/convert-db.py -sdb {} -ddb {} -nf {}".format(args.instrument_database_name, converted_db_name, args.number_of_frames))
+    else:
+        run_process("python ./otf-peak-detect/convert-db.py -sdb {} -ddb {}".format(args.instrument_database_name, converted_db_name))
 
 convert_stop_time = time.time()
 processing_times.append(("database conversion", convert_stop_time-convert_start_time))
