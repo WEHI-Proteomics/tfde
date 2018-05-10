@@ -69,11 +69,11 @@ processing_start_time = time.time()
 if not os.path.exists(args.data_directory):
     os.makedirs(args.data_directory)    
 
-converted_db_name = "{}/{}.sqlite".format(args.data_directory, args.database_base_name)
+converted_database_name = "{}/{}.sqlite".format(args.data_directory, args.database_base_name)
 frame_database_root = "{}/{}-frames".format(args.data_directory, args.database_base_name)  # used to split the data into frame-based sections
-frame_database_name = converted_db_name  # combined the frame-based sections back into the converted database
+frame_database_name = converted_database_name  # combined the frame-based sections back into the converted database
 feature_database_root = "{}/{}-features".format(args.data_directory, args.database_base_name)  # used to split the data into feature-based sections
-feature_database_name = converted_db_name  # combined the feature-based sections back into the converted database
+feature_database_name = converted_database_name  # combined the feature-based sections back into the converted database
 
 # find out about the compute environment
 number_of_batches = number_of_cores = mp.cpu_count()
@@ -86,15 +86,15 @@ convert_start_time = time.time()
 # convert the instrument database
 if (args.operation == 'all') or (args.operation == 'convert_db'):
     if args.number_of_frames is not None:
-        run_process("python ./otf-peak-detect/convert-db.py -sdb {} -ddb {} -nf {}".format(args.instrument_database_name, converted_db_name, args.number_of_frames))
+        run_process("python ./otf-peak-detect/convert-db.py -sdb {} -ddb {} -nf {}".format(args.instrument_database_name, converted_database_name, args.number_of_frames))
     else:
-        run_process("python ./otf-peak-detect/convert-db.py -sdb {} -ddb {}".format(args.instrument_database_name, converted_db_name))
+        run_process("python ./otf-peak-detect/convert-db.py -sdb {} -ddb {}".format(args.instrument_database_name, converted_database_name))
 
 convert_stop_time = time.time()
 processing_times.append(("database conversion", convert_stop_time-convert_start_time))
 
 # find the complete set of ms1 frame ids to be processed
-source_conn = sqlite3.connect(converted_db_name)
+source_conn = sqlite3.connect(converted_database_name)
 frame_ids_df = pd.read_sql_query("select frame_id from frame_properties where collision_energy={} order by frame_id ASC;".format(args.ms1_collision_energy), source_conn)
 frame_ids = tuple(frame_ids_df.values[:,0])
 number_of_frames = 1 + int(((len(frame_ids) - args.frames_to_sum) / args.frame_summing_offset))
@@ -121,7 +121,7 @@ peak_detect_ms1_processes = []
 cluster_detect_ms1_processes = []
 for frame_range in frame_ranges:
     destination_db_name = "{}-{}-{}.sqlite".format(frame_database_root, frame_range[0], frame_range[1])
-    sum_frame_ms1_processes.append("python ./otf-peak-detect/sum-frames-ms1.py -sdb {} -ddb {} -ce {} -fl {} -fu {}".format(converted_db_name, destination_db_name, args.ms1_collision_energy, frame_range[0], frame_range[1]))
+    sum_frame_ms1_processes.append("python ./otf-peak-detect/sum-frames-ms1.py -sdb {} -ddb {} -ce {} -fl {} -fu {}".format(converted_database_name, destination_db_name, args.ms1_collision_energy, frame_range[0], frame_range[1]))
     peak_detect_ms1_processes.append("python ./otf-peak-detect/peak-detect-ms1.py -db {} -fl {} -fu {}".format(destination_db_name, frame_range[0], frame_range[1]))
     cluster_detect_ms1_processes.append("python ./otf-peak-detect/cluster-detect-ms1.py -db {} -fl {} -fu {}".format(destination_db_name, frame_range[0], frame_range[1]))
 
@@ -130,7 +130,7 @@ if (args.operation == 'all') or (args.operation == 'cluster_detect_ms1'):
 
     cluster_detect_start_time = time.time()
 
-    run_process("python ./otf-peak-detect/sum-frames-ms1-prep.py -sdb {}".format(converted_db_name))
+    run_process("python ./otf-peak-detect/sum-frames-ms1-prep.py -sdb {}".format(converted_database_name))
     pool.map(run_process, sum_frame_ms1_processes)
     pool.map(run_process, peak_detect_ms1_processes)
     pool.map(run_process, cluster_detect_ms1_processes)
@@ -193,11 +193,11 @@ for batch_number in range(number_of_batches):
 feature_region_ms2_sum_peak_processes = []
 for feature_range in feature_ranges:
     destination_db_name = "{}-{}-{}.sqlite".format(feature_database_root, feature_range[0], feature_range[1])
-    feature_region_ms2_sum_peak_processes.append("python ./otf-peak-detect/feature-region-ms2-combined-sum-peak-detect.py -cdb {} -sdb {} -ddb {} -ms2ce {} -fl {} -fu {} -ml {} -mu {} -bs 20".format(converted_db_name, feature_database_name, destination_db_name, args.ms2_collision_energy, feature_range[0], feature_range[1], args.mz_lower, args.mz_upper))
+    feature_region_ms2_sum_peak_processes.append("python ./otf-peak-detect/feature-region-ms2-combined-sum-peak-detect.py -cdb {} -sdb {} -ddb {} -ms2ce {} -fl {} -fu {} -ml {} -mu {} -bs 20".format(converted_database_name, feature_database_name, destination_db_name, args.ms2_collision_energy, feature_range[0], feature_range[1], args.mz_lower, args.mz_upper))
 
 if (args.operation == 'all') or (args.operation == 'feature_region_ms2_peak_detect'):
     ms2_peak_detect_start_time = time.time()
-    run_process("python ./otf-peak-detect/feature-region-ms2-combined-sum-peak-detect-prep.py -cdb {} -sdb {}".format(converted_db_name, feature_database_name))
+    run_process("python ./otf-peak-detect/feature-region-ms2-combined-sum-peak-detect-prep.py -cdb {} -sdb {}".format(converted_database_name, feature_database_name))
     print("detecting ms2 peaks in the feature region...")
     pool.map(run_process, feature_region_ms2_sum_peak_processes)
     ms2_peak_detect_stop_time = time.time()
@@ -260,5 +260,24 @@ if (args.operation == 'all') or (args.operation == 'create_search_mgf'):
 
 processing_stop_time = time.time()
 processing_times.append(("total processing", processing_stop_time-processing_start_time))
+
+# gather statistics
+statistics = []
+source_conn = sqlite3.connect(converted_database_name)
+frame_info_df = pd.read_sql_query("select max(frame_id) from frames", source_conn)
+number_of_converted_frames = int(frame_info_df.values[0][0])
+statistics.append(("number of converted frames", number_of_converted_frames))
+deconvoluted_ions_df = pd.read_sql_query("select max(ion_id) from deconvoluted_ions", source_conn)
+number_of_deconvoluted_ions = int(deconvoluted_ions_df.values[0][0])
+statistics.append(("number of deconvoluted ions", number_of_deconvoluted_ions))
+source_conn.close()
+
+# print statistics
+print("")
+print("processing times")
 for t in processing_times:
-    print("{}, {} seconds, {:.2f}%".format(t[0], t[1], t[1]/(processing_stop_time-processing_start_time)))
+    print("{}\t\t{:.1f} seconds\t\t{:.1f}%".format(t[0], t[1], t[1]/(processing_stop_time-processing_start_time)*100.))
+print("")
+print("data")
+for s in statistics:
+    print("{}\t\t{:.1f}".format(s[0], s[1]))
