@@ -105,7 +105,7 @@ def main():
     dest_c.execute("CREATE TABLE summed_ms2_regions_info (item TEXT, value TEXT)")
 
     dest_c.execute("DROP TABLE IF EXISTS ms2_peaks")
-    dest_c.execute("CREATE TABLE ms2_peaks (feature_id INTEGER, peak_id INTEGER, centroid_mz REAL, intensity INTEGER, PRIMARY KEY (feature_id, peak_id))")
+    dest_c.execute("CREATE TABLE ms2_peaks (feature_id INTEGER, peak_id INTEGER, centroid_mz REAL, centroid_scan INTEGER, intensity INTEGER, PRIMARY KEY (feature_id, peak_id))")
 
     # Store the arguments as metadata in the database for later reference
     ms2_feature_info = []
@@ -205,19 +205,21 @@ def main():
 
                     # find the centroid m/z
                     mzs = np.arange(lower_index, upper_index+1)
+                    scans = range(0,subset_frame_a.shape[0])
                     peak_summed_intensities_by_mz = subset_frame_a[:,mzs].sum(axis=0)
                     peak_summed_intensities_by_scan = subset_frame_a[:,mzs].sum(axis=1)
                     total_peak_intensity = peak_summed_intensities_by_mz.sum()  # total intensity of the peak
                     centroid_mz = peakutils.centroid(mzs, peak_summed_intensities_by_mz)
+                    centroid_scan = int(np.round(peakutils.centroid(scans, peak_summed_intensities_by_scan)))
                     centroid_mz_descaled = float(min_mz + centroid_mz) / args.mz_scaling_factor
 
                     # for each point in the region, add an entry to the list
-                    for scan in range(0,subset_frame_a.shape[0]):
+                    for scan in scans:
                         points.append((feature_id, peak_id, point_id, centroid_mz_descaled, min_scan+scan, peak_summed_intensities_by_scan[scan]))
                         point_id += 1
 
                     # add the peak to the list
-                    peaks.append((feature_id, peak_id, centroid_mz_descaled, total_peak_intensity))
+                    peaks.append((feature_id, peak_id, centroid_mz_descaled, centroid_scan, total_peak_intensity))
                     peak_id += 1
 
                     # flag all the mz points we've processed in this peak
