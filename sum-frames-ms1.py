@@ -129,7 +129,7 @@ if len(elution_profile) > 0:
     dest_c.executemany("INSERT INTO elution_profile VALUES (?, ?)", elution_profile)
 
 stop_run = time.time()
-print("{} seconds to process run".format(stop_run-start_run))
+print("{} seconds to sum frames {} to {}".format(stop_run-start_run, args.frame_lower, args.frame_upper))
 
 summing_info.append(("scan_lower", args.scan_lower))
 summing_info.append(("scan_upper", args.scan_upper))

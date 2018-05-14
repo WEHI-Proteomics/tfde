@@ -102,7 +102,7 @@ frame_count = 0
 for frame_id in range(args.frame_lower, args.frame_upper+1):
     peak_id = 1
     frame_df = pd.read_sql_query("select mz,scan,intensity,point_id from summed_frames where frame_id={} order by intensity desc;".format(frame_id), source_conn)
-    print("Detecting peaks in frame {}".format(frame_id))
+    print("Detecting peaks in ms1 frame {}".format(frame_id))
     start_frame = time.time()
     frame_v = frame_df.values
     # Find the intensity of the point at the bottom of the top tenth percentile of points
@@ -240,7 +240,7 @@ for frame_id in range(args.frame_lower, args.frame_upper+1):
         frame_v = np.delete(frame_v, peak_indices, 0)
 
     stop_frame = time.time()
-    print("{} seconds to process frame {} - {} peaks".format(stop_frame-start_frame, frame_id, peak_id))
+    print("{} seconds to detect peaks in ms1 frame {} - found {} peaks".format(stop_frame-start_frame, frame_id, peak_id))
     frame_count += 1
     # check if we've processed a batch number of frames - store in database if so
     if (frame_count % args.batch_size == 0):
@@ -267,7 +267,7 @@ if len(point_updates) > 0:
     del point_updates[:]
 
 stop_run = time.time()
-print("{} seconds to process frames {} to {}".format(stop_run-start_run, args.frame_lower, args.frame_upper))
+print("{} seconds to detect ms1 peaks in frames {} to {}".format(stop_run-start_run, args.frame_lower, args.frame_upper))
 
 # write out the processing info
 peak_detect_info.append(("run processing time (sec)", stop_run-start_run))
