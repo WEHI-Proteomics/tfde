@@ -43,7 +43,7 @@ def merge_summed_regions_prep(source_db_name, destination_db_name):
 
 #
 # source activate py27
-# nohup python -u ./otf-peak-detect/generate-search-mgf-from-instrument-db.py -dbd ./data -idb /media/data-drive/Hela_20A_20R_500_1_01_398.d/ -dbn subset-Hela_20A_20R_500 -smgf ./data/subset-Hela_20A_20R_500-search.mgf -cems1 7 -cems2 27 -nf 6000 -ml 440 -mu 550 -mpc 0.9 > subset-Hela_20A_20R_500.log &
+# nohup python -u ./otf-peak-detect/generate-search-mgf-from-instrument-db.py -dbd ./data -idb /media/data-drive/Hela_20A_20R_500_1_01_398.d/ -dbn subset-Hela_20A_20R_500 -cems1 7 -cems2 27 -nf 6000 -ml 440 -mu 550 -mpc 0.9 > subset-Hela_20A_20R_500.log &
 #
 
 # Process the command line arguments
