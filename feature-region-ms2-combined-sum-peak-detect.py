@@ -11,13 +11,13 @@ import random
 
 #
 # For processing all the features in a range...
-# python -u ./otf-peak-detect/feature-region-ms2-combined-sum-peak-detect.py -cdb /media/data-drive/Hela_20A_20R_500.sqlite -sdb /media/data-drive/Hela_20A_20R_500-features.sqlite -ddb /media/data-drive/Hela_20A_20R_500-features-5-4546-5454.sqlite -fl 4546 -fu 5454 -ms2ce 27.0 -ml 440.0 -mu 555.0
+# python -u ./otf-peak-detect/feature-region-ms2-combined-sum-peak-detect.py -cdb /media/data-drive/Hela_20A_20R_500.sqlite -ddb /media/data-drive/Hela_20A_20R_500-features-5-4546-5454.sqlite -fl 4546 -fu 5454 -ms2ce 27.0 -ml 440.0 -mu 555.0
 #
 # For picking and processing a random selection of feature indexes...
-# python -u ./otf-peak-detect/feature-region-ms2-combined-sum-peak-detect.py -cdb /media/data-drive/Hela_20A_20R_500.sqlite -sdb /media/data-drive/Hela_20A_20R_500-features.sqlite -ddb /media/data-drive/Hela_20A_20R_500-features-1-100000-random-1000-sf-1000.sqlite -fl 1 -fu 100000 -ms2ce 27.0 -ml 440.0 -mu 555.0 -nrf 1000
+# python -u ./otf-peak-detect/feature-region-ms2-combined-sum-peak-detect.py -cdb /media/data-drive/Hela_20A_20R_500.sqlite -ddb /media/data-drive/Hela_20A_20R_500-features-1-100000-random-1000-sf-1000.sqlite -fl 1 -fu 100000 -ms2ce 27.0 -ml 440.0 -mu 555.0 -nrf 1000
 #
 # For processing a previously-generated file of feature indexes...
-# python -u ./otf-peak-detect/feature-region-ms2-combined-sum-peak-detect.py -cdb /media/data-drive/Hela_20A_20R_500.sqlite -sdb /media/data-drive/Hela_20A_20R_500-features.sqlite -ddb /media/data-drive/Hela_20A_20R_500-features-1-100000-random-1000-sf-1000.sqlite -fl 1 -fu 100000 -ms2ce 27.0 -ml 440.0 -mu 555.0 -rff random_feature_indexes.txt
+# python -u ./otf-peak-detect/feature-region-ms2-combined-sum-peak-detect.py -cdb /media/data-drive/Hela_20A_20R_500.sqlite -ddb /media/data-drive/Hela_20A_20R_500-features-1-100000-random-1000-sf-1000.sqlite -fl 1 -fu 100000 -ms2ce 27.0 -ml 440.0 -mu 555.0 -rff random_feature_indexes.txt
 #
 
 # feature array indices
@@ -65,7 +65,6 @@ def main():
 
     parser = argparse.ArgumentParser(description='Sum MS2 frames in the region of the MS1 feature\'s drift and retention time.')
     parser.add_argument('-cdb','--converted_database_name', type=str, help='The name of the converted database.', required=True)
-    parser.add_argument('-sdb','--source_database_name', type=str, help='The name of the source database.', required=True)
     parser.add_argument('-ddb','--destination_database_name', type=str, help='The name of the destination database.', required=True)
     parser.add_argument('-fl','--feature_id_lower', type=int, help='Lower feature ID to process.', required=False)
     parser.add_argument('-fu','--feature_id_upper', type=int, help='Upper feature ID to process.', required=False)
@@ -87,9 +86,6 @@ def main():
 
     conv_conn = sqlite3.connect(args.converted_database_name)
     conv_c = conv_conn.cursor()
-
-    src_conn = sqlite3.connect(args.source_database_name)
-    src_c = src_conn.cursor()
 
     dest_conn = sqlite3.connect(args.destination_database_name)
     dest_c = dest_conn.cursor()
@@ -130,7 +126,7 @@ def main():
             from features where feature_id >= {} and feature_id <= {} and 
             charge_state >= {} and mz_lower <= {} and mz_upper >= {} order by feature_id ASC;""".format(
                 args.feature_id_lower, args.feature_id_upper, args.minimum_charge_state, args.mz_upper, args.mz_lower), 
-            src_conn)
+            conv_conn)
         if args.number_of_random_features is not None:
             # Create a subset of features selected at random
             random_feature_indexes = random.sample(range(len(features_df)), args.number_of_random_features)
@@ -262,7 +258,6 @@ def main():
         dest_conn.commit()
 
     dest_conn.close()
-    src_conn.close()
     conv_conn.close()
 
 if __name__ == "__main__":
