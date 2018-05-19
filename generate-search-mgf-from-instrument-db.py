@@ -203,6 +203,19 @@ if (args.operation == 'all') or (args.operation == 'feature_region_ms2_peak_dete
     ms2_peak_detect_stop_time = time.time()
     processing_times.append(("feature region ms2 peak detect", ms2_peak_detect_stop_time-ms2_peak_detect_start_time))
 
+# determine the drift offset between ms1 and ms2
+match_precursor_ms2_peaks_processes = []
+for feature_range in feature_ranges:
+    destination_db_name = "{}-{}-{}.sqlite".format(feature_database_root, feature_range[0], feature_range[1])
+    match_precursor_ms2_peaks_processes.append("python ./otf-peak-detect/match-precursor-ms2-peaks.py -db {} -fl {} -fu {}".format(destination_db_name, feature_range[0], feature_range[1]))
+
+if (args.operation == 'all') or (args.operation == 'match_precursor_ms2_peaks'):
+    match_precursor_ms2_peaks_start_time = time.time()
+    print("matching precursor ms2 peaks...")
+    pool.map(run_process, match_precursor_ms2_peaks_processes)
+    match_precursor_ms2_peaks_stop_time = time.time()
+    processing_times.append(("match precursor ms2 peaks", match_precursor_ms2_peaks_stop_time-match_precursor_ms2_peaks_start_time))
+
 # re-detect ms1 peaks in the feature's region, and calculate ms2 peak correlation
 feature_region_ms1_sum_processes = []
 feature_region_ms1_peak_processes = []
