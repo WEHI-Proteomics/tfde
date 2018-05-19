@@ -6,6 +6,7 @@ import sqlite3
 import os
 import argparse
 import time
+import csv
 
 # Usage: python convert-instrument-db.py -sdb "S:\data\Projects\ProtemicsLab\Bruker timsTOF\databases\20170714_SN34_UPS2_yeast200ng_AIF15_Slot1-39_01_728.d" -ddb "S:\data\Projects\ProtemicsLab\Bruker timsTOF\converted\20170714_SN34_UPS2_yeast200ng_AIF15_Slot1-39_01_728.sqlite"
 
@@ -21,10 +22,15 @@ FRAME_COLLISION_ENERGY_IDX = 1
 
 parser = argparse.ArgumentParser(description='Convert the Bruker database to a detection database.')
 parser.add_argument('-sdb','--source_database_name', type=str, help='The name of the source database.', required=True)
-parser.add_argument('-ddb','--destination_database_name', type=str, help='The name of the destination database.', required=True)
+parser.add_argument('-ddb','--destination_database_name', type=str, help='The name of the destination database.', required=False)
+parser.add_argument('-csv','--destination_csv_file_name', type=str, help='The name of the destination CSV file.', required=False)
 parser.add_argument('-bs','--batch_size', type=int, default=10000, help='The size of the frames to be written to the database.', required=False)
 parser.add_argument('-nf','--number_of_frames', type=int, help='The number of frames to convert.', required=False)
 args = parser.parse_args()
+
+if (args.destination_database_name is None) and (args.destination_csv_file_name is None):
+    print("No destination was given, so there is nothing to do.")
+    sys.exit()
 
 analysis_dir = args.source_database_name
 if sys.version_info.major == 2:
@@ -51,20 +57,34 @@ print("Loading the collision energy property values")
 collision_energies_df = pd.read_sql_query("SELECT Frame,Value FROM FrameProperties WHERE Property={}".format(collision_energy_property_id), source_conn)
 collision_energies_v = collision_energies_df.values
 
-# Connect to the destination database
-dest_conn = sqlite3.connect(args.destination_database_name)
-dest_c = dest_conn.cursor()
+if args.destination_database_name is not None:
+    # Connect to the destination database
+    dest_conn = sqlite3.connect(args.destination_database_name)
+    dest_c = dest_conn.cursor()
 
-# Create the tables
-print("Setting up tables and indexes")
+    # Create the tables
+    print("Setting up tables and indexes")
 
-dest_c.execute("DROP TABLE IF EXISTS frames")
-dest_c.execute("DROP TABLE IF EXISTS frame_properties")
-dest_c.execute("DROP TABLE IF EXISTS convert_info")
+    dest_c.execute("DROP TABLE IF EXISTS frames")
+    dest_c.execute("DROP TABLE IF EXISTS frame_properties")
+    dest_c.execute("DROP TABLE IF EXISTS convert_info")
 
-dest_c.execute("CREATE TABLE frames (frame_id INTEGER, point_id INTEGER, mz REAL, scan INTEGER, intensity INTEGER, peak_id INTEGER)")
-dest_c.execute("CREATE TABLE frame_properties (frame_id INTEGER, collision_energy REAL)")
-dest_c.execute("CREATE TABLE convert_info (item TEXT, value TEXT)")
+    dest_c.execute("CREATE TABLE frames (frame_id INTEGER, point_id INTEGER, mz REAL, scan INTEGER, intensity INTEGER, peak_id INTEGER)")
+    dest_c.execute("CREATE TABLE frame_properties (frame_id INTEGER, collision_energy REAL)")
+    dest_c.execute("CREATE TABLE convert_info (item TEXT, value TEXT)")
+
+if args.destination_csv_file_name is not None:
+    frames_csv_filename = args.destination_csv_file_name.replace('.csv', '-frames.csv')
+    if os.path.exists(frames_csv_filename):
+        os.remove(frames_csv_filename)
+
+    frame_properties_csv_filename = args.destination_csv_file_name.replace('.csv', '-frame-properties.csv')
+    if os.path.exists(frame_properties_csv_filename):
+        os.remove(frame_properties_csv_filename)
+
+    convert_info_csv_filename = args.destination_csv_file_name.replace('.csv', '-convert_info.csv')
+    if os.path.exists(convert_info_csv_filename):
+        os.remove(convert_info_csv_filename)
 
 points = []
 frame_properties = []
@@ -100,9 +120,16 @@ for frame in frames_v:
 
     # Check whether we've done a chunk to write out to the database
     if (frame_id % args.batch_size) == 0:
-        dest_c.executemany("INSERT INTO frames VALUES (?, ?, ?, ?, ?, ?)", points)
+        if args.destination_database_name is not None:
+            dest_c.executemany("INSERT INTO frames VALUES (?, ?, ?, ?, ?, ?)", points)
+            dest_conn.commit()
+
+        if args.destination_csv_file_name is not None:
+            with open(frames_csv_filename, 'a') as outcsv:
+                writer = csv.writer(outcsv)
+                writer.writerows({'frame_id': row[0], 'point_id': row[1], 'mz': row[2], 'scan': row[3], 'intensity': row[4]} for row in points)
+
         print("{} frames converted...".format(frame_count))
-        dest_conn.commit()
         del points[:]
 
     if (args.number_of_frames is not None) and (frame_count >= args.number_of_frames):
@@ -110,11 +137,19 @@ for frame in frames_v:
 
 # Write what we have left
 if len(points) > 0:
-    dest_c.executemany("INSERT INTO frames VALUES (?, ?, ?, ?, ?, ?)", points)
+    if args.destination_database_name is not None:
+        dest_c.executemany("INSERT INTO frames VALUES (?, ?, ?, ?, ?, ?)", points)
+
+    if args.destination_csv_file_name is not None:
+        with open(frames_csv_filename, 'a') as outcsv:
+            writer = csv.writer(outcsv)
+            writer.writerows({'frame_id': row[0], 'point_id': row[1], 'mz': row[2], 'scan': row[3], 'intensity': row[4]} for row in points)
+
     print("{} frames converted...".format(frame_count))
     del points[:]
 
-dest_conn.commit()
+if args.destination_database_name is not None:
+    dest_conn.commit()
 
 for collision_energy in collision_energies_v:
     frame_properties.append((int(collision_energy[FRAME_ID_IDX]), float(collision_energy[FRAME_COLLISION_ENERGY_IDX])))
@@ -122,7 +157,13 @@ for collision_energy in collision_energies_v:
         break
 
 print("Writing frame properties")
-dest_c.executemany("INSERT INTO frame_properties VALUES (?, ?)", frame_properties)
+if args.destination_database_name is not None:
+    dest_c.executemany("INSERT INTO frame_properties VALUES (?, ?)", frame_properties)
+
+if args.destination_csv_file_name is not None:
+    with open(frame_properties_csv_filename, 'a') as outcsv:
+        writer = csv.writer(outcsv)
+        writer.writerows({'frame_id': row[0], 'collision_energy': row[1]} for row in frame_properties)
 
 stop_run = time.time()
 print("{} seconds to process run".format(stop_run-start_run))
@@ -133,8 +174,15 @@ convert_info.append(("source_frame_count", int(frame_count)))
 convert_info.append(("num_scans", int(max_scans)))
 convert_info.append(("run processing time (sec)", float(stop_run-start_run)))
 convert_info.append(("processed", time.ctime()))
-dest_c.executemany("INSERT INTO convert_info VALUES (?, ?)", convert_info)
 
-# Commit changes and close the connection
-dest_conn.commit()
-dest_conn.close()
+if args.destination_database_name is not None:
+    dest_c.executemany("INSERT INTO convert_info VALUES (?, ?)", convert_info)
+
+    # Commit changes and close the connection
+    dest_conn.commit()
+    dest_conn.close()
+
+if args.destination_csv_file_name is not None:
+    with open(convert_info_csv_filename, 'a') as outcsv:
+        writer = csv.writer(outcsv)
+        writer.writerows({'item': row[0], 'value': row[1]} for row in convert_info)
