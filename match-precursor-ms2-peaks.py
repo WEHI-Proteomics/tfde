@@ -90,7 +90,7 @@ precursor_ms2_peak_match_info.append(("run processing time (sec)", stop_run-star
 precursor_ms2_peak_match_info.append(("processed", time.ctime()))
 
 precursor_ms2_peak_match_info_entry = []
-precursor_ms2_peak_match_info_entry.append(("features {}-{}".format(args.feature_id_lower, args.feature_id_upper), ' '.join(str(e) for e in peak_correlation_info)))
+precursor_ms2_peak_match_info_entry.append(("features {}-{}".format(args.feature_id_lower, args.feature_id_upper), ' '.join(str(e) for e in precursor_ms2_peak_match_info)))
 
 db_c.executemany("INSERT INTO precursor_ms2_peak_matches_info VALUES (?, ?)", precursor_ms2_peak_match_info_entry)
 
