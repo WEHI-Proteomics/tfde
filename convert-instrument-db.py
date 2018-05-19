@@ -91,7 +91,7 @@ if args.destination_csv_file_name is not None:
         writer.writerow(['frame_id','collision_energy'])
 
     # convert info file
-    convert_info_csv_filename = args.destination_csv_file_name.replace('.csv', '-convert_info.csv')
+    convert_info_csv_filename = args.destination_csv_file_name.replace('.csv', '-convert-info.csv')
     if os.path.exists(convert_info_csv_filename):
         os.remove(convert_info_csv_filename)
     with open(convert_info_csv_filename, 'a') as outcsv:
