@@ -66,11 +66,16 @@ for feature_ids_idx in range(0,len(features_df)):
     ms2_peaks_df.drop(ms2_peaks_df.index[indexes_to_drop], inplace=True)
     ms2_peaks_df.sort_values(by='mz_delta', ascending=True, inplace=True)
     ms2_peaks_df.reset_index(drop=True, inplace=True)
-    ms2_peaks_df['scan_delta'] = abs(ms2_peaks_df.centroid_scan - base_centroid_scan)
 
-    ms2_peak_id = ms2_peaks_df.peak_id.loc[0]
-    mz_delta = ms2_peaks_df.mz_delta.loc[0]
-    scan_delta = ms2_peaks_df.scan_delta.loc[0]
+    if len(ms2_peaks_df) > 0:
+        ms2_peaks_df['scan_delta'] = abs(ms2_peaks_df.centroid_scan - base_centroid_scan)
+        ms2_peak_id = ms2_peaks_df.peak_id.loc[0]
+        mz_delta = ms2_peaks_df.mz_delta.loc[0]
+        scan_delta = ms2_peaks_df.scan_delta.loc[0]
+    else:
+        ms2_peak_id = 0
+        mz_delta = 0.0
+        scan_delta = 0.0
 
     peak_matches.append((feature_id, base_peak_id, ms2_peak_id, mz_delta, scan_delta))
 
