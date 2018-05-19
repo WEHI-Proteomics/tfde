@@ -84,11 +84,11 @@ pool = Pool()
 convert_start_time = time.time()
 
 # convert the instrument database
-if (args.operation == 'all') or (args.operation == 'convert_db'):
+if (args.operation == 'all') or (args.operation == 'convert_instrument_db'):
     if args.number_of_frames is not None:
-        run_process("python ./otf-peak-detect/convert-db.py -sdb {} -ddb {} -nf {}".format(args.instrument_database_name, converted_database_name, args.number_of_frames))
+        run_process("python ./otf-peak-detect/convert-instrument-db.py -sdb {} -ddb {} -nf {}".format(args.instrument_database_name, converted_database_name, args.number_of_frames))
     else:
-        run_process("python ./otf-peak-detect/convert-db.py -sdb {} -ddb {}".format(args.instrument_database_name, converted_database_name))
+        run_process("python ./otf-peak-detect/convert-instrument-db.py -sdb {} -ddb {}".format(args.instrument_database_name, converted_database_name))
 
 convert_stop_time = time.time()
 processing_times.append(("database conversion", convert_stop_time-convert_start_time))
