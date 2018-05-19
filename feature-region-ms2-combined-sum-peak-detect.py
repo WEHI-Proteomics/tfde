@@ -215,7 +215,7 @@ def main():
                         point_id += 1
 
                     # add the peak to the list
-                    peaks.append((feature_id, peak_id, centroid_mz_descaled, centroid_scan, total_peak_intensity))
+                    peaks.append((feature_id, peak_id, centroid_mz_descaled, min_scan+centroid_scan, total_peak_intensity))
                     peak_id += 1
 
                     # flag all the mz points we've processed in this peak
