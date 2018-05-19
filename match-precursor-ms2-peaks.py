@@ -36,7 +36,7 @@ for arg in vars(args):
 print("Setting up tables and indexes")
 db_c.execute("DROP TABLE IF EXISTS precursor_ms2_peak_matches")
 db_c.execute("DROP TABLE IF EXISTS precursor_ms2_peak_matches_info")
-db_c.execute("CREATE TABLE precursor_ms2_peak_matches (feature_id INTEGER, base_peak_id INTEGER, ms2_peak_id INTEGER, mz_delta REAL, scan_delta REAL, PRIMARY KEY (feature_id, base_peak_id))")
+db_c.execute("CREATE TABLE precursor_ms2_peak_matches (feature_id INTEGER, base_peak_id INTEGER, ms2_peak_id INTEGER, mz_centroid REAL, mz_delta REAL, scan_delta REAL, PRIMARY KEY (feature_id, base_peak_id))")
 db_c.execute("CREATE TABLE precursor_ms2_peak_matches_info (item TEXT, value TEXT)")
 
 start_run = time.time()
@@ -68,7 +68,7 @@ for feature_ids_idx in range(0,len(features_df)):
     ms2_peaks_df.reset_index(drop=True, inplace=True)
 
     if len(ms2_peaks_df) > 0:
-        ms2_peaks_df['scan_delta'] = abs(ms2_peaks_df.centroid_scan - base_centroid_scan)
+        ms2_peaks_df['scan_delta'] = ms2_peaks_df.centroid_scan - base_centroid_scan
         ms2_peak_id = ms2_peaks_df.peak_id.loc[0]
         mz_delta = ms2_peaks_df.mz_delta.loc[0]
         scan_delta = ms2_peaks_df.scan_delta.loc[0]
@@ -77,13 +77,13 @@ for feature_ids_idx in range(0,len(features_df)):
         mz_delta = 0.0
         scan_delta = 0.0
 
-    peak_matches.append((feature_id, base_peak_id, ms2_peak_id, mz_delta, scan_delta))
+    peak_matches.append((feature_id, base_peak_id, ms2_peak_id, base_centroid_mz, mz_delta, scan_delta))
 
 print("Writing out the peak matches")
-db_c.executemany("INSERT INTO precursor_ms2_peak_matches VALUES (?, ?, ?, ?, ?)", peak_matches)
+db_c.executemany("INSERT INTO precursor_ms2_peak_matches VALUES (?, ?, ?, ?, ?, ?)", peak_matches)
 
 stop_run = time.time()
-print("{} seconds to match peaks for features {} to {}".format(stop_run-start_run, args.feature_id_lower, args.feature_id_upper))
+print("{:.2f} seconds to match peaks for features {} to {}".format(stop_run-start_run, args.feature_id_lower, args.feature_id_upper))
 
 # write out the processing info
 precursor_ms2_peak_match_info.append(("run processing time (sec)", stop_run-start_run))
