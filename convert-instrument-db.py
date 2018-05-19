@@ -74,17 +74,29 @@ if args.destination_database_name is not None:
     dest_c.execute("CREATE TABLE convert_info (item TEXT, value TEXT)")
 
 if args.destination_csv_file_name is not None:
+    # frames file
     frames_csv_filename = args.destination_csv_file_name.replace('.csv', '-frames.csv')
     if os.path.exists(frames_csv_filename):
         os.remove(frames_csv_filename)
+    with open(frames_csv_filename, 'a') as outcsv:
+        writer = csv.writer(outcsv)
+        writer.writerow(['frame_id','point_id','mz','scan','intensity','peak_id'])
 
+    # frame properties file
     frame_properties_csv_filename = args.destination_csv_file_name.replace('.csv', '-frame-properties.csv')
     if os.path.exists(frame_properties_csv_filename):
         os.remove(frame_properties_csv_filename)
+    with open(frame_properties_csv_filename, 'a') as outcsv:
+        writer = csv.writer(outcsv)
+        writer.writerow(['frame_id','collision_energy'])
 
+    # convert info file
     convert_info_csv_filename = args.destination_csv_file_name.replace('.csv', '-convert_info.csv')
     if os.path.exists(convert_info_csv_filename):
         os.remove(convert_info_csv_filename)
+    with open(convert_info_csv_filename, 'a') as outcsv:
+        writer = csv.writer(outcsv)
+        writer.writerow(['item','value'])
 
 points = []
 frame_properties = []
@@ -127,7 +139,7 @@ for frame in frames_v:
         if args.destination_csv_file_name is not None:
             with open(frames_csv_filename, 'a') as outcsv:
                 writer = csv.writer(outcsv)
-                writer.writerows({'frame_id': row[0], 'point_id': row[1], 'mz': row[2], 'scan': row[3], 'intensity': row[4]} for row in points)
+                writer.writerows(points)
 
         print("{} frames converted...".format(frame_count))
         del points[:]
@@ -143,7 +155,7 @@ if len(points) > 0:
     if args.destination_csv_file_name is not None:
         with open(frames_csv_filename, 'a') as outcsv:
             writer = csv.writer(outcsv)
-            writer.writerows({'frame_id': row[0], 'point_id': row[1], 'mz': row[2], 'scan': row[3], 'intensity': row[4]} for row in points)
+            writer.writerows(points)
 
     print("{} frames converted...".format(frame_count))
     del points[:]
@@ -163,7 +175,7 @@ if args.destination_database_name is not None:
 if args.destination_csv_file_name is not None:
     with open(frame_properties_csv_filename, 'a') as outcsv:
         writer = csv.writer(outcsv)
-        writer.writerows({'frame_id': row[0], 'collision_energy': row[1]} for row in frame_properties)
+        writer.writerows(frame_properties)
 
 stop_run = time.time()
 print("{} seconds to process run".format(stop_run-start_run))
@@ -185,4 +197,4 @@ if args.destination_database_name is not None:
 if args.destination_csv_file_name is not None:
     with open(convert_info_csv_filename, 'a') as outcsv:
         writer = csv.writer(outcsv)
-        writer.writerows({'item': row[0], 'value': row[1]} for row in convert_info)
+        writer.writerows(convert_info)
