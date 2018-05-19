@@ -42,7 +42,7 @@ db_c.execute("CREATE TABLE precursor_ms2_peak_matches_info (item TEXT, value TEX
 start_run = time.time()
 
 print("Loading the MS1 base peaks")
-features_df = pd.read_sql_query("select feature_id,base_peak_id from feature_base_peaks where feature_id >= {} and feature_id <= {} order by feature_id ASC;".format(args.feature_id_lower, args.feature_id_upper), source_conn)
+features_df = pd.read_sql_query("select feature_id,base_peak_id from feature_base_peaks where feature_id >= {} and feature_id <= {} order by feature_id ASC;".format(args.feature_id_lower, args.feature_id_upper), db_conn)
 print("found features {}-{}".format(np.min(features_df.feature_id), np.max(features_df.feature_id)))
 
 peak_matches = []
