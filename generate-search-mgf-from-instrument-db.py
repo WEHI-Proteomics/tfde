@@ -60,6 +60,8 @@ parser.add_argument('-op','--operation', type=str, default='all', help='The oper
 parser.add_argument('-nf','--number_of_frames', type=int, help='The number of frames to convert.', required=False)
 parser.add_argument('-ml','--mz_lower', type=float, help='Lower feature m/z to process.', required=True)
 parser.add_argument('-mu','--mz_upper', type=float, help='Upper feature m/z to process.', required=True)
+parser.add_argument('-fl','--frame_lower', type=int, help='The lower frame number to process.', required=False)
+parser.add_argument('-fu','--frame_upper', type=int, help='The upper frame number to process.', required=False)
 args = parser.parse_args()
 
 processing_times = []
@@ -93,9 +95,19 @@ if (args.operation == 'all') or (args.operation == 'convert_instrument_db'):
 convert_stop_time = time.time()
 processing_times.append(("database conversion", convert_stop_time-convert_start_time))
 
+if args.frame_lower is None:
+    frame_id_range_df = pd.read_sql_query("select min(frame_id) from frame_properties", source_conn)
+    args.frame_lower = frame_id_range_df.loc[0][0]
+    print("frame_lower set to {} from the data".format(args.frame_lower))
+
+if args.frame_upper is None:
+    frame_id_range_df = pd.read_sql_query("select max(frame_id) from frame_properties", source_conn)
+    args.frame_upper = frame_id_range_df.loc[0][0]
+    print("frame_upper set to {} from the data".format(args.frame_upper))
+
 # find the complete set of ms1 frame ids to be processed
 source_conn = sqlite3.connect(converted_database_name)
-frame_ids_df = pd.read_sql_query("select frame_id from frame_properties where collision_energy={} order by frame_id ASC;".format(args.ms1_collision_energy), source_conn)
+frame_ids_df = pd.read_sql_query("select frame_id from frame_properties where collision_energy={} and frame_id>={} and frame_id<={} order by frame_id ASC;".format(args.ms1_collision_energy, args.frame_lower, args.frame_upper), source_conn)
 frame_ids = tuple(frame_ids_df.values[:,0])
 number_of_frames = 1 + int(((len(frame_ids) - args.frames_to_sum) / args.frame_summing_offset))
 source_conn.close()
