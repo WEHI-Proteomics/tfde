@@ -61,8 +61,8 @@ parser.add_argument('-op','--operation', type=str, default='all', help='The oper
 parser.add_argument('-nf','--number_of_frames', type=int, help='The number of frames to convert.', required=False)
 parser.add_argument('-ml','--mz_lower', type=float, help='Lower feature m/z to process.', required=True)
 parser.add_argument('-mu','--mz_upper', type=float, help='Upper feature m/z to process.', required=True)
-parser.add_argument('-fl','--frame_lower', type=int, help='The lower frame number to process.', required=False)
-parser.add_argument('-fu','--frame_upper', type=int, help='The upper frame number to process.', required=False)
+parser.add_argument('-fl','--raw_frame_lower', type=int, help='The lower raw frame number to process.', required=False)
+parser.add_argument('-fu','--raw_frame_upper', type=int, help='The upper raw frame number to process.', required=False)
 args = parser.parse_args()
 
 processing_times = []
@@ -96,49 +96,49 @@ if (args.operation == 'all') or (args.operation == 'convert_instrument_db'):
 convert_stop_time = time.time()
 processing_times.append(("database conversion", convert_stop_time-convert_start_time))
 
-if args.frame_lower is None:
+if args.raw_frame_lower is None:
     source_conn = sqlite3.connect(converted_database_name)
     frame_id_range_df = pd.read_sql_query("select min(frame_id) from frame_properties", source_conn)
-    args.frame_lower = frame_id_range_df.loc[0][0]
-    print("frame_lower set to {} from the data".format(args.frame_lower))
+    args.raw_frame_lower = frame_id_range_df.loc[0][0]
+    print("raw_frame_lower set to {} from the data".format(args.raw_frame_lower))
     source_conn.close()
 
-if args.frame_upper is None:
+if args.raw_frame_upper is None:
     source_conn = sqlite3.connect(converted_database_name)
     frame_id_range_df = pd.read_sql_query("select max(frame_id) from frame_properties", source_conn)
-    args.frame_upper = frame_id_range_df.loc[0][0]
-    print("frame_upper set to {} from the data".format(args.frame_upper))
+    args.raw_frame_upper = frame_id_range_df.loc[0][0]
+    print("raw_frame_upper set to {} from the data".format(args.raw_frame_upper))
     source_conn.close()
 
-# find the complete set of ms1 frame ids to be processed
+# find the complete set of ms1 frame ids to be processed for the specified raw frame range
 source_conn = sqlite3.connect(converted_database_name)
-frame_ids_df = pd.read_sql_query("select frame_id from frame_properties where collision_energy={} and frame_id>={} and frame_id<={} order by frame_id ASC;".format(args.ms1_collision_energy, args.frame_lower, args.frame_upper), source_conn)
+frame_ids_df = pd.read_sql_query("select frame_id from frame_properties where collision_energy={} and frame_id>={} and frame_id<={} order by frame_id ASC;".format(args.ms1_collision_energy, args.raw_frame_lower, args.raw_frame_upper), source_conn)
 frame_ids = tuple(frame_ids_df.values[:,0])
-number_of_frames = 1 + int(((len(frame_ids) - args.frames_to_sum) / args.frame_summing_offset))
+number_of_summed_frames = 1 + int(((len(frame_ids) - args.frames_to_sum) / args.frame_summing_offset))
 source_conn.close()
 
 # work out how many batches the available cores will support
-batch_size = int(np.ceil(float(number_of_frames) / number_of_cores))
+batch_size = int(np.ceil(float(number_of_summed_frames) / number_of_cores))
 
-print("number of frames {}, batch size {}, number of batches {}".format(number_of_frames, batch_size, number_of_cores))
+print("number of raw frames to process {}, batch size is {} summed frames, number of batches {}".format(number_of_raw_frames, batch_size, number_of_cores))
 
-frame_ranges = []
+summed_frame_ranges = []
 for batch_number in range(number_of_cores):
-    first_frame_id = (batch_number * batch_size) + args.frame_lower
+    first_frame_id = (batch_number * batch_size) + args.raw_frame_lower
     last_frame_id = first_frame_id + batch_size - 1
-    if last_frame_id > args.frame_upper:
-        last_frame_id = args.frame_upper
-    frame_ranges.append((first_frame_id, last_frame_id))
+    if last_frame_id > args.raw_frame_upper:
+        last_frame_id = args.raw_frame_upper
+    summed_frame_ranges.append((first_frame_id, last_frame_id))
 
 # process the ms1 frames
 sum_frame_ms1_processes = []
 peak_detect_ms1_processes = []
 cluster_detect_ms1_processes = []
-for frame_range in frame_ranges:
-    destination_db_name = "{}-{}-{}.sqlite".format(frame_database_root, frame_range[0], frame_range[1])
-    sum_frame_ms1_processes.append("python ./otf-peak-detect/sum-frames-ms1.py -sdb {} -ddb {} -ce {} -fl {} -fu {}".format(converted_database_name, destination_db_name, args.ms1_collision_energy, frame_range[0], frame_range[1]))
-    peak_detect_ms1_processes.append("python ./otf-peak-detect/peak-detect-ms1.py -db {} -fl {} -fu {}".format(destination_db_name, frame_range[0], frame_range[1]))
-    cluster_detect_ms1_processes.append("python ./otf-peak-detect/cluster-detect-ms1.py -db {} -fl {} -fu {}".format(destination_db_name, frame_range[0], frame_range[1]))
+for summed_frame_range in summed_frame_ranges:
+    destination_db_name = "{}-{}-{}.sqlite".format(frame_database_root, summed_frame_range[0], summed_frame_range[1])
+    sum_frame_ms1_processes.append("python ./otf-peak-detect/sum-frames-ms1.py -sdb {} -ddb {} -ce {} -fl {} -fu {}".format(converted_database_name, destination_db_name, args.ms1_collision_energy, summed_frame_range[0], summed_frame_range[1]))
+    peak_detect_ms1_processes.append("python ./otf-peak-detect/peak-detect-ms1.py -db {} -fl {} -fu {}".format(destination_db_name, summed_frame_range[0], summed_frame_range[1]))
+    cluster_detect_ms1_processes.append("python ./otf-peak-detect/cluster-detect-ms1.py -db {} -fl {} -fu {}".format(destination_db_name, summed_frame_range[0], summed_frame_range[1]))
 
 # detect clusters in the ms1 frames
 if (args.operation == 'all') or (args.operation == 'cluster_detect_ms1'):
@@ -156,11 +156,11 @@ if (args.operation == 'all') or (args.operation == 'cluster_detect_ms1'):
     recombine_frames_start_time = time.time()
 
     # recombine the frame range databases back into a combined database
-    template_frame_range = frame_ranges[0]
+    template_frame_range = summed_frame_ranges[0]
     template_db_name = "{}-{}-{}.sqlite".format(frame_database_root, template_frame_range[0], template_frame_range[1])
     merge_summed_regions_prep(template_db_name, frame_database_name)
-    for frame_range in frame_ranges:
-        source_db_name = "{}-{}-{}.sqlite".format(frame_database_root, frame_range[0], frame_range[1])
+    for summed_frame_range in summed_frame_ranges:
+        source_db_name = "{}-{}-{}.sqlite".format(frame_database_root, summed_frame_range[0], summed_frame_range[1])
         print("merging {} into {}".format(source_db_name, frame_database_name))
         merge_summed_regions(source_db_name, frame_database_name)
 
