@@ -96,14 +96,18 @@ convert_stop_time = time.time()
 processing_times.append(("database conversion", convert_stop_time-convert_start_time))
 
 if args.frame_lower is None:
+    source_conn = sqlite3.connect(converted_database_name)
     frame_id_range_df = pd.read_sql_query("select min(frame_id) from frame_properties", source_conn)
     args.frame_lower = frame_id_range_df.loc[0][0]
     print("frame_lower set to {} from the data".format(args.frame_lower))
+    source_conn.close()
 
 if args.frame_upper is None:
+    source_conn = sqlite3.connect(converted_database_name)
     frame_id_range_df = pd.read_sql_query("select max(frame_id) from frame_properties", source_conn)
     args.frame_upper = frame_id_range_df.loc[0][0]
     print("frame_upper set to {} from the data".format(args.frame_upper))
+    source_conn.close()
 
 # find the complete set of ms1 frame ids to be processed
 source_conn = sqlite3.connect(converted_database_name)
