@@ -120,7 +120,7 @@ source_conn.close()
 # work out how many batches the available cores will support
 batch_size = int(np.ceil(float(number_of_summed_frames) / number_of_cores))
 
-print("number of raw frames to process {}, batch size is {} summed frames, number of batches {}".format(number_of_raw_frames, batch_size, number_of_cores))
+print("number of summed frames to process {}, batch size is {} summed frames, number of batches {}".format(number_of_summed_frames, batch_size, number_of_cores))
 
 summed_frame_ranges = []
 for batch_number in range(number_of_cores):
