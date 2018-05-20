@@ -6,6 +6,7 @@ import sqlite3
 import pandas as pd
 import argparse
 import time
+import numpy as np
 
 def run_process(process):
     os.system(process)
@@ -78,7 +79,7 @@ feature_database_root = "{}/{}-features".format(args.data_directory, args.databa
 feature_database_name = converted_database_name  # combined the feature-based sections back into the converted database
 
 # find out about the compute environment
-number_of_batches = number_of_cores = mp.cpu_count()
+number_of_cores = mp.cpu_count()
 
 # Set up the processing pool
 pool = Pool()
@@ -117,18 +118,16 @@ number_of_frames = 1 + int(((len(frame_ids) - args.frames_to_sum) / args.frame_s
 source_conn.close()
 
 # work out how many batches the available cores will support
-batch_size = int(number_of_frames / number_of_batches)
-if (batch_size * number_of_cores) < number_of_frames:
-    number_of_batches += 1
+batch_size = int(np.ceil(float(number_of_frames) / number_of_cores))
 
 print("number of frames {}, batch size {}, number of batches {}".format(number_of_frames, batch_size, number_of_batches))
 
 frame_ranges = []
-for batch_number in range(number_of_batches):
-    first_frame_id = (batch_number * batch_size) + 1
+for batch_number in range(number_of_cores):
+    first_frame_id = (batch_number * batch_size) + args.frame_lower
     last_frame_id = first_frame_id + batch_size - 1
-    if last_frame_id > number_of_frames:
-        last_frame_id = number_of_frames
+    if last_frame_id > args.frame_upper:
+        last_frame_id = args.frame_upper
     frame_ranges.append((first_frame_id, last_frame_id))
 
 # process the ms1 frames
@@ -185,16 +184,13 @@ number_of_features = int(feature_info_df.values[0][0])
 source_conn.close()
 
 # work out how many batches the available cores will support
-number_of_batches = number_of_cores
-batch_size = int(number_of_features / number_of_batches)
-if (batch_size * number_of_cores) < number_of_features:
-    number_of_batches += 1
+batch_size = int(np.ceil(float(number_of_features) / number_of_cores))
 
 print("number of features {}, batch size {}, number of batches {}".format(number_of_features, batch_size, number_of_batches))
 
 # work out the feature ranges for each batch
 feature_ranges = []
-for batch_number in range(number_of_batches):
+for batch_number in range(number_of_cores):
     first_feature_id = (batch_number * batch_size) + 1
     last_feature_id = first_feature_id + batch_size - 1
     if last_feature_id > number_of_features:
