@@ -61,8 +61,8 @@ parser.add_argument('-op','--operation', type=str, default='all', help='The oper
 parser.add_argument('-nf','--number_of_frames', type=int, help='The number of frames to convert.', required=False)
 parser.add_argument('-ml','--mz_lower', type=float, help='Lower feature m/z to process.', required=True)
 parser.add_argument('-mu','--mz_upper', type=float, help='Upper feature m/z to process.', required=True)
-parser.add_argument('-fl','--raw_frame_lower', type=int, help='The lower raw frame number to process.', required=False)
-parser.add_argument('-fu','--raw_frame_upper', type=int, help='The upper raw frame number to process.', required=False)
+parser.add_argument('-fl','--frame_lower', type=int, help='The lower summed frame number to process.', required=False)
+parser.add_argument('-fu','--frame_upper', type=int, help='The upper summed frame number to process.', required=False)
 args = parser.parse_args()
 
 processing_times = []
@@ -96,39 +96,28 @@ if (args.operation == 'all') or (args.operation == 'convert_instrument_db'):
 convert_stop_time = time.time()
 processing_times.append(("database conversion", convert_stop_time-convert_start_time))
 
-if args.raw_frame_lower is None:
-    source_conn = sqlite3.connect(converted_database_name)
-    frame_id_range_df = pd.read_sql_query("select min(frame_id) from frame_properties", source_conn)
-    args.raw_frame_lower = frame_id_range_df.loc[0][0]
-    print("raw_frame_lower set to {} from the data".format(args.raw_frame_lower))
-    source_conn.close()
-
-if args.raw_frame_upper is None:
-    source_conn = sqlite3.connect(converted_database_name)
-    frame_id_range_df = pd.read_sql_query("select max(frame_id) from frame_properties", source_conn)
-    args.raw_frame_upper = frame_id_range_df.loc[0][0]
-    print("raw_frame_upper set to {} from the data".format(args.raw_frame_upper))
-    source_conn.close()
-
-# find the complete set of ms1 frame ids to be processed for the specified raw frame range
+# find the total number of summed ms1 frames in the database
 source_conn = sqlite3.connect(converted_database_name)
-frame_ids_df = pd.read_sql_query("select frame_id from frame_properties where collision_energy={} and frame_id>={} and frame_id<={} order by frame_id ASC;".format(args.ms1_collision_energy, args.raw_frame_lower, args.raw_frame_upper), source_conn)
+frame_ids_df = pd.read_sql_query("select frame_id from frame_properties where collision_energy={} order by frame_id ASC;".format(args.ms1_collision_energy), source_conn)
 frame_ids = tuple(frame_ids_df.values[:,0])
 number_of_summed_frames = 1 + int(((len(frame_ids) - args.frames_to_sum) / args.frame_summing_offset))
 source_conn.close()
+print("number of summed ms1 frames in the converted database: {}".format(number_of_summed_frames))
 
-# work out how many batches the available cores will support
-batch_size = int(np.ceil(float(number_of_summed_frames) / number_of_cores))
+if args.frame_lower is None:
+    args.frame_lower = 1
+    print("frame_lower set to {} from the data".format(args.frame_lower))
 
-print("number of summed frames to process {}, batch size is {} summed frames, number of batches {}".format(number_of_summed_frames, batch_size, number_of_cores))
+if args.frame_upper is None:
+    args.frame_upper = number_of_summed_frames
+    print("frame_upper set to {} from the data".format(args.frame_upper))
 
+# split the summed frame range into batches
+batch_splits = np.array_split(range(args.frame_lower,args.frame_upper+1), number_of_cores)
 summed_frame_ranges = []
-for batch_number in range(number_of_cores):
-    first_frame_id = (batch_number * batch_size) + args.raw_frame_lower
-    last_frame_id = first_frame_id + batch_size - 1
-    if last_frame_id > args.raw_frame_upper:
-        last_frame_id = args.raw_frame_upper
-    summed_frame_ranges.append((first_frame_id, last_frame_id))
+for s in batch_splits:
+    if len(s) > 0:
+        summed_frame_ranges.append((s[0],s[len(s)-1]))
 
 # process the ms1 frames
 sum_frame_ms1_processes = []
@@ -183,19 +172,12 @@ feature_info_df = pd.read_sql_query("select value from feature_info where item='
 number_of_features = int(feature_info_df.values[0][0])
 source_conn.close()
 
-# work out how many batches the available cores will support
-batch_size = int(np.ceil(float(number_of_features) / number_of_cores))
-
-print("number of features {}, batch size {}, number of batches {}".format(number_of_features, batch_size, number_of_cores))
-
-# work out the feature ranges for each batch
+# split the summed frame range into batches
+batch_splits = np.array_split(range(1,number_of_features+1), number_of_cores)
 feature_ranges = []
-for batch_number in range(number_of_cores):
-    first_feature_id = (batch_number * batch_size) + 1
-    last_feature_id = first_feature_id + batch_size - 1
-    if last_feature_id > number_of_features:
-        last_feature_id = number_of_features
-    feature_ranges.append((first_feature_id, last_feature_id))
+for s in batch_splits:
+    if len(s) > 0:
+        feature_ranges.append((s[0],s[len(s)-1]))
 
 #
 # from here, split the combined features database into feature range databases
