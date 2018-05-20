@@ -120,7 +120,7 @@ source_conn.close()
 # work out how many batches the available cores will support
 batch_size = int(np.ceil(float(number_of_frames) / number_of_cores))
 
-print("number of frames {}, batch size {}, number of batches {}".format(number_of_frames, batch_size, number_of_batches))
+print("number of frames {}, batch size {}, number of batches {}".format(number_of_frames, batch_size, number_of_cores))
 
 frame_ranges = []
 for batch_number in range(number_of_cores):
@@ -186,7 +186,7 @@ source_conn.close()
 # work out how many batches the available cores will support
 batch_size = int(np.ceil(float(number_of_features) / number_of_cores))
 
-print("number of features {}, batch size {}, number of batches {}".format(number_of_features, batch_size, number_of_batches))
+print("number of features {}, batch size {}, number of batches {}".format(number_of_features, batch_size, number_of_cores))
 
 # work out the feature ranges for each batch
 feature_ranges = []
