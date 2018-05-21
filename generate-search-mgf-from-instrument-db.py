@@ -69,6 +69,8 @@ args = parser.parse_args()
 processing_times = []
 processing_start_time = time.time()
 
+statistics = []
+
 # make sure the processing directories exist
 if not os.path.exists(args.data_directory):
     os.makedirs(args.data_directory)    
@@ -93,6 +95,13 @@ if (args.operation == 'all') or (args.operation == 'convert_instrument_db'):
         run_process("python ./otf-peak-detect/convert-instrument-db.py -sdb {} -ddb {} -nf {}".format(args.instrument_database_name, converted_database_name, args.number_of_frames))
     else:
         run_process("python ./otf-peak-detect/convert-instrument-db.py -sdb {} -ddb {}".format(args.instrument_database_name, converted_database_name))
+
+    # gather statistics
+    source_conn = sqlite3.connect(converted_database_name)
+    frame_info_df = pd.read_sql_query("select max(frame_id) from frames", source_conn)
+    number_of_converted_frames = int(frame_info_df.values[0][0])
+    statistics.append(("number of converted frames", number_of_converted_frames))
+    source_conn.close()
 
 convert_stop_time = time.time()
 processing_times.append(("database conversion", convert_stop_time-convert_start_time))
@@ -266,19 +275,15 @@ if (args.operation == 'all') or (args.operation == 'create_search_mgf'):
     create_search_mgf_stop_time = time.time()
     processing_times.append(("create search mgf", create_search_mgf_stop_time-create_search_mgf_stop_time))
 
+    # gather statistics
+    source_conn = sqlite3.connect(converted_database_name)
+    deconvoluted_ions_df = pd.read_sql_query("select max(ion_id) from deconvoluted_ions", source_conn)
+    number_of_deconvoluted_ions = int(deconvoluted_ions_df.values[0][0])
+    statistics.append(("number of deconvoluted ions", number_of_deconvoluted_ions))
+    source_conn.close()
+
 processing_stop_time = time.time()
 processing_times.append(("total processing", processing_stop_time-processing_start_time))
-
-# gather statistics
-statistics = []
-source_conn = sqlite3.connect(converted_database_name)
-frame_info_df = pd.read_sql_query("select max(frame_id) from frames", source_conn)
-number_of_converted_frames = int(frame_info_df.values[0][0])
-statistics.append(("number of converted frames", number_of_converted_frames))
-deconvoluted_ions_df = pd.read_sql_query("select max(ion_id) from deconvoluted_ions", source_conn)
-number_of_deconvoluted_ions = int(deconvoluted_ions_df.values[0][0])
-statistics.append(("number of deconvoluted ions", number_of_deconvoluted_ions))
-source_conn.close()
 
 # print statistics
 print("")
