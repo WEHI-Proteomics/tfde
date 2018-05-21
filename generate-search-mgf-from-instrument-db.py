@@ -45,7 +45,7 @@ def merge_summed_regions_prep(source_db_name, destination_db_name):
 
 #
 # source activate py27
-# nohup python -u ./otf-peak-detect/generate-search-mgf-from-instrument-db.py -dbd ./data -idb /media/data-drive/Hela_20A_20R_500_1_01_398.d/ -dbn subset-Hela_20A_20R_500 -cems1 7 -cems2 27 -nf 6000 -ml 440 -mu 550 -mpc 0.9 > subset-Hela_20A_20R_500.log &
+# nohup python -u ./otf-peak-detect/generate-search-mgf-from-instrument-db.py -dbd ./subset-2500-2740 -idb /media/data-drive/Hela_20A_20R_500_1_01_398.d/ -dbn Hela_20A_20R_500 -cems1 7 -cems2 27 -ml 440 -mu 550 -fl 2500 -fu 2740 -mpc 0.9 -op match_precursor_ms2_peaks > match.log
 #
 
 # Process the command line arguments
@@ -166,8 +166,6 @@ if (args.operation == 'all') or (args.operation == 'feature_detect_ms1'):
 
     feature_detect_stop_time = time.time()
     processing_times.append(("feature detect ms1", feature_detect_stop_time-feature_detect_start_time))
-else:
-    sys.exit()
 
 # find out how many features were detected
 source_conn = sqlite3.connect(feature_database_name)
