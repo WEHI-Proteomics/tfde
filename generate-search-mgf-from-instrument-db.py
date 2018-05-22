@@ -51,7 +51,7 @@ def merge_summed_regions_prep(source_db_name, destination_db_name):
 # Process the command line arguments
 parser = argparse.ArgumentParser(description='Generates the search MGF from the instrument database.')
 parser.add_argument('-dbd','--data_directory', type=str, help='The directory for the processing data.', required=True)
-parser.add_argument('-idb','--instrument_database_name', type=str, help='The name of the instrument database.', required=True)
+parser.add_argument('-idb','--instrument_database_name', type=str, help='The name of the instrument database.', required=False)
 parser.add_argument('-dbn','--database_base_name', type=str, help='The base name of the destination databases.', required=True)
 parser.add_argument('-fts','--frames_to_sum', type=int, default=150, help='The number of MS1 source frames to sum.', required=False)
 parser.add_argument('-fso','--frame_summing_offset', type=int, default=25, help='The number of MS1 source frames to shift for each summation.', required=False)
@@ -87,10 +87,10 @@ number_of_cores = mp.cpu_count()
 # Set up the processing pool
 pool = Pool()
 
-convert_start_time = time.time()
-
 # convert the instrument database
-if (args.operation == 'all') or (args.operation == 'convert_instrument_db'):
+if ((args.operation == 'all') or (args.operation == 'convert_instrument_db')) and (args.instrument_database_name is not None):
+    convert_start_time = time.time()
+
     if args.number_of_frames is not None:
         run_process("python ./otf-peak-detect/convert-instrument-db.py -sdb {} -ddb {} -nf {}".format(args.instrument_database_name, converted_database_name, args.number_of_frames))
     else:
@@ -103,8 +103,8 @@ if (args.operation == 'all') or (args.operation == 'convert_instrument_db'):
     statistics.append(("number of converted frames", number_of_converted_frames))
     source_conn.close()
 
-convert_stop_time = time.time()
-processing_times.append(("database conversion", convert_stop_time-convert_start_time))
+    convert_stop_time = time.time()
+    processing_times.append(("database conversion", convert_stop_time-convert_start_time))
 
 # find the total number of summed ms1 frames in the database
 source_conn = sqlite3.connect(converted_database_name)
