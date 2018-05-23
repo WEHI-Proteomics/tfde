@@ -247,18 +247,18 @@ if (args.operation == 'all') or (args.operation == 'match_precursor_ms2_peaks'):
 #     peak_correlation_stop_time = time.time()
 #     processing_times.append(("peak correlation", peak_correlation_stop_time-peak_correlation_start_time))
 
-# if (args.operation == 'all') or (args.operation == 'recombine_feature_databases'):
-#     # recombine the feature range databases back into a combined database
-#     recombine_feature_databases_start_time = time.time()
-#     template_feature_range = feature_ranges[0]
-#     template_db_name = "{}-{}-{}.sqlite".format(feature_database_root, template_feature_range[0], template_feature_range[1])
-#     merge_summed_regions_prep(template_db_name, feature_database_name)
-#     for feature_range in feature_ranges:
-#         source_db_name = "{}-{}-{}.sqlite".format(feature_database_root, feature_range[0], feature_range[1])
-#         print("merging {} into {}".format(source_db_name, feature_database_name))
-#         merge_summed_regions(source_db_name, feature_database_name)
-#     recombine_feature_databases_stop_time = time.time()
-#     processing_times.append(("feature recombine", recombine_feature_databases_stop_time-recombine_feature_databases_start_time))
+if (args.operation == 'all') or (args.operation == 'recombine_feature_databases'):
+    # recombine the feature range databases back into a combined database
+    recombine_feature_databases_start_time = time.time()
+    template_feature_range = feature_ranges[0]
+    template_db_name = "{}-{}-{}.sqlite".format(feature_database_root, template_feature_range[0], template_feature_range[1])
+    merge_summed_regions_prep(template_db_name, feature_database_name)
+    for feature_range in feature_ranges:
+        source_db_name = "{}-{}-{}.sqlite".format(feature_database_root, feature_range[0], feature_range[1])
+        print("merging {} into {}".format(source_db_name, feature_database_name))
+        merge_summed_regions(source_db_name, feature_database_name)
+    recombine_feature_databases_stop_time = time.time()
+    processing_times.append(("feature recombine", recombine_feature_databases_stop_time-recombine_feature_databases_start_time))
 
 # if (args.operation == 'all') or (args.operation == 'deconvolve_ms2_spectra'):
 #     # deconvolve the ms2 spectra with Hardklor
