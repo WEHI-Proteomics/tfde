@@ -13,6 +13,7 @@ parser.add_argument('-db','--database_name', type=str, help='The name of the sou
 parser.add_argument('-fl','--feature_id_lower', type=int, help='Lower feature ID to process.', required=True)
 parser.add_argument('-fu','--feature_id_upper', type=int, help='Upper feature ID to process.', required=True)
 parser.add_argument('-ppm','--mz_tolerance_ppm', type=int, default=2, help='m/z matching tolerance in PPM.', required=False)
+parser.add_argument('-fps','--frames_per_second', type=float, default=2.0, help='Effective frame rate for the summed frames.', required=False)
 args = parser.parse_args()
 
 db_conn = sqlite3.connect(args.database_name)
@@ -36,7 +37,7 @@ for arg in vars(args):
 print("Setting up tables and indexes")
 db_c.execute("DROP TABLE IF EXISTS precursor_ms2_peak_matches")
 db_c.execute("DROP TABLE IF EXISTS precursor_ms2_peak_matches_info")
-db_c.execute("CREATE TABLE precursor_ms2_peak_matches (feature_id INTEGER, base_peak_id INTEGER, ms2_peak_id INTEGER, mz_centroid REAL, mz_delta REAL, scan_delta REAL, PRIMARY KEY (feature_id, base_peak_id))")
+db_c.execute("CREATE TABLE precursor_ms2_peak_matches (feature_id INTEGER, base_peak_id INTEGER, base_peak_rt REAL, ms2_peak_id INTEGER, mz_centroid REAL, mz_delta REAL, scan_delta REAL, PRIMARY KEY (feature_id, base_peak_id))")
 db_c.execute("CREATE TABLE precursor_ms2_peak_matches_info (item TEXT, value TEXT)")
 
 start_run = time.time()
@@ -56,6 +57,10 @@ for feature_ids_idx in range(0,len(features_df)):
     ms1_peak_df = pd.read_sql_query("select * from ms1_feature_region_peaks where feature_id={} and peak_id={}".format(feature_id,base_peak_id), db_conn)
     base_centroid_mz = ms1_peak_df.loc[0].centroid_mz.astype(float)
     base_centroid_scan = ms1_peak_df.loc[0].centroid_scan.astype(float)
+
+    # find the feature's retention time
+    feature_df = pd.read_sql_query("select * from features where feature_id={}".format(feature_id), db_conn)
+    retention_time = feature_df.loc[0].base_frame_id.astype(float) / args.frames_per_second
 
     # read all the ms2 peaks for this feature
     ms2_peaks_df = pd.read_sql_query("select * from ms2_peaks where feature_id={}".format(feature_id), db_conn)
@@ -77,10 +82,10 @@ for feature_ids_idx in range(0,len(features_df)):
         mz_delta = 0.0
         scan_delta = 0.0
 
-    peak_matches.append((feature_id, base_peak_id, ms2_peak_id, base_centroid_mz, mz_delta, scan_delta))
+    peak_matches.append((feature_id, base_peak_id, retention_time, ms2_peak_id, base_centroid_mz, mz_delta, scan_delta))
 
 print("Writing out the peak matches")
-db_c.executemany("INSERT INTO precursor_ms2_peak_matches VALUES (?, ?, ?, ?, ?, ?)", peak_matches)
+db_c.executemany("INSERT INTO precursor_ms2_peak_matches VALUES (?, ?, ?, ?, ?, ?, ?)", peak_matches)
 
 stop_run = time.time()
 print("{:.2f} seconds to match peaks for features {} to {}".format(stop_run-start_run, args.feature_id_lower, args.feature_id_upper))

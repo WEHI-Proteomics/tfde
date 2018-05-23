@@ -64,6 +64,7 @@ parser.add_argument('-ml','--mz_lower', type=float, help='Lower feature m/z to p
 parser.add_argument('-mu','--mz_upper', type=float, help='Upper feature m/z to process.', required=True)
 parser.add_argument('-fl','--frame_lower', type=int, help='The lower summed frame number to process.', required=False)
 parser.add_argument('-fu','--frame_upper', type=int, help='The upper summed frame number to process.', required=False)
+parser.add_argument('-fps','--frames_per_second', type=float, default=2.0, help='Effective frame rate for the summed frames.', required=False)
 args = parser.parse_args()
 
 processing_times = []
@@ -171,7 +172,7 @@ if (args.operation == 'all') or (args.operation == 'feature_detect_ms1'):
     feature_detect_start_time = time.time()
 
     print("detecting features...")
-    run_process("python ./otf-peak-detect/feature-detect-ms1.py -db {}".format(feature_database_name))
+    run_process("python ./otf-peak-detect/feature-detect-ms1.py -db {} -fps {}".format(feature_database_name, args.frames_per_second))
 
     feature_detect_stop_time = time.time()
     processing_times.append(("feature detect ms1", feature_detect_stop_time-feature_detect_start_time))
@@ -230,7 +231,7 @@ if (args.operation == 'all') or (args.operation == 'feature_region_ms1_peak_dete
 match_precursor_ms2_peaks_processes = []
 for feature_range in feature_ranges:
     destination_db_name = "{}-{}-{}.sqlite".format(feature_database_root, feature_range[0], feature_range[1])
-    match_precursor_ms2_peaks_processes.append("python ./otf-peak-detect/match-precursor-ms2-peaks.py -db {} -fl {} -fu {}".format(destination_db_name, feature_range[0], feature_range[1]))
+    match_precursor_ms2_peaks_processes.append("python ./otf-peak-detect/match-precursor-ms2-peaks.py -db {} -fl {} -fu {} -fps {}".format(destination_db_name, feature_range[0], feature_range[1], args.frames_per_second))
 
 if (args.operation == 'all') or (args.operation == 'match_precursor_ms2_peaks'):
     match_precursor_ms2_peaks_start_time = time.time()
@@ -263,7 +264,7 @@ if (args.operation == 'all') or (args.operation == 'match_precursor_ms2_peaks'):
 #     # deconvolve the ms2 spectra with Hardklor
 #     deconvolve_ms2_spectra_start_time = time.time()
 #     print("deconvolving ms2 spectra...")
-#     run_process("python ./otf-peak-detect/deconvolve-ms2-spectra.py -fdb {} -bfn {} -dbd {} -mpc {}".format(feature_database_name, args.database_base_name, args.data_directory, args.minimum_peak_correlation))
+#     run_process("python ./otf-peak-detect/deconvolve-ms2-spectra.py -fdb {} -bfn {} -dbd {} -mpc {} -fps {}".format(feature_database_name, args.database_base_name, args.data_directory, args.minimum_peak_correlation, args.frames_per_second))
 #     deconvolve_ms2_spectra_stop_time = time.time()
 #     processing_times.append(("deconvolve ms2 spectra", deconvolve_ms2_spectra_stop_time-deconvolve_ms2_spectra_start_time))
 
