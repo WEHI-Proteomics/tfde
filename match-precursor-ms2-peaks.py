@@ -10,6 +10,7 @@ import time
 
 parser = argparse.ArgumentParser(description='Find the precursor\'s base peak in ms2.')
 parser.add_argument('-db','--database_name', type=str, help='The name of the source database.', required=True)
+parser.add_argument('-fdb','--features_database_name', type=str, help='The name of the features database.', required=True)
 parser.add_argument('-fl','--feature_id_lower', type=int, help='Lower feature ID to process.', required=True)
 parser.add_argument('-fu','--feature_id_upper', type=int, help='Upper feature ID to process.', required=True)
 parser.add_argument('-ppm','--mz_tolerance_ppm', type=int, default=2, help='m/z matching tolerance in PPM.', required=False)
@@ -59,8 +60,10 @@ for feature_ids_idx in range(0,len(features_df)):
     base_centroid_scan = ms1_peak_df.loc[0].centroid_scan.astype(float)
 
     # find the feature's retention time
-    feature_df = pd.read_sql_query("select * from features where feature_id={}".format(feature_id), db_conn)
+    fdb_conn = sqlite3.connect(args.features_database_name)
+    feature_df = pd.read_sql_query("select * from features where feature_id={}".format(feature_id), fdb_conn)
     retention_time = feature_df.loc[0].base_frame_id.astype(float) / args.frames_per_second
+    fdb_conn.close()
 
     # read all the ms2 peaks for this feature
     ms2_peaks_df = pd.read_sql_query("select * from ms2_peaks where feature_id={}".format(feature_id), db_conn)

@@ -231,7 +231,7 @@ if (args.operation == 'all') or (args.operation == 'feature_region_ms1_peak_dete
 match_precursor_ms2_peaks_processes = []
 for feature_range in feature_ranges:
     destination_db_name = "{}-{}-{}.sqlite".format(feature_database_root, feature_range[0], feature_range[1])
-    match_precursor_ms2_peaks_processes.append("python ./otf-peak-detect/match-precursor-ms2-peaks.py -db {} -fl {} -fu {} -fps {}".format(destination_db_name, feature_range[0], feature_range[1], args.frames_per_second))
+    match_precursor_ms2_peaks_processes.append("python ./otf-peak-detect/match-precursor-ms2-peaks.py -db {} -fdb {} -fl {} -fu {} -fps {}".format(destination_db_name, feature_database_name, feature_range[0], feature_range[1], args.frames_per_second))
 
 if (args.operation == 'all') or (args.operation == 'match_precursor_ms2_peaks'):
     match_precursor_ms2_peaks_start_time = time.time()
