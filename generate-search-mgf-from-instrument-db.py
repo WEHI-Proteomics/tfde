@@ -239,48 +239,48 @@ if (args.operation == 'all') or (args.operation == 'match_precursor_ms2_peaks'):
     match_precursor_ms2_peaks_stop_time = time.time()
     processing_times.append(("match precursor ms2 peaks", match_precursor_ms2_peaks_stop_time-match_precursor_ms2_peaks_start_time))
 
-if (args.operation == 'all') or (args.operation == 'correlate_peaks'):
-    peak_correlation_start_time = time.time()
-    print("correlating peaks...")
-    pool.map(run_process, peak_correlation_processes)
-    peak_correlation_stop_time = time.time()
-    processing_times.append(("peak correlation", peak_correlation_stop_time-peak_correlation_start_time))
+# if (args.operation == 'all') or (args.operation == 'correlate_peaks'):
+#     peak_correlation_start_time = time.time()
+#     print("correlating peaks...")
+#     pool.map(run_process, peak_correlation_processes)
+#     peak_correlation_stop_time = time.time()
+#     processing_times.append(("peak correlation", peak_correlation_stop_time-peak_correlation_start_time))
 
-if (args.operation == 'all') or (args.operation == 'recombine_feature_databases'):
-    # recombine the feature range databases back into a combined database
-    recombine_feature_databases_start_time = time.time()
-    template_feature_range = feature_ranges[0]
-    template_db_name = "{}-{}-{}.sqlite".format(feature_database_root, template_feature_range[0], template_feature_range[1])
-    merge_summed_regions_prep(template_db_name, feature_database_name)
-    for feature_range in feature_ranges:
-        source_db_name = "{}-{}-{}.sqlite".format(feature_database_root, feature_range[0], feature_range[1])
-        print("merging {} into {}".format(source_db_name, feature_database_name))
-        merge_summed_regions(source_db_name, feature_database_name)
-    recombine_feature_databases_stop_time = time.time()
-    processing_times.append(("feature recombine", recombine_feature_databases_stop_time-recombine_feature_databases_start_time))
+# if (args.operation == 'all') or (args.operation == 'recombine_feature_databases'):
+#     # recombine the feature range databases back into a combined database
+#     recombine_feature_databases_start_time = time.time()
+#     template_feature_range = feature_ranges[0]
+#     template_db_name = "{}-{}-{}.sqlite".format(feature_database_root, template_feature_range[0], template_feature_range[1])
+#     merge_summed_regions_prep(template_db_name, feature_database_name)
+#     for feature_range in feature_ranges:
+#         source_db_name = "{}-{}-{}.sqlite".format(feature_database_root, feature_range[0], feature_range[1])
+#         print("merging {} into {}".format(source_db_name, feature_database_name))
+#         merge_summed_regions(source_db_name, feature_database_name)
+#     recombine_feature_databases_stop_time = time.time()
+#     processing_times.append(("feature recombine", recombine_feature_databases_stop_time-recombine_feature_databases_start_time))
 
-if (args.operation == 'all') or (args.operation == 'deconvolve_ms2_spectra'):
-    # deconvolve the ms2 spectra with Hardklor
-    deconvolve_ms2_spectra_start_time = time.time()
-    print("deconvolving ms2 spectra...")
-    run_process("python ./otf-peak-detect/deconvolve-ms2-spectra.py -fdb {} -bfn {} -dbd {} -mpc {}".format(feature_database_name, args.database_base_name, args.data_directory, args.minimum_peak_correlation))
-    deconvolve_ms2_spectra_stop_time = time.time()
-    processing_times.append(("deconvolve ms2 spectra", deconvolve_ms2_spectra_stop_time-deconvolve_ms2_spectra_start_time))
+# if (args.operation == 'all') or (args.operation == 'deconvolve_ms2_spectra'):
+#     # deconvolve the ms2 spectra with Hardklor
+#     deconvolve_ms2_spectra_start_time = time.time()
+#     print("deconvolving ms2 spectra...")
+#     run_process("python ./otf-peak-detect/deconvolve-ms2-spectra.py -fdb {} -bfn {} -dbd {} -mpc {}".format(feature_database_name, args.database_base_name, args.data_directory, args.minimum_peak_correlation))
+#     deconvolve_ms2_spectra_stop_time = time.time()
+#     processing_times.append(("deconvolve ms2 spectra", deconvolve_ms2_spectra_stop_time-deconvolve_ms2_spectra_start_time))
 
-if (args.operation == 'all') or (args.operation == 'create_search_mgf'):
-    # create search MGF
-    create_search_mgf_start_time = time.time()
-    print("creating the search MGF...")
-    run_process("python ./otf-peak-detect/create-search-mgf.py -fdb {} -bfn {} -dbd {} -mpc {}".format(feature_database_name, args.database_base_name, args.data_directory, args.minimum_peak_correlation))
-    create_search_mgf_stop_time = time.time()
-    processing_times.append(("create search mgf", create_search_mgf_stop_time-create_search_mgf_stop_time))
+# if (args.operation == 'all') or (args.operation == 'create_search_mgf'):
+#     # create search MGF
+#     create_search_mgf_start_time = time.time()
+#     print("creating the search MGF...")
+#     run_process("python ./otf-peak-detect/create-search-mgf.py -fdb {} -bfn {} -dbd {} -mpc {}".format(feature_database_name, args.database_base_name, args.data_directory, args.minimum_peak_correlation))
+#     create_search_mgf_stop_time = time.time()
+#     processing_times.append(("create search mgf", create_search_mgf_stop_time-create_search_mgf_stop_time))
 
-    # gather statistics
-    source_conn = sqlite3.connect(converted_database_name)
-    deconvoluted_ions_df = pd.read_sql_query("select max(ion_id) from deconvoluted_ions", source_conn)
-    number_of_deconvoluted_ions = int(deconvoluted_ions_df.values[0][0])
-    statistics.append(("number of deconvoluted ions", number_of_deconvoluted_ions))
-    source_conn.close()
+#     # gather statistics
+#     source_conn = sqlite3.connect(converted_database_name)
+#     deconvoluted_ions_df = pd.read_sql_query("select max(ion_id) from deconvoluted_ions", source_conn)
+#     number_of_deconvoluted_ions = int(deconvoluted_ions_df.values[0][0])
+#     statistics.append(("number of deconvoluted ions", number_of_deconvoluted_ions))
+#     source_conn.close()
 
 processing_stop_time = time.time()
 processing_times.append(("total processing", processing_stop_time-processing_start_time))
