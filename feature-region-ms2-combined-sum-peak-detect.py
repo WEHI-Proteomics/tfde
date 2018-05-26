@@ -72,7 +72,7 @@ def main():
     parser.add_argument('-ml','--mz_lower', type=float, help='Lower feature m/z to process.', required=True)
     parser.add_argument('-mu','--mz_upper', type=float, help='Upper feature m/z to process.', required=True)
     parser.add_argument('-mcs','--minimum_charge_state', type=int, default=2, help='Minimum charge state to process.', required=False)
-    parser.add_argument('-ms2ce','--ms2_collision_energy', type=float, help='Collision energy used for MS2.', required=True)
+    parser.add_argument('-ms1ce','--ms1_collision_energy', type=float, help='Collision energy used for MS1.', required=True)
     parser.add_argument('-fts','--frames_to_sum', type=int, default=150, help='The number of MS2 source frames to sum.', required=False)
     parser.add_argument('-fso','--frame_summing_offset', type=int, default=25, help='The number of MS2 source frames to shift for each summation.', required=False)
     parser.add_argument('-mzsf','--mz_scaling_factor', type=float, default=1000.0, help='Scaling factor to convert m/z range to integers.', required=False)
@@ -111,7 +111,7 @@ def main():
     start_run = time.time()
 
     print("Loading the MS2 frame IDs")
-    ms2_frame_ids_df = pd.read_sql_query("select frame_id from frame_properties where collision_energy={} order by frame_id ASC;".format(args.ms2_collision_energy), conv_conn)
+    ms2_frame_ids_df = pd.read_sql_query("select frame_id from frame_properties where collision_energy <> {} order by frame_id ASC;".format(args.ms1_collision_energy), conv_conn)
     ms2_frame_ids_v = ms2_frame_ids_df.values
     print("{} MS2 frames loaded".format(len(ms2_frame_ids_v)))
 
