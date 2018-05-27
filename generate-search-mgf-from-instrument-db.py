@@ -109,16 +109,24 @@ if ((args.operation == 'all') or (args.operation == 'convert_instrument_db')) an
 if args.mz_lower is None:
     source_conn = sqlite3.connect(converted_database_name)
     df = pd.read_sql_query("select value from convert_info where item = \'mz_lower\'", source_conn)
-    args.mz_lower = float(df.loc[0].value)
     source_conn.close()
-    print("mz_lower set to {} from the data".format(args.mz_lower))
+    if len(df) > 0:
+        args.mz_lower = float(df.loc[0].value)
+        print("mz_lower set to {} from the data".format(args.mz_lower))
+    else:
+        print("Could not find mz_lower from the convert_info table and it's needed in sebsequent steps. Exiting.")
+        sys.exit()
 
 if args.mz_upper is None:
     source_conn = sqlite3.connect(converted_database_name)
     df = pd.read_sql_query("select value from convert_info where item = \'mz_upper\'", source_conn)
-    args.mz_upper = float(df.loc[0].value)
     source_conn.close()
-    print("mz_upper set to {} from the data".format(args.mz_upper))
+    if len(df) > 0:
+        args.mz_upper = float(df.loc[0].value)
+        print("mz_upper set to {} from the data".format(args.mz_upper))
+    else:
+        print("Could not find mz_upper from the convert_info table and it's needed in sebsequent steps. Exiting.")
+        sys.exit()
 
 # find the total number of summed ms1 frames in the database
 source_conn = sqlite3.connect(converted_database_name)
@@ -180,11 +188,15 @@ if (args.operation == 'all') or (args.operation == 'cluster_detect_ms1'):
     recombine_frames_stop_time = time.time()
     processing_times.append(("frame-based recombine", recombine_frames_stop_time-recombine_frames_start_time))
 
-    # retrieve the summed frame rate
-    source_conn = sqlite3.connect(frame_database_name)
-    df = pd.read_sql_query("select value from summing_info where item=\'{}\'".format("frames_per_second"), source_conn)
+# retrieve the summed frame rate
+source_conn = sqlite3.connect(frame_database_name)
+df = pd.read_sql_query("select value from summing_info where item=\'{}\'".format("frames_per_second"), source_conn)
+source_conn.close()
+if len(df) > 0:
     frames_per_second = df.loc[0].value
-    source_conn.close()
+else:
+    print("Could not find the frame rate from the summing_info table and it's needed in sebsequent steps. Exiting.")
+    sys.exit()
 
 # detect features in the ms1 frames
 if (args.operation == 'all') or (args.operation == 'feature_detect_ms1'):
