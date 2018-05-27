@@ -11,6 +11,7 @@ import csv
 # Usage: python convert-instrument-db.py -sdb "S:\data\Projects\ProtemicsLab\Bruker timsTOF\databases\20170714_SN34_UPS2_yeast200ng_AIF15_Slot1-39_01_728.d" -ddb "S:\data\Projects\ProtemicsLab\Bruker timsTOF\converted\20170714_SN34_UPS2_yeast200ng_AIF15_Slot1-39_01_728.sqlite"
 
 COLLISION_ENERGY_PROPERTY_NAME = "Collision_Energy_Act"
+FRAME_RATE_PROPERTY_NAME = "Digitizer_AcquisitionTime_Set"
 
 # frame array indices
 FRAME_ID_IDX = 0
@@ -52,6 +53,12 @@ print("Analysis has {} frames. Frame IDs {}-{}".format(frame_count, min_frame_id
 # Get the collision energy property values
 q = source_conn.execute("SELECT Id FROM PropertyDefinitions WHERE PermanentName=\"{}\"".format(COLLISION_ENERGY_PROPERTY_NAME))
 collision_energy_property_id = q.fetchone()[0]
+
+# Get the raw frame period
+df = pd.read_sql_query("SELECT Id FROM PropertyDefinitions WHERE PermanentName=\"{}\"".format(FRAME_RATE_PROPERTY_NAME), source_conn)
+property_id = df.loc[0].Id
+df = pd.read_sql_query("SELECT Value FROM FrameProperties WHERE Property={}".format(property_id), source_conn)
+raw_frame_period_in_msec = df.loc[0].Value
 
 print("Loading the collision energy property values")
 collision_energies_df = pd.read_sql_query("SELECT Frame,Value FROM FrameProperties WHERE Property={}".format(collision_energy_property_id), source_conn)
@@ -184,6 +191,7 @@ convert_info.append(("source_frame_lower", int(min_frame_id)))
 convert_info.append(("source_frame_upper", int(frame_count)))
 convert_info.append(("source_frame_count", int(frame_count)))
 convert_info.append(("num_scans", int(max_scans)))
+convert_info.append(("raw_frame_period_in_msec", float(raw_frame_period_in_msec)))
 convert_info.append(("run processing time (sec)", float(stop_run-start_run)))
 convert_info.append(("processed", time.ctime()))
 

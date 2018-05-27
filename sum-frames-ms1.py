@@ -5,6 +5,7 @@ import argparse
 import numpy as np
 import peakutils
 import time
+import json
 
 def standard_deviation(mz):
     instrument_resolution = 40000.0
@@ -43,9 +44,14 @@ dest_c.execute("CREATE TABLE summing_info (item TEXT, value TEXT)")
 dest_c.execute("CREATE TABLE elution_profile (frame_id INTEGER, intensity INTEGER)")
 
 # Store the arguments as metadata in the database for later reference
-summing_info = []
+summing_info = {}
 for arg in vars(args):
-    summing_info.append((arg, getattr(args, arg)))
+    summing_info[arg] = getattr(args, arg)
+
+# calculate the summed frame rate
+df = pd.read_sql_query("select value from convert_info where item=\'{}\'".format("raw_frame_period_in_msec"), source_conn)
+raw_frame_period_in_msec = df.loc[0].value
+summed_frames_per_second = 1.0 / (args.frame_summing_offset * raw_frame_period_in_msec)
 
 # Find the complete set of frame ids to be processed
 frame_ids_df = pd.read_sql_query("select frame_id from frame_properties where collision_energy={} order by frame_id ASC;".format(args.collision_energy), source_conn)
@@ -131,14 +137,15 @@ if len(elution_profile) > 0:
 stop_run = time.time()
 print("{} seconds to sum frames {} to {}".format(stop_run-start_run, args.frame_lower, args.frame_upper))
 
-summing_info.append(("scan_lower", args.scan_lower))
-summing_info.append(("scan_upper", args.scan_upper))
+summing_info["scan_lower"] = args.scan_lower
+summing_info["scan_upper"] = args.scan_upper
+summing_info["frames_per_second"] = summed_frames_per_second
 
-summing_info.append(("run processing time (sec)", stop_run-start_run))
-summing_info.append(("processed", time.ctime()))
+summing_info["run processing time (sec)"] = stop_run-start_run
+summing_info["processed"] = time.ctime()
 
 summing_info_entry = []
-summing_info_entry.append(("summed frames {}-{}".format(args.frame_lower, args.frame_upper), ' '.join(str(e) for e in summing_info)))
+summing_info_entry.append(("summed frames {}-{}".format(args.frame_lower, args.frame_upper), json.dumps(summing_info)))
 
 dest_c.executemany("INSERT INTO summing_info VALUES (?, ?)", summing_info_entry)
 

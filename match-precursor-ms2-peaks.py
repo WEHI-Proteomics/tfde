@@ -14,7 +14,7 @@ parser.add_argument('-fdb','--features_database_name', type=str, help='The name 
 parser.add_argument('-fl','--feature_id_lower', type=int, help='Lower feature ID to process.', required=True)
 parser.add_argument('-fu','--feature_id_upper', type=int, help='Upper feature ID to process.', required=True)
 parser.add_argument('-ppm','--mz_tolerance_ppm', type=int, default=2, help='m/z matching tolerance in PPM.', required=False)
-parser.add_argument('-fps','--frames_per_second', type=float, default=2.0, help='Effective frame rate for the summed frames.', required=False)
+parser.add_argument('-fps','--frames_per_second', type=float, help='Effective frame rate for the summed frames.', required=True)
 args = parser.parse_args()
 
 db_conn = sqlite3.connect(args.database_name)

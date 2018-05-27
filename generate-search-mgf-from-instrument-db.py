@@ -53,8 +53,8 @@ parser = argparse.ArgumentParser(description='Generates the search MGF from the 
 parser.add_argument('-dbd','--data_directory', type=str, help='The directory for the processing data.', required=True)
 parser.add_argument('-idb','--instrument_database_name', type=str, help='The name of the instrument database.', required=False)
 parser.add_argument('-dbn','--database_base_name', type=str, help='The base name of the destination databases.', required=True)
-parser.add_argument('-fts','--frames_to_sum', type=int, default=150, help='The number of MS1 source frames to sum.', required=False)
-parser.add_argument('-fso','--frame_summing_offset', type=int, default=25, help='The number of MS1 source frames to shift for each summation.', required=False)
+parser.add_argument('-fts','--frames_to_sum', type=int, help='The number of MS1 source frames to sum.', required=True)
+parser.add_argument('-fso','--frame_summing_offset', type=int, help='The number of MS1 source frames to shift for each summation.', required=True)
 parser.add_argument('-cems1','--ms1_collision_energy', type=int, help='Collision energy for ms1, in eV.', required=True)
 parser.add_argument('-mpc','--minimum_peak_correlation', type=float, help='Minimum peak correlation', required=True)
 parser.add_argument('-op','--operation', type=str, default='all', help='The operation to perform.', required=False)
@@ -63,7 +63,6 @@ parser.add_argument('-ml','--mz_lower', type=float, help='Lower feature m/z to p
 parser.add_argument('-mu','--mz_upper', type=float, help='Upper feature m/z to process.', required=True)
 parser.add_argument('-fl','--frame_lower', type=int, help='The lower summed frame number to process.', required=False)
 parser.add_argument('-fu','--frame_upper', type=int, help='The upper summed frame number to process.', required=False)
-parser.add_argument('-fps','--frames_per_second', type=float, default=2.0, help='Effective frame rate for the summed frames.', required=False)
 args = parser.parse_args()
 
 processing_times = []
@@ -135,7 +134,7 @@ peak_detect_ms1_processes = []
 cluster_detect_ms1_processes = []
 for summed_frame_range in summed_frame_ranges:
     destination_db_name = "{}-{}-{}.sqlite".format(frame_database_root, summed_frame_range[0], summed_frame_range[1])
-    sum_frame_ms1_processes.append("python ./otf-peak-detect/sum-frames-ms1.py -sdb {} -ddb {} -ce {} -fl {} -fu {}".format(converted_database_name, destination_db_name, args.ms1_collision_energy, summed_frame_range[0], summed_frame_range[1]))
+    sum_frame_ms1_processes.append("python ./otf-peak-detect/sum-frames-ms1.py -sdb {} -ddb {} -ce {} -fl {} -fu {} -fts {} -fso {}".format(converted_database_name, destination_db_name, args.ms1_collision_energy, summed_frame_range[0], summed_frame_range[1], args.frames_to_sum, args.frame_summing_offset))
     peak_detect_ms1_processes.append("python ./otf-peak-detect/peak-detect-ms1.py -db {} -fl {} -fu {}".format(destination_db_name, summed_frame_range[0], summed_frame_range[1]))
     cluster_detect_ms1_processes.append("python ./otf-peak-detect/cluster-detect-ms1.py -db {} -fl {} -fu {}".format(destination_db_name, summed_frame_range[0], summed_frame_range[1]))
 
@@ -166,12 +165,18 @@ if (args.operation == 'all') or (args.operation == 'cluster_detect_ms1'):
     recombine_frames_stop_time = time.time()
     processing_times.append(("frame-based recombine", recombine_frames_stop_time-recombine_frames_start_time))
 
+    # retrieve the summed frame rate
+    source_conn = sqlite3.connect(frame_database_name)
+    df = pd.read_sql_query("select value from summing_info where item=\'{}\'".format("frames_per_second"), source_conn)
+    frames_per_second = df.loc[0].value
+    source_conn.close()
+
 # detect features in the ms1 frames
 if (args.operation == 'all') or (args.operation == 'feature_detect_ms1'):
     feature_detect_start_time = time.time()
 
     print("detecting features...")
-    run_process("python ./otf-peak-detect/feature-detect-ms1.py -db {} -fps {}".format(feature_database_name, args.frames_per_second))
+    run_process("python ./otf-peak-detect/feature-detect-ms1.py -db {} -fps {}".format(feature_database_name, frames_per_second))
 
     feature_detect_stop_time = time.time()
     processing_times.append(("feature detect ms1", feature_detect_stop_time-feature_detect_start_time))
@@ -197,7 +202,7 @@ for s in batch_splits:
 feature_region_ms2_sum_peak_processes = []
 for feature_range in feature_ranges:
     destination_db_name = "{}-{}-{}.sqlite".format(feature_database_root, feature_range[0], feature_range[1])
-    feature_region_ms2_sum_peak_processes.append("python ./otf-peak-detect/feature-region-ms2-combined-sum-peak-detect.py -cdb {} -ddb {} -ms1ce {} -fl {} -fu {} -ml {} -mu {} -bs 20".format(converted_database_name, destination_db_name, args.ms1_collision_energy, feature_range[0], feature_range[1], args.mz_lower, args.mz_upper))
+    feature_region_ms2_sum_peak_processes.append("python ./otf-peak-detect/feature-region-ms2-combined-sum-peak-detect.py -cdb {} -ddb {} -ms1ce {} -fl {} -fu {} -ml {} -mu {} -bs 20 -fts {} -fso {}".format(converted_database_name, destination_db_name, args.ms1_collision_energy, feature_range[0], feature_range[1], args.mz_lower, args.mz_upper, args.frames_to_sum, args.frame_summing_offset))
 
 if (args.operation == 'all') or (args.operation == 'feature_region_ms2_peak_detect'):
     ms2_peak_detect_start_time = time.time()
@@ -230,7 +235,7 @@ if (args.operation == 'all') or (args.operation == 'feature_region_ms1_peak_dete
 match_precursor_ms2_peaks_processes = []
 for feature_range in feature_ranges:
     destination_db_name = "{}-{}-{}.sqlite".format(feature_database_root, feature_range[0], feature_range[1])
-    match_precursor_ms2_peaks_processes.append("python ./otf-peak-detect/match-precursor-ms2-peaks.py -db {} -fdb {} -fl {} -fu {} -fps {}".format(destination_db_name, feature_database_name, feature_range[0], feature_range[1], args.frames_per_second))
+    match_precursor_ms2_peaks_processes.append("python ./otf-peak-detect/match-precursor-ms2-peaks.py -db {} -fdb {} -fl {} -fu {} -fps {}".format(destination_db_name, feature_database_name, feature_range[0], feature_range[1], frames_per_second))
 
 if (args.operation == 'all') or (args.operation == 'match_precursor_ms2_peaks'):
     match_precursor_ms2_peaks_start_time = time.time()
@@ -263,7 +268,7 @@ if (args.operation == 'all') or (args.operation == 'deconvolve_ms2_spectra'):
     # deconvolve the ms2 spectra with Hardklor
     deconvolve_ms2_spectra_start_time = time.time()
     print("deconvolving ms2 spectra...")
-    run_process("python ./otf-peak-detect/deconvolve-ms2-spectra.py -fdb {} -bfn {} -dbd {} -mpc {} -fps {}".format(feature_database_name, args.database_base_name, args.data_directory, args.minimum_peak_correlation, args.frames_per_second))
+    run_process("python ./otf-peak-detect/deconvolve-ms2-spectra.py -fdb {} -bfn {} -dbd {} -mpc {} -fps {}".format(feature_database_name, args.database_base_name, args.data_directory, args.minimum_peak_correlation, frames_per_second))
     deconvolve_ms2_spectra_stop_time = time.time()
     processing_times.append(("deconvolve ms2 spectra", deconvolve_ms2_spectra_stop_time-deconvolve_ms2_spectra_start_time))
 

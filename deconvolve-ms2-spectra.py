@@ -21,8 +21,8 @@ parser = argparse.ArgumentParser(description='Generate a text file containing th
 parser.add_argument('-fdb','--features_database', type=str, help='The name of the features database.', required=True)
 parser.add_argument('-bfn','--base_mgf_filename', type=str, help='The base name of the MGF to give Hardklor.', required=True)
 parser.add_argument('-dbd','--data_directory', type=str, help='The directory for the processing data.', required=True)
-parser.add_argument('-mpc','--minimum_peak_correlation', type=float, default=0.6, help='Process ms2 peaks with at least this much correlation with the feature''s ms1 base peak.')
-parser.add_argument('-fps','--frames_per_second', type=float, default=2.0, help='Effective frame rate.')
+parser.add_argument('-mpc','--minimum_peak_correlation', type=float, default=0.6, help='Process ms2 peaks with at least this much correlation with the feature''s ms1 base peak.', required=False)
+parser.add_argument('-fps','--frames_per_second', type=float, help='Effective frame rate.', required=True)
 args = parser.parse_args()
 
 mgf_directory = "{}/mgf".format(args.data_directory)
