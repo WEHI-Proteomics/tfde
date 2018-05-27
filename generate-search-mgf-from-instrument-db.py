@@ -59,8 +59,8 @@ parser.add_argument('-cems1','--ms1_collision_energy', type=int, help='Collision
 parser.add_argument('-mpc','--minimum_peak_correlation', type=float, help='Minimum peak correlation', required=True)
 parser.add_argument('-op','--operation', type=str, default='all', help='The operation to perform.', required=False)
 parser.add_argument('-nf','--number_of_frames', type=int, help='The number of frames to convert.', required=False)
-parser.add_argument('-ml','--mz_lower', type=float, help='Lower feature m/z to process.', required=True)
-parser.add_argument('-mu','--mz_upper', type=float, help='Upper feature m/z to process.', required=True)
+parser.add_argument('-ml','--mz_lower', type=float, help='Lower feature m/z to process.', required=False)
+parser.add_argument('-mu','--mz_upper', type=float, help='Upper feature m/z to process.', required=False)
 parser.add_argument('-fl','--frame_lower', type=int, help='The lower summed frame number to process.', required=False)
 parser.add_argument('-fu','--frame_upper', type=int, help='The upper summed frame number to process.', required=False)
 args = parser.parse_args()
@@ -79,6 +79,20 @@ frame_database_root = "{}/{}-frames".format(args.data_directory, args.database_b
 frame_database_name = converted_database_name  # combined the frame-based sections back into the converted database
 feature_database_root = "{}/{}-features".format(args.data_directory, args.database_base_name)  # used to split the data into feature-based sections
 feature_database_name = converted_database_name  # combined the feature-based sections back into the converted database
+
+if args.mz_lower is None:
+    source_conn = sqlite3.connect(converted_database_name)
+    df = pd.read_sql_query("select value from convert_info where item = \'mz_lower\'", source_conn)
+    args.mz_lower = float(df.loc[0].value)
+    source_conn.close()
+    print("mz_lower set to {} from the data".format(args.mz_lower))
+
+if args.mz_upper is None:
+    source_conn = sqlite3.connect(converted_database_name)
+    df = pd.read_sql_query("select value from convert_info where item = \'mz_upper\'", source_conn)
+    args.mz_upper = float(df.loc[0].value)
+    source_conn.close()
+    print("mz_upper set to {} from the data".format(args.mz_upper))
 
 # find out about the compute environment
 number_of_cores = mp.cpu_count()

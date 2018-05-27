@@ -12,6 +12,8 @@ import csv
 
 COLLISION_ENERGY_PROPERTY_NAME = "Collision_Energy_Act"
 FRAME_RATE_PROPERTY_NAME = "Digitizer_AcquisitionTime_Set"
+TARGET_MASS_START_PROPERTY_NAME = "Mode_TargetMassStart"
+TARGET_MASS_END_PROPERTY_NAME = "Mode_TargetMassEnd"
 
 # frame array indices
 FRAME_ID_IDX = 0
@@ -50,15 +52,26 @@ max_frame_id = np.max(frames_v[:,FRAME_ID_IDX])
 min_frame_id = np.min(frames_v[:,FRAME_ID_IDX])
 print("Analysis has {} frames. Frame IDs {}-{}".format(frame_count, min_frame_id, max_frame_id))
 
-# Get the collision energy property values
-q = source_conn.execute("SELECT Id FROM PropertyDefinitions WHERE PermanentName=\"{}\"".format(COLLISION_ENERGY_PROPERTY_NAME))
-collision_energy_property_id = q.fetchone()[0]
-
 # Get the raw frame period
 df = pd.read_sql_query("SELECT Id FROM PropertyDefinitions WHERE PermanentName=\"{}\"".format(FRAME_RATE_PROPERTY_NAME), source_conn)
 property_id = df.loc[0].Id
 df = pd.read_sql_query("SELECT Value FROM FrameProperties WHERE Property={}".format(property_id), source_conn)
 raw_frame_period_in_msec = df.loc[0].Value
+
+# Get the mass range
+df = pd.read_sql_query("SELECT Id FROM PropertyDefinitions WHERE PermanentName=\"{}\"".format(TARGET_MASS_START_PROPERTY_NAME), source_conn)
+property_id = df.loc[0].Id
+df = pd.read_sql_query("SELECT Value FROM GroupProperties WHERE Property={}".format(property_id), source_conn)
+mz_lower = df.loc[0].Value
+
+df = pd.read_sql_query("SELECT Id FROM PropertyDefinitions WHERE PermanentName=\"{}\"".format(TARGET_MASS_END_PROPERTY_NAME), source_conn)
+property_id = df.loc[0].Id
+df = pd.read_sql_query("SELECT Value FROM GroupProperties WHERE Property={}".format(property_id), source_conn)
+mz_upper = df.loc[0].Value
+
+# Get the collision energy property values
+q = source_conn.execute("SELECT Id FROM PropertyDefinitions WHERE PermanentName=\"{}\"".format(COLLISION_ENERGY_PROPERTY_NAME))
+collision_energy_property_id = q.fetchone()[0]
 
 print("Loading the collision energy property values")
 collision_energies_df = pd.read_sql_query("SELECT Frame,Value FROM FrameProperties WHERE Property={}".format(collision_energy_property_id), source_conn)
@@ -192,6 +205,8 @@ convert_info.append(("source_frame_upper", int(frame_count)))
 convert_info.append(("source_frame_count", int(frame_count)))
 convert_info.append(("num_scans", int(max_scans)))
 convert_info.append(("raw_frame_period_in_msec", float(raw_frame_period_in_msec)))
+convert_info.append(("mz_lower", float(mz_lower)))
+convert_info.append(("mz_upper", float(mz_upper)))
 convert_info.append(("run processing time (sec)", float(stop_run-start_run)))
 convert_info.append(("processed", time.ctime()))
 
