@@ -80,20 +80,6 @@ frame_database_name = converted_database_name  # combined the frame-based sectio
 feature_database_root = "{}/{}-features".format(args.data_directory, args.database_base_name)  # used to split the data into feature-based sections
 feature_database_name = converted_database_name  # combined the feature-based sections back into the converted database
 
-if args.mz_lower is None:
-    source_conn = sqlite3.connect(converted_database_name)
-    df = pd.read_sql_query("select value from convert_info where item = \'mz_lower\'", source_conn)
-    args.mz_lower = float(df.loc[0].value)
-    source_conn.close()
-    print("mz_lower set to {} from the data".format(args.mz_lower))
-
-if args.mz_upper is None:
-    source_conn = sqlite3.connect(converted_database_name)
-    df = pd.read_sql_query("select value from convert_info where item = \'mz_upper\'", source_conn)
-    args.mz_upper = float(df.loc[0].value)
-    source_conn.close()
-    print("mz_upper set to {} from the data".format(args.mz_upper))
-
 # find out about the compute environment
 number_of_cores = mp.cpu_count()
 
@@ -118,6 +104,21 @@ if ((args.operation == 'all') or (args.operation == 'convert_instrument_db')) an
 
     convert_stop_time = time.time()
     processing_times.append(("database conversion", convert_stop_time-convert_start_time))
+
+# Determine the mass range if it's not specified
+if args.mz_lower is None:
+    source_conn = sqlite3.connect(converted_database_name)
+    df = pd.read_sql_query("select value from convert_info where item = \'mz_lower\'", source_conn)
+    args.mz_lower = float(df.loc[0].value)
+    source_conn.close()
+    print("mz_lower set to {} from the data".format(args.mz_lower))
+
+if args.mz_upper is None:
+    source_conn = sqlite3.connect(converted_database_name)
+    df = pd.read_sql_query("select value from convert_info where item = \'mz_upper\'", source_conn)
+    args.mz_upper = float(df.loc[0].value)
+    source_conn.close()
+    print("mz_upper set to {} from the data".format(args.mz_upper))
 
 # find the total number of summed ms1 frames in the database
 source_conn = sqlite3.connect(converted_database_name)
