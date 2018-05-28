@@ -8,6 +8,7 @@ import argparse
 import time
 import numpy as np
 import sys
+import json
 
 def run_process(process):
     os.system(process)
@@ -199,7 +200,9 @@ source_conn = sqlite3.connect(frame_database_name)
 df = pd.read_sql_query("select value from summing_info where item=\'{}\'".format("frames_per_second"), source_conn)
 source_conn.close()
 if len(df) > 0:
-    frames_per_second = df.loc[0].value
+    entry = json.loads(df.loc[0].value)
+    frames_per_second = float(entry["frames_per_second"])
+    print("Frames per second is {}".format(frames_per_second))
 else:
     print("Could not find the frame rate from the summing_info table and it's needed in sebsequent steps. Exiting.")
     sys.exit()
