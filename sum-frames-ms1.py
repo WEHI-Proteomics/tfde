@@ -51,7 +51,7 @@ for arg in vars(args):
 # calculate the summed frame rate
 df = pd.read_sql_query("select value from convert_info where item=\'{}\'".format("raw_frame_period_in_msec"), source_conn)
 raw_frame_period_in_msec = float(df.loc[0].value)
-summed_frames_per_second = 1.0 / (args.frame_summing_offset * raw_frame_period_in_msec)
+summed_frames_per_second = 1.0 / (args.frame_summing_offset * raw_frame_period_in_msec * 10**-3)
 
 # Find the complete set of frame ids to be processed
 frame_ids_df = pd.read_sql_query("select frame_id from frame_properties where collision_energy={} order by frame_id ASC;".format(args.collision_energy), source_conn)
