@@ -102,145 +102,148 @@ frame_count = 0
 for frame_id in range(args.frame_lower, args.frame_upper+1):
     peak_id = 1
     frame_df = pd.read_sql_query("select mz,scan,intensity,point_id from summed_frames where frame_id={} order by intensity desc;".format(frame_id), source_conn)
-    print("Detecting peaks in ms1 frame {}".format(frame_id))
-    start_frame = time.time()
-    frame_v = frame_df.values
-    # Find the intensity of the point at the bottom of the top tenth percentile of points
-    number_of_points = len(frame_v)
-    top_tenth_percentile_index = int(number_of_points / 10)
-    minimum_intensity = int(frame_v[top_tenth_percentile_index][FRAME_INTENSITY_IDX])
-    # print("frame occupies {} bytes".format(frame_v.nbytes))
-    while len(frame_v) > 0:
-        peak_indices = np.empty(0, dtype=int)
+    if len(frame_df) > 0:
+        print("Detecting peaks in ms1 frame {}".format(frame_id))
+        start_frame = time.time()
+        frame_v = frame_df.values
+        # Find the intensity of the point at the bottom of the top tenth percentile of points
+        number_of_points = len(frame_v)
+        top_tenth_percentile_index = int(number_of_points / 10)
+        minimum_intensity = int(frame_v[top_tenth_percentile_index][FRAME_INTENSITY_IDX])
+        # print("frame occupies {} bytes".format(frame_v.nbytes))
+        while len(frame_v) > 0:
+            peak_indices = np.empty(0, dtype=int)
 
-        rationale = collections.OrderedDict()
-        max_intensity_index = frame_v.argmax(axis=0)[FRAME_INTENSITY_IDX]
-        mz = frame_v[max_intensity_index][FRAME_MZ_IDX]
-        scan = int(frame_v[max_intensity_index][FRAME_SCAN_IDX])
-        intensity = int(frame_v[max_intensity_index][FRAME_INTENSITY_IDX])
-        point_id = int(frame_v[max_intensity_index][FRAME_POINT_ID_IDX])
-        peak_indices = np.append(peak_indices, max_intensity_index)
-        rationale["highest intensity point id"] = point_id
+            rationale = collections.OrderedDict()
+            max_intensity_index = frame_v.argmax(axis=0)[FRAME_INTENSITY_IDX]
+            mz = frame_v[max_intensity_index][FRAME_MZ_IDX]
+            scan = int(frame_v[max_intensity_index][FRAME_SCAN_IDX])
+            intensity = int(frame_v[max_intensity_index][FRAME_INTENSITY_IDX])
+            point_id = int(frame_v[max_intensity_index][FRAME_POINT_ID_IDX])
+            peak_indices = np.append(peak_indices, max_intensity_index)
+            rationale["highest intensity point id"] = point_id
 
-        # Stop looking for peaks if we've reached the bottom of the top tenth percentile of points
-        if intensity < minimum_intensity:
-            break
+            # Stop looking for peaks if we've reached the bottom of the top tenth percentile of points
+            if intensity < minimum_intensity:
+                break
 
-        # Look for other points belonging to this peak
-        std_dev_window = standard_deviation(mz) * args.standard_deviations
-        # Look in the 'up' direction
-        scan_offset = 1
-        missed_scans = 0
-        while (missed_scans < args.empty_scans) and (scan-scan_offset >= args.scan_lower):
-            nearby_indices_up = np.where((frame_v[:,FRAME_SCAN_IDX] == scan-scan_offset) & (frame_v[:,FRAME_MZ_IDX] >= mz - std_dev_window) & (frame_v[:,FRAME_MZ_IDX] <= mz + std_dev_window))[0]
-            nearby_points_up = frame_v[nearby_indices_up]
-            if len(nearby_indices_up) == 0:
-                missed_scans += 1
-            else:
-                if len(nearby_indices_up) > 1:
-                    # take the most intense point if there's more than one point found on this scan
-                    frame_v_index_to_use = nearby_indices_up[np.argmax(nearby_points_up[:,FRAME_INTENSITY_IDX])]
+            # Look for other points belonging to this peak
+            std_dev_window = standard_deviation(mz) * args.standard_deviations
+            # Look in the 'up' direction
+            scan_offset = 1
+            missed_scans = 0
+            while (missed_scans < args.empty_scans) and (scan-scan_offset >= args.scan_lower):
+                nearby_indices_up = np.where((frame_v[:,FRAME_SCAN_IDX] == scan-scan_offset) & (frame_v[:,FRAME_MZ_IDX] >= mz - std_dev_window) & (frame_v[:,FRAME_MZ_IDX] <= mz + std_dev_window))[0]
+                nearby_points_up = frame_v[nearby_indices_up]
+                if len(nearby_indices_up) == 0:
+                    missed_scans += 1
                 else:
-                    frame_v_index_to_use = nearby_indices_up[0]
-                # Update the m/z window
-                mz = frame_v[frame_v_index_to_use][FRAME_MZ_IDX]
-                std_dev_window = standard_deviation(mz) * args.standard_deviations
-                missed_scans = 0
-                peak_indices = np.append(peak_indices, frame_v_index_to_use)
-            scan_offset += 1
-        # Look in the 'down' direction
-        scan_offset = 1
-        missed_scans = 0
-        mz = frame_v[max_intensity_index][FRAME_MZ_IDX]
-        std_dev_window = standard_deviation(mz) * args.standard_deviations
-        while (missed_scans < args.empty_scans) and (scan+scan_offset <= args.scan_upper):
-            nearby_indices_down = np.where((frame_v[:,FRAME_SCAN_IDX] == scan+scan_offset) & (frame_v[:,FRAME_MZ_IDX] >= mz - std_dev_window) & (frame_v[:,FRAME_MZ_IDX] <= mz + std_dev_window))[0]
-            nearby_points_down = frame_v[nearby_indices_down]
-            if len(nearby_indices_down) == 0:
-                missed_scans += 1
-            else:
-                if len(nearby_indices_down) > 1:
-                    # take the most intense point if there's more than one point found on this scan
-                    frame_v_index_to_use = nearby_indices_down[np.argmax(nearby_points_down[:,FRAME_INTENSITY_IDX])]
+                    if len(nearby_indices_up) > 1:
+                        # take the most intense point if there's more than one point found on this scan
+                        frame_v_index_to_use = nearby_indices_up[np.argmax(nearby_points_up[:,FRAME_INTENSITY_IDX])]
+                    else:
+                        frame_v_index_to_use = nearby_indices_up[0]
+                    # Update the m/z window
+                    mz = frame_v[frame_v_index_to_use][FRAME_MZ_IDX]
+                    std_dev_window = standard_deviation(mz) * args.standard_deviations
+                    missed_scans = 0
+                    peak_indices = np.append(peak_indices, frame_v_index_to_use)
+                scan_offset += 1
+            # Look in the 'down' direction
+            scan_offset = 1
+            missed_scans = 0
+            mz = frame_v[max_intensity_index][FRAME_MZ_IDX]
+            std_dev_window = standard_deviation(mz) * args.standard_deviations
+            while (missed_scans < args.empty_scans) and (scan+scan_offset <= args.scan_upper):
+                nearby_indices_down = np.where((frame_v[:,FRAME_SCAN_IDX] == scan+scan_offset) & (frame_v[:,FRAME_MZ_IDX] >= mz - std_dev_window) & (frame_v[:,FRAME_MZ_IDX] <= mz + std_dev_window))[0]
+                nearby_points_down = frame_v[nearby_indices_down]
+                if len(nearby_indices_down) == 0:
+                    missed_scans += 1
                 else:
-                    frame_v_index_to_use = nearby_indices_down[0]
-                
-                # Update the m/z window
-                mz = frame_v[frame_v_index_to_use][FRAME_MZ_IDX]
-                std_dev_window = standard_deviation(mz) * args.standard_deviations
-                missed_scans = 0
-                peak_indices = np.append(peak_indices, frame_v_index_to_use)
-            scan_offset += 1
+                    if len(nearby_indices_down) > 1:
+                        # take the most intense point if there's more than one point found on this scan
+                        frame_v_index_to_use = nearby_indices_down[np.argmax(nearby_points_down[:,FRAME_INTENSITY_IDX])]
+                    else:
+                        frame_v_index_to_use = nearby_indices_down[0]
+                    
+                    # Update the m/z window
+                    mz = frame_v[frame_v_index_to_use][FRAME_MZ_IDX]
+                    std_dev_window = standard_deviation(mz) * args.standard_deviations
+                    missed_scans = 0
+                    peak_indices = np.append(peak_indices, frame_v_index_to_use)
+                scan_offset += 1
 
-        if len(peak_indices) > 1:
-            if len(peak_indices) > MIN_POINTS_IN_PEAK_TO_CHECK_FOR_TROUGHS:
-                # Check whether it has more than one peak
-                # filter the intensity with a Gaussian filter
-                sorted_peaks_indexes = np.argsort(frame_v[peak_indices][:,FRAME_SCAN_IDX])
-                peaks_sorted = frame_v[peak_indices[sorted_peaks_indexes]]
-                rationale["point ids"] = peaks_sorted[:,FRAME_POINT_ID_IDX].astype(int).tolist()
-                filtered = signal.savgol_filter(peaks_sorted[:,FRAME_INTENSITY_IDX], 9, 5)
-                max_index = np.argmax(peaks_sorted[:,FRAME_INTENSITY_IDX])
+            if len(peak_indices) > 1:
+                if len(peak_indices) > MIN_POINTS_IN_PEAK_TO_CHECK_FOR_TROUGHS:
+                    # Check whether it has more than one peak
+                    # filter the intensity with a Gaussian filter
+                    sorted_peaks_indexes = np.argsort(frame_v[peak_indices][:,FRAME_SCAN_IDX])
+                    peaks_sorted = frame_v[peak_indices[sorted_peaks_indexes]]
+                    rationale["point ids"] = peaks_sorted[:,FRAME_POINT_ID_IDX].astype(int).tolist()
+                    filtered = signal.savgol_filter(peaks_sorted[:,FRAME_INTENSITY_IDX], 9, 5)
+                    max_index = np.argmax(peaks_sorted[:,FRAME_INTENSITY_IDX])
 
-                peak_maxima_indexes = peakutils.indexes(filtered, thres=0.05, min_dist=2)
-                peak_minima_indexes = []
-                if len(peak_maxima_indexes) > 1:
-                    for idx,peak_maxima_index in enumerate(peak_maxima_indexes):
-                        if idx>0:
-                            intensities_between_maxima = filtered[peak_maxima_indexes[idx-1]:peak_maxima_indexes[idx]+1]
-                            minimum_intensity_index = np.argmin(intensities_between_maxima)+peak_maxima_indexes[idx-1]
-                            peak_minima_indexes.append(minimum_intensity_index)
+                    peak_maxima_indexes = peakutils.indexes(filtered, thres=0.05, min_dist=2)
+                    peak_minima_indexes = []
+                    if len(peak_maxima_indexes) > 1:
+                        for idx,peak_maxima_index in enumerate(peak_maxima_indexes):
+                            if idx>0:
+                                intensities_between_maxima = filtered[peak_maxima_indexes[idx-1]:peak_maxima_indexes[idx]+1]
+                                minimum_intensity_index = np.argmin(intensities_between_maxima)+peak_maxima_indexes[idx-1]
+                                peak_minima_indexes.append(minimum_intensity_index)
 
-                indices_to_delete = np.empty(0)
-                if len(peak_minima_indexes) > 0:
-                    idx,lower_snip = findNearestLessThan(max_index, peak_minima_indexes)
-                    idx,upper_snip = findNearestGreaterThan(max_index, peak_minima_indexes)
-                    if lower_snip < max_index:
-                        indices_to_delete = np.concatenate((indices_to_delete,np.arange(lower_snip)))
-                    if upper_snip > max_index:
-                        indices_to_delete = np.concatenate((indices_to_delete,np.arange(upper_snip+1,len(peaks_sorted))))
-                    sorted_peaks_indexes = np.delete(sorted_peaks_indexes, indices_to_delete, 0)
-                    peak_indices = peak_indices[sorted_peaks_indexes]
-                    peaks_sorted = frame_v[peak_indices]
-                    rationale["point ids after trimming"] = peaks_sorted[:,FRAME_POINT_ID_IDX].astype(int).tolist()
+                    indices_to_delete = np.empty(0)
+                    if len(peak_minima_indexes) > 0:
+                        idx,lower_snip = findNearestLessThan(max_index, peak_minima_indexes)
+                        idx,upper_snip = findNearestGreaterThan(max_index, peak_minima_indexes)
+                        if lower_snip < max_index:
+                            indices_to_delete = np.concatenate((indices_to_delete,np.arange(lower_snip)))
+                        if upper_snip > max_index:
+                            indices_to_delete = np.concatenate((indices_to_delete,np.arange(upper_snip+1,len(peaks_sorted))))
+                        sorted_peaks_indexes = np.delete(sorted_peaks_indexes, indices_to_delete, 0)
+                        peak_indices = peak_indices[sorted_peaks_indexes]
+                        peaks_sorted = frame_v[peak_indices]
+                        rationale["point ids after trimming"] = peaks_sorted[:,FRAME_POINT_ID_IDX].astype(int).tolist()
 
-            # Add the peak to the collection
-            peak_mz = []
-            peak_scan = []
-            peak_intensity = []
+                # Add the peak to the collection
+                peak_mz = []
+                peak_scan = []
+                peak_intensity = []
 
-            # Update database
-            for p in peak_indices:
-                # Collect all the points in the peak
-                peak_mz.append(frame_v[p][FRAME_MZ_IDX])
-                peak_scan.append(frame_v[p][FRAME_SCAN_IDX])
-                peak_intensity.append(int(frame_v[p][FRAME_INTENSITY_IDX]))
+                # Update database
+                for p in peak_indices:
+                    # Collect all the points in the peak
+                    peak_mz.append(frame_v[p][FRAME_MZ_IDX])
+                    peak_scan.append(frame_v[p][FRAME_SCAN_IDX])
+                    peak_intensity.append(int(frame_v[p][FRAME_INTENSITY_IDX]))
 
-                # Assign this peak ID to all the points in the peak
-                point_updates.append((int(peak_id), int(frame_id), int(frame_v[int(p)][FRAME_POINT_ID_IDX])))
+                    # Assign this peak ID to all the points in the peak
+                    point_updates.append((int(peak_id), int(frame_id), int(frame_v[int(p)][FRAME_POINT_ID_IDX])))
 
-            # Add the peak's details to the collection
-            peak_intensity_sum = np.sum(peak_intensity)
-            peak_intensity_max = np.max(peak_intensity)
-            peak_scan_upper = np.max(peak_scan)
-            peak_scan_lower = np.min(peak_scan)
-            peak_mz_centroid, peak_std_dev_mz = weighted_avg_and_std(values=peak_mz, weights=peak_intensity)
-            peak_scan_centroid, peak_std_dev_scan = weighted_avg_and_std(values=peak_scan, weights=peak_intensity)
-            peak_points = frame_v[peak_indices]
-            peak_max_index = peak_points[:,FRAME_INTENSITY_IDX].argmax()
-            peak_max_mz = peak_points[peak_max_index][FRAME_MZ_IDX]
-            peak_max_scan = peak_points[peak_max_index][FRAME_SCAN_IDX].astype(int)
-            cluster_id = 0
-            mono_peaks.append((int(frame_id), int(peak_id), float(peak_mz_centroid), float(peak_scan_centroid), int(peak_intensity_sum), int(peak_scan_upper), int(peak_scan_lower), float(peak_std_dev_mz), 
-                float(peak_std_dev_scan), json.dumps(rationale), int(peak_intensity_max), float(peak_max_mz), int(peak_max_scan), int(cluster_id)))
+                # Add the peak's details to the collection
+                peak_intensity_sum = np.sum(peak_intensity)
+                peak_intensity_max = np.max(peak_intensity)
+                peak_scan_upper = np.max(peak_scan)
+                peak_scan_lower = np.min(peak_scan)
+                peak_mz_centroid, peak_std_dev_mz = weighted_avg_and_std(values=peak_mz, weights=peak_intensity)
+                peak_scan_centroid, peak_std_dev_scan = weighted_avg_and_std(values=peak_scan, weights=peak_intensity)
+                peak_points = frame_v[peak_indices]
+                peak_max_index = peak_points[:,FRAME_INTENSITY_IDX].argmax()
+                peak_max_mz = peak_points[peak_max_index][FRAME_MZ_IDX]
+                peak_max_scan = peak_points[peak_max_index][FRAME_SCAN_IDX].astype(int)
+                cluster_id = 0
+                mono_peaks.append((int(frame_id), int(peak_id), float(peak_mz_centroid), float(peak_scan_centroid), int(peak_intensity_sum), int(peak_scan_upper), int(peak_scan_lower), float(peak_std_dev_mz), 
+                    float(peak_std_dev_scan), json.dumps(rationale), int(peak_intensity_max), float(peak_max_mz), int(peak_max_scan), int(cluster_id)))
 
-            peak_id += 1
+                peak_id += 1
 
-        # remove the points we've processed from the frame
-        frame_v = np.delete(frame_v, peak_indices, 0)
+            # remove the points we've processed from the frame
+            frame_v = np.delete(frame_v, peak_indices, 0)
+    else:
+        print("No points were found for frame {}".format(frame_id))
 
     stop_frame = time.time()
-    print("{} seconds to detect peaks in ms1 frame {} - found {} peaks".format(stop_frame-start_frame, frame_id, peak_id))
+    print("{} seconds to detect peaks in ms1 frame {} - found {} peaks".format(stop_frame-start_frame, frame_id, peak_id-1))
     frame_count += 1
     # check if we've processed a batch number of frames - store in database if so
     if (frame_count % args.batch_size == 0):
