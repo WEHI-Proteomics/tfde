@@ -197,7 +197,7 @@ if (args.operation == 'all') or (args.operation == 'cluster_detect_ms1'):
 
 # retrieve the summed frame rate
 source_conn = sqlite3.connect(frame_database_name)
-df = pd.read_sql_query("select value from summing_info where item=\'{}\'".format("frames_per_second"), source_conn)
+df = pd.read_sql_query("select value from summing_info", source_conn)
 source_conn.close()
 if len(df) > 0:
     entry = json.loads(df.loc[0].value)
