@@ -39,8 +39,7 @@ EVALUATE_NOISE_LEVEL_RATE = 500 # evaluate the base noise level every EVALUATE_N
 feature_id = 1
 feature_updates = []
 cluster_updates = []
-base_noise_level = 15000
-noise_level_readings = [base_noise_level]
+noise_level_readings = []
 feature_discovery_history = deque(maxlen=FEATURE_DISCOVERY_HISTORY_LENGTH)
 
 def standard_deviation(mz):
@@ -178,7 +177,7 @@ def find_feature(base_index):
         feature_mz_lower = float(min(clusters_v[feature_indices,CLUSTER_MZ_LOWER_IDX]))
         feature_mz_upper = float(max(clusters_v[feature_indices,CLUSTER_MZ_UPPER_IDX]))
 
-        if feature_id % EVALUATE_NOISE_LEVEL_RATE == 0:
+        if (feature_id == 1) or (feature_id % EVALUATE_NOISE_LEVEL_RATE == 0):
             print("evaluating noise level...")
 
             # update the noise estimate from the lower window
