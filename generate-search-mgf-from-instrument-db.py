@@ -64,6 +64,7 @@ parser.add_argument('-ml','--mz_lower', type=float, help='Lower feature m/z to p
 parser.add_argument('-mu','--mz_upper', type=float, help='Upper feature m/z to process.', required=False)
 parser.add_argument('-fl','--frame_lower', type=int, help='The lower summed frame number to process.', required=False)
 parser.add_argument('-fu','--frame_upper', type=int, help='The upper summed frame number to process.', required=False)
+parser.add_argument('-mfl','--minimum_feature_length', type=float, help='Minimum number of seconds for a feature to be valid.', required=True)
 args = parser.parse_args()
 
 processing_times = []
@@ -212,7 +213,7 @@ if (args.operation == 'all') or (args.operation == 'feature_detect_ms1'):
     feature_detect_start_time = time.time()
 
     print("detecting features...")
-    run_process("python ./otf-peak-detect/feature-detect-ms1.py -db {} -fps {}".format(feature_database_name, frames_per_second))
+    run_process("python ./otf-peak-detect/feature-detect-ms1.py -db {} -fps {} -mfl {}".format(feature_database_name, frames_per_second, args.minimum_feature_length))
 
     feature_detect_stop_time = time.time()
     processing_times.append(("feature detect ms1", feature_detect_stop_time-feature_detect_start_time))
