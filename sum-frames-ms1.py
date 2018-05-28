@@ -50,7 +50,7 @@ for arg in vars(args):
 
 # calculate the summed frame rate
 df = pd.read_sql_query("select value from convert_info where item=\'{}\'".format("raw_frame_period_in_msec"), source_conn)
-raw_frame_period_in_msec = df.loc[0].value
+raw_frame_period_in_msec = float(df.loc[0].value)
 summed_frames_per_second = 1.0 / (args.frame_summing_offset * raw_frame_period_in_msec)
 
 # Find the complete set of frame ids to be processed
