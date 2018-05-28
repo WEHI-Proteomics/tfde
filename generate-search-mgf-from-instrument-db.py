@@ -45,7 +45,7 @@ def merge_summed_regions_prep(source_db_name, destination_db_name):
 
 #
 # source activate py27
-# nohup python -u ./otf-peak-detect/generate-search-mgf-from-instrument-db.py -dbd ./subset-2500-2740 -idb /media/data-drive/Hela_20A_20R_500_1_01_398.d/ -dbn Hela_20A_20R_500 -cems1 7 -cems2 27 -ml 440 -mu 550 -fl 2500 -fu 2740 -mpc 0.9 -op match_precursor_ms2_peaks > match.log
+# python -u ./otf-peak-detect/generate-search-mgf-from-instrument-db.py -idb /stornext/Sysbio/data/Projects/ProtemicsLab/Development/AllIon/BSA_All_Ion/BSA_All_Ion_Slot1-46_01_266.d -dbd ./BSA_All_Ion -dbn BSA_All_Ion -cems1 10 -mpc 0.9 -fts 30 -fso 5 -op cluster_detect_ms1 > BSA_All_Ion.log 2>&1
 #
 
 # Process the command line arguments
