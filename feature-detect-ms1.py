@@ -321,8 +321,10 @@ while True:
     feature_discovery_history.append(quality)
 
     poor_quality_rate = float(feature_discovery_history.count(0.0)) / FEATURE_DISCOVERY_HISTORY_LENGTH
-    print("noise_level_readings {}".format(noise_level_readings))
-    estimated_noise_level = int(np.average(noise_level_readings))
+    if len(noise_level_readings) > 0:
+        estimated_noise_level = int(np.average(noise_level_readings))
+    else:
+        estimated_noise_level = 0
 
     if quality > 0.5:
         print("feature {}, intensity {}, length {} (poor quality rate {}, base noise {})".format(feature_id, cluster_intensity, len(cluster_indices), poor_quality_rate, estimated_noise_level))
