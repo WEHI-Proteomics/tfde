@@ -105,6 +105,9 @@ if ((args.operation == 'all') or (args.operation == 'convert_instrument_db')) an
     convert_stop_time = time.time()
     processing_times.append(("database conversion", convert_stop_time-convert_start_time))
 
+    if args.operation == 'convert_instrument_db':
+        sys.exit()
+
 # Determine the mass range if it's not specified
 if args.mz_lower is None:
     source_conn = sqlite3.connect(converted_database_name)
@@ -188,6 +191,9 @@ if (args.operation == 'all') or (args.operation == 'cluster_detect_ms1'):
     recombine_frames_stop_time = time.time()
     processing_times.append(("frame-based recombine", recombine_frames_stop_time-recombine_frames_start_time))
 
+    if args.operation == 'cluster_detect_ms1':
+        sys.exit()
+
 # retrieve the summed frame rate
 source_conn = sqlite3.connect(frame_database_name)
 df = pd.read_sql_query("select value from summing_info where item=\'{}\'".format("frames_per_second"), source_conn)
@@ -207,6 +213,9 @@ if (args.operation == 'all') or (args.operation == 'feature_detect_ms1'):
 
     feature_detect_stop_time = time.time()
     processing_times.append(("feature detect ms1", feature_detect_stop_time-feature_detect_start_time))
+
+    if args.operation == 'feature_detect_ms1':
+        sys.exit()
 
 # find out how many features were detected
 source_conn = sqlite3.connect(feature_database_name)
@@ -239,6 +248,9 @@ if (args.operation == 'all') or (args.operation == 'feature_region_ms2_peak_dete
     ms2_peak_detect_stop_time = time.time()
     processing_times.append(("feature region ms2 peak detect", ms2_peak_detect_stop_time-ms2_peak_detect_start_time))
 
+    if args.operation == 'feature_region_ms2_peak_detect':
+        sys.exit()
+
 # re-detect ms1 peaks in the feature's region, and calculate ms2 peak correlation
 feature_region_ms1_sum_processes = []
 feature_region_ms1_peak_processes = []
@@ -258,6 +270,9 @@ if (args.operation == 'all') or (args.operation == 'feature_region_ms1_peak_dete
     ms1_peak_detect_stop_time = time.time()
     processing_times.append(("feature region ms1 peak detect", ms1_peak_detect_stop_time-ms1_peak_detect_start_time))
 
+    if args.operation == 'feature_region_ms1_peak_detect':
+        sys.exit()
+
 # determine the drift offset between ms1 and ms2
 match_precursor_ms2_peaks_processes = []
 for feature_range in feature_ranges:
@@ -271,12 +286,18 @@ if (args.operation == 'all') or (args.operation == 'match_precursor_ms2_peaks'):
     match_precursor_ms2_peaks_stop_time = time.time()
     processing_times.append(("match precursor ms2 peaks", match_precursor_ms2_peaks_stop_time-match_precursor_ms2_peaks_start_time))
 
+    if args.operation == 'match_precursor_ms2_peaks':
+        sys.exit()
+
 if (args.operation == 'all') or (args.operation == 'correlate_peaks'):
     peak_correlation_start_time = time.time()
     print("correlating peaks...")
     pool.map(run_process, peak_correlation_processes)
     peak_correlation_stop_time = time.time()
     processing_times.append(("peak correlation", peak_correlation_stop_time-peak_correlation_start_time))
+
+    if args.operation == 'correlate_peaks':
+        sys.exit()
 
 if (args.operation == 'all') or (args.operation == 'recombine_feature_databases'):
     # recombine the feature range databases back into a combined database
@@ -291,6 +312,9 @@ if (args.operation == 'all') or (args.operation == 'recombine_feature_databases'
     recombine_feature_databases_stop_time = time.time()
     processing_times.append(("feature recombine", recombine_feature_databases_stop_time-recombine_feature_databases_start_time))
 
+    if args.operation == 'recombine_feature_databases':
+        sys.exit()
+
 if (args.operation == 'all') or (args.operation == 'deconvolve_ms2_spectra'):
     # deconvolve the ms2 spectra with Hardklor
     deconvolve_ms2_spectra_start_time = time.time()
@@ -298,6 +322,9 @@ if (args.operation == 'all') or (args.operation == 'deconvolve_ms2_spectra'):
     run_process("python ./otf-peak-detect/deconvolve-ms2-spectra.py -fdb {} -bfn {} -dbd {} -mpc {} -fps {}".format(feature_database_name, args.database_base_name, args.data_directory, args.minimum_peak_correlation, frames_per_second))
     deconvolve_ms2_spectra_stop_time = time.time()
     processing_times.append(("deconvolve ms2 spectra", deconvolve_ms2_spectra_stop_time-deconvolve_ms2_spectra_start_time))
+
+    if args.operation == 'deconvolve_ms2_spectra':
+        sys.exit()
 
 if (args.operation == 'all') or (args.operation == 'create_search_mgf'):
     # create search MGF
@@ -313,6 +340,9 @@ if (args.operation == 'all') or (args.operation == 'create_search_mgf'):
     number_of_deconvoluted_ions = int(deconvoluted_ions_df.values[0][0])
     statistics.append(("number of deconvoluted ions", number_of_deconvoluted_ions))
     source_conn.close()
+
+    if args.operation == 'create_search_mgf':
+        sys.exit()
 
 processing_stop_time = time.time()
 processing_times.append(("total processing", processing_stop_time-processing_start_time))
