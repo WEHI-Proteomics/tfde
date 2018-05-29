@@ -39,6 +39,7 @@ EVALUATE_NOISE_LEVEL_RATE = 500 # evaluate the base noise level every EVALUATE_N
 feature_id = 1
 feature_updates = []
 cluster_updates = []
+estimated_noise_level = 5000
 noise_level_readings = []
 feature_discovery_history = deque(maxlen=FEATURE_DISCOVERY_HISTORY_LENGTH)
 
@@ -68,7 +69,6 @@ def check_gap_between_points(feature_indices, max_gap_in_seconds):
 def find_feature(base_index):
     global clusters_v
     global noise_level_readings
-    global base_noise_level
     global frame_lower
     global frame_upper
 
@@ -125,7 +125,7 @@ def find_feature(base_index):
         peak_maxima_indexes = peakutils.indexes(filtered, thres=0.01, min_dist=10)
         peak_minima_indexes = []
         peak_minima_indexes.append(0)
-        peak_minima_indexes = peak_minima_indexes + np.where(filtered < base_noise_level)[0].tolist()
+        peak_minima_indexes = peak_minima_indexes + np.where(filtered < estimated_noise_level)[0].tolist()
         if len(peak_maxima_indexes) > 1:
             for idx,peak_maxima_index in enumerate(peak_maxima_indexes):
                 if idx>0:
@@ -136,11 +136,11 @@ def find_feature(base_index):
 
         # find the low snip index
         for idx in peak_minima_indexes:
-            if (filtered[idx] < (filtered_max_value * args.magnitude_for_feature_endpoints) or (filtered[idx] < base_noise_level)) and (idx < filtered_max_index):
+            if (filtered[idx] < (filtered_max_value * args.magnitude_for_feature_endpoints) or (filtered[idx] < estimated_noise_level)) and (idx < filtered_max_index):
                 low_snip_index = idx
         # find the high snip index
         for idx in reversed(peak_minima_indexes):
-            if (filtered[idx] < (filtered_max_value * args.magnitude_for_feature_endpoints) or (filtered[idx] < base_noise_level)) and (idx > filtered_max_index):
+            if (filtered[idx] < (filtered_max_value * args.magnitude_for_feature_endpoints) or (filtered[idx] < estimated_noise_level)) and (idx > filtered_max_index):
                 high_snip_index = idx
 
         indices_to_delete = np.empty(0)
@@ -323,8 +323,6 @@ while True:
     poor_quality_rate = float(feature_discovery_history.count(0.0)) / FEATURE_DISCOVERY_HISTORY_LENGTH
     if len(noise_level_readings) > 0:
         estimated_noise_level = int(np.average(noise_level_readings))
-    else:
-        estimated_noise_level = 0
 
     if quality > 0.5:
         print("feature {}, intensity {}, length {} (poor quality rate {}, base noise {})".format(feature_id, cluster_intensity, len(cluster_indices), poor_quality_rate, estimated_noise_level))
