@@ -78,6 +78,7 @@ def main():
     parser.add_argument('-mzsf','--mz_scaling_factor', type=float, default=1000.0, help='Scaling factor to convert m/z range to integers.', required=False)
     parser.add_argument('-rff','--random_features_file', type=str, help='A text file containing the feature indexes to process.', required=False)
     parser.add_argument('-bs','--batch_size', type=int, default=5000, help='The number of features to be written to the database.', required=False)
+    parser.add_argument('-frso','--feature_region_scan_offset', type=int, default=3, help='Cater to the drift offset in ms2 by expanding the feature region scan range.', required=False)
     args = parser.parse_args()
 
     if (args.random_features_file is not None) and (args.number_of_random_features is not None):
@@ -152,8 +153,8 @@ def main():
             feature_id = int(feature[FEATURE_ID_IDX])
             feature_start_frame = int(feature[FEATURE_START_FRAME_IDX])
             feature_end_frame = int(feature[FEATURE_END_FRAME_IDX])
-            feature_scan_lower = int(feature[FEATURE_SCAN_LOWER_IDX])
-            feature_scan_upper = int(feature[FEATURE_SCAN_UPPER_IDX])
+            feature_scan_lower = int(feature[FEATURE_SCAN_LOWER_IDX]) - args.feature_region_scan_offset
+            feature_scan_upper = int(feature[FEATURE_SCAN_UPPER_IDX]) + args.feature_region_scan_offset
 
             point_id = 1
             peak_id = 1
