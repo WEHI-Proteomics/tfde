@@ -92,6 +92,11 @@ pool = Pool()
 if ((args.operation == 'all') or (args.operation == 'convert_instrument_db')) and (args.instrument_database_name is not None):
     convert_start_time = time.time()
 
+    # make sure the processing directories exist
+    if not os.path.exists(args.instrument_database_name):
+        print("The instrument database directory does not exist. Exiting.")
+        sys.exit()
+
     if args.number_of_frames is not None:
         run_process("python ./otf-peak-detect/convert-instrument-db.py -sdb '{}' -ddb '{}' -nf {}".format(args.instrument_database_name, converted_database_name, args.number_of_frames))
     else:
