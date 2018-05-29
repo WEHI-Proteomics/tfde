@@ -154,7 +154,7 @@ def find_feature(base_index):
     feature_start_frame = int(clusters_v[feature_indices[0],CLUSTER_FRAME_ID_IDX])
     feature_end_frame = int(clusters_v[feature_indices[len(feature_indices)-1],CLUSTER_FRAME_ID_IDX])
 
-    passed_minimum_length_test = (feature_end_frame-feature_start_frame) >= MINIMUM_NUMBER_OF_FRAMES
+    passed_minimum_length_test = (feature_end_frame-feature_start_frame) >= args.minimum_number_of_frames
     if args.maximum_gap_between_points is not None:
         passed_maximum_gap_test = check_gap_between_points(feature_indices, args.maximum_gap_between_points)
     else:
@@ -239,7 +239,7 @@ parser.add_argument('-db','--database_name', type=str, help='The name of the sou
 parser.add_argument('-md','--mz_std_dev', type=int, default=4, help='Number of standard deviations to look either side of the base peak, in the m/z dimension.', required=False)
 parser.add_argument('-sd','--scan_std_dev', type=int, default=4, help='Number of standard deviations to look either side of the base peak, in the scan dimension.', required=False)
 parser.add_argument('-ns','--number_of_seconds_each_side', type=int, default=20, help='Number of seconds to look either side of the maximum cluster.', required=False)
-parser.add_argument('-mfl','--minimum_feature_length', type=float, default=3.0, help='Minimum number of seconds for a feature to be valid.', required=False)
+parser.add_argument('-mnf','--minimum_number_of_frames', type=int, default=3, help='Minimum number of frames for a feature to be valid.', required=False)
 parser.add_argument('-gbp','--maximum_gap_between_points', type=float, help='Maximum number of seconds between points. Gap is ignored if this parameter is not set.', required=False)
 parser.add_argument('-mcs','--minimum_charge_state', type=int, default=2, help='Minimum charge state to process.', required=False)
 parser.add_argument('-mfe','--magnitude_for_feature_endpoints', type=float, default=0.8, help='Proportion of a feature\'s magnitude to take for its endpoints', required=False)
@@ -249,7 +249,6 @@ parser.add_argument('-bs','--batch_size', type=int, default=10000, help='The num
 args = parser.parse_args()
 
 NUMBER_OF_FRAMES_TO_LOOK = int(args.number_of_seconds_each_side * args.frames_per_second)
-MINIMUM_NUMBER_OF_FRAMES = int(args.minimum_feature_length * args.frames_per_second)
 
 # Store the arguments as metadata in the database for later reference
 feature_info = []
