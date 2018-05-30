@@ -127,6 +127,10 @@ feature_ids_df = pd.read_sql_query("select distinct(feature_id) from peak_correl
 db_conn.close()
 
 hk_processes = []
+feature_cluster_df = None
+
+feature_list_columns = ['feature_id', 'charge_state', 'monoisotopic_mass', 'retention_time_secs', 'isotope_count', 'cluster_mz_centroid', 'cluster_summed_intensity', 'minimum_error', 'minimum_error_sulphur']
+feature_list = []
 
 for feature_ids_idx in range(0,len(feature_ids_df)):
     feature_id = feature_ids_df.loc[feature_ids_idx].feature_id.astype(int)
@@ -137,7 +141,6 @@ for feature_ids_idx in range(0,len(feature_ids_df)):
     charge_state = feature_df.loc[0].charge_state.astype(int)
     expected_spacing = DELTA_MZ / charge_state
     db_conn.close()
-
 
     db_conn = sqlite3.connect(args.features_database)
     peaks_df = pd.read_sql_query("select * from summed_ms1_regions where feature_id = {} order by peak_id".format(feature_id), db_conn)
@@ -195,12 +198,26 @@ for feature_ids_idx in range(0,len(feature_ids_df)):
                     minimum_error_mono_index = test_mono_index
 
     cluster_df['mz_mod'] = cluster_df.mz_centroid - ((cluster_df.peak_id-1)*expected_spacing)
+    cluster_df['feature_id'] = feature_id
+
+    # add to the feature clusters
+    if feature_cluster_df is None:
+        feature_cluster_df = cluster_df
+    else:
+        feature_cluster_df.append(cluster_df)
+
+    # calculate the centroid of the feature's cluster
     cluster_mz_centroid = wavg(cluster_df, "mz_mod", "summed_intensity")
     cluster_summed_intensity = cluster_df.summed_intensity.sum()
 
+    # calculate the monoisotopic mass
     monoisotopic_mass = (cluster_mz_centroid - PROTON_MASS) * charge_state
 
+    # ... and the retention time
     retention_time_secs = feature_df.loc[0].base_frame_id / args.frames_per_second
+
+    isotope_count = len(cluster_df)
+    feature_list.append((feature_id, charge_state, monoisotopic_mass, retention_time_secs, isotope_count, round(cluster_mz_centroid,6), cluster_summed_intensity, minimum_error, minimum_error_sulphur))
 
     pairs_df = ms2_peaks_df[['centroid_mz', 'intensity']].copy().sort_values(by=['intensity'], ascending=False)
 
@@ -249,8 +266,16 @@ for feature_ids_idx in range(0,len(feature_ids_df)):
     # append the Hardklor command to process it
     hk_processes.append("./hardklor/hardklor -cmd -instrument TOF -resolution 40000 -centroided 1 -ms_level 2 -algorithm Version2 -charge_algorithm Quick -charge_min 1 -charge_max {} -correlation {} -mz_window 5.25 -sensitivity 2 -depth 2 -max_features 12 -distribution_area 1 -xml 0 {} {}".format(charge_state, args.minimum_peak_correlation, mgf_filename, hk_filename))
 
-# Set up the processing pool
-pool = Pool()
+# write out the deconvolved feature ms1 isotopes and the feature list
+db_conn = sqlite3.connect(args.features_database)
+print("writing out the deconvolved feature ms1 isotopes...")
+feature_cluster_df.to_sql(name='feature_isotopes', con=db_conn, if_exists='replace', index=False)
+print("writing out the feature list...")
+feature_list_df = pd.DataFrame(feature_list, columns=feature_list_columns)
+feature_list_df.to_sql(name='feature_list', con=db_conn, if_exists='replace', index=False)
+db_conn.close()
 
+# Set up the processing pool for Hardklor
 print("running Hardklor...")
+pool = Pool()
 pool.map(run_process, hk_processes)
