@@ -204,7 +204,7 @@ for feature_ids_idx in range(0,len(feature_ids_df)):
     if feature_cluster_df is None:
         feature_cluster_df = cluster_df
     else:
-        feature_cluster_df.append(cluster_df)
+        feature_cluster_df.append(cluster_df, ignore_index=True)
 
     # calculate the centroid of the feature's cluster
     cluster_mz_centroid = wavg(cluster_df, "mz_mod", "summed_intensity")
