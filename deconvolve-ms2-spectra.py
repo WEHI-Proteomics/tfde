@@ -211,7 +211,7 @@ for feature_ids_idx in range(0,len(feature_ids_df)):
     spectrum["intensity array"] = pairs_df.intensity.values
     params = {}
     params["TITLE"] = "feature {}, file {}, correlation {}, model error {:.2f}, sulphurs {}".format(feature_id, args.base_mgf_filename, args.minimum_peak_correlation, minimum_error, minimum_error_sulphur)
-    params["INSTRUMENT"] = "Bruker_timsTOF_Pro"
+    params["INSTRUMENT"] = "ESI-QUAD-TOF"
     params["PEPMASS"] = "{} {}".format(round(cluster_mz_centroid,6), cluster_summed_intensity)
     params["CHARGE"] = "{}+".format(charge_state)
     params["RTINSECONDS"] = "{}".format(retention_time_secs)
