@@ -69,7 +69,7 @@ parser.add_argument('-fso','--frame_summing_offset', type=int, help='The number 
 parser.add_argument('-cems1','--ms1_collision_energy', type=int, help='Collision energy for ms1, in eV.', required=True)
 parser.add_argument('-mpc','--minimum_peak_correlation', type=float, help='Minimum peak correlation', required=True)
 parser.add_argument('-op','--operation', type=str, default='all', help='The operation to perform.', required=False)
-parser.add_argument('-cp','--continue_processing', action='store_true', help='Continue processing after the operation specified with -op.')
+parser.add_argument('-cf','--continue_flag', action='store_true', help='Continue processing after the operation specified with -op.')
 parser.add_argument('-nf','--number_of_frames', type=int, help='The number of frames to convert.', required=False)
 parser.add_argument('-ml','--mz_lower', type=float, help='Lower feature m/z to process.', required=False)
 parser.add_argument('-mu','--mz_upper', type=float, help='Upper feature m/z to process.', required=False)
@@ -105,9 +105,9 @@ number_of_cores = mp.cpu_count()
 # Set up the processing pool
 pool = Pool()
 
-#
+##################################
 # OPERATION: convert_instrument_db
-#
+##################################
 if (process_this_step(args.operation, args.continue_processing, this_step='convert_instrument_db') and (args.instrument_database_name is not None)):
     convert_start_time = time.time()
 
@@ -190,9 +190,9 @@ for summed_frame_range in summed_frame_ranges:
     peak_detect_ms1_processes.append("python ./otf-peak-detect/peak-detect-ms1.py -db '{}' -fl {} -fu {}".format(destination_db_name, summed_frame_range[0], summed_frame_range[1]))
     cluster_detect_ms1_processes.append("python ./otf-peak-detect/cluster-detect-ms1.py -db '{}' -fl {} -fu {}".format(destination_db_name, summed_frame_range[0], summed_frame_range[1]))
 
-#
+###############################
 # OPERATION: cluster_detect_ms1
-#
+###############################
 if process_this_step(args.operation, args.continue_processing, this_step='cluster_detect_ms1'):
 
     cluster_detect_start_time = time.time()
@@ -234,9 +234,9 @@ else:
     print("Could not find the frame rate from the summing_info table and it's needed in sebsequent steps. Exiting.")
     sys.exit()
 
-#
+###############################
 # OPERATION: feature_detect_ms1
-#
+###############################
 if process_this_step(args.operation, args.continue_processing, this_step='feature_detect_ms1'):
     feature_detect_start_time = time.time()
 
@@ -272,9 +272,9 @@ for feature_range in feature_ranges:
     destination_db_name = "{}-{}-{}.sqlite".format(feature_database_root, feature_range[0], feature_range[1])
     feature_region_ms2_sum_peak_processes.append("python ./otf-peak-detect/feature-region-ms2-combined-sum-peak-detect.py -cdb '{}' -ddb '{}' -ms1ce {} -fl {} -fu {} -ml {} -mu {} -bs 20 -fts {} -fso {}".format(converted_database_name, destination_db_name, args.ms1_collision_energy, feature_range[0], feature_range[1], args.mz_lower, args.mz_upper, args.frames_to_sum, args.frame_summing_offset))
 
-#
+###########################################
 # OPERATION: feature_region_ms2_peak_detect
-#
+###########################################
 if process_this_step(args.operation, args.continue_processing, this_step='feature_region_ms2_peak_detect'):
     ms2_peak_detect_start_time = time.time()
     run_process("python ./otf-peak-detect/feature-region-ms2-combined-sum-peak-detect-prep.py -cdb '{}'".format(converted_database_name))
@@ -296,9 +296,9 @@ for feature_range in feature_ranges:
     feature_region_ms1_peak_processes.append("python ./otf-peak-detect/feature-region-ms1-peak-detect.py -sdb '{}' -ddb '{}' -fl {} -fu {} -ml {} -mu {}".format(feature_database_name, destination_db_name, feature_range[0], feature_range[1], args.mz_lower, args.mz_upper))
     peak_correlation_processes.append("python ./otf-peak-detect/correlate-ms2-peaks.py -db '{}' -fl {} -fu {}".format(destination_db_name, feature_range[0], feature_range[1]))
 
-#
+###########################################
 # OPERATION: feature_region_ms1_peak_detect
-#
+###########################################
 if process_this_step(args.operation, args.continue_processing, this_step='feature_region_ms1_peak_detect'):
     ms1_peak_detect_start_time = time.time()
     print("summing ms1 frames, detecting peaks in the feature region...")
@@ -317,9 +317,9 @@ for feature_range in feature_ranges:
     destination_db_name = "{}-{}-{}.sqlite".format(feature_database_root, feature_range[0], feature_range[1])
     match_precursor_ms2_peaks_processes.append("python ./otf-peak-detect/match-precursor-ms2-peaks.py -db '{}' -fdb '{}' -fl {} -fu {} -fps {}".format(destination_db_name, feature_database_name, feature_range[0], feature_range[1], frames_per_second))
 
-#
+######################################
 # OPERATION: match_precursor_ms2_peaks
-#
+######################################
 if process_this_step(args.operation, args.continue_processing, this_step='match_precursor_ms2_peaks'):
     match_precursor_ms2_peaks_start_time = time.time()
     print("matching precursor ms2 peaks...")
@@ -330,9 +330,9 @@ if process_this_step(args.operation, args.continue_processing, this_step='match_
     if not continue_processing(op_arg=args.operation, continue_flag=args.continue_flag):
         sys.exit()
 
-#
+############################
 # OPERATION: correlate_peaks
-#
+############################
 if process_this_step(args.operation, args.continue_processing, this_step='correlate_peaks'):
     peak_correlation_start_time = time.time()
     print("correlating peaks...")
@@ -343,9 +343,9 @@ if process_this_step(args.operation, args.continue_processing, this_step='correl
     if not continue_processing(op_arg=args.operation, continue_flag=args.continue_flag):
         sys.exit()
 
-#
+########################################
 # OPERATION: recombine_feature_databases
-#
+########################################
 if process_this_step(args.operation, args.continue_processing, this_step='recombine_feature_databases'):
     # recombine the feature range databases back into a combined database
     recombine_feature_databases_start_time = time.time()
@@ -362,9 +362,9 @@ if process_this_step(args.operation, args.continue_processing, this_step='recomb
     if not continue_processing(op_arg=args.operation, continue_flag=args.continue_flag):
         sys.exit()
 
-#
+###################################
 # OPERATION: deconvolve_ms2_spectra
-#
+###################################
 if process_this_step(args.operation, args.continue_processing, this_step='deconvolve_ms2_spectra'):
     # deconvolve the ms2 spectra with Hardklor
     deconvolve_ms2_spectra_start_time = time.time()
@@ -376,9 +376,9 @@ if process_this_step(args.operation, args.continue_processing, this_step='deconv
     if not continue_processing(op_arg=args.operation, continue_flag=args.continue_flag):
         sys.exit()
 
-#
+##############################
 # OPERATION: create_search_mgf
-#
+##############################
 if process_this_step(args.operation, args.continue_processing, this_step='create_search_mgf'):
     # create search MGF
     create_search_mgf_start_time = time.time()
