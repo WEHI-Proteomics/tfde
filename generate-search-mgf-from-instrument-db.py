@@ -108,7 +108,7 @@ pool = Pool()
 ##################################
 # OPERATION: convert_instrument_db
 ##################################
-if (process_this_step(args.operation, args.continue_processing, this_step='convert_instrument_db') and (args.instrument_database_name is not None)):
+if (process_this_step(args.operation, continue_flag=args.continue_flag, this_step='convert_instrument_db') and (args.instrument_database_name is not None)):
     convert_start_time = time.time()
 
     # make sure the processing directories exist
@@ -193,7 +193,7 @@ for summed_frame_range in summed_frame_ranges:
 ###############################
 # OPERATION: cluster_detect_ms1
 ###############################
-if process_this_step(args.operation, args.continue_processing, this_step='cluster_detect_ms1'):
+if process_this_step(args.operation, continue_flag=args.continue_flag, this_step='cluster_detect_ms1'):
 
     cluster_detect_start_time = time.time()
 
@@ -237,7 +237,7 @@ else:
 ###############################
 # OPERATION: feature_detect_ms1
 ###############################
-if process_this_step(args.operation, args.continue_processing, this_step='feature_detect_ms1'):
+if process_this_step(args.operation, continue_flag=args.continue_flag, this_step='feature_detect_ms1'):
     feature_detect_start_time = time.time()
 
     print("detecting features...")
@@ -275,7 +275,7 @@ for feature_range in feature_ranges:
 ###########################################
 # OPERATION: feature_region_ms2_peak_detect
 ###########################################
-if process_this_step(args.operation, args.continue_processing, this_step='feature_region_ms2_peak_detect'):
+if process_this_step(args.operation, continue_flag=args.continue_flag, this_step='feature_region_ms2_peak_detect'):
     ms2_peak_detect_start_time = time.time()
     run_process("python ./otf-peak-detect/feature-region-ms2-combined-sum-peak-detect-prep.py -cdb '{}'".format(converted_database_name))
     print("detecting ms2 peaks in the feature region...")
@@ -299,7 +299,7 @@ for feature_range in feature_ranges:
 ###########################################
 # OPERATION: feature_region_ms1_peak_detect
 ###########################################
-if process_this_step(args.operation, args.continue_processing, this_step='feature_region_ms1_peak_detect'):
+if process_this_step(args.operation, continue_flag=args.continue_flag, this_step='feature_region_ms1_peak_detect'):
     ms1_peak_detect_start_time = time.time()
     print("summing ms1 frames, detecting peaks in the feature region...")
     run_process("python ./otf-peak-detect/feature-region-ms1-sum-frames-prep.py -sdb '{}'".format(feature_database_name))
@@ -320,7 +320,7 @@ for feature_range in feature_ranges:
 ######################################
 # OPERATION: match_precursor_ms2_peaks
 ######################################
-if process_this_step(args.operation, args.continue_processing, this_step='match_precursor_ms2_peaks'):
+if process_this_step(args.operation, continue_flag=args.continue_flag, this_step='match_precursor_ms2_peaks'):
     match_precursor_ms2_peaks_start_time = time.time()
     print("matching precursor ms2 peaks...")
     pool.map(run_process, match_precursor_ms2_peaks_processes)
@@ -333,7 +333,7 @@ if process_this_step(args.operation, args.continue_processing, this_step='match_
 ############################
 # OPERATION: correlate_peaks
 ############################
-if process_this_step(args.operation, args.continue_processing, this_step='correlate_peaks'):
+if process_this_step(args.operation, continue_flag=args.continue_flag, this_step='correlate_peaks'):
     peak_correlation_start_time = time.time()
     print("correlating peaks...")
     pool.map(run_process, peak_correlation_processes)
@@ -346,7 +346,7 @@ if process_this_step(args.operation, args.continue_processing, this_step='correl
 ########################################
 # OPERATION: recombine_feature_databases
 ########################################
-if process_this_step(args.operation, args.continue_processing, this_step='recombine_feature_databases'):
+if process_this_step(args.operation, continue_flag=args.continue_flag, this_step='recombine_feature_databases'):
     # recombine the feature range databases back into a combined database
     recombine_feature_databases_start_time = time.time()
     template_feature_range = feature_ranges[0]
@@ -365,7 +365,7 @@ if process_this_step(args.operation, args.continue_processing, this_step='recomb
 ###################################
 # OPERATION: deconvolve_ms2_spectra
 ###################################
-if process_this_step(args.operation, args.continue_processing, this_step='deconvolve_ms2_spectra'):
+if process_this_step(args.operation, continue_flag=args.continue_flag, this_step='deconvolve_ms2_spectra'):
     # deconvolve the ms2 spectra with Hardklor
     deconvolve_ms2_spectra_start_time = time.time()
     print("deconvolving ms2 spectra...")
@@ -379,7 +379,7 @@ if process_this_step(args.operation, args.continue_processing, this_step='deconv
 ##############################
 # OPERATION: create_search_mgf
 ##############################
-if process_this_step(args.operation, args.continue_processing, this_step='create_search_mgf'):
+if process_this_step(args.operation, continue_flag=args.continue_flag, this_step='create_search_mgf'):
     # create search MGF
     create_search_mgf_start_time = time.time()
     print("creating the search MGF...")
