@@ -11,6 +11,7 @@ import sys
 import json
 
 def run_process(process):
+    print("Executing: {}".format(process))
     os.system(process)
 
 def merge_summed_regions(source_db_name, destination_db_name):
