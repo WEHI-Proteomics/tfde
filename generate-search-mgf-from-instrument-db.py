@@ -135,6 +135,10 @@ if (process_this_step(args.operation, continue_flag=args.continue_flag, this_ste
     if not continue_processing(op_arg=args.operation, continue_flag=args.continue_flag):
         sys.exit()
 
+if not os.path.exists(converted_database_name):
+    print("The converted database does not exist. Exiting.")
+    sys.exit()
+
 # Determine the mass range if it's not specified
 if args.mz_lower is None:
     source_conn = sqlite3.connect(converted_database_name)
