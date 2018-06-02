@@ -18,7 +18,7 @@ parser.add_argument('-ddb','--destination_database_name', type=str, help='The na
 parser.add_argument('-fts','--frames_to_sum', type=int, help='The number of MS1 source frames to sum.', required=True)
 parser.add_argument('-fso','--frame_summing_offset', type=int, help='The number of MS1 source frames to shift for each summation.', required=True)
 parser.add_argument('-mf','--noise_threshold', type=int, default=2, help='Minimum number of frames a point must appear in to be processed.', required=False)
-parser.add_argument('-ce','--collision_energy', type=int, help='Collision energy, in eV.', required=True)
+parser.add_argument('-ce','--collision_energy', type=int, help='Collision energy for ms1, in eV.', required=True)
 parser.add_argument('-fl','--frame_lower', type=int, help='The lower frame number.', required=False)
 parser.add_argument('-fu','--frame_upper', type=int, help='The upper frame number.', required=False)
 parser.add_argument('-sl','--scan_lower', type=int, default=1, help='The lower scan number.', required=False)
@@ -51,7 +51,10 @@ for arg in vars(args):
 # calculate the summed frame rate
 df = pd.read_sql_query("select value from convert_info where item=\'{}\'".format("raw_frame_period_in_msec"), source_conn)
 raw_frame_period_in_msec = float(df.loc[0].value)
-summed_frames_per_second = 1.0 / (args.frame_summing_offset * raw_frame_period_in_msec * 10**-3)
+df = pd.read_sql_query("select frame_id from frame_properties where collision_energy={}".format(args.collision_energy), source_conn)
+ms1_frame_distance = int(df.frame_id.diff().mode())  # ms1 and ms2 frames mostly alternate, except for the first couple
+ms1_raw_frame_period_in_msec = raw_frame_period_in_msec * ms1_frame_distance
+summed_frames_per_second = 1.0 / (args.frame_summing_offset * ms1_raw_frame_period_in_msec * 10**-3)
 
 # Find the complete set of frame ids to be processed
 frame_ids_df = pd.read_sql_query("select frame_id from frame_properties where collision_energy={} order by frame_id ASC;".format(args.collision_energy), source_conn)
