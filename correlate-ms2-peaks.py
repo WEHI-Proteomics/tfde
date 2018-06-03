@@ -68,6 +68,8 @@ args = parser.parse_args()
 source_conn = sqlite3.connect(args.database_name)
 src_c = source_conn.cursor()
 
+src_c.execute("PRAGMA journal_mode = TRUNCATE")
+
 if args.feature_id_lower is None:
     src_c.execute("SELECT MIN(feature_id) FROM feature_base_peaks")
     row = src_c.fetchone()
