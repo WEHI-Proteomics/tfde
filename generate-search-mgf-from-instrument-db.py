@@ -22,10 +22,19 @@ def merge_summed_regions(source_db_name, destination_db_name):
 
     df = pd.read_sql_query("SELECT tbl_name,sql FROM sqlite_master WHERE type='table'", source_conn)
     for t_idx in range(0,len(df)):
-        print("merging {}".format(df.loc[t_idx].tbl_name))
-        for chunk_df in pd.read_sql_query("SELECT * FROM {}".format(df.loc[t_idx].tbl_name), con=source_conn, chunksize=5000000):
-            print("\twriting chunk")
-            chunk_df.to_sql(name=df.loc[t_idx].tbl_name, con=destination_conn, if_exists='append', index=False, chunksize=None)
+        table_name = df.loc[t_idx].tbl_name
+        print("merging {}".format(table_name))
+
+        row_count = int(pd.read_sql('SELECT COUNT(*) FROM {table_name}'.format(table_name=table_name), source_conn).values)
+        chunksize = 10000000
+        number_of_chunks = int(row_count / chunksize)
+
+        for i in range(number_of_chunks + 1):
+            print("\tmerging chunk {} of {}".format(i, number_of_chunks))
+            query = 'SELECT * FROM {table_name} LIMIT {offset}, {chunksize}'.format(
+                table_name=table_name, offset=i * chunksize, chunksize=chunksize)
+            table_df = pd.read_sql_query(query, con=source_conn)
+            table_df.to_sql(name=table_name, con=destination_conn, if_exists='append', index=False, chunksize=None)
 
     source_conn.close()
     destination_conn.commit()
