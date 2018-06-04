@@ -23,7 +23,8 @@ def merge_summed_regions(source_db_name, destination_db_name):
     df = pd.read_sql_query("SELECT tbl_name,sql FROM sqlite_master WHERE type='table'", source_conn)
     for t_idx in range(0,len(df)):
         print("merging {}".format(df.loc[t_idx].tbl_name))
-        for chunk_df in pd.read_sql_query("SELECT * FROM {}".format(df.loc[t_idx].tbl_name), con=source_conn, chunksize=500000000):
+        for chunk_df in pd.read_sql_query("SELECT * FROM {}".format(df.loc[t_idx].tbl_name), con=source_conn, chunksize=5000000):
+            print("\twriting chunk")
             chunk_df.to_sql(name=df.loc[t_idx].tbl_name, con=destination_conn, if_exists='append', index=False, chunksize=None)
 
     source_conn.close()
