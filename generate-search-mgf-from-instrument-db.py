@@ -358,33 +358,38 @@ if process_this_step(args.operation, continue_flag=args.continue_flag, this_step
     if not continue_processing(op_arg=args.operation, continue_flag=args.continue_flag):
         sys.exit()
 
-########################################
-# OPERATION: recombine_feature_databases
-########################################
-if process_this_step(args.operation, continue_flag=args.continue_flag, this_step='recombine_feature_databases'):
-    # recombine the feature range databases back into a combined database
-    recombine_feature_databases_start_time = time.time()
-    template_feature_range = feature_ranges[0]
-    template_db_name = "{}-{}-{}.sqlite".format(feature_database_root, template_feature_range[0], template_feature_range[1])
-    merge_summed_regions_prep(template_db_name, feature_database_name)
-    for feature_range in feature_ranges:
-        source_db_name = "{}-{}-{}.sqlite".format(feature_database_root, feature_range[0], feature_range[1])
-        print("merging {} into {}".format(source_db_name, feature_database_name))
-        merge_summed_regions(source_db_name, feature_database_name)
-    recombine_feature_databases_stop_time = time.time()
-    processing_times.append(("feature recombine", recombine_feature_databases_stop_time-recombine_feature_databases_start_time))
+# ########################################
+# # OPERATION: recombine_feature_databases
+# ########################################
+# if process_this_step(args.operation, continue_flag=args.continue_flag, this_step='recombine_feature_databases'):
+#     # recombine the feature range databases back into a combined database
+#     recombine_feature_databases_start_time = time.time()
+#     template_feature_range = feature_ranges[0]
+#     template_db_name = "{}-{}-{}.sqlite".format(feature_database_root, template_feature_range[0], template_feature_range[1])
+#     merge_summed_regions_prep(template_db_name, feature_database_name)
+#     for feature_range in feature_ranges:
+#         source_db_name = "{}-{}-{}.sqlite".format(feature_database_root, feature_range[0], feature_range[1])
+#         print("merging {} into {}".format(source_db_name, feature_database_name))
+#         merge_summed_regions(source_db_name, feature_database_name)
+#     recombine_feature_databases_stop_time = time.time()
+#     processing_times.append(("feature recombine", recombine_feature_databases_stop_time-recombine_feature_databases_start_time))
 
-    if not continue_processing(op_arg=args.operation, continue_flag=args.continue_flag):
-        sys.exit()
+#     if not continue_processing(op_arg=args.operation, continue_flag=args.continue_flag):
+#         sys.exit()
 
 ###################################
 # OPERATION: deconvolve_ms2_spectra
 ###################################
 if process_this_step(args.operation, continue_flag=args.continue_flag, this_step='deconvolve_ms2_spectra'):
+    deconvolve_ms2_spectra_processes = []
+    for feature_range in feature_ranges:
+        destination_db_name = "{}-{}-{}.sqlite".format(feature_database_root, feature_range[0], feature_range[1])
+        deconvolve_ms2_spectra_processes.append("python ./otf-peak-detect/deconvolve-ms2-spectra.py -fdb '{}' -bfn {} -dbd {} -mpc {} -fps {}".format(destination_db_name, args.database_base_name, args.data_directory, args.minimum_peak_correlation, frames_per_second))
+
     # deconvolve the ms2 spectra with Hardklor
     deconvolve_ms2_spectra_start_time = time.time()
     print("deconvolving ms2 spectra...")
-    run_process("python ./otf-peak-detect/deconvolve-ms2-spectra.py -fdb '{}' -bfn {} -dbd {} -mpc {} -fps {}".format(feature_database_name, args.database_base_name, args.data_directory, args.minimum_peak_correlation, frames_per_second))
+    pool.map(run_process, deconvolve_ms2_spectra_processes)
     deconvolve_ms2_spectra_stop_time = time.time()
     processing_times.append(("deconvolve ms2 spectra", deconvolve_ms2_spectra_stop_time-deconvolve_ms2_spectra_start_time))
 
@@ -395,19 +400,24 @@ if process_this_step(args.operation, continue_flag=args.continue_flag, this_step
 # OPERATION: create_search_mgf
 ##############################
 if process_this_step(args.operation, continue_flag=args.continue_flag, this_step='create_search_mgf'):
+    create_search_mgf_processes = []
+    for feature_range in feature_ranges:
+        destination_db_name = "{}-{}-{}.sqlite".format(feature_database_root, feature_range[0], feature_range[1])
+        create_search_mgf_processes.append("python ./otf-peak-detect/create-search-mgf.py -fdb '{}' -bfn {} -dbd {} -mpc {}".format(destination_db_name, args.database_base_name, args.data_directory, args.minimum_peak_correlation))
+
     # create search MGF
     create_search_mgf_start_time = time.time()
     print("creating the search MGF...")
-    run_process("python ./otf-peak-detect/create-search-mgf.py -fdb '{}' -bfn {} -dbd {} -mpc {}".format(feature_database_name, args.database_base_name, args.data_directory, args.minimum_peak_correlation))
+    pool.map(run_process, create_search_mgf_processes)
     create_search_mgf_stop_time = time.time()
     processing_times.append(("create search mgf", create_search_mgf_stop_time-create_search_mgf_stop_time))
 
-    # gather statistics
-    source_conn = sqlite3.connect(converted_database_name)
-    deconvoluted_ions_df = pd.read_sql_query("select max(ion_id) from deconvoluted_ions", source_conn)
-    number_of_deconvoluted_ions = int(deconvoluted_ions_df.values[0][0])
-    statistics.append(("number of deconvoluted ions", number_of_deconvoluted_ions))
-    source_conn.close()
+    # # gather statistics
+    # source_conn = sqlite3.connect(converted_database_name)
+    # deconvoluted_ions_df = pd.read_sql_query("select max(ion_id) from deconvoluted_ions", source_conn)
+    # number_of_deconvoluted_ions = int(deconvoluted_ions_df.values[0][0])
+    # statistics.append(("number of deconvoluted ions", number_of_deconvoluted_ions))
+    # source_conn.close()
 
     if not continue_processing(op_arg=args.operation, continue_flag=args.continue_flag):
         sys.exit()
@@ -420,7 +430,7 @@ print("")
 print("processing times")
 for t in processing_times:
     print("{}\t\t{:.1f} seconds\t\t{:.1f}%".format(t[0], t[1], t[1]/(processing_stop_time-processing_start_time)*100.))
-print("")
-print("data")
-for s in statistics:
-    print("{}\t\t{:.1f}".format(s[0], s[1]))
+# print("")
+# print("data")
+# for s in statistics:
+#     print("{}\t\t{:.1f}".format(s[0], s[1]))
