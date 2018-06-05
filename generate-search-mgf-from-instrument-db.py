@@ -403,7 +403,7 @@ if process_this_step(args.operation, continue_flag=args.continue_flag, this_step
     create_search_mgf_processes = []
     for feature_range in feature_ranges:
         destination_db_name = "{}-{}-{}.sqlite".format(feature_database_root, feature_range[0], feature_range[1])
-        create_search_mgf_processes.append("python ./otf-peak-detect/create-search-mgf.py -fdb '{}' -bfn {} -dbd {} -mpc {}".format(destination_db_name, args.database_base_name, args.data_directory, args.minimum_peak_correlation))
+        create_search_mgf_processes.append("python ./otf-peak-detect/create-search-mgf.py -fdb '{}' -bfn {} -dbd {} -mpc {} -fl {} -fu {}".format(destination_db_name, args.database_base_name, args.data_directory, args.minimum_peak_correlation, feature_range[0], feature_range[1]))
 
     # create search MGF
     create_search_mgf_start_time = time.time()

@@ -14,6 +14,8 @@ parser.add_argument('-fdb','--features_database', type=str, help='The name of th
 parser.add_argument('-bfn','--base_mgf_filename', type=str, help='The base name of the MGF.', required=True)
 parser.add_argument('-dbd','--data_directory', type=str, help='The directory for the processing data.', required=True)
 parser.add_argument('-mpc','--minimum_peak_correlation', type=float, default=0.6, help='Process ms2 peaks with at least this much correlation with the feature''s ms1 base peak.', required=False)
+parser.add_argument('-fl','--feature_id_lower', type=int, help='Lower feature ID to process.', required=True)
+parser.add_argument('-fu','--feature_id_upper', type=int, help='Upper feature ID to process.', required=True)
 args = parser.parse_args()
 
 mgf_directory = "{}/mgf".format(args.data_directory)
@@ -43,7 +45,7 @@ db_conn = sqlite3.connect(args.features_database)
 feature_ids_df = pd.read_sql_query("select distinct(feature_id) from peak_correlation", db_conn)
 db_conn.close()
 
-mgf_filename = "{}/{}-search-correlation-{}.mgf".format(output_directory, args.base_mgf_filename, args.minimum_peak_correlation)
+mgf_filename = "{}/{}-search-correlation-{}-features-{}-{}.mgf".format(output_directory, args.base_mgf_filename, args.minimum_peak_correlation, args.feature_id_lower, args.feature_id_upper)
 if os.path.isfile(mgf_filename):
     os.remove(mgf_filename)
 
