@@ -19,6 +19,7 @@ def run_process(process):
 
 parser = argparse.ArgumentParser(description='Generate a text file containing the Hardklor commands.')
 parser.add_argument('-fdb','--features_database', type=str, help='The name of the features database.', required=True)
+parser.add_argument('-frdb','--feature_region_database', type=str, help='The name of the feature region database.', required=True)
 parser.add_argument('-bfn','--base_mgf_filename', type=str, help='The base name of the MGF to give Hardklor.', required=True)
 parser.add_argument('-dbd','--data_directory', type=str, help='The directory for the processing data.', required=True)
 parser.add_argument('-mpc','--minimum_peak_correlation', type=float, default=0.6, help='Process ms2 peaks with at least this much correlation with the feature''s ms1 base peak.', required=False)
@@ -118,11 +119,11 @@ def peak_ratio(monoisotopic_mass, peak_number, number_of_sulphur):
     return ratio
 
 print("Setting up indexes")
-db_conn = sqlite3.connect(args.features_database)
+db_conn = sqlite3.connect(args.feature_region_database)
 db_conn.cursor().execute("CREATE INDEX IF NOT EXISTS idx_peak_correlation_1 ON peak_correlation (feature_id)")
 db_conn.close()
 
-db_conn = sqlite3.connect(args.features_database)
+db_conn = sqlite3.connect(args.feature_region_database)
 feature_ids_df = pd.read_sql_query("select distinct(feature_id) from peak_correlation", db_conn)
 db_conn.close()
 
@@ -142,7 +143,7 @@ for feature_ids_idx in range(0,len(feature_ids_df)):
     expected_spacing = DELTA_MZ / charge_state
     db_conn.close()
 
-    db_conn = sqlite3.connect(args.features_database)
+    db_conn = sqlite3.connect(args.feature_region_database)
     peaks_df = pd.read_sql_query("select * from summed_ms1_regions where feature_id = {} order by peak_id".format(feature_id), db_conn)
     ms2_peaks_df = pd.read_sql_query("select * from ms2_peaks where (feature_id,peak_id) in (select feature_id,ms2_peak_id from peak_correlation where feature_id={} and correlation > {})".format(feature_id, args.minimum_peak_correlation), db_conn)
     db_conn.close()
@@ -267,7 +268,7 @@ for feature_ids_idx in range(0,len(feature_ids_df)):
     hk_processes.append("./hardklor/hardklor -cmd -instrument TOF -resolution 40000 -centroided 1 -ms_level 2 -algorithm Version2 -charge_algorithm Quick -charge_min 1 -charge_max {} -correlation {} -mz_window 5.25 -sensitivity 2 -depth 2 -max_features 12 -distribution_area 1 -xml 0 {} {}".format(charge_state, args.minimum_peak_correlation, mgf_filename, hk_filename))
 
 # write out the deconvolved feature ms1 isotopes and the feature list
-db_conn = sqlite3.connect(args.features_database)
+db_conn = sqlite3.connect(args.feature_region_database)
 print("writing out the deconvolved feature ms1 isotopes...")
 feature_cluster_df.to_sql(name='feature_isotopes', con=db_conn, if_exists='replace', index=False)
 print("writing out the feature list...")

@@ -384,7 +384,7 @@ if process_this_step(args.operation, continue_flag=args.continue_flag, this_step
     deconvolve_ms2_spectra_processes = []
     for feature_range in feature_ranges:
         destination_db_name = "{}-{}-{}.sqlite".format(feature_database_root, feature_range[0], feature_range[1])
-        deconvolve_ms2_spectra_processes.append("python ./otf-peak-detect/deconvolve-ms2-spectra.py -fdb '{}' -bfn {} -dbd {} -mpc {} -fps {}".format(destination_db_name, args.database_base_name, args.data_directory, args.minimum_peak_correlation, frames_per_second))
+        deconvolve_ms2_spectra_processes.append("python ./otf-peak-detect/deconvolve-ms2-spectra.py -fdb '{}' -frdb '{}' -bfn {} -dbd {} -mpc {} -fps {}".format(feature_database_name, destination_db_name, args.database_base_name, args.data_directory, args.minimum_peak_correlation, frames_per_second))
 
     # deconvolve the ms2 spectra with Hardklor
     deconvolve_ms2_spectra_start_time = time.time()
