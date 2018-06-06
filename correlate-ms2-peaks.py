@@ -67,7 +67,7 @@ args = parser.parse_args()
 
 source_conn = sqlite3.connect(args.database_name)
 src_c = source_conn.cursor()
-
+src_c.execute("PRAGMA temp_store = 2")
 src_c.execute("PRAGMA journal_mode = TRUNCATE")
 
 if args.feature_id_lower is None:
