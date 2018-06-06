@@ -87,15 +87,17 @@ peak_correlation_info = []
 for arg in vars(args):
     peak_correlation_info.append((arg, getattr(args, arg)))
 
-print("Setting up tables and indexes")
+print("Setting up tables")
 src_c.execute("DROP TABLE IF EXISTS peak_correlation")
 src_c.execute("DROP TABLE IF EXISTS peak_correlation_info")
 src_c.execute("CREATE TABLE peak_correlation (feature_id INTEGER, base_peak_id INTEGER, ms2_peak_id INTEGER, correlation REAL, PRIMARY KEY (feature_id, base_peak_id, ms2_peak_id))")
 src_c.execute("CREATE TABLE peak_correlation_info (item TEXT, value TEXT)")
 
+print("Setting up indexes")
 src_c.execute("CREATE INDEX IF NOT EXISTS idx_peak_correlation_1 on summed_ms1_regions (feature_id, peak_id)")
 src_c.execute("CREATE INDEX IF NOT EXISTS idx_peak_correlation_2 on feature_base_peaks (feature_id)")
-src_c.execute("CREATE INDEX IF NOT EXISTS idx_peak_correlation_3 on summed_ms2_regions (feature_id, peak_id, scan)")
+# src_c.execute("CREATE INDEX IF NOT EXISTS idx_peak_correlation_3 on summed_ms2_regions (feature_id, peak_id, scan)")
+src_c.execute("DROP INDEX IF EXISTS idx_peak_correlation_3")
 
 start_run = time.time()
 
