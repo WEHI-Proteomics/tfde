@@ -203,7 +203,7 @@ for feature_ids_idx in range(0,len(feature_ids_df)):
 
     # add to the feature clusters
     if feature_cluster_df is None:
-        feature_cluster_df = cluster_df
+        feature_cluster_df = cluster_df.copy()
     else:
         feature_cluster_df = feature_cluster_df.append(cluster_df, ignore_index=True)
 
