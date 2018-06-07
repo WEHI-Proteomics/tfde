@@ -94,9 +94,12 @@ src_c.execute("CREATE TABLE peak_correlation (feature_id INTEGER, base_peak_id I
 src_c.execute("CREATE TABLE peak_correlation_info (item TEXT, value TEXT)")
 
 print("Setting up indexes")
+print("creating idx_peak_correlation_1")
 src_c.execute("CREATE INDEX IF NOT EXISTS idx_peak_correlation_1 on summed_ms1_regions (feature_id, peak_id)")
+print("creating idx_peak_correlation_2")
 src_c.execute("CREATE INDEX IF NOT EXISTS idx_peak_correlation_2 on feature_base_peaks (feature_id)")
 # src_c.execute("CREATE INDEX IF NOT EXISTS idx_peak_correlation_3 on summed_ms2_regions (feature_id, peak_id, scan)")
+print("dropping idx_peak_correlation_3 if exists")
 src_c.execute("DROP INDEX IF EXISTS idx_peak_correlation_3")
 
 start_run = time.time()
