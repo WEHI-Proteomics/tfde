@@ -98,6 +98,7 @@ statistics = []
 steps = []
 steps.append('convert_instrument_db')
 steps.append('cluster_detect_ms1')
+steps.append('recombine_frame_databases')
 steps.append('feature_detect_ms1')
 steps.append('feature_region_ms2_peak_detect')
 steps.append('feature_region_ms1_peak_detect')
@@ -228,6 +229,14 @@ if process_this_step(args.operation, continue_flag=args.continue_flag, this_step
 
     cluster_detect_stop_time = time.time()
     processing_times.append(("cluster detect", cluster_detect_stop_time-cluster_detect_start_time))
+
+    if not continue_processing(op_arg=args.operation, continue_flag=args.continue_flag):
+        sys.exit()
+
+######################################
+# OPERATION: recombine_frame_databases
+######################################
+if process_this_step(args.operation, continue_flag=args.continue_flag, this_step='recombine_frame_databases'):
 
     recombine_frames_start_time = time.time()
 
