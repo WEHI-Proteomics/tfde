@@ -204,22 +204,22 @@ for s in batch_splits:
     if len(s) > 0:
         summed_frame_ranges.append((s[0],s[len(s)-1]))
 
-# process the ms1 frames
-sum_frame_ms1_processes = []
-peak_detect_ms1_processes = []
-cluster_detect_ms1_processes = []
-for summed_frame_range in summed_frame_ranges:
-    destination_db_name = "{}-{}-{}.sqlite".format(frame_database_root, summed_frame_range[0], summed_frame_range[1])
-    sum_frame_ms1_processes.append("python ./otf-peak-detect/sum-frames-ms1.py -sdb '{}' -ddb '{}' -ce {} -fl {} -fu {} -fts {} -fso {}".format(converted_database_name, destination_db_name, args.ms1_collision_energy, summed_frame_range[0], summed_frame_range[1], args.frames_to_sum, args.frame_summing_offset))
-    peak_detect_ms1_processes.append("python ./otf-peak-detect/peak-detect-ms1.py -db '{}' -fl {} -fu {}".format(destination_db_name, summed_frame_range[0], summed_frame_range[1]))
-    cluster_detect_ms1_processes.append("python ./otf-peak-detect/cluster-detect-ms1.py -db '{}' -fl {} -fu {}".format(destination_db_name, summed_frame_range[0], summed_frame_range[1]))
-
 ###############################
 # OPERATION: cluster_detect_ms1
 ###############################
 if process_this_step(args.operation, continue_flag=args.continue_flag, this_step='cluster_detect_ms1'):
 
     cluster_detect_start_time = time.time()
+
+    # build the process lists
+    sum_frame_ms1_processes = []
+    peak_detect_ms1_processes = []
+    cluster_detect_ms1_processes = []
+    for summed_frame_range in summed_frame_ranges:
+        destination_db_name = "{}-{}-{}.sqlite".format(frame_database_root, summed_frame_range[0], summed_frame_range[1])
+        sum_frame_ms1_processes.append("python ./otf-peak-detect/sum-frames-ms1.py -sdb '{}' -ddb '{}' -ce {} -fl {} -fu {} -fts {} -fso {}".format(converted_database_name, destination_db_name, args.ms1_collision_energy, summed_frame_range[0], summed_frame_range[1], args.frames_to_sum, args.frame_summing_offset))
+        peak_detect_ms1_processes.append("python ./otf-peak-detect/peak-detect-ms1.py -db '{}' -fl {} -fu {}".format(destination_db_name, summed_frame_range[0], summed_frame_range[1]))
+        cluster_detect_ms1_processes.append("python ./otf-peak-detect/cluster-detect-ms1.py -db '{}' -fl {} -fu {}".format(destination_db_name, summed_frame_range[0], summed_frame_range[1]))
 
     run_process("python ./otf-peak-detect/sum-frames-ms1-prep.py -sdb '{}'".format(converted_database_name))
     pool.map(run_process, sum_frame_ms1_processes)
@@ -238,7 +238,7 @@ if process_this_step(args.operation, continue_flag=args.continue_flag, this_step
     for summed_frame_range in summed_frame_ranges:
         source_db_name = "{}-{}-{}.sqlite".format(frame_database_root, summed_frame_range[0], summed_frame_range[1])
         print("merging {} into {}".format(source_db_name, frame_database_name))
-        merge_summed_regions(source_db_name, frame_database_name)
+        merge_summed_regions(source_db_name, frame_database_name, exceptions=[])
 
     recombine_frames_stop_time = time.time()
     processing_times.append(("frame-based recombine", recombine_frames_stop_time-recombine_frames_start_time))
@@ -290,17 +290,18 @@ for s in batch_splits:
 # from here, split the combined features database into feature range databases
 #
 
-# detect ms2 peaks in the feature's region
-feature_region_ms2_sum_peak_processes = []
-for feature_range in feature_ranges:
-    destination_db_name = "{}-{}-{}.sqlite".format(feature_database_root, feature_range[0], feature_range[1])
-    feature_region_ms2_sum_peak_processes.append("python ./otf-peak-detect/feature-region-ms2-combined-sum-peak-detect.py -cdb '{}' -ddb '{}' -ms1ce {} -fl {} -fu {} -ml {} -mu {} -bs 20 -fts {} -fso {}".format(converted_database_name, destination_db_name, args.ms1_collision_energy, feature_range[0], feature_range[1], args.mz_lower, args.mz_upper, args.frames_to_sum, args.frame_summing_offset))
-
 ###########################################
 # OPERATION: feature_region_ms2_peak_detect
 ###########################################
 if process_this_step(args.operation, continue_flag=args.continue_flag, this_step='feature_region_ms2_peak_detect'):
     ms2_peak_detect_start_time = time.time()
+
+    # build the process lists
+    feature_region_ms2_sum_peak_processes = []
+    for feature_range in feature_ranges:
+        destination_db_name = "{}-{}-{}.sqlite".format(feature_database_root, feature_range[0], feature_range[1])
+        feature_region_ms2_sum_peak_processes.append("python ./otf-peak-detect/feature-region-ms2-combined-sum-peak-detect.py -cdb '{}' -ddb '{}' -ms1ce {} -fl {} -fu {} -ml {} -mu {} -bs 20 -fts {} -fso {}".format(converted_database_name, destination_db_name, args.ms1_collision_energy, feature_range[0], feature_range[1], args.mz_lower, args.mz_upper, args.frames_to_sum, args.frame_summing_offset))
+
     run_process("python ./otf-peak-detect/feature-region-ms2-combined-sum-peak-detect-prep.py -cdb '{}'".format(converted_database_name))
     print("detecting ms2 peaks in the feature region...")
     pool.map(run_process, feature_region_ms2_sum_peak_processes)
@@ -310,21 +311,20 @@ if process_this_step(args.operation, continue_flag=args.continue_flag, this_step
     if not continue_processing(op_arg=args.operation, continue_flag=args.continue_flag):
         sys.exit()
 
-# re-detect ms1 peaks in the feature's region, and calculate ms2 peak correlation
-feature_region_ms1_sum_processes = []
-feature_region_ms1_peak_processes = []
-peak_correlation_processes = []
-for feature_range in feature_ranges:
-    destination_db_name = "{}-{}-{}.sqlite".format(feature_database_root, feature_range[0], feature_range[1])
-    feature_region_ms1_sum_processes.append("python ./otf-peak-detect/feature-region-ms1-sum-frames.py -sdb '{}' -ddb '{}' -fl {} -fu {} -ml {} -mu {}".format(feature_database_name, destination_db_name, feature_range[0], feature_range[1], args.mz_lower, args.mz_upper))
-    feature_region_ms1_peak_processes.append("python ./otf-peak-detect/feature-region-ms1-peak-detect.py -sdb '{}' -ddb '{}' -fl {} -fu {} -ml {} -mu {}".format(feature_database_name, destination_db_name, feature_range[0], feature_range[1], args.mz_lower, args.mz_upper))
-    peak_correlation_processes.append("python ./otf-peak-detect/correlate-ms2-peaks.py -db '{}' -fl {} -fu {}".format(destination_db_name, feature_range[0], feature_range[1]))
-
 ###########################################
 # OPERATION: feature_region_ms1_peak_detect
 ###########################################
 if process_this_step(args.operation, continue_flag=args.continue_flag, this_step='feature_region_ms1_peak_detect'):
     ms1_peak_detect_start_time = time.time()
+
+    # build the process lists
+    feature_region_ms1_sum_processes = []
+    feature_region_ms1_peak_processes = []
+    for feature_range in feature_ranges:
+        destination_db_name = "{}-{}-{}.sqlite".format(feature_database_root, feature_range[0], feature_range[1])
+        feature_region_ms1_sum_processes.append("python ./otf-peak-detect/feature-region-ms1-sum-frames.py -sdb '{}' -ddb '{}' -fl {} -fu {} -ml {} -mu {}".format(feature_database_name, destination_db_name, feature_range[0], feature_range[1], args.mz_lower, args.mz_upper))
+        feature_region_ms1_peak_processes.append("python ./otf-peak-detect/feature-region-ms1-peak-detect.py -sdb '{}' -ddb '{}' -fl {} -fu {} -ml {} -mu {}".format(feature_database_name, destination_db_name, feature_range[0], feature_range[1], args.mz_lower, args.mz_upper))
+
     print("summing ms1 frames, detecting peaks in the feature region...")
     run_process("python ./otf-peak-detect/feature-region-ms1-sum-frames-prep.py -sdb '{}'".format(feature_database_name))
     pool.map(run_process, feature_region_ms1_sum_processes)
@@ -335,17 +335,18 @@ if process_this_step(args.operation, continue_flag=args.continue_flag, this_step
     if not continue_processing(op_arg=args.operation, continue_flag=args.continue_flag):
         sys.exit()
 
-# determine the drift offset between ms1 and ms2
-match_precursor_ms2_peaks_processes = []
-for feature_range in feature_ranges:
-    destination_db_name = "{}-{}-{}.sqlite".format(feature_database_root, feature_range[0], feature_range[1])
-    match_precursor_ms2_peaks_processes.append("python ./otf-peak-detect/match-precursor-ms2-peaks.py -db '{}' -fdb '{}' -fl {} -fu {} -fps {}".format(destination_db_name, feature_database_name, feature_range[0], feature_range[1], frames_per_second))
-
 ######################################
 # OPERATION: match_precursor_ms2_peaks
 ######################################
 if process_this_step(args.operation, continue_flag=args.continue_flag, this_step='match_precursor_ms2_peaks'):
     match_precursor_ms2_peaks_start_time = time.time()
+
+    # determine the drift offset between ms1 and ms2
+    match_precursor_ms2_peaks_processes = []
+    for feature_range in feature_ranges:
+        destination_db_name = "{}-{}-{}.sqlite".format(feature_database_root, feature_range[0], feature_range[1])
+        match_precursor_ms2_peaks_processes.append("python ./otf-peak-detect/match-precursor-ms2-peaks.py -db '{}' -fdb '{}' -fl {} -fu {} -fps {}".format(destination_db_name, feature_database_name, feature_range[0], feature_range[1], frames_per_second))
+
     print("matching precursor ms2 peaks...")
     pool.map(run_process, match_precursor_ms2_peaks_processes)
     match_precursor_ms2_peaks_stop_time = time.time()
@@ -359,6 +360,12 @@ if process_this_step(args.operation, continue_flag=args.continue_flag, this_step
 ############################
 if process_this_step(args.operation, continue_flag=args.continue_flag, this_step='correlate_peaks'):
     peak_correlation_start_time = time.time()
+
+    peak_correlation_processes = []
+    for feature_range in feature_ranges:
+        destination_db_name = "{}-{}-{}.sqlite".format(feature_database_root, feature_range[0], feature_range[1])
+        peak_correlation_processes.append("python ./otf-peak-detect/correlate-ms2-peaks.py -db '{}' -fl {} -fu {}".format(destination_db_name, feature_range[0], feature_range[1]))
+    
     print("correlating peaks...")
     pool.map(run_process, peak_correlation_processes)
     peak_correlation_stop_time = time.time()
@@ -401,7 +408,7 @@ if process_this_step(args.operation, continue_flag=args.continue_flag, this_step
     for feature_range in feature_ranges:
         source_db_name = "{}-{}-{}.sqlite".format(feature_database_root, feature_range[0], feature_range[1])
         print("merging {} into {}".format(source_db_name, feature_database_name))
-        merge_summed_regions(source_db_name, feature_database_name, table_exceptions)
+        merge_summed_regions(source_db_name, feature_database_name, exceptions=table_exceptions)
     recombine_feature_databases_stop_time = time.time()
     processing_times.append(("feature recombine", recombine_feature_databases_stop_time-recombine_feature_databases_start_time))
 
