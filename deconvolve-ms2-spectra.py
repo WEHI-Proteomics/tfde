@@ -32,14 +32,29 @@ search_headers_directory = "{}/search-headers".format(args.data_directory)
 hardklor_commands_directory = "{}/hardklor-commands".format(args.data_directory)
 
 # make sure the processing directories exist
-if not os.path.exists(mgf_directory):
-    os.makedirs(mgf_directory)    
-if not os.path.exists(hk_directory):
-    os.makedirs(hk_directory)    
-if not os.path.exists(search_headers_directory):
-    os.makedirs(search_headers_directory)    
-if not os.path.exists(hardklor_commands_directory):
-    os.makedirs(hardklor_commands_directory)    
+try: 
+    os.makedirs(mgf_directory)
+except OSError:
+    if not os.path.isdir(mgf_directory):
+        raise
+
+try: 
+    os.makedirs(hk_directory)
+except OSError:
+    if not os.path.isdir(hk_directory):
+        raise
+
+try: 
+    os.makedirs(search_headers_directory)
+except OSError:
+    if not os.path.isdir(search_headers_directory):
+        raise
+
+try: 
+    os.makedirs(hardklor_commands_directory)
+except OSError:
+    if not os.path.isdir(hardklor_commands_directory):
+        raise
 
 def standard_deviation(mz):
     instrument_resolution = 40000.0
