@@ -41,16 +41,18 @@ def merge_summed_regions(source_db_name, destination_db_name, exceptions):
     destination_conn.commit()
     destination_conn.close()
 
-def merge_summed_regions_prep(source_db_name, destination_db_name):
+def merge_summed_regions_prep(source_db_name, destination_db_name, exceptions):
     source_conn = sqlite3.connect(source_db_name)
     destination_conn = sqlite3.connect(destination_db_name)
     dst_cur = destination_conn.cursor()
 
     df = pd.read_sql_query("SELECT tbl_name,sql FROM sqlite_master WHERE type='table'", source_conn)
     for t_idx in range(0,len(df)):
-        print("preparing {}".format(df.loc[t_idx].tbl_name))
-        dst_cur.execute("drop table if exists {}".format(df.loc[t_idx].tbl_name))
-        dst_cur.execute(df.loc[t_idx].sql)
+        table_name = df.loc[t_idx].tbl_name
+        print("preparing {}".format(table_name))
+        dst_cur.execute("drop table if exists {}".format(table_name))
+        if table_name not in exceptions:
+            dst_cur.execute(df.loc[t_idx].sql)
 
     source_conn.close()
     destination_conn.commit()
@@ -408,12 +410,12 @@ if process_this_step(args.operation, continue_flag=args.continue_flag, this_step
 if process_this_step(args.operation, continue_flag=args.continue_flag, this_step='recombine_feature_databases'):
     # recombine the feature range databases back into a combined database
     recombine_feature_databases_start_time = time.time()
-    template_feature_range = feature_ranges[0]
-    template_db_name = "{}-{}-{}.sqlite".format(feature_database_root, template_feature_range[0], template_feature_range[1])
-    merge_summed_regions_prep(template_db_name, feature_database_name)
     table_exceptions = []
     table_exceptions.append('summed_ms2_regions')
     table_exceptions.append('summed_ms1_regions')
+    template_feature_range = feature_ranges[0]
+    template_db_name = "{}-{}-{}.sqlite".format(feature_database_root, template_feature_range[0], template_feature_range[1])
+    merge_summed_regions_prep(template_db_name, feature_database_name, exceptions=table_exceptions)
     for feature_range in feature_ranges:
         source_db_name = "{}-{}-{}.sqlite".format(feature_database_root, feature_range[0], feature_range[1])
         print("merging {} into {}".format(source_db_name, feature_database_name))
