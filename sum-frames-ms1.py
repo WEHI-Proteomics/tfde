@@ -112,7 +112,7 @@ for summedFrameId in range(args.frame_lower,args.frame_upper+1):
                 centroid_mz = peakutils.centroid(nearby_points[:,FRAME_MZ_IDX], nearby_points[:,FRAME_INTENSITY_IDX])
                 frame_points.append((int(summedFrameId), int(pointId), float(centroid_mz), int(scan), int(round(centroid_intensity)), 0))
                 for p in nearby_points:
-                    raw_summed_join.append((int(summedFrameId), int(pointId), p[FRAME_ID_IDX], p[FRAME_POINT_ID_IDX]))
+                    raw_summed_join.append((int(summedFrameId), int(pointId), int(p[FRAME_ID_IDX]), int(p[FRAME_POINT_ID_IDX])))
                 pointId += 1
 
             # remove the points we've processed
