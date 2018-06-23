@@ -245,7 +245,8 @@ if process_this_step(args.operation, continue_flag=args.continue_flag, this_step
     # recombine the frame range databases back into a combined database
     template_frame_range = summed_frame_ranges[0]
     template_db_name = "{}-{}-{}.sqlite".format(frame_database_root, template_frame_range[0], template_frame_range[1])
-    merge_summed_regions_prep(template_db_name, frame_database_name)
+    table_exceptions = []
+    merge_summed_regions_prep(template_db_name, frame_database_name, exceptions=table_exceptions)
     for summed_frame_range in summed_frame_ranges:
         source_db_name = "{}-{}-{}.sqlite".format(frame_database_root, summed_frame_range[0], summed_frame_range[1])
         print("merging {} into {}".format(source_db_name, frame_database_name))
