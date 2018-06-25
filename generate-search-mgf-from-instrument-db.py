@@ -93,6 +93,7 @@ parser.add_argument('-mu','--mz_upper', type=float, help='Upper feature m/z to p
 parser.add_argument('-fl','--frame_lower', type=int, help='The lower summed frame number to process.', required=False)
 parser.add_argument('-fu','--frame_upper', type=int, help='The upper summed frame number to process.', required=False)
 parser.add_argument('-mnf','--minimum_number_of_frames', type=int, default=3, help='Minimum number of frames for a feature to be valid.', required=False)
+parser.add_argument('-cst','--correlation_scan_tolerance', type=int, help='Number of scans either side of the feature base peak to include an ms2 peak for correlation.', required=True)
 args = parser.parse_args()
 
 processing_times = []
@@ -392,7 +393,7 @@ if process_this_step(args.operation, continue_flag=args.continue_flag, this_step
     peak_correlation_processes = []
     for feature_range in feature_ranges:
         destination_db_name = "{}-{}-{}.sqlite".format(feature_database_root, feature_range[0], feature_range[1])
-        peak_correlation_processes.append("python ./otf-peak-detect/correlate-ms2-peaks.py -db '{}' -fl {} -fu {}".format(destination_db_name, feature_range[0], feature_range[1]))
+        peak_correlation_processes.append("python ./otf-peak-detect/correlate-ms2-peaks.py -db '{}' -fl {} -fu {} -st {}".format(destination_db_name, feature_range[0], feature_range[1], args.correlation_scan_tolerance))
     
     print("correlating peaks...")
     pool.map(run_process, peak_correlation_processes)
