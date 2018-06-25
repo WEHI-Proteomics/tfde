@@ -7,6 +7,13 @@ import peakutils
 import time
 import json
 
+# frames array indexes
+FRAME_ID_IDX = 0
+FRAME_MZ_IDX = 1
+FRAME_SCAN_IDX = 2
+FRAME_INTENSITY_IDX = 3
+FRAME_POINT_ID_IDX = 4
+
 def standard_deviation(mz):
     instrument_resolution = 40000.0
     return (mz / instrument_resolution) / 2.35482
@@ -76,34 +83,36 @@ start_run = time.time()
 elution_profile = []
 points = []
 frame_count = 0
+raw_summed_join = []
 for summedFrameId in range(args.frame_lower,args.frame_upper+1):
     baseFrameIdsIndex = (summedFrameId-1)*args.frame_summing_offset
     frameIdsToSum = frame_ids[baseFrameIdsIndex:baseFrameIdsIndex+args.frames_to_sum]
     print("Processing {} frames ({}) to create summed frame {}".format(len(frameIdsToSum), frameIdsToSum, summedFrameId))
-    frame_df = pd.read_sql_query("select frame_id,mz,scan,intensity from frames where frame_id in {} order by frame_id, mz, scan asc;".format(frameIdsToSum), source_conn)
+    frame_df = pd.read_sql_query("select frame_id,mz,scan,intensity,point_id from frames where frame_id in {} order by frame_id, mz, scan asc;".format(frameIdsToSum), source_conn)
     frame_v = frame_df.values
 
     frame_start = time.time()
     pointId = 1
     frame_points = []
     for scan in range(args.scan_lower, args.scan_upper+1):
-        points_v = frame_v[np.where(frame_v[:,2] == scan)]
+        points_v = frame_v[np.where(frame_v[:,FRAME_SCAN_IDX] == scan)]
         points_to_process = len(points_v)
         while len(points_v) > 0:
-            max_intensity_index = np.argmax(points_v[:,3])
-            point_mz = points_v[max_intensity_index, 1]
-            # print("m/z {}, intensity {}".format(point_mz, points_v[max_intensity_index, 3]))
+            max_intensity_index = np.argmax(points_v[:,FRAME_INTENSITY_IDX])
+            point_mz = points_v[max_intensity_index, FRAME_MZ_IDX]
             delta_mz = standard_deviation(point_mz) * 4.0
             # Find all the points in this point's std dev window
-            nearby_point_indices = np.where((points_v[:,1] >= point_mz-delta_mz) & (points_v[:,1] <= point_mz+delta_mz))[0]
+            nearby_point_indices = np.where((points_v[:,FRAME_MZ_IDX] >= point_mz-delta_mz) & (points_v[:,FRAME_MZ_IDX] <= point_mz+delta_mz))[0]
             nearby_points = points_v[nearby_point_indices]
             # How many distinct frames do the points come from?
-            unique_frames = np.unique(nearby_points[:,0])
+            unique_frames = np.unique(nearby_points[:,FRAME_ID_IDX])
             if len(unique_frames) >= args.noise_threshold:
                 # find the total intensity and centroid m/z
-                centroid_intensity = nearby_points[:,3].sum()
-                centroid_mz = peakutils.centroid(nearby_points[:,1], nearby_points[:,3])
+                centroid_intensity = nearby_points[:,FRAME_INTENSITY_IDX].sum()
+                centroid_mz = peakutils.centroid(nearby_points[:,FRAME_MZ_IDX], nearby_points[:,FRAME_INTENSITY_IDX])
                 frame_points.append((int(summedFrameId), int(pointId), float(centroid_mz), int(scan), int(round(centroid_intensity)), 0))
+                for p in nearby_points:
+                    raw_summed_join.append((int(summedFrameId), int(pointId), int(p[FRAME_ID_IDX]), int(p[FRAME_POINT_ID_IDX])))
                 pointId += 1
 
             # remove the points we've processed
@@ -136,6 +145,12 @@ if len(points) > 0:
 
 if len(elution_profile) > 0:
     dest_c.executemany("INSERT INTO elution_profile VALUES (?, ?)", elution_profile)
+
+# write out the raw-to-summed mapping
+print("writing out the raw-to-summed mapping")
+raw_summed_join_columns = ['summed_frame_id', 'summed_point_id', 'raw_frame_id', 'raw_point_id']
+raw_summed_join_df = pd.DataFrame(raw_summed_join, columns=raw_summed_join_columns)
+raw_summed_join_df.to_sql(name='raw_summed_join', con=dest_conn, if_exists='replace', index=False)
 
 stop_run = time.time()
 print("{} seconds to sum frames {} to {}".format(stop_run-start_run, args.frame_lower, args.frame_upper))

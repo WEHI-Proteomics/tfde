@@ -19,6 +19,7 @@ def run_process(process):
 
 parser = argparse.ArgumentParser(description='Generate a text file containing the Hardklor commands.')
 parser.add_argument('-fdb','--features_database', type=str, help='The name of the features database.', required=True)
+parser.add_argument('-frdb','--feature_region_database', type=str, help='The name of the feature region database.', required=True)
 parser.add_argument('-bfn','--base_mgf_filename', type=str, help='The base name of the MGF to give Hardklor.', required=True)
 parser.add_argument('-dbd','--data_directory', type=str, help='The directory for the processing data.', required=True)
 parser.add_argument('-mpc','--minimum_peak_correlation', type=float, default=0.6, help='Process ms2 peaks with at least this much correlation with the feature''s ms1 base peak.', required=False)
@@ -31,14 +32,29 @@ search_headers_directory = "{}/search-headers".format(args.data_directory)
 hardklor_commands_directory = "{}/hardklor-commands".format(args.data_directory)
 
 # make sure the processing directories exist
-if not os.path.exists(mgf_directory):
-    os.makedirs(mgf_directory)    
-if not os.path.exists(hk_directory):
-    os.makedirs(hk_directory)    
-if not os.path.exists(search_headers_directory):
-    os.makedirs(search_headers_directory)    
-if not os.path.exists(hardklor_commands_directory):
-    os.makedirs(hardklor_commands_directory)    
+try: 
+    os.makedirs(mgf_directory)
+except OSError:
+    if not os.path.isdir(mgf_directory):
+        raise
+
+try: 
+    os.makedirs(hk_directory)
+except OSError:
+    if not os.path.isdir(hk_directory):
+        raise
+
+try: 
+    os.makedirs(search_headers_directory)
+except OSError:
+    if not os.path.isdir(search_headers_directory):
+        raise
+
+try: 
+    os.makedirs(hardklor_commands_directory)
+except OSError:
+    if not os.path.isdir(hardklor_commands_directory):
+        raise
 
 def standard_deviation(mz):
     instrument_resolution = 40000.0
@@ -118,13 +134,17 @@ def peak_ratio(monoisotopic_mass, peak_number, number_of_sulphur):
     return ratio
 
 print("Setting up indexes")
-db_conn = sqlite3.connect(args.features_database)
+db_conn = sqlite3.connect(args.feature_region_database)
 db_conn.cursor().execute("CREATE INDEX IF NOT EXISTS idx_peak_correlation_1 ON peak_correlation (feature_id)")
 db_conn.close()
 
-db_conn = sqlite3.connect(args.features_database)
+db_conn = sqlite3.connect(args.feature_region_database)
 feature_ids_df = pd.read_sql_query("select distinct(feature_id) from peak_correlation", db_conn)
 db_conn.close()
+
+if len(feature_ids_df) == 0:
+    print("Error: no feature IDs found in peak_correlation for feature DB {}. Exiting.".format(args.feature_region_database))
+    sys.exit(1)
 
 hk_processes = []
 feature_cluster_df = None
@@ -142,7 +162,7 @@ for feature_ids_idx in range(0,len(feature_ids_df)):
     expected_spacing = DELTA_MZ / charge_state
     db_conn.close()
 
-    db_conn = sqlite3.connect(args.features_database)
+    db_conn = sqlite3.connect(args.feature_region_database)
     peaks_df = pd.read_sql_query("select * from summed_ms1_regions where feature_id = {} order by peak_id".format(feature_id), db_conn)
     ms2_peaks_df = pd.read_sql_query("select * from ms2_peaks where (feature_id,peak_id) in (select feature_id,ms2_peak_id from peak_correlation where feature_id={} and correlation > {})".format(feature_id, args.minimum_peak_correlation), db_conn)
     db_conn.close()
@@ -202,7 +222,7 @@ for feature_ids_idx in range(0,len(feature_ids_df)):
 
     # add to the feature clusters
     if feature_cluster_df is None:
-        feature_cluster_df = cluster_df
+        feature_cluster_df = cluster_df.copy()
     else:
         feature_cluster_df = feature_cluster_df.append(cluster_df, ignore_index=True)
 
@@ -236,9 +256,9 @@ for feature_ids_idx in range(0,len(feature_ids_df)):
     spectrum["params"] = params
     spectra.append(spectrum)
 
-    mgf_filename = "{}/{}-feature-{}-correlation-{}.mgf".format(mgf_directory, args.base_mgf_filename, feature_id, args.minimum_peak_correlation)
-    hk_filename = "{}/{}-feature-{}-correlation-{}.hk".format(hk_directory, args.base_mgf_filename, feature_id, args.minimum_peak_correlation)
-    header_filename = "{}/{}-feature-{}-correlation-{}.txt".format(search_headers_directory, args.base_mgf_filename, feature_id, args.minimum_peak_correlation)
+    mgf_filename = "{}/feature-{}-correlation-{}.mgf".format(mgf_directory, feature_id, args.minimum_peak_correlation)
+    hk_filename = "{}/feature-{}-correlation-{}.hk".format(hk_directory, feature_id, args.minimum_peak_correlation)
+    header_filename = "{}/feature-{}-correlation-{}.txt".format(search_headers_directory, feature_id, args.minimum_peak_correlation)
 
     # write out the MGF file
     if os.path.isfile(mgf_filename):
@@ -267,7 +287,7 @@ for feature_ids_idx in range(0,len(feature_ids_df)):
     hk_processes.append("./hardklor/hardklor -cmd -instrument TOF -resolution 40000 -centroided 1 -ms_level 2 -algorithm Version2 -charge_algorithm Quick -charge_min 1 -charge_max {} -correlation {} -mz_window 5.25 -sensitivity 2 -depth 2 -max_features 12 -distribution_area 1 -xml 0 {} {}".format(charge_state, args.minimum_peak_correlation, mgf_filename, hk_filename))
 
 # write out the deconvolved feature ms1 isotopes and the feature list
-db_conn = sqlite3.connect(args.features_database)
+db_conn = sqlite3.connect(args.feature_region_database)
 print("writing out the deconvolved feature ms1 isotopes...")
 feature_cluster_df.to_sql(name='feature_isotopes', con=db_conn, if_exists='replace', index=False)
 print("writing out the feature list...")

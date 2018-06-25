@@ -54,8 +54,8 @@ for feature_ids_idx in range(0,len(feature_ids_df)):
     ion_id = 0
     print("Processing feature {}".format(feature_id))
 
-    hk_filename = "{}/{}-feature-{}-correlation-{}.hk".format(hk_directory, args.base_mgf_filename, feature_id, args.minimum_peak_correlation)
-    header_filename = "{}/{}-feature-{}-correlation-{}.txt".format(search_headers_directory, args.base_mgf_filename, feature_id, args.minimum_peak_correlation)
+    hk_filename = "{}/feature-{}-correlation-{}.hk".format(hk_directory, feature_id, args.minimum_peak_correlation)
+    header_filename = "{}/feature-{}-correlation-{}.txt".format(search_headers_directory, feature_id, args.minimum_peak_correlation)
 
     # parse the Hardklor output to create the search MGF
     # see https://proteome.gs.washington.edu/software/hardklor/docs/hardklorresults.html
