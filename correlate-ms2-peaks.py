@@ -38,8 +38,6 @@ print("creating idx_peak_correlation_1")
 src_c.execute("CREATE INDEX IF NOT EXISTS idx_peak_correlation_1 on summed_ms1_regions (feature_id, peak_id)")
 print("creating idx_peak_correlation_2")
 src_c.execute("CREATE INDEX IF NOT EXISTS idx_peak_correlation_2 on feature_base_peaks (feature_id)")
-print("dropping idx_peak_correlation_3 if exists")
-src_c.execute("DROP INDEX IF EXISTS idx_peak_correlation_3")
 print("creating idx_peak_correlation_3")
 src_c.execute("CREATE INDEX IF NOT EXISTS idx_peak_correlation_3 on summed_ms2_regions (feature_id)")
 
@@ -57,7 +55,7 @@ for feature_ids_idx in range(0,len(features_df)):
     print("correlating ms2 peaks for feature {} in range {}-{}".format(feature_id, args.feature_id_lower, args.feature_id_upper))
 
     # load the feature's base peak points
-    base_peak_df = pd.read_sql_query("scan,intensity from summed_ms1_regions where feature_id={} and peak_id={}".format(feature_id,base_peak_id), source_conn)
+    base_peak_df = pd.read_sql_query("select scan,intensity from summed_ms1_regions where feature_id={} and peak_id={}".format(feature_id,base_peak_id), source_conn)
 
     # load the ms2 peaks for this feature
     ms2_peaks_df = pd.read_sql_query("select peak_id,intensity from ms2_peaks where feature_id={}".format(feature_id), source_conn)
