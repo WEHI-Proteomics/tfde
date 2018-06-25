@@ -22,18 +22,6 @@ src_c = source_conn.cursor()
 src_c.execute("PRAGMA temp_store = 2")
 src_c.execute("PRAGMA journal_mode = TRUNCATE")
 
-if args.feature_id_lower is None:
-    src_c.execute("SELECT MIN(feature_id) FROM feature_base_peaks")
-    row = src_c.fetchone()
-    args.feature_id_lower = int(row[0])
-    print("feature_id_lower set to {} from the data".format(args.feature_id_lower))
-
-if args.feature_id_upper is None:
-    src_c.execute("SELECT MAX(feature_id) FROM feature_base_peaks")
-    row = src_c.fetchone()
-    args.feature_id_upper = int(row[0])
-    print("feature_id_upper set to {} from the data".format(args.feature_id_upper))
-
 # Store the arguments as metadata in the database for later reference
 peak_correlation_info = []
 for arg in vars(args):
@@ -66,6 +54,7 @@ print("Finding peak correlations for features {}-{}".format(args.feature_id_lowe
 for feature_ids_idx in range(0,len(features_df)):
     feature_id = features_df.loc[feature_ids_idx].feature_id.astype(int)
     base_peak_id = features_df.loc[feature_ids_idx].base_peak_id.astype(int)
+    print("correlating ms2 peaks for feature {} in range {}-{}".format(feature_id, args.feature_id_lower, args.feature_id_upper))
 
     # load the feature's base peak points
     feature_base_peak_points_df = pd.read_sql_query("select point_id,mz,scan,intensity from summed_ms1_regions where feature_id={} and peak_id={} order by scan ASC".format(feature_id,base_peak_id), source_conn)
