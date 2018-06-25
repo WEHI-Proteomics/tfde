@@ -15,7 +15,7 @@ parser = argparse.ArgumentParser(description='Calculate correlation between MS1 
 parser.add_argument('-db','--database_name', type=str, help='The name of the source database.', required=True)
 parser.add_argument('-fl','--feature_id_lower', type=int, help='Lower feature ID to process.', required=True)
 parser.add_argument('-fu','--feature_id_upper', type=int, help='Upper feature ID to process.', required=True)
-parser.add_argument('-st','--scan_tolerance', type=int, default=10, help='Number of scans either side of the feature base peak to include an ms2 peak for correlation.', required=False)
+parser.add_argument('-st','--scan_tolerance', type=int, help='Number of scans either side of the feature base peak to include an ms2 peak for correlation.', required=True)
 args = parser.parse_args()
 
 source_conn = sqlite3.connect(args.database_name)
