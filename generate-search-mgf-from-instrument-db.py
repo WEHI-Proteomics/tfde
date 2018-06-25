@@ -300,7 +300,7 @@ feature_info_df = pd.read_sql_query("select value from feature_info where item='
 number_of_features = int(feature_info_df.values[0][0])
 source_conn.close()
 
-# split the summed frame range into batches
+# split the feature range into batches
 batch_splits = np.array_split(range(1,number_of_features+1), number_of_cores)
 feature_ranges = []
 for s in batch_splits:
