@@ -62,7 +62,7 @@ features_df = pd.read_sql_query("select feature_id,base_peak_id from feature_bas
 
 peak_correlation = []
 
-print("Finding peak correlations")
+print("Finding peak correlations for features {}-{}".format(args.feature_id_lower, args.feature_id_upper))
 for feature_ids_idx in range(0,len(features_df)):
     feature_id = features_df.loc[feature_ids_idx].feature_id.astype(int)
     base_peak_id = features_df.loc[feature_ids_idx].base_peak_id.astype(int)
@@ -93,7 +93,7 @@ for feature_ids_idx in range(0,len(features_df)):
         correlation = np.corrcoef(combined_df.intensity_base, combined_df.intensity_ms2)[1,0]
         peak_correlation.append((feature_id, base_peak_id, ms2_peak_id, float(correlation)))
 
-print("Writing out the peak correlations")
+print("Writing out the peak correlations for features {}-{}".format(args.feature_id_lower, args.feature_id_upper))
 # feature_id, base_peak_id, ms2_peak_id, float(correlation)
 src_c.executemany("INSERT INTO peak_correlation VALUES (?, ?, ?, ?)", peak_correlation)
 
