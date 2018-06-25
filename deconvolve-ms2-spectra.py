@@ -142,6 +142,10 @@ db_conn = sqlite3.connect(args.feature_region_database)
 feature_ids_df = pd.read_sql_query("select distinct(feature_id) from peak_correlation", db_conn)
 db_conn.close()
 
+if len(feature_ids_df) == 0:
+    print("Error: no feature IDs found in peak_correlation for feature DB {}. Exiting.".format(args.feature_region_database))
+    sys.exit()
+
 hk_processes = []
 feature_cluster_df = None
 
@@ -252,9 +256,9 @@ for feature_ids_idx in range(0,len(feature_ids_df)):
     spectrum["params"] = params
     spectra.append(spectrum)
 
-    mgf_filename = "{}/{}-feature-{}-correlation-{}.mgf".format(mgf_directory, args.base_mgf_filename, feature_id, args.minimum_peak_correlation)
-    hk_filename = "{}/{}-feature-{}-correlation-{}.hk".format(hk_directory, args.base_mgf_filename, feature_id, args.minimum_peak_correlation)
-    header_filename = "{}/{}-feature-{}-correlation-{}.txt".format(search_headers_directory, args.base_mgf_filename, feature_id, args.minimum_peak_correlation)
+    mgf_filename = "{}/feature-{}-correlation-{}.mgf".format(mgf_directory, feature_id, args.minimum_peak_correlation)
+    hk_filename = "{}/feature-{}-correlation-{}.hk".format(hk_directory, feature_id, args.minimum_peak_correlation)
+    header_filename = "{}/{}-feature-{}-correlation-{}.txt".format(search_headers_directory, feature_id, args.minimum_peak_correlation)
 
     # write out the MGF file
     if os.path.isfile(mgf_filename):
