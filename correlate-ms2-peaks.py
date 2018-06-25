@@ -3,6 +3,7 @@ import argparse
 import numpy as np
 import sqlite3
 import time
+import os
 
 # Number of points either side of the base peak's maximum intensity to check for correlation
 BASE_PEAK_CORRELATION_SIDE_POINTS = 3
@@ -19,8 +20,11 @@ parser.add_argument('-st','--scan_tolerance', type=int, help='Number of scans ei
 args = parser.parse_args()
 
 source_conn = sqlite3.connect(args.database_name)
+temp_store_directory = os.path.dirname(args.database_name)
+print("setting temp_store_directory to {}".format(temp_store_directory))
 src_c = source_conn.cursor()
-# src_c.execute("PRAGMA temp_store = 2")
+src_c.execute("PRAGMA temp_store = 1")
+src_c.execute("pragma temp_store_directory = \'{}\';".format(temp_store_directory))
 src_c.execute("PRAGMA journal_mode = TRUNCATE")
 
 # Store the arguments as metadata in the database for later reference
