@@ -4,56 +4,8 @@ import numpy as np
 import sqlite3
 import time
 
-
-# feature / base peak array indices
-FEATURE_ID_IDX = 0
-FEATURE_BASE_PEAK_ID_IDX = 1
-
-# base peak points array indices
-BASE_PEAK_POINT_ID_IDX = 0
-BASE_PEAK_MZ_IDX = 1
-BASE_PEAK_SCAN_IDX = 2
-BASE_PEAK_INTENSITY_IDX = 3
-
-# MS2 peak points array indices
-MS2_PEAK_POINTS_PEAK_ID_IDX = 0
-MS2_PEAK_POINTS_POINT_ID_IDX = 1
-MS2_PEAK_POINTS_MZ_IDX = 2
-MS2_PEAK_POINTS_SCAN_IDX = 3
-MS2_PEAK_POINTS_INTENSITY_IDX = 4
-
 # Number of points either side of the base peak's maximum intensity to check for correlation
 BASE_PEAK_CORRELATION_SIDE_POINTS = 3
-
-def calculate_correlation(base_peak_points, ms2_peak_points):
-    # find the maximum point of the base peak
-    base_peak_max_idx = np.argmax(base_peak_points[:,BASE_PEAK_INTENSITY_IDX])
-
-    base_peak_lower_idx = max(base_peak_max_idx-BASE_PEAK_CORRELATION_SIDE_POINTS, 0)
-    base_peak_upper_idx = min(base_peak_max_idx+BASE_PEAK_CORRELATION_SIDE_POINTS, len(base_peak_points)-1)
-
-    # find the scan numbers to reference
-    corr_scan_lower = base_peak_points[base_peak_lower_idx,BASE_PEAK_SCAN_IDX]
-    corr_scan_upper = base_peak_points[base_peak_upper_idx,BASE_PEAK_SCAN_IDX]
-
-    base_peak_intensity_vector = base_peak_points[base_peak_lower_idx:base_peak_upper_idx+1,BASE_PEAK_INTENSITY_IDX]
-    ms2_peak_intensity_vector = ms2_peak_points[np.where((ms2_peak_points[:,MS2_PEAK_POINTS_SCAN_IDX] >= corr_scan_lower) & (ms2_peak_points[:,MS2_PEAK_POINTS_SCAN_IDX] <= corr_scan_upper))[0], MS2_PEAK_POINTS_INTENSITY_IDX]
-    # print("base {}, ms2 {}".format(len(base_peak_intensity_vector), len(ms2_peak_intensity_vector)))
-
-    if len(ms2_peak_intensity_vector) < len(base_peak_intensity_vector):
-        # pad the ms2 peak vector to be the same size
-        pad_length = len(base_peak_intensity_vector) - len(ms2_peak_intensity_vector)
-        ms2_peak_intensity_vector = np.pad(ms2_peak_intensity_vector,(0,pad_length),'constant')
-    elif len(ms2_peak_intensity_vector) > len(base_peak_intensity_vector):
-        # truncate the ms2 peak vector to be the same size
-        ms2_peak_intensity_vector = ms2_peak_intensity_vector[:len(base_peak_intensity_vector)]
-
-    # Calculate the correlation of the two vectors
-    correlation = np.corrcoef(base_peak_intensity_vector, ms2_peak_intensity_vector)[1,0]
-    if np.isnan(correlation):
-        correlation = 0.0
-    # print("base {}, ms2 {}, correlation {}".format(base_peak_intensity_vector, ms2_peak_intensity_vector, correlation))
-    return correlation
 
 #
 # nohup python -u ./otf-peak-detect/correlate-ms2-peaks.py -db /media/data-drive/Hela_20A_20R_500-features-1-100000-random-1000-sf-1000.sqlite -fl 1 -fu 100000 > correlate-ms2-peaks.log 2>&1 &
@@ -105,43 +57,44 @@ src_c.execute("CREATE INDEX IF NOT EXISTS idx_peak_correlation_3 on summed_ms2_r
 
 start_run = time.time()
 
-print("Loading the MS1 base peaks")
+print("Loading the MS1 base peaks for the feature range")
 features_df = pd.read_sql_query("select feature_id,base_peak_id from feature_base_peaks where feature_id >= {} and feature_id <= {} order by feature_id ASC;".format(args.feature_id_lower, args.feature_id_upper), source_conn)
-features_v = features_df.values
-print("found features {}-{}".format(int(np.min(features_v[:,FEATURE_ID_IDX])), int(np.max(features_v[:,FEATURE_ID_IDX]))))
 
 peak_correlation = []
 
 print("Finding peak correlations")
-for feature in features_v:
-    feature_id = int(feature[FEATURE_ID_IDX])
-    base_peak_id = int(feature[FEATURE_BASE_PEAK_ID_IDX])
-    print("Correlating peaks for feature {}".format(feature_id))
+for feature_ids_idx in range(0,len(features_df)):
+    feature_id = features_df.loc[feature_ids_idx].feature_id.astype(int)
+    base_peak_id = features_df.loc[feature_ids_idx].base_peak_id.astype(int)
 
-    feature_base_peak_points_df = pd.read_sql_query("""select point_id,mz,scan,intensity from summed_ms1_regions where feature_id={} and 
-        peak_id={} order by scan ASC;""".format(feature_id,base_peak_id), source_conn)
-    feature_base_peak_points_v = feature_base_peak_points_df.values
+    # load the feature's base peak points
+    feature_base_peak_points_df = pd.read_sql_query("select point_id,mz,scan,intensity from summed_ms1_regions where feature_id={} and peak_id={} order by scan ASC".format(feature_id,base_peak_id), source_conn)
+    base_peak_df = feature_base_peak_points_df[['scan','intensity']]
 
-    # Load the MS2 peak points
+    # load the ms2 peaks for this feature
+    ms2_peaks_df = pd.read_sql_query("select peak_id,intensity from ms2_peaks where feature_id={} order by peak_id ASC;".format(feature_id), source_conn)
+
+    # load the ms2 peak points for this feature
     ms2_peak_points_df = pd.read_sql_query("select peak_id,point_id,mz,scan,intensity from summed_ms2_regions where feature_id={} order by peak_id,scan ASC;".format(feature_id), source_conn)
-    ms2_peak_points_v = ms2_peak_points_df.values
 
-    if len(ms2_peak_points_v) > 0:
-
-        ms2_peak_id_lower = int(np.min(ms2_peak_points_v[:,MS2_PEAK_POINTS_PEAK_ID_IDX]))
-        ms2_peak_id_upper = int(np.max(ms2_peak_points_v[:,MS2_PEAK_POINTS_PEAK_ID_IDX]))
-        for ms2_peak_id in range(ms2_peak_id_lower, ms2_peak_id_upper+1):
-            # Find the points for this MS2 peak
-            points_v = ms2_peak_points_v[np.where(ms2_peak_points_v[:,MS2_PEAK_POINTS_PEAK_ID_IDX] == ms2_peak_id)[0]]
-
-            # Calculate the correlation between this MS2 peak and the MS1 base peak
-            correlation = calculate_correlation(feature_base_peak_points_v, points_v)
-            # print("feature {}, ms1 base peak ID {}, ms2 peak ID {}, correlation {}".format(feature_id, base_peak_id, ms2_peak_id, correlation))
-            peak_correlation.append((feature_id, base_peak_id, ms2_peak_id, float(correlation)))
-    else:
-        print("No MS2 peak points found for feature {}".format(feature_id))
+    for ms2_peak_idx in range(len(ms2_peaks_df)):
+        # get all the points for this ms2 peak
+        ms2_peak_id = ms2_peaks_df.loc[ms2_peak_idx].peak_id.astype(int)
+        ms2_peak_df = ms2_peak_points_df.loc[(ms2_peak_points_df.peak_id==ms2_peak_id),['scan','intensity']]
+        # align the two peaks in the scan dimension
+        combined_df = pd.merge(base_peak_df, ms2_peak_df, on='scan', how='outer', suffixes=('_base', '_ms2')).sort_values(by='scan')
+        # fill in any NaN
+        combined_df.intensity_ms2.fillna(0, inplace=True)
+        combined_df.intensity_base.fillna(0, inplace=True)
+        # and make sure they're all integers
+        combined_df.intensity_ms2 = combined_df.intensity_ms2.astype(int)
+        combined_df.intensity_base = combined_df.intensity_base.astype(int)
+        # calculate the correlation between the two peaks
+        correlation = np.corrcoef(combined_df.intensity_base, combined_df.intensity_ms2)[1,0]
+        peak_correlation.append((feature_id, base_peak_id, ms2_peak_id, float(correlation)))
 
 print("Writing out the peak correlations")
+# feature_id, base_peak_id, ms2_peak_id, float(correlation)
 src_c.executemany("INSERT INTO peak_correlation VALUES (?, ?, ?, ?)", peak_correlation)
 
 stop_run = time.time()
