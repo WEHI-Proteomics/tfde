@@ -144,7 +144,7 @@ db_conn.close()
 
 if len(feature_ids_df) == 0:
     print("Error: no feature IDs found in peak_correlation for feature DB {}. Exiting.".format(args.feature_region_database))
-    sys.exit()
+    sys.exit(1)
 
 hk_processes = []
 feature_cluster_df = None
