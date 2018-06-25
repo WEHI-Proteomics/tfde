@@ -258,7 +258,7 @@ for feature_ids_idx in range(0,len(feature_ids_df)):
 
     mgf_filename = "{}/feature-{}-correlation-{}.mgf".format(mgf_directory, feature_id, args.minimum_peak_correlation)
     hk_filename = "{}/feature-{}-correlation-{}.hk".format(hk_directory, feature_id, args.minimum_peak_correlation)
-    header_filename = "{}/{}-feature-{}-correlation-{}.txt".format(search_headers_directory, feature_id, args.minimum_peak_correlation)
+    header_filename = "{}/feature-{}-correlation-{}.txt".format(search_headers_directory, feature_id, args.minimum_peak_correlation)
 
     # write out the MGF file
     if os.path.isfile(mgf_filename):
