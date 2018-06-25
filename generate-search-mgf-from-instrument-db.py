@@ -14,8 +14,8 @@ def run_process(process):
     print("Executing: {}".format(process))
     result = os.system(process)
     if result != 0:
-        print("Process execution failed - exiting.")
-        sys.exit()
+        print("Error - process execution failed - exiting.")
+        sys.exit(result)
 
 def merge_summed_regions(source_db_name, destination_db_name, exceptions):
     source_conn = sqlite3.connect(source_db_name)
@@ -140,8 +140,8 @@ if (process_this_step(args.operation, continue_flag=args.continue_flag, this_ste
 
     # make sure the processing directories exist
     if not os.path.exists(args.instrument_database_name):
-        print("The instrument database directory does not exist. Exiting.")
-        sys.exit()
+        print("Error - the instrument database directory does not exist. Exiting.")
+        sys.exit(1)
 
     if args.number_of_frames is not None:
         run_process("python ./otf-peak-detect/convert-instrument-db.py -sdb '{}' -ddb '{}' -nf {}".format(args.instrument_database_name, converted_database_name, args.number_of_frames))
@@ -160,11 +160,11 @@ if (process_this_step(args.operation, continue_flag=args.continue_flag, this_ste
 
     if not continue_processing(op_arg=args.operation, continue_flag=args.continue_flag):
         print("Not continuing to the next step - exiting")
-        sys.exit()
+        sys.exit(0)
 
 if not os.path.exists(converted_database_name):
-    print("The converted database does not exist. Exiting.")
-    sys.exit()
+    print("Error - the converted database does not exist. Exiting.")
+    sys.exit(1)
 
 # Determine the mass range if it's not specified
 if args.mz_lower is None:
@@ -175,8 +175,8 @@ if args.mz_lower is None:
         args.mz_lower = float(df.loc[0].value)
         print("mz_lower set to {} from the data".format(args.mz_lower))
     else:
-        print("Could not find mz_lower from the convert_info table and it's needed in sebsequent steps. Exiting.")
-        sys.exit()
+        print("Error - could not find mz_lower from the convert_info table and it's needed in sebsequent steps. Exiting.")
+        sys.exit(1)
 
 if args.mz_upper is None:
     source_conn = sqlite3.connect(converted_database_name)
@@ -186,8 +186,8 @@ if args.mz_upper is None:
         args.mz_upper = float(df.loc[0].value)
         print("mz_upper set to {} from the data".format(args.mz_upper))
     else:
-        print("Could not find mz_upper from the convert_info table and it's needed in sebsequent steps. Exiting.")
-        sys.exit()
+        print("Error - could not find mz_upper from the convert_info table and it's needed in sebsequent steps. Exiting.")
+        sys.exit(1)
 
 # find the total number of summed ms1 frames in the database
 source_conn = sqlite3.connect(converted_database_name)
@@ -239,7 +239,7 @@ if process_this_step(args.operation, continue_flag=args.continue_flag, this_step
 
     if not continue_processing(op_arg=args.operation, continue_flag=args.continue_flag):
         print("Not continuing to the next step - exiting")
-        sys.exit()
+        sys.exit(0)
 
 ######################################
 # OPERATION: recombine_frame_databases
@@ -263,7 +263,7 @@ if process_this_step(args.operation, continue_flag=args.continue_flag, this_step
 
     if not continue_processing(op_arg=args.operation, continue_flag=args.continue_flag):
         print("Not continuing to the next step - exiting")
-        sys.exit()
+        sys.exit(0)
 
 # retrieve the summed frame rate
 source_conn = sqlite3.connect(frame_database_name)
@@ -274,8 +274,8 @@ if len(df) > 0:
     frames_per_second = float(entry["frames_per_second"])
     print("Frames per second is {}".format(frames_per_second))
 else:
-    print("Could not find the frame rate from the summing_info table and it's needed in sebsequent steps. Exiting.")
-    sys.exit()
+    print("Error - could not find the frame rate from the summing_info table and it's needed in sebsequent steps. Exiting.")
+    sys.exit(1)
 
 ###############################
 # OPERATION: feature_detect_ms1
@@ -292,7 +292,7 @@ if process_this_step(args.operation, continue_flag=args.continue_flag, this_step
 
     if not continue_processing(op_arg=args.operation, continue_flag=args.continue_flag):
         print("Not continuing to the next step - exiting")
-        sys.exit()
+        sys.exit(0)
 
 # find out how many features were detected
 source_conn = sqlite3.connect(feature_database_name)
@@ -332,7 +332,7 @@ if process_this_step(args.operation, continue_flag=args.continue_flag, this_step
 
     if not continue_processing(op_arg=args.operation, continue_flag=args.continue_flag):
         print("Not continuing to the next step - exiting")
-        sys.exit()
+        sys.exit(0)
 
 ###########################################
 # OPERATION: feature_region_ms1_peak_detect
@@ -358,7 +358,7 @@ if process_this_step(args.operation, continue_flag=args.continue_flag, this_step
 
     if not continue_processing(op_arg=args.operation, continue_flag=args.continue_flag):
         print("Not continuing to the next step - exiting")
-        sys.exit()
+        sys.exit(0)
 
 ######################################
 # OPERATION: match_precursor_ms2_peaks
@@ -380,7 +380,7 @@ if process_this_step(args.operation, continue_flag=args.continue_flag, this_step
 
     if not continue_processing(op_arg=args.operation, continue_flag=args.continue_flag):
         print("Not continuing to the next step - exiting")
-        sys.exit()
+        sys.exit(0)
 
 ############################
 # OPERATION: correlate_peaks
@@ -401,7 +401,7 @@ if process_this_step(args.operation, continue_flag=args.continue_flag, this_step
 
     if not continue_processing(op_arg=args.operation, continue_flag=args.continue_flag):
         print("Not continuing to the next step - exiting")
-        sys.exit()
+        sys.exit(0)
 
 ###################################
 # OPERATION: deconvolve_ms2_spectra
@@ -422,7 +422,7 @@ if process_this_step(args.operation, continue_flag=args.continue_flag, this_step
 
     if not continue_processing(op_arg=args.operation, continue_flag=args.continue_flag):
         print("Not continuing to the next step - exiting")
-        sys.exit()
+        sys.exit(0)
 
 ########################################
 # OPERATION: recombine_feature_databases
@@ -446,7 +446,7 @@ if process_this_step(args.operation, continue_flag=args.continue_flag, this_step
 
     if not continue_processing(op_arg=args.operation, continue_flag=args.continue_flag):
         print("Not continuing to the next step - exiting")
-        sys.exit()
+        sys.exit(0)
 
 ##############################
 # OPERATION: create_search_mgf
@@ -471,7 +471,7 @@ if process_this_step(args.operation, continue_flag=args.continue_flag, this_step
 
     if not continue_processing(op_arg=args.operation, continue_flag=args.continue_flag):
         print("Not continuing to the next step - exiting")
-        sys.exit()
+        sys.exit(0)
 
 processing_stop_time = time.time()
 processing_times.append(("total processing", processing_stop_time-processing_start_time))
