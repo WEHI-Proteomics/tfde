@@ -57,13 +57,13 @@ for feature_ids_idx in range(0,len(features_df)):
     print("correlating ms2 peaks for feature {} in range {}-{}".format(feature_id, args.feature_id_lower, args.feature_id_upper))
 
     # load the feature's base peak points
-    base_peak_df = pd.read_sql_query("scan,intensity from summed_ms1_regions where feature_id={} and peak_id={} order by scan ASC".format(feature_id,base_peak_id), source_conn)
+    base_peak_df = pd.read_sql_query("scan,intensity from summed_ms1_regions where feature_id={} and peak_id={}".format(feature_id,base_peak_id), source_conn)
 
     # load the ms2 peaks for this feature
-    ms2_peaks_df = pd.read_sql_query("select peak_id,intensity from ms2_peaks where feature_id={} order by peak_id ASC;".format(feature_id), source_conn)
+    ms2_peaks_df = pd.read_sql_query("select peak_id,intensity from ms2_peaks where feature_id={}".format(feature_id), source_conn)
 
     # load the ms2 peak points for this feature
-    ms2_peak_points_df = pd.read_sql_query("select peak_id,scan,intensity from summed_ms2_regions where feature_id={} order by peak_id,scan ASC;".format(feature_id), source_conn)
+    ms2_peak_points_df = pd.read_sql_query("select peak_id,scan,intensity from summed_ms2_regions where feature_id={}".format(feature_id), source_conn)
 
     for ms2_peak_idx in range(len(ms2_peaks_df)):
         # get all the points for this ms2 peak
