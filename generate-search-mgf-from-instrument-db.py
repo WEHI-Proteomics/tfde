@@ -12,7 +12,10 @@ import json
 
 def run_process(process):
     print("Executing: {}".format(process))
-    os.system(process)
+    result = os.system(process)
+    if result != 0:
+        print("Process execution failed - exiting.")
+        sys.exit()
 
 def merge_summed_regions(source_db_name, destination_db_name, exceptions):
     source_conn = sqlite3.connect(source_db_name)
