@@ -20,11 +20,11 @@ parser.add_argument('-st','--scan_tolerance', type=int, help='Number of scans ei
 args = parser.parse_args()
 
 source_conn = sqlite3.connect(args.database_name)
-temp_store_directory = os.path.dirname(args.database_name)
-print("setting temp_store_directory to {}".format(temp_store_directory))
 src_c = source_conn.cursor()
-src_c.execute("PRAGMA temp_store = 1")
-src_c.execute("pragma temp_store_directory = \'{}\';".format(temp_store_directory))
+# src_c.execute("PRAGMA temp_store = 1")
+# temp_store_directory = os.path.dirname(args.database_name)
+# print("setting temp_store_directory to {}".format(temp_store_directory))
+# src_c.execute("pragma temp_store_directory = \'{}\';".format(temp_store_directory))
 src_c.execute("PRAGMA journal_mode = TRUNCATE")
 
 # Store the arguments as metadata in the database for later reference
@@ -43,8 +43,8 @@ print("creating idx_peak_correlation_1")
 src_c.execute("CREATE INDEX IF NOT EXISTS idx_peak_correlation_1 on summed_ms1_regions (feature_id, peak_id)")
 print("creating idx_peak_correlation_2")
 src_c.execute("CREATE INDEX IF NOT EXISTS idx_peak_correlation_2 on feature_base_peaks (feature_id)")
-print("creating idx_peak_correlation_3")
-src_c.execute("CREATE INDEX IF NOT EXISTS idx_peak_correlation_3 on summed_ms2_regions (feature_id)")
+print("dropping idx_peak_correlation_3")
+src_c.execute("DROP INDEX IF EXISTS idx_peak_correlation_3")
 
 start_run = time.time()
 
