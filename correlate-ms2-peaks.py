@@ -61,8 +61,8 @@ for feature_ids_idx in range(0,len(features_df)):
 
     # load the feature's base peak
     base_peak_df = pd.read_sql_query("select centroid_scan from ms1_feature_region_peaks where feature_id={} and peak_id={}".format(feature_id,base_peak_id), source_conn)
-    base_scan_lower = base_peak_df.loc[0].centroid_scan.astype(int) - args.scan_tolerance
-    base_scan_upper = base_peak_df.loc[0].centroid_scan.astype(int) + args.scan_tolerance
+    base_scan_lower = base_peak_df.loc[0].centroid_scan - args.scan_tolerance
+    base_scan_upper = base_peak_df.loc[0].centroid_scan + args.scan_tolerance
     # load the feature's base peak points
     base_peak_points_df = pd.read_sql_query("select scan,intensity from summed_ms1_regions where feature_id={} and peak_id={}".format(feature_id,base_peak_id), source_conn)
     # load the ms2 peaks for this feature
