@@ -68,23 +68,29 @@ for feature_ids_idx in range(0,len(features_df)):
     # load the ms2 peaks for this feature
     ms2_peaks_df = pd.read_sql_query("select peak_id from ms2_peaks where feature_id={} and centroid_scan>={} and centroid_scan<={}".format(feature_id,base_scan_lower,base_scan_upper), source_conn)
     print("there are {} ms2 peaks to correlate".format(len(ms2_peaks_df)))
-    # load all the ms2 peak points for this feature
-    ms2_peak_points_df = pd.read_sql_query("select peak_id,scan,intensity from summed_ms2_regions where feature_id={}".format(feature_id), source_conn)
+
+    # # load all the ms2 peak points for this feature
+    # ms2_peak_points_df = pd.read_sql_query("select peak_id,scan,intensity from summed_ms2_regions where feature_id={}".format(feature_id), source_conn)
+
+    # for ms2_peak_idx in range(len(ms2_peaks_df)):
+    #     # get all the points for this ms2 peak
+    #     ms2_peak_id = ms2_peaks_df.loc[ms2_peak_idx].peak_id.astype(int)
+    #     ms2_peak_df = ms2_peak_points_df.loc[(ms2_peak_points_df.peak_id==ms2_peak_id),['scan','intensity']]
+    #     # align the two peaks in the scan dimension
+    #     combined_df = pd.merge(base_peak_points_df, ms2_peak_df, on='scan', how='outer', suffixes=('_base', '_ms2')).sort_values(by='scan')
+    #     # fill in any NaN
+    #     combined_df.intensity_ms2.fillna(0, inplace=True)
+    #     combined_df.intensity_base.fillna(0, inplace=True)
+    #     # and make sure they're all integers
+    #     combined_df.intensity_ms2 = combined_df.intensity_ms2.astype(int)
+    #     combined_df.intensity_base = combined_df.intensity_base.astype(int)
+    #     # calculate the correlation between the two peaks
+    #     correlation = np.corrcoef(combined_df.intensity_base, combined_df.intensity_ms2)[1,0]
+    #     peak_correlation.append((feature_id, base_peak_id, ms2_peak_id, float(correlation)))
 
     for ms2_peak_idx in range(len(ms2_peaks_df)):
-        # get all the points for this ms2 peak
+        correlation = 0.5
         ms2_peak_id = ms2_peaks_df.loc[ms2_peak_idx].peak_id.astype(int)
-        ms2_peak_df = ms2_peak_points_df.loc[(ms2_peak_points_df.peak_id==ms2_peak_id),['scan','intensity']]
-        # align the two peaks in the scan dimension
-        combined_df = pd.merge(base_peak_points_df, ms2_peak_df, on='scan', how='outer', suffixes=('_base', '_ms2')).sort_values(by='scan')
-        # fill in any NaN
-        combined_df.intensity_ms2.fillna(0, inplace=True)
-        combined_df.intensity_base.fillna(0, inplace=True)
-        # and make sure they're all integers
-        combined_df.intensity_ms2 = combined_df.intensity_ms2.astype(int)
-        combined_df.intensity_base = combined_df.intensity_base.astype(int)
-        # calculate the correlation between the two peaks
-        correlation = np.corrcoef(combined_df.intensity_base, combined_df.intensity_ms2)[1,0]
         peak_correlation.append((feature_id, base_peak_id, ms2_peak_id, float(correlation)))
 
 print("Writing out the peak correlations for features {}-{}".format(args.feature_id_lower, args.feature_id_upper))
