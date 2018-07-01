@@ -91,6 +91,7 @@ parser.add_argument('-fl','--frame_lower', type=int, help='The lower summed fram
 parser.add_argument('-fu','--frame_upper', type=int, help='The upper summed frame number to process.', required=False)
 parser.add_argument('-mnf','--minimum_number_of_frames', type=int, default=3, help='Minimum number of frames for a feature to be valid.', required=False)
 parser.add_argument('-cst','--correlation_scan_tolerance', type=int, help='Number of scans either side of the feature base peak to include an ms2 peak for correlation.', required=True)
+parser.add_argument('-mzsf','--ms2_mz_scaling_factor', type=float, default=1000.0, help='Scaling factor to convert m/z range to integers in ms2.', required=False)
 args = parser.parse_args()
 
 processing_times = []
@@ -320,7 +321,7 @@ if process_this_step(args.operation, continue_flag=args.continue_flag, this_step
     feature_region_ms2_sum_peak_processes = []
     for feature_range in feature_ranges:
         destination_db_name = "{}-{}-{}.sqlite".format(feature_database_root, feature_range[0], feature_range[1])
-        feature_region_ms2_sum_peak_processes.append("python -u ./otf-peak-detect/feature-region-ms2-combined-sum-peak-detect.py -cdb '{}' -ddb '{}' -ms1ce {} -fl {} -fu {} -ml {} -mu {} -bs 20 -fts {} -fso {}".format(converted_database_name, destination_db_name, args.ms1_collision_energy, feature_range[0], feature_range[1], args.mz_lower, args.mz_upper, args.frames_to_sum, args.frame_summing_offset))
+        feature_region_ms2_sum_peak_processes.append("python -u ./otf-peak-detect/feature-region-ms2-combined-sum-peak-detect.py -cdb '{}' -ddb '{}' -ms1ce {} -fl {} -fu {} -ml {} -mu {} -bs 20 -fts {} -fso {} -mzsf {}".format(converted_database_name, destination_db_name, args.ms1_collision_energy, feature_range[0], feature_range[1], args.mz_lower, args.mz_upper, args.frames_to_sum, args.frame_summing_offset, args.ms2_mz_scaling_factor))
 
     run_process("python -u ./otf-peak-detect/feature-region-ms2-combined-sum-peak-detect-prep.py -cdb '{}'".format(converted_database_name))
     print("detecting ms2 peaks in the feature region...")
