@@ -103,7 +103,7 @@ def main():
     dest_c.execute("CREATE TABLE summed_ms2_regions_info (item TEXT, value TEXT)")
 
     dest_c.execute("DROP TABLE IF EXISTS ms2_peaks")
-    dest_c.execute("CREATE TABLE ms2_peaks (feature_id INTEGER, peak_id INTEGER, centroid_mz REAL, centroid_scan INTEGER, intensity INTEGER, PRIMARY KEY (feature_id, peak_id))")
+    dest_c.execute("CREATE TABLE ms2_peaks (feature_id INTEGER, peak_id INTEGER, centroid_mz REAL, composite_mzs TEXT, centroid_scan INTEGER, intensity INTEGER, PRIMARY KEY (feature_id, peak_id))")
 
     # Store the arguments as metadata in the database for later reference
     ms2_feature_info = []
@@ -238,7 +238,7 @@ def main():
                 dest_c.executemany("INSERT INTO summed_ms2_regions (feature_id, peak_id, point_id, mz, scan, intensity) VALUES (?, ?, ?, ?, ?, ?)", points)
                 dest_conn.commit()
                 del points[:]
-                dest_c.executemany("INSERT INTO ms2_peaks (feature_id, peak_id, centroid_mz, centroid_scan, intensity) VALUES (?, ?, ?, ?, ?)", peaks)
+                dest_c.executemany("INSERT INTO ms2_peaks (feature_id, peak_id, centroid_mz, composite_mzs, centroid_scan, intensity) VALUES (?, ?, ?, ?, ?, ?)", peaks)
                 dest_conn.commit()
                 del peaks[:]
 
@@ -248,7 +248,7 @@ def main():
 
         # Store any remaining peaks in the database
         if len(peaks) > 0:
-            dest_c.executemany("INSERT INTO ms2_peaks (feature_id, peak_id, centroid_mz, centroid_scan, intensity) VALUES (?, ?, ?, ?, ?)", peaks)
+            dest_c.executemany("INSERT INTO ms2_peaks (feature_id, peak_id, centroid_mz, composite_mzs, centroid_scan, intensity) VALUES (?, ?, ?, ?, ?, ?)", peaks)
 
         stop_run = time.time()
         print("{} seconds to process run".format(stop_run-start_run))
