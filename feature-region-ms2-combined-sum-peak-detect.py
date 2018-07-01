@@ -105,6 +105,8 @@ def main():
     dest_c.execute("DROP TABLE IF EXISTS ms2_peaks")
     dest_c.execute("CREATE TABLE ms2_peaks (feature_id INTEGER, peak_id INTEGER, centroid_mz REAL, composite_mzs TEXT, centroid_scan INTEGER, intensity INTEGER, PRIMARY KEY (feature_id, peak_id))")
 
+    dest_c.execute("DROP TABLE IF EXISTS ms2_feature_region_points")
+
     # Store the arguments as metadata in the database for later reference
     ms2_feature_info = []
     for arg in vars(args):
