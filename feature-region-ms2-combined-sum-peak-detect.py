@@ -8,6 +8,7 @@ import peakutils
 from operator import itemgetter
 import sqlite3
 import random
+import json
 
 #
 # For processing all the features in a range...
@@ -102,7 +103,9 @@ def main():
     dest_c.execute("CREATE TABLE summed_ms2_regions_info (item TEXT, value TEXT)")
 
     dest_c.execute("DROP TABLE IF EXISTS ms2_peaks")
-    dest_c.execute("CREATE TABLE ms2_peaks (feature_id INTEGER, peak_id INTEGER, centroid_mz REAL, centroid_scan INTEGER, intensity INTEGER, PRIMARY KEY (feature_id, peak_id))")
+    dest_c.execute("CREATE TABLE ms2_peaks (feature_id INTEGER, peak_id INTEGER, centroid_mz REAL, composite_mzs TEXT, centroid_scan INTEGER, intensity INTEGER, PRIMARY KEY (feature_id, peak_id))")
+
+    dest_c.execute("DROP TABLE IF EXISTS ms2_feature_region_points")
 
     # Store the arguments as metadata in the database for later reference
     ms2_feature_info = []
@@ -165,10 +168,13 @@ def main():
                 ms2_frame_ids += ms2_frame_ids_from_ms1_frame_id(frame_id, args.frames_to_sum, args.frame_summing_offset)
             ms2_frame_ids = tuple(set(ms2_frame_ids))   # remove duplicates
             print("feature ID {} ({}-{}), MS1 frame IDs {}-{}, {} MS2 frames, scans {}-{}".format(feature_id, args.feature_id_lower, args.feature_id_upper, feature_start_frame, feature_end_frame, len(ms2_frame_ids), feature_scan_lower, feature_scan_upper))
-            frame_df = pd.read_sql_query("select frame_id,mz,scan,intensity from frames where frame_id in {} and scan <= {} and scan >= {} order by scan,mz;".format(ms2_frame_ids, feature_scan_upper, feature_scan_lower), conv_conn)
+            frame_df = pd.read_sql_query("select frame_id,mz,scan,intensity,point_id from frames where frame_id in {} and scan <= {} and scan >= {} order by scan,mz;".format(ms2_frame_ids, feature_scan_upper, feature_scan_lower), conv_conn)
             # scale the m/z values and make them integers
             frame_df['scaled_mz'] = frame_df.mz * args.mz_scaling_factor
             frame_df = frame_df.astype(np.int32)
+            # write out this dataframe for processing in a later step
+            frame_df['feature_id'] = feature_id
+            frame_df.to_sql(name='ms2_feature_region_points', con=dest_conn, if_exists='append', index=False, chunksize=None)
             # sum the intensity for duplicate rows (scan, mz) - from https://stackoverflow.com/questions/29583312/pandas-sum-of-duplicate-attributes
             frame_df['intensity_combined'] = frame_df.groupby(['scan', 'scaled_mz'])['intensity'].transform('sum')
             # drop the duplicate rows
@@ -216,7 +222,7 @@ def main():
                         point_id += 1
 
                     # add the peak to the list
-                    peaks.append((feature_id, peak_id, centroid_mz_descaled, min_scan+centroid_scan, total_peak_intensity))
+                    peaks.append((feature_id, peak_id, centroid_mz_descaled, json.dumps((min_mz+mzs).tolist()), min_scan+centroid_scan, total_peak_intensity))
                     peak_id += 1
 
                     # flag all the mz points we've processed in this peak
@@ -234,7 +240,7 @@ def main():
                 dest_c.executemany("INSERT INTO summed_ms2_regions (feature_id, peak_id, point_id, mz, scan, intensity) VALUES (?, ?, ?, ?, ?, ?)", points)
                 dest_conn.commit()
                 del points[:]
-                dest_c.executemany("INSERT INTO ms2_peaks (feature_id, peak_id, centroid_mz, centroid_scan, intensity) VALUES (?, ?, ?, ?, ?)", peaks)
+                dest_c.executemany("INSERT INTO ms2_peaks (feature_id, peak_id, centroid_mz, composite_mzs, centroid_scan, intensity) VALUES (?, ?, ?, ?, ?, ?)", peaks)
                 dest_conn.commit()
                 del peaks[:]
 
@@ -244,7 +250,7 @@ def main():
 
         # Store any remaining peaks in the database
         if len(peaks) > 0:
-            dest_c.executemany("INSERT INTO ms2_peaks (feature_id, peak_id, centroid_mz, centroid_scan, intensity) VALUES (?, ?, ?, ?, ?)", peaks)
+            dest_c.executemany("INSERT INTO ms2_peaks (feature_id, peak_id, centroid_mz, composite_mzs, centroid_scan, intensity) VALUES (?, ?, ?, ?, ?, ?)", peaks)
 
         stop_run = time.time()
         print("{} seconds to process run".format(stop_run-start_run))

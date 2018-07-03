@@ -22,6 +22,7 @@ FRAME_ID_IDX = 0
 FRAME_MZ_IDX = 1
 FRAME_SCAN_IDX = 2
 FRAME_INTENSITY_IDX = 3
+FRAME_POINT_ID_IDX = 4
 
 def standard_deviation(mz):
     instrument_resolution = 40000.0
@@ -60,6 +61,7 @@ print("Setting up tables and indexes")
 
 dest_c.execute("DROP TABLE IF EXISTS summed_ms1_regions")
 dest_c.execute("DROP TABLE IF EXISTS summed_ms1_regions_info")
+dest_c.execute("DROP TABLE IF EXISTS ms1_feature_frame_join")
 dest_c.execute("CREATE TABLE summed_ms1_regions (feature_id INTEGER, point_id INTEGER, mz REAL, scan INTEGER, intensity INTEGER, number_frames INTEGER, peak_id INTEGER)")  # number_frames = number of source frames the point was found in
 dest_c.execute("CREATE TABLE summed_ms1_regions_info (item TEXT, value TEXT)")
 
@@ -80,6 +82,7 @@ features_v = features_df.values
 
 print("Summing ms1 feature region for features {}-{}".format(args.feature_id_lower, args.feature_id_upper))
 points = []
+composite_points = []
 for feature in features_v:
     feature_id = int(feature[FEATURE_ID_IDX])
     feature_start_frame = int(feature[FEATURE_START_FRAME_IDX])
@@ -90,10 +93,9 @@ for feature in features_v:
     feature_mz_upper = feature[FEATURE_MZ_UPPER_IDX]
 
     # Load the MS1 frame (summed) points for the feature's peaks
-    frame_df = pd.read_sql_query("""select frame_id,mz,scan,intensity from summed_frames where (frame_id,peak_id) in (select frame_id,peak_id from peaks where (frame_id,cluster_id) in 
+    frame_df = pd.read_sql_query("""select frame_id,mz,scan,intensity,point_id from summed_frames where (frame_id,peak_id) in (select frame_id,peak_id from peaks where (frame_id,cluster_id) in 
         (select frame_id,cluster_id from clusters where feature_id={}));""".format(feature_id), src_conn)
     frame_v = frame_df.values
-    # print("frame occupies {} bytes".format(frame_v.nbytes))
 
     # Sum the points, just as we did for MS1 frames
     pointId = 1
@@ -102,11 +104,13 @@ for feature in features_v:
         while len(points_v) > 0:
             max_intensity_index = np.argmax(points_v[:,FRAME_INTENSITY_IDX])
             point_mz = points_v[max_intensity_index, FRAME_MZ_IDX]
-            # print("m/z {}, intensity {}".format(point_mz, points_v[max_intensity_index, 3]))
             delta_mz = standard_deviation(point_mz) * args.standard_deviations
             # Find all the points in this point's std dev window
             nearby_point_indices = np.where(abs(points_v[:,FRAME_MZ_IDX] - point_mz) <= delta_mz)[0]
             nearby_points = points_v[nearby_point_indices]
+            # remember all the points from the (summed) ms1 frames that contributed to this summed point
+            for p in nearby_points:
+                composite_points.append((feature_id, pointId, int(p[FRAME_ID_IDX]), int(p[FRAME_POINT_ID_IDX])))
             # How many distinct frames do the points come from?
             unique_frames = np.unique(nearby_points[:,FRAME_ID_IDX])
             # find the total intensity and centroid m/z
@@ -118,6 +122,10 @@ for feature in features_v:
             points_v = np.delete(points_v, nearby_point_indices, 0)
 
 dest_c.executemany("INSERT INTO summed_ms1_regions VALUES (?, ?, ?, ?, ?, ?, ?)", points)
+
+# write the composite points out to the database
+composite_points_df = pd.DataFrame(composite_points, columns=['feature_id','feature_point_id','frame_id','frame_point_id'])
+composite_points_df.to_sql(name='ms1_feature_frame_join', con=dest_conn, if_exists='append', index=False, chunksize=None)
 
 stop_run = time.time()
 print("{} seconds to process run".format(stop_run-start_run))
