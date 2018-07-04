@@ -27,7 +27,7 @@ def merge_summed_regions(source_db_name, destination_db_name, exceptions):
             print("merging {}".format(table_name))
 
             row_count = int(pd.read_sql('SELECT COUNT(*) FROM {table_name}'.format(table_name=table_name), source_conn).values)
-            chunksize = 10000000
+            chunksize = 1000000
             number_of_chunks = int(row_count / chunksize)
 
             for i in range(number_of_chunks + 1):
