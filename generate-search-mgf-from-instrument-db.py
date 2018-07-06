@@ -73,6 +73,10 @@ def continue_processing(op_arg, continue_flag):
 # python -u ./otf-peak-detect/generate-search-mgf-from-instrument-db.py -idb /stornext/Sysbio/data/Projects/ProtemicsLab/Development/AllIon/BSA_All_Ion/BSA_All_Ion_Slot1-46_01_266.d -dbd ./BSA_All_Ion -dbn BSA_All_Ion -cems1 10 -mpc 0.9 -fts 30 -fso 5 -op cluster_detect_ms1 > BSA_All_Ion.log 2>&1
 #
 
+# check Python version
+if not ((sys.version_info.major == 2) and (sys.version_info.minor == 7)):
+    raise Exception("The pipeline is written for Python 2.7 but this is {}.{} Exiting.".format(sys.version_info.major, sys.version_info.minor))
+
 # Process the command line arguments
 parser = argparse.ArgumentParser(description='Generates the search MGF from the instrument database.')
 parser.add_argument('-dbd','--data_directory', type=str, help='The directory for the processing data.', required=True)
