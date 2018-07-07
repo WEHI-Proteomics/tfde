@@ -38,7 +38,7 @@ def merge_summed_regions(source_db_name, destination_db_name, exceptions):
                 table_df.to_sql(name=table_name, con=destination_conn, if_exists='append', index=False, chunksize=None)
 
             # drop the table in the source database
-            src_cur.execute('DROP TABLE IF EXISTS {table_name}'.format(table_name=table_name)
+            src_cur.execute('DROP TABLE IF EXISTS {table_name}'.format(table_name=table_name))
 
     source_conn.close()
     destination_conn.commit()
