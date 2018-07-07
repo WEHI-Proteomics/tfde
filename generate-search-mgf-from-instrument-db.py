@@ -66,6 +66,8 @@ def process_this_step(op_arg, continue_flag, this_step):
 
 def continue_processing(op_arg, continue_flag):
     result = ((op_arg == 'all') or (continue_flag == True))
+    if (result == False) and (args.shutdown_on_completion == True):
+        run_process("sudo shutdown -P +5")
     return result
     
 #
@@ -88,6 +90,7 @@ parser.add_argument('-cems1','--ms1_collision_energy', type=int, help='Collision
 parser.add_argument('-mpc','--minimum_peak_correlation', type=float, help='Minimum peak correlation', required=True)
 parser.add_argument('-op','--operation', type=str, default='all', help='The operation to perform.', required=False)
 parser.add_argument('-cf','--continue_flag', action='store_true', help='Continue processing after the operation specified with -op.')
+parser.add_argument('-sd','--shutdown_on_completion', action='store_true', help='Shut down the instance when complete.')
 parser.add_argument('-nf','--number_of_frames', type=int, help='The number of frames to convert.', required=False)
 parser.add_argument('-ml','--mz_lower', type=float, help='Lower feature m/z to process.', required=False)
 parser.add_argument('-mu','--mz_upper', type=float, help='Upper feature m/z to process.', required=False)
@@ -489,3 +492,6 @@ for t in processing_times:
 # print("data")
 # for s in statistics:
 #     print("{}\t\t{:.1f}".format(s[0], s[1]))
+
+if args.shutdown_on_completion == True:
+    run_process("sudo shutdown -P +5")
