@@ -437,6 +437,7 @@ if process_this_step(args.operation, continue_flag=args.continue_flag, this_step
     table_exceptions = []
     table_exceptions.append('summed_ms2_regions')
     table_exceptions.append('summed_ms1_regions')
+    table_exceptions.append('ms2_feature_region_points')
     template_feature_range = feature_ranges[0]
     template_db_name = "{}-{}-{}.sqlite".format(feature_database_root, template_feature_range[0], template_feature_range[1])
     merge_summed_regions_prep(template_db_name, feature_database_name, exceptions=table_exceptions)
