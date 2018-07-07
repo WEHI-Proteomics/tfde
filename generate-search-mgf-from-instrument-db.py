@@ -55,6 +55,7 @@ def merge_summed_regions_prep(source_db_name, destination_db_name, exceptions):
         print("preparing {}".format(table_name))
         dst_cur.execute("drop table if exists {}".format(table_name))
         if table_name not in exceptions:
+            print("executing {}".format(df.loc[t_idx].sql))
             dst_cur.execute(df.loc[t_idx].sql)
 
     source_conn.close()
