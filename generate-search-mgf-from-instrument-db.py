@@ -443,7 +443,9 @@ if process_this_step(args.operation, continue_flag=args.continue_flag, this_step
     recombine_feature_databases_start_time = time.time()
     table_exceptions = []
     table_exceptions.append('summed_ms2_regions')
+    table_exceptions.append('summed_ms2_regions_info')
     table_exceptions.append('summed_ms1_regions')
+    table_exceptions.append('summed_ms1_regions_info')
     table_exceptions.append('ms2_feature_region_points')
     template_feature_range = feature_ranges[0]
     template_db_name = "{}-{}-{}.sqlite".format(feature_database_root, template_feature_range[0], template_feature_range[1])
