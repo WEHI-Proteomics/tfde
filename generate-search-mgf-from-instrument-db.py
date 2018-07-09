@@ -39,6 +39,7 @@ def merge_summed_regions(source_db_name, destination_db_name, exceptions):
 
             # drop the table in the source database
             src_cur.execute('DROP TABLE IF EXISTS {table_name}'.format(table_name=table_name))
+    src_cur.execute('VACUUM')
 
     source_conn.close()
     destination_conn.commit()
