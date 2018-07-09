@@ -114,7 +114,6 @@ steps = []
 steps.append('convert_instrument_db')
 steps.append('cluster_detect_ms1')
 steps.append('recombine_frame_databases')
-steps.append('vacuum_frame_databases')
 steps.append('feature_detect_ms1')
 steps.append('feature_region_ms2_peak_detect')
 steps.append('feature_region_ms1_peak_detect')
@@ -123,7 +122,6 @@ steps.append('correlate_peaks')
 steps.append('deconvolve_ms2_spectra')
 steps.append('recombine_feature_databases')
 steps.append('create_search_mgf')
-steps.append('vacuum_feature_databases')
 
 processing_steps = {j:i for i,j in enumerate(steps)}
 
@@ -272,28 +270,6 @@ if process_this_step(args.operation, continue_flag=args.continue_flag, this_step
 
     recombine_frames_stop_time = time.time()
     processing_times.append(("frame-based recombine", recombine_frames_stop_time-recombine_frames_start_time))
-
-    if not continue_processing(op_arg=args.operation, continue_flag=args.continue_flag):
-        print("Not continuing to the next step - exiting")
-        sys.exit(0)
-
-###################################
-# OPERATION: vacuum_frame_databases
-###################################
-if process_this_step(args.operation, continue_flag=args.continue_flag, this_step='vacuum_frame_databases'):
-    print("Starting the \'vacuum_frame_databases\' step")
-    # vacuum the frame range databases
-    vacuum_frame_databases_start_time = time.time()
-
-    vacuum_frame_databases_processes = []
-    for summed_frame_range in summed_frame_ranges:
-        destination_db_name = "{}-{}-{}.sqlite".format(frame_database_root, summed_frame_range[0], summed_frame_range[1])
-        vacuum_frame_databases_processes.append("sqlite3 {} \"VACUUM;\"".format(destination_db_name))
-    
-    print("vacuuming frame databases...")
-    pool.map(run_process, vacuum_frame_databases_processes)
-    vacuum_frame_databases_stop_time = time.time()
-    processing_times.append(("vacuum_frame_databases", vacuum_frame_databases_stop_time-vacuum_frame_databases_start_time))
 
     if not continue_processing(op_arg=args.operation, continue_flag=args.continue_flag):
         print("Not continuing to the next step - exiting")
@@ -466,11 +442,6 @@ if process_this_step(args.operation, continue_flag=args.continue_flag, this_step
     # recombine the feature range databases back into a combined database
     recombine_feature_databases_start_time = time.time()
     table_exceptions = []
-    table_exceptions.append('summed_ms2_regions')
-    table_exceptions.append('summed_ms2_regions_info')
-    table_exceptions.append('summed_ms1_regions')
-    table_exceptions.append('summed_ms1_regions_info')
-    table_exceptions.append('ms2_feature_region_points')
     template_feature_range = feature_ranges[0]
     template_db_name = "{}-{}-{}.sqlite".format(feature_database_root, template_feature_range[0], template_feature_range[1])
     merge_summed_regions_prep(template_db_name, feature_database_name, exceptions=table_exceptions)
@@ -505,28 +476,6 @@ if process_this_step(args.operation, continue_flag=args.continue_flag, this_step
     # number_of_deconvoluted_ions = int(deconvoluted_ions_df.values[0][0])
     # statistics.append(("number of deconvoluted ions", number_of_deconvoluted_ions))
     # source_conn.close()
-
-    if not continue_processing(op_arg=args.operation, continue_flag=args.continue_flag):
-        print("Not continuing to the next step - exiting")
-        sys.exit(0)
-
-#####################################
-# OPERATION: vacuum_feature_databases
-#####################################
-if process_this_step(args.operation, continue_flag=args.continue_flag, this_step='vacuum_feature_databases'):
-    print("Starting the \'vacuum_feature_databases\' step")
-    # vacuum the feature range databases
-    vacuum_feature_databases_start_time = time.time()
-
-    vacuum_feature_databases_processes = []
-    for feature_range in feature_ranges:
-        destination_db_name = "{}-{}-{}.sqlite".format(feature_database_root, feature_range[0], feature_range[1])
-        vacuum_feature_databases_processes.append("sqlite3 {} \"VACUUM;\"".format(destination_db_name))
-    
-    print("vacuuming feature databases...")
-    pool.map(run_process, vacuum_feature_databases_processes)
-    vacuum_feature_databases_stop_time = time.time()
-    processing_times.append(("vacuum_feature_databases", vacuum_feature_databases_stop_time-vacuum_feature_databases_start_time))
 
     if not continue_processing(op_arg=args.operation, continue_flag=args.continue_flag):
         print("Not continuing to the next step - exiting")
