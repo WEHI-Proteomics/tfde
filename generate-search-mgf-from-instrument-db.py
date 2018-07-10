@@ -103,6 +103,8 @@ parser.add_argument('-fu','--frame_upper', type=int, help='The upper summed fram
 parser.add_argument('-mnf','--minimum_number_of_frames', type=int, default=3, help='Minimum number of frames for a feature to be valid.', required=False)
 parser.add_argument('-cst','--correlation_scan_tolerance', type=int, help='Number of scans either side of the feature base peak to include an ms2 peak for correlation.', required=True)
 parser.add_argument('-mzsf','--ms2_mz_scaling_factor', type=float, default=1000.0, help='Scaling factor to convert m/z range to integers in ms2.', required=False)
+parser.add_argument('-frts','--frame_tasks', type=int, default=5000, help='Number of worker tasks for frames.', required=False)
+parser.add_argument('-fets','--feature_tasks', type=int, default=5000, help='Number of worker tasks for features.', required=False)
 args = parser.parse_args()
 
 processing_times = []
@@ -216,7 +218,7 @@ if args.frame_upper is None:
     print("frame_upper set to {} from the data".format(args.frame_upper))
 
 # split the summed frame range into batches
-batch_splits = np.array_split(range(args.frame_lower,args.frame_upper+1), number_of_cores)
+batch_splits = np.array_split(range(args.frame_lower,args.frame_upper+1), args.frame_tasks)
 summed_frame_ranges = []
 for s in batch_splits:
     if len(s) > 0:
@@ -311,7 +313,7 @@ number_of_features = int(feature_info_df.values[0][0])
 source_conn.close()
 
 # split the feature range into batches
-batch_splits = np.array_split(range(1,number_of_features+1), number_of_cores)
+batch_splits = np.array_split(range(1,number_of_features+1), args.feature_tasks)
 feature_ranges = []
 for s in batch_splits:
     if len(s) > 0:
