@@ -273,13 +273,10 @@ if process_this_step(args.operation, continue_flag=args.continue_flag, this_step
     template_db_name = "{}-{}-{}.sqlite".format(frame_database_root, template_frame_range[0], template_frame_range[1])
     table_exceptions = []
     merge_summed_regions_prep(template_db_name, frame_database_name, exceptions=table_exceptions)
-    recombine_frame_databases_processes = []
     for summed_frame_range in summed_frame_ranges:
         source_db_name = "{}-{}-{}.sqlite".format(frame_database_root, summed_frame_range[0], summed_frame_range[1])
         print("merging {} into {}".format(source_db_name, frame_database_name))
-        recombine_frame_databases_processes.append("python -u ./otf-peak-detect/merge-database-tables.py -sdb '{}' -ddb '{}'".format(source_db_name, frame_database_name))
-
-    pool.map(run_process, recombine_frame_databases_processes)
+        merge_summed_regions(source_db_name, frame_database_name, exceptions=[])
 
     recombine_frames_stop_time = time.time()
     processing_times.append(("frame-based recombine", recombine_frames_stop_time-recombine_frames_start_time))
@@ -455,17 +452,13 @@ if process_this_step(args.operation, continue_flag=args.continue_flag, this_step
     # recombine the feature range databases back into a combined database
     recombine_feature_databases_start_time = time.time()
     table_exceptions = []
-    recombine_feature_databases_processes = []
     template_feature_range = feature_ranges[0]
     template_db_name = "{}-{}-{}.sqlite".format(feature_database_root, template_feature_range[0], template_feature_range[1])
     merge_summed_regions_prep(template_db_name, feature_database_name, exceptions=table_exceptions)
     for feature_range in feature_ranges:
         source_db_name = "{}-{}-{}.sqlite".format(feature_database_root, feature_range[0], feature_range[1])
         print("merging {} into {}".format(source_db_name, feature_database_name))
-        recombine_feature_databases_processes.append("python -u ./otf-peak-detect/merge-database-tables.py -sdb '{}' -ddb '{}'".format(source_db_name, feature_database_name))
-
-    print("recombining feature databases...")
-    pool.map(run_process, recombine_feature_databases_processes)
+        merge_summed_regions(source_db_name, feature_database_name, exceptions=table_exceptions)
     recombine_feature_databases_stop_time = time.time()
     processing_times.append(("feature recombine", recombine_feature_databases_stop_time-recombine_feature_databases_start_time))
 
