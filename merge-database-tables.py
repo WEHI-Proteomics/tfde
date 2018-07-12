@@ -10,8 +10,6 @@ def merge_summed_regions(source_db_name, destination_db_name, exceptions):
     destination_conn = sqlite3.connect(destination_db_name)
     dst_cur = destination_conn.cursor()
 
-    dst_cur.execute('PRAGMA journal_mode=WAL;')
-
     df = pd.read_sql_query("SELECT tbl_name,sql FROM sqlite_master WHERE type='table'", source_conn)
     for t_idx in range(0,len(df)):
         table_name = df.loc[t_idx].tbl_name
