@@ -17,54 +17,41 @@ def run_process(process):
 def merge_summed_regions(source_db_name, destination_db_name, exceptions):
     source_conn = sqlite3.connect(source_db_name)
     src_cur = source_conn.cursor()
-    destination_conn = sqlite3.connect(destination_db_name)
-    dst_cur = destination_conn.cursor()
 
     df = pd.read_sql_query("SELECT tbl_name,sql FROM sqlite_master WHERE type='table'", source_conn)
     for t_idx in range(0,len(df)):
         table_name = df.loc[t_idx].tbl_name
         if table_name not in exceptions:
             print("merging {}".format(table_name))
-
-            row_count = int(pd.read_sql('SELECT COUNT(*) FROM {table_name}'.format(table_name=table_name), source_conn).values)
-            chunksize = 1000000
-            number_of_chunks = int(row_count / chunksize)
-
-            for i in range(number_of_chunks + 1):
-                print("\tmerging chunk {} of {}".format(i, number_of_chunks))
-                query = 'SELECT * FROM {table_name} LIMIT {offset}, {chunksize}'.format(
-                    table_name=table_name, offset=i * chunksize, chunksize=chunksize)
-                table_df = pd.read_sql_query(query, con=source_conn)
-                table_df.to_sql(name=table_name, con=destination_conn, if_exists='append', index=False, chunksize=None)
-
+            run_process("sqlite3 -csv -header {} 'select * from {};' > table.csv".format(source_db_name, table_name))
+            run_process("sqlite3 -csv {} '.import table.csv {}'".format(destination_db_name, table_name))
             # drop the table in the source database
-            src_cur.execute('DROP TABLE IF EXISTS {table_name}'.format(table_name=table_name))
+            # src_cur.execute('DROP TABLE IF EXISTS {table_name}'.format(table_name=table_name))
 
     # if we moved all the tables to the destination, delete the database file. Otherwise, vacuum it 
     # to minimise disk space.
-    if len(exceptions) == 0:
-        source_conn.close()
-        os.remove(source_db_name)
-    else:
-        src_cur.execute('VACUUM')
-        source_conn.close()
+    # if len(exceptions) == 0:
+    #     source_conn.close()
+    #     os.remove(source_db_name)
+    # else:
+    #     src_cur.execute('VACUUM')
+    #     source_conn.close()
 
-    destination_conn.commit()
-    destination_conn.close()
+    source_conn.close()
 
 def merge_summed_regions_prep(source_db_name, destination_db_name, exceptions):
     source_conn = sqlite3.connect(source_db_name)
     destination_conn = sqlite3.connect(destination_db_name)
     dst_cur = destination_conn.cursor()
 
-    df = pd.read_sql_query("SELECT tbl_name,sql FROM sqlite_master WHERE type='table'", source_conn)
-    for t_idx in range(0,len(df)):
-        table_name = df.loc[t_idx].tbl_name
+    source_df = pd.read_sql_query("SELECT tbl_name,sql FROM sqlite_master WHERE type='table'", source_conn)
+    for t_idx in range(0,len(source_df)):
+        table_name = source_df.loc[t_idx].tbl_name
         print("preparing {}".format(table_name))
         dst_cur.execute("drop table if exists {}".format(table_name))
         if table_name not in exceptions:
-            print("executing {}".format(df.loc[t_idx].sql))
-            dst_cur.execute(df.loc[t_idx].sql)
+            print("executing {}".format(source_df.loc[t_idx].sql))
+            dst_cur.execute(source_df.loc[t_idx].sql)
 
     source_conn.close()
     destination_conn.commit()
@@ -111,8 +98,8 @@ parser.add_argument('-fu','--frame_upper', type=int, help='The upper summed fram
 parser.add_argument('-mnf','--minimum_number_of_frames', type=int, default=3, help='Minimum number of frames for a feature to be valid.', required=False)
 parser.add_argument('-cst','--correlation_scan_tolerance', type=int, help='Number of scans either side of the feature base peak to include an ms2 peak for correlation.', required=True)
 parser.add_argument('-mzsf','--ms2_mz_scaling_factor', type=float, default=1000.0, help='Scaling factor to convert m/z range to integers in ms2.', required=False)
-parser.add_argument('-frts','--frame_tasks', type=int, default=5000, help='Number of worker tasks for frames.', required=False)
-parser.add_argument('-fets','--feature_tasks', type=int, default=5000, help='Number of worker tasks for features.', required=False)
+parser.add_argument('-frts','--frame_tasks', type=int, default=1000, help='Number of worker tasks for frames.', required=False)
+parser.add_argument('-fets','--feature_tasks', type=int, default=1000, help='Number of worker tasks for features.', required=False)
 args = parser.parse_args()
 
 processing_times = []
