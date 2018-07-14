@@ -25,7 +25,9 @@ def merge_summed_regions(source_db_name, destination_db_name, exceptions):
                 print("\tmerging chunk {} of {}".format(i, number_of_chunks))
                 query = 'SELECT * FROM {table_name} LIMIT {offset}, {chunksize}'.format(
                     table_name=table_name, offset=i * chunksize, chunksize=chunksize)
+                print("reading...")
                 table_df = pd.read_sql_query(query, con=source_conn)
+                print("writing...")
                 table_df.to_sql(name=table_name, con=destination_conn, if_exists='append', index=False, chunksize=None)
 
             # drop the table in the source database
