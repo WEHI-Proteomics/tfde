@@ -12,7 +12,7 @@ def run_process(process):
 
 processing_start_time = time.time()
 
-SOURCE_DATABASE_DIRECTORY = "~/UPS2_allion_Slot1-2_01_699"
+SOURCE_DATABASE_DIRECTORY = "/home/ubuntu/UPS2_allion_Slot1-2_01_699"
 file_list = glob.glob("{}/UPS2_allion_Slot1-2_01_699-features-*-*.sqlite".format(SOURCE_DATABASE_DIRECTORY))
 
 merge_processes = []
