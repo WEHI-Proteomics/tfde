@@ -12,8 +12,7 @@ def run_process(process):
 
 processing_start_time = time.time()
 
-feature_database_name = "./UPS2_allion_Slot1-2_01_699/UPS2_allion_Slot1-2_01_699.sqlite"
-SOURCE_DATABASE_DIRECTORY = "./UPS2_allion_Slot1-2_01_699"
+SOURCE_DATABASE_DIRECTORY = "~/UPS2_allion_Slot1-2_01_699"
 file_list = glob.glob("{}/UPS2_allion_Slot1-2_01_699-features-*-*.sqlite".format(SOURCE_DATABASE_DIRECTORY))
 
 merge_processes = []
