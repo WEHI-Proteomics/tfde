@@ -136,7 +136,11 @@ def peak_ratio(monoisotopic_mass, peak_number, number_of_sulphur):
 print("Setting up indexes")
 db_conn = sqlite3.connect(args.feature_region_database)
 db_conn.cursor().execute("CREATE INDEX IF NOT EXISTS idx_peak_correlation_1 ON peak_correlation (feature_id)")
+
+db_conn.cursor().execute("DROP TABLE IF EXISTS feature_isotopes")
+db_conn.cursor().execute("DROP TABLE IF EXISTS feature_list")
 db_conn.close()
+
 
 db_conn = sqlite3.connect(args.feature_region_database)
 feature_ids_df = pd.read_sql_query("select distinct(feature_id) from peak_correlation", db_conn)
@@ -289,10 +293,10 @@ for feature_ids_idx in range(0,len(feature_ids_df)):
 # write out the deconvolved feature ms1 isotopes and the feature list
 db_conn = sqlite3.connect(args.feature_region_database)
 print("writing out the deconvolved feature ms1 isotopes...")
-feature_cluster_df.to_sql(name='feature_isotopes', con=db_conn, if_exists='replace', index=False)
+feature_cluster_df.to_sql(name='feature_isotopes', con=db_conn, if_exists='append', index=False)
 print("writing out the feature list...")
 feature_list_df = pd.DataFrame(feature_list, columns=feature_list_columns)
-feature_list_df.to_sql(name='feature_list', con=db_conn, if_exists='replace', index=False)
+feature_list_df.to_sql(name='feature_list', con=db_conn, if_exists='append', index=False)
 db_conn.close()
 
 # Set up the processing pool for Hardklor
