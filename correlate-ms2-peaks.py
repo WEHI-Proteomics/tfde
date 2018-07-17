@@ -93,9 +93,12 @@ for feature_ids_idx in range(0,len(features_df)):
         ms2_peak_id = ms2_peaks_df.loc[ms2_peak_idx].peak_id.astype(int)
         peak_correlation.append((feature_id, base_peak_id, ms2_peak_id, float(correlation)))
 
-print("Writing out the peak correlations for features {}-{}".format(args.feature_id_lower, args.feature_id_upper))
-# feature_id, base_peak_id, ms2_peak_id, float(correlation)
-src_c.executemany("INSERT INTO peak_correlation VALUES (?, ?, ?, ?)", peak_correlation)
+if len(peak_correlation) > 0:
+    print("Writing out the peak correlations for features {}-{}".format(args.feature_id_lower, args.feature_id_upper))
+    # feature_id, base_peak_id, ms2_peak_id, float(correlation)
+    src_c.executemany("INSERT INTO peak_correlation VALUES (?, ?, ?, ?)", peak_correlation)
+else:
+    print("Error: there are no peak correlations for feature range {}-{}".format(args.feature_id_lower, args.feature_id_upper))
 
 stop_run = time.time()
 print("{} seconds to process features {} to {}".format(stop_run-start_run, args.feature_id_lower, args.feature_id_upper))
