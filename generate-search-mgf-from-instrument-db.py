@@ -17,14 +17,25 @@ def run_process(process):
 def merge_summed_regions(source_db_name, destination_db_name, exceptions):
     source_conn = sqlite3.connect(source_db_name)
     src_cur = source_conn.cursor()
+    destination_conn = sqlite3.connect(destination_db_name)	
+    dst_cur = destination_conn.cursor()
 
     df = pd.read_sql_query("SELECT tbl_name,sql FROM sqlite_master WHERE type='table'", source_conn)
     for t_idx in range(0,len(df)):
         table_name = df.loc[t_idx].tbl_name
         if table_name not in exceptions:
             print("merging {}".format(table_name))
-            run_process("sqlite3 -csv -header {} 'select * from {};' > table.csv".format(source_db_name, table_name))
-            run_process("sqlite3 -csv {} '.import table.csv {}'".format(destination_db_name, table_name))
+
+            row_count = int(pd.read_sql('SELECT COUNT(*) FROM {table_name}'.format(table_name=table_name), source_conn).values)	+            run_process("sqlite3 -csv {} '.import table.csv {}'".format(destination_db_name, table_name))
+            chunksize = 5000000
+            number_of_chunks = int(row_count / chunksize)
+
+            for i in range(number_of_chunks + 1):
+                print("\tmerging chunk {} of {}".format(i, number_of_chunks))
+                query = 'SELECT * FROM {table_name} LIMIT {offset}, {chunksize}'.format(table_name=table_name, offset=i * chunksize, chunksize=chunksize)
+                table_df = pd.read_sql_query(query, con=source_conn)
+                table_df.to_sql(name=table_name, con=destination_conn, if_exists='append', index=False, chunksize=None)
+
             # drop the table in the source database
             # src_cur.execute('DROP TABLE IF EXISTS {table_name}'.format(table_name=table_name))
 
