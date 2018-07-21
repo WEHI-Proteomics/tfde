@@ -69,13 +69,13 @@ def merge_summed_regions_prep(source_db_name, destination_db_name, exceptions):
     destination_conn.close()
 
 # return true if the specified step should be processed
-def process_this_step(op_arg, continue_flag, this_step):
-    result = ((op_arg == 'all') or (op_arg == this_step) or 
-        ((continue_flag == True) and (processing_steps[this_step] > processing_steps[op_arg])))
+def process_this_step(this_step, first_step):
+    result = (processing_steps[this_step] >= processing_steps[first_step])
     return result
 
-def continue_processing(op_arg, continue_flag, this_step, final_step):
-    result = (((op_arg == 'all') or (continue_flag == True)) or ((final_step is not None) and (this_step == final_step)))
+# return true if this isn't the last step
+def continue_processing(this_step, final_step):
+    result = (processing_steps[this_step] < processing_steps[final_step])
     if (result == False) and (args.shutdown_on_completion == True):
         run_process("sudo shutdown -P +5")
     return result
@@ -100,7 +100,6 @@ parser.add_argument('-cems1','--ms1_collision_energy', type=int, help='Collision
 parser.add_argument('-mpc','--minimum_peak_correlation', type=float, help='Minimum peak correlation', required=True)
 parser.add_argument('-op','--operation', type=str, default='all', help='The operation to perform.', required=False)
 parser.add_argument('-fop','--final_operation', type=str, help='The final operation to perform.', required=False)
-parser.add_argument('-cf','--continue_flag', action='store_true', help='Continue processing after the operation specified with -op.')
 parser.add_argument('-sd','--shutdown_on_completion', action='store_true', help='Shut down the instance when complete.')
 parser.add_argument('-nf','--number_of_frames', type=int, help='The number of frames to convert.', required=False)
 parser.add_argument('-ml','--mz_lower', type=float, help='Lower feature m/z to process.', required=False)
@@ -134,6 +133,16 @@ steps.append('create_search_mgf')
 
 processing_steps = {j:i for i,j in enumerate(steps)}
 
+if (args.operation == 'all'):
+    args.operation = steps[0]
+    args.final_operation = steps[-1]
+
+if (args.operation is None):
+    args.operation = steps[0]
+
+if (args.final_operation is None):
+    args.final_operation = steps[-1]
+
 # make sure the processing directories exist
 if not os.path.exists(args.data_directory):
     os.makedirs(args.data_directory)
@@ -153,7 +162,7 @@ pool = Pool()
 ##################################
 # OPERATION: convert_instrument_db
 ##################################
-if (process_this_step(args.operation, continue_flag=args.continue_flag, this_step='convert_instrument_db') and (args.instrument_database_name is not None)):
+if process_this_step(this_step='convert_instrument_db', first_step=args.operation):
     print("Starting the \'convert_instrument_db\' step")
     convert_start_time = time.time()
 
@@ -177,7 +186,7 @@ if (process_this_step(args.operation, continue_flag=args.continue_flag, this_ste
     convert_stop_time = time.time()
     processing_times.append(("database conversion", convert_stop_time-convert_start_time))
 
-    if not continue_processing(op_arg=args.operation, continue_flag=args.continue_flag, this_step='convert_instrument_db', final_step=args.final_step):
+    if not continue_processing(this_step='convert_instrument_db', final_step=args.final_operation):
         print("Not continuing to the next step - exiting")
         sys.exit(0)
 
@@ -234,7 +243,7 @@ for s in batch_splits:
 ###############################
 # OPERATION: cluster_detect_ms1
 ###############################
-if process_this_step(args.operation, continue_flag=args.continue_flag, this_step='cluster_detect_ms1'):
+if process_this_step(this_step='cluster_detect_ms1', first_step=args.operation):
     print("Starting the \'cluster_detect_ms1\' step")
     cluster_detect_start_time = time.time()
 
@@ -256,14 +265,14 @@ if process_this_step(args.operation, continue_flag=args.continue_flag, this_step
     cluster_detect_stop_time = time.time()
     processing_times.append(("cluster detect", cluster_detect_stop_time-cluster_detect_start_time))
 
-    if not continue_processing(op_arg=args.operation, continue_flag=args.continue_flag, this_step='cluster_detect_ms1', final_step=args.final_step):
+    if not continue_processing(this_step='cluster_detect_ms1', final_step=args.final_operation):
         print("Not continuing to the next step - exiting")
         sys.exit(0)
 
 ######################################
 # OPERATION: recombine_frame_databases
 ######################################
-if process_this_step(args.operation, continue_flag=args.continue_flag, this_step='recombine_frame_databases'):
+if process_this_step(this_step='recombine_frame_databases', first_step=args.operation):
     print("Starting the \'recombine_frame_databases\' step")
     recombine_frames_start_time = time.time()
 
@@ -280,7 +289,7 @@ if process_this_step(args.operation, continue_flag=args.continue_flag, this_step
     recombine_frames_stop_time = time.time()
     processing_times.append(("frame-based recombine", recombine_frames_stop_time-recombine_frames_start_time))
 
-    if not continue_processing(op_arg=args.operation, continue_flag=args.continue_flag, this_step='recombine_frame_databases', final_step=args.final_step):
+    if not continue_processing(this_step='recombine_frame_databases', final_step=args.final_operation):
         print("Not continuing to the next step - exiting")
         sys.exit(0)
 
@@ -299,7 +308,7 @@ else:
 ###############################
 # OPERATION: feature_detect_ms1
 ###############################
-if process_this_step(args.operation, continue_flag=args.continue_flag, this_step='feature_detect_ms1'):
+if process_this_step(this_step='feature_detect_ms1', first_step=args.operation):
     print("Starting the \'feature_detect_ms1\' step")
     feature_detect_start_time = time.time()
 
@@ -309,7 +318,7 @@ if process_this_step(args.operation, continue_flag=args.continue_flag, this_step
     feature_detect_stop_time = time.time()
     processing_times.append(("feature detect ms1", feature_detect_stop_time-feature_detect_start_time))
 
-    if not continue_processing(op_arg=args.operation, continue_flag=args.continue_flag, this_step='feature_detect_ms1', final_step=args.final_step):
+    if not continue_processing(this_step='feature_detect_ms1', final_step=args.final_operation):
         print("Not continuing to the next step - exiting")
         sys.exit(0)
 
@@ -333,7 +342,7 @@ for s in batch_splits:
 ###########################################
 # OPERATION: feature_region_ms2_peak_detect
 ###########################################
-if process_this_step(args.operation, continue_flag=args.continue_flag, this_step='feature_region_ms2_peak_detect'):
+if process_this_step(this_step='feature_region_ms2_peak_detect', first_step=args.operation):
     print("Starting the \'feature_region_ms2_peak_detect\' step")
     ms2_peak_detect_start_time = time.time()
 
@@ -349,14 +358,14 @@ if process_this_step(args.operation, continue_flag=args.continue_flag, this_step
     ms2_peak_detect_stop_time = time.time()
     processing_times.append(("feature region ms2 peak detect", ms2_peak_detect_stop_time-ms2_peak_detect_start_time))
 
-    if not continue_processing(op_arg=args.operation, continue_flag=args.continue_flag, this_step='feature_region_ms2_peak_detect', final_step=args.final_step):
+    if not continue_processing(this_step='feature_region_ms2_peak_detect', final_step=args.final_operation):
         print("Not continuing to the next step - exiting")
         sys.exit(0)
 
 ###########################################
 # OPERATION: feature_region_ms1_peak_detect
 ###########################################
-if process_this_step(args.operation, continue_flag=args.continue_flag, this_step='feature_region_ms1_peak_detect'):
+if process_this_step(this_step='feature_region_ms1_peak_detect', first_step=args.operation):
     print("Starting the \'feature_region_ms1_peak_detect\' step")
     ms1_peak_detect_start_time = time.time()
 
@@ -375,14 +384,14 @@ if process_this_step(args.operation, continue_flag=args.continue_flag, this_step
     ms1_peak_detect_stop_time = time.time()
     processing_times.append(("feature region ms1 peak detect", ms1_peak_detect_stop_time-ms1_peak_detect_start_time))
 
-    if not continue_processing(op_arg=args.operation, continue_flag=args.continue_flag, this_step='feature_region_ms1_peak_detect', final_step=args.final_step):
+    if not continue_processing(this_step='feature_region_ms1_peak_detect', final_step=args.final_operation):
         print("Not continuing to the next step - exiting")
         sys.exit(0)
 
 ######################################
 # OPERATION: match_precursor_ms2_peaks
 ######################################
-if process_this_step(args.operation, continue_flag=args.continue_flag, this_step='match_precursor_ms2_peaks'):
+if process_this_step(this_step='match_precursor_ms2_peaks', first_step=args.operation):
     print("Starting the \'match_precursor_ms2_peaks\' step")
     match_precursor_ms2_peaks_start_time = time.time()
 
@@ -397,14 +406,14 @@ if process_this_step(args.operation, continue_flag=args.continue_flag, this_step
     match_precursor_ms2_peaks_stop_time = time.time()
     processing_times.append(("match precursor ms2 peaks", match_precursor_ms2_peaks_stop_time-match_precursor_ms2_peaks_start_time))
 
-    if not continue_processing(op_arg=args.operation, continue_flag=args.continue_flag, this_step='match_precursor_ms2_peaks', final_step=args.final_step):
+    if not continue_processing(this_step='match_precursor_ms2_peaks', final_step=args.final_operation):
         print("Not continuing to the next step - exiting")
         sys.exit(0)
 
 ############################
 # OPERATION: correlate_peaks
 ############################
-if process_this_step(args.operation, continue_flag=args.continue_flag, this_step='correlate_peaks'):
+if process_this_step(this_step='correlate_peaks', first_step=args.operation):
     print("Starting the \'correlate_peaks\' step")
     peak_correlation_start_time = time.time()
 
@@ -418,14 +427,14 @@ if process_this_step(args.operation, continue_flag=args.continue_flag, this_step
     peak_correlation_stop_time = time.time()
     processing_times.append(("peak correlation", peak_correlation_stop_time-peak_correlation_start_time))
 
-    if not continue_processing(op_arg=args.operation, continue_flag=args.continue_flag, this_step='correlate_peaks', final_step=args.final_step):
+    if not continue_processing(this_step='correlate_peaks', final_step=args.final_operation):
         print("Not continuing to the next step - exiting")
         sys.exit(0)
 
 ###################################
 # OPERATION: deconvolve_ms2_spectra
 ###################################
-if process_this_step(args.operation, continue_flag=args.continue_flag, this_step='deconvolve_ms2_spectra'):
+if process_this_step(this_step='deconvolve_ms2_spectra', first_step=args.operation):
     print("Starting the \'deconvolve_ms2_spectra\' step")
     deconvolve_ms2_spectra_processes = []
     for feature_range in feature_ranges:
@@ -439,14 +448,14 @@ if process_this_step(args.operation, continue_flag=args.continue_flag, this_step
     deconvolve_ms2_spectra_stop_time = time.time()
     processing_times.append(("deconvolve ms2 spectra", deconvolve_ms2_spectra_stop_time-deconvolve_ms2_spectra_start_time))
 
-    if not continue_processing(op_arg=args.operation, continue_flag=args.continue_flag, this_step='deconvolve_ms2_spectra', final_step=args.final_step):
+    if not continue_processing(this_step='deconvolve_ms2_spectra', final_step=args.final_operation):
         print("Not continuing to the next step - exiting")
         sys.exit(0)
 
 ########################################
 # OPERATION: recombine_feature_databases
 ########################################
-if process_this_step(args.operation, continue_flag=args.continue_flag, this_step='recombine_feature_databases'):
+if process_this_step(this_step='recombine_feature_databases', first_step=args.operation):
     print("Starting the \'recombine_feature_databases\' step")
     # recombine the feature range databases back into a combined database
     recombine_feature_databases_start_time = time.time()
@@ -461,14 +470,14 @@ if process_this_step(args.operation, continue_flag=args.continue_flag, this_step
     recombine_feature_databases_stop_time = time.time()
     processing_times.append(("feature recombine", recombine_feature_databases_stop_time-recombine_feature_databases_start_time))
 
-    if not continue_processing(op_arg=args.operation, continue_flag=args.continue_flag, this_step='recombine_feature_databases', final_step=args.final_step):
+    if not continue_processing(this_step='recombine_feature_databases', final_step=args.final_operation):
         print("Not continuing to the next step - exiting")
         sys.exit(0)
 
 ##############################
 # OPERATION: create_search_mgf
 ##############################
-if process_this_step(args.operation, continue_flag=args.continue_flag, this_step='create_search_mgf'):
+if process_this_step(this_step='create_search_mgf', first_step=args.operation):
     print("Starting the \'create_search_mgf\' step")
     create_search_mgf_process = "python -u ./otf-peak-detect/create-search-mgf.py -fdb '{}' -bfn {} -dbd {} -mpc {}".format(feature_database_name, args.database_base_name, args.data_directory, args.minimum_peak_correlation)
 
@@ -486,7 +495,7 @@ if process_this_step(args.operation, continue_flag=args.continue_flag, this_step
     # statistics.append(("number of deconvoluted ions", number_of_deconvoluted_ions))
     # source_conn.close()
 
-    if not continue_processing(op_arg=args.operation, continue_flag=args.continue_flag, this_step='create_search_mgf', final_step=args.final_step):
+    if not continue_processing(this_step='create_search_mgf', final_step=args.final_operation):
         print("Not continuing to the next step - exiting")
         sys.exit(0)
 
