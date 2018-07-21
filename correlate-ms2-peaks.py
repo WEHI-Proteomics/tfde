@@ -38,7 +38,7 @@ src_c.execute("CREATE TABLE peak_correlation (feature_id INTEGER, base_peak_id I
 src_c.execute("CREATE TABLE peak_correlation_info (item TEXT, value TEXT)")
 
 print("Setting up indexes")
-src_c.cursor().execute("CREATE INDEX IF NOT EXISTS idx_ms2_feature_region_points_1 ON ms2_feature_region_points (feature_id)")
+src_c.execute("CREATE INDEX IF NOT EXISTS idx_ms2_feature_region_points_1 ON ms2_feature_region_points (feature_id)")
 
 start_run = time.time()
 
