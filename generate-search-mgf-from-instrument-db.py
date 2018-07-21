@@ -421,7 +421,7 @@ if process_this_step(this_step='correlate_peaks', first_step=args.operation):
     peak_correlation_processes = []
     for feature_range in feature_ranges:
         destination_db_name = "{}-{}-{}.sqlite".format(feature_database_root, feature_range[0], feature_range[1])
-        peak_correlation_processes.append("python -u ./otf-peak-detect/correlate-ms2-peaks.py -db '{}' -fl {} -fu {} -st {} -rtt {}".format(destination_db_name, feature_range[0], feature_range[1], args.correlation_scan_tolerance, args.correlation_rt_tolerance))
+        peak_correlation_processes.append("python -u ./otf-peak-detect/correlate-ms2-peaks.py -db '{}' -cdb '{}' -fl {} -fu {} -st {} -rtt {}".format(destination_db_name, converted_database_name, feature_range[0], feature_range[1], args.correlation_scan_tolerance, args.correlation_rt_tolerance))
     
     print("correlating peaks...")
     pool.map(run_process, peak_correlation_processes)
