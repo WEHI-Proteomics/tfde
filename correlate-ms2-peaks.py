@@ -26,6 +26,8 @@ source_conn = sqlite3.connect(args.database_name)
 src_c = source_conn.cursor()
 src_c.execute("PRAGMA journal_mode = TRUNCATE")
 
+conv_db_conn = sqlite3.connect(args.converted_database_name)
+
 # Store the arguments as metadata in the database for later reference
 peak_correlation_info = []
 for arg in vars(args):
@@ -43,11 +45,9 @@ src_c.execute("CREATE INDEX IF NOT EXISTS idx_ms2_feature_region_points_1 ON ms2
 start_run = time.time()
 
 # calculate the ms2 frame rate - assume they alternate 
-conv_db_conn = sqlite3.connect(args.converted_database_name)
 df = pd.read_sql_query("select value from convert_info where item=\'{}\'".format("raw_frame_period_in_msec"), conv_db_conn)
 raw_frame_period_in_msec = float(df.loc[0].value)
 raw_frame_ids_per_second = 1.0 / (raw_frame_period_in_msec * 10**-3)
-conv_db_conn.close()
 
 print("Loading the MS1 base peaks for the feature range")
 base_peak_ids_df = pd.read_sql_query("select feature_id,base_peak_id from feature_base_peaks where feature_id >= {} and feature_id <= {} order by feature_id ASC;".format(args.feature_id_lower, args.feature_id_upper), source_conn)
@@ -76,7 +76,7 @@ for feature_ids_idx in range(0,len(base_peak_ids_df)):
     frame_point_list = tuple(frame_points.frame_point_id.astype(int))
 
     # get the summed to raw point mapping
-    raw_point_ids_df = pd.read_sql_query("select * from raw_summed_join where summed_frame_id in {} and summed_point_id in {}".format(frames_list,frame_point_list), db_conn)
+    raw_point_ids_df = pd.read_sql_query("select * from raw_summed_join where summed_frame_id in {} and summed_point_id in {}".format(frames_list,frame_point_list), conv_db_conn)
     raw_point_ids_df['summed_frame_point'] = raw_point_ids_df['summed_frame_id'].map(str) + '|' + raw_point_ids_df['summed_point_id'].map(str)
     raw_point_ids = raw_point_ids_df.loc[raw_point_ids_df.summed_frame_point.isin(frame_points.frame_point)]
 
@@ -134,3 +134,5 @@ src_c.executemany("INSERT INTO peak_correlation_info VALUES (?, ?)", peak_correl
 
 source_conn.commit()
 source_conn.close()
+
+conv_db_conn.close()
