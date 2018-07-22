@@ -89,6 +89,10 @@ for feature_ids_idx in range(0,len(base_peak_ids_df)):
     ms1_centroid_scan = peakutils.centroid(raw_points_df.scan, raw_points_df.intensity)
     ms1_centroid_rt = peakutils.centroid(raw_points_df.retention_time_secs, raw_points_df.intensity)
 
+    ############################
+    # Now process the ms2 points
+    ############################
+
     # get the raw (unsummed) points the ms2 peaks mz belonging to this feature
     ms2_feature_region_points_df = pd.read_sql_query("select * from ms2_feature_region_points where feature_id={}".format(feature_id), source_conn)
 
@@ -102,6 +106,7 @@ for feature_ids_idx in range(0,len(base_peak_ids_df)):
         ms2_peak_id = ms2_peaks_df.loc[ms2_peak_idx].peak_id.astype(int)
 
         # get all the mzs used to create this peak
+        print("debug: {}".format(ms2_peaks_df[ms2_peaks_df.peak_id == ms2_peak_id].composite_mzs))
         peak_composite_mzs = json.loads(ms2_peaks_df[ms2_peaks_df.peak_id == ms2_peak_id].composite_mzs[1])
         peak_points = ms2_feature_region_points_df[ms2_feature_region_points_df.scaled_mz.isin(peak_composite_mzs)].sort_values(by=['scan'])
         peak_points.rename(columns = {'frame_id':'raw_frame_id'}, inplace = True)
