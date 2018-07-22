@@ -5,6 +5,7 @@ import sqlite3
 import time
 import os
 import peakutils
+import json
 
 # Number of points either side of the base peak's maximum intensity to check for correlation
 BASE_PEAK_CORRELATION_SIDE_POINTS = 3
