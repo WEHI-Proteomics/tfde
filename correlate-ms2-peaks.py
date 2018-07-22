@@ -82,7 +82,7 @@ for feature_ids_idx in range(0,len(base_peak_ids_df)):
 
     raw_frame_list = tuple(raw_point_ids.raw_frame_id.astype(int))
     raw_point_list = tuple(raw_point_ids.raw_point_id.astype(int))
-    raw_points_df = pd.read_sql_query("select frame_id,point_id,mz,scan,intensity from frames where frame_id in {} and point_id in {}".format(raw_frame_list,raw_point_list), db_conn)
+    raw_points_df = pd.read_sql_query("select frame_id,point_id,mz,scan,intensity from frames where frame_id in {} and point_id in {}".format(raw_frame_list,raw_point_list), conv_db_conn)
     raw_points_df['retention_time_secs'] = raw_points_df.frame_id / raw_frame_ids_per_second
 
     ms1_centroid_scan = peakutils.centroid(raw_points_df.scan, raw_points_df.intensity)
