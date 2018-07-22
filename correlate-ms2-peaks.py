@@ -106,7 +106,6 @@ for feature_ids_idx in range(0,len(base_peak_ids_df)):
         ms2_peak_id = ms2_peaks_df.loc[ms2_peak_idx].peak_id.astype(int)
 
         # get all the mzs used to create this peak
-        print("feature_id {}, ms2 peak id {}, comp mzs {}".format(feature_id, ms2_peak_id, ms2_peaks_df[ms2_peaks_df.peak_id == ms2_peak_id].composite_mzs.item()))
         peak_composite_mzs = json.loads(ms2_peaks_df[ms2_peaks_df.peak_id == ms2_peak_id].composite_mzs.item())
         peak_points = ms2_feature_region_points_df[ms2_feature_region_points_df.scaled_mz.isin(peak_composite_mzs)].sort_values(by=['scan'])
         peak_points.rename(columns = {'frame_id':'raw_frame_id'}, inplace = True)
