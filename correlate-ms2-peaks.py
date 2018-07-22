@@ -68,12 +68,13 @@ for feature_ids_idx in range(0,len(base_peak_ids_df)):
     # get the mapping from feature points to summed frame points
     ms1_feature_frame_join_df = pd.read_sql_query("select * from ms1_feature_frame_join where feature_id={}".format(feature_id), source_conn)
 
-    # set up some composite keys
+    # get the raw points
     ms1_feature_frame_join_df['feature_point'] = ms1_feature_frame_join_df['feature_id'].map(str) + '|' + ms1_feature_frame_join_df['feature_point_id'].map(str)
     ms1_feature_frame_join_df['frame_point'] = ms1_feature_frame_join_df['frame_id'].map(str) + '|' + ms1_feature_frame_join_df['frame_point_id'].map(str)
     frame_points = ms1_feature_frame_join_df.loc[ms1_feature_frame_join_df.feature_point.isin(ms1_base_peak_points_df.feature_point)]
     frames_list = tuple(frame_points.frame_id.astype(int))
     frame_point_list = tuple(frame_points.frame_point_id.astype(int))
+    raw_points_df = pd.read_sql_query("select frame_id,point_id,mz,scan,intensity from frames where frame_id in {} and point_id in {}".format(raw_frame_list,raw_point_list), db_conn)
 
     # get the summed to raw point mapping
     raw_point_ids_df = pd.read_sql_query("select * from raw_summed_join where summed_frame_id in {} and summed_point_id in {}".format(frames_list,frame_point_list), conv_db_conn)
