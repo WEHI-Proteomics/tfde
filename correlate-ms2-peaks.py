@@ -66,6 +66,7 @@ for feature_ids_idx in range(0,len(base_peak_ids_df)):
     feature_id = base_peak_ids_df.loc[feature_ids_idx].feature_id.astype(int)
     base_peak_id = base_peak_ids_df.loc[feature_ids_idx].base_peak_id.astype(int)
 
+    print("processing ms1")
     # get all the points for the feature's ms1 base peak
     ms1_base_peak_points_df = pd.read_sql_query("select * from summed_ms1_regions where feature_id={} and peak_id={}".format(feature_id, base_peak_id), source_conn)
 
@@ -98,6 +99,7 @@ for feature_ids_idx in range(0,len(base_peak_ids_df)):
     ############################
     # Now process the ms2 points
     ############################
+    print("processing ms2")
 
     # get the raw (unsummed) points the ms2 peaks mz belonging to this feature
     ms2_feature_region_points_df = pd.read_sql_query("select * from ms2_feature_region_points where feature_id={}".format(feature_id), source_conn)
@@ -116,7 +118,7 @@ for feature_ids_idx in range(0,len(base_peak_ids_df)):
         peak_points = ms2_feature_region_points_df[ms2_feature_region_points_df.scaled_mz.isin(peak_composite_mzs)].sort_values(by=['scan'])
         peak_points.rename(columns = {'frame_id':'raw_frame_id'}, inplace = True)
         peak_points['retention_time_secs'] = peak_points.raw_frame_id / raw_frame_ids_per_second
-        ms2_centroid_scan = int(peakutils.centroid(peak_points.scan, peak_points.intensity))
+        ms2_centroid_scan = peakutils.centroid(peak_points.scan, peak_points.intensity)
         ms2_centroid_rt = peakutils.centroid(peak_points.retention_time_secs, peak_points.intensity)
 
         scan_distance = ms1_centroid_scan - ms2_centroid_scan
