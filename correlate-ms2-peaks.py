@@ -116,10 +116,10 @@ def main():
         print("processing ms2 for feature {}".format(feature_id))
 
         # get the raw (unsummed) points the ms2 peaks mz belonging to this feature
-        ms2_feature_region_points_df = pd.read_sql_query("select * from ms2_feature_region_points where feature_id={}".format(feature_id), source_conn)
+        ms2_feature_region_points_df = pd.read_sql_query("select * from ms2_feature_region_points where feature_id={} order by scan ASC".format(feature_id), source_conn)
 
         # get the ms2 peak summary information for this feature
-        ms2_peaks_df = pd.read_sql_query("select * from ms2_peaks where feature_id={} order by scan ASC".format(feature_id), source_conn)
+        ms2_peaks_df = pd.read_sql_query("select * from ms2_peaks where feature_id={} order by peak_id ASC".format(feature_id), source_conn)
         print("correlating {} ms2 peaks for feature {} in range {}-{}".format(len(ms2_peaks_df), feature_id, args.feature_id_lower, args.feature_id_upper))
 
         # calculate the 2D centroid for each of the feature's ms2 peaks
