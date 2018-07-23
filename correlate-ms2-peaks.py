@@ -129,7 +129,6 @@ def main():
 
             # get all the mzs used to create this peak
             peak_composite_mzs = pd.Series(json.loads(ms2_peaks_df[ms2_peaks_df.peak_id == ms2_peak_id].composite_mzs.item()))
-            print(peak_composite_mzs)
             peak_points = ms2_feature_region_points_df[ms2_feature_region_points_df.scaled_mz.isin(peak_composite_mzs)].sort_values(by=['scan'])
             peak_points.rename(columns = {'frame_id':'raw_frame_id'}, inplace = True)
             peak_points['retention_time_secs'] = peak_points.raw_frame_id / raw_frame_ids_per_second
