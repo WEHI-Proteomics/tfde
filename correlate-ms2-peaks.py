@@ -75,14 +75,13 @@ def main():
     peak_correlation = []
 
     print("Finding peak correlations for features {}-{}".format(args.feature_id_lower, args.feature_id_upper))
-    for feature_ids_idx in range(100,101):
-    # for feature_ids_idx in range(0,len(base_peak_ids_df)):
+    for feature_ids_idx in range(0,len(base_peak_ids_df)):
         feature_start_time = time.time()
 
         feature_id = base_peak_ids_df.loc[feature_ids_idx].feature_id.astype(int)
         base_peak_id = base_peak_ids_df.loc[feature_ids_idx].base_peak_id.astype(int)
 
-        print("processing ms1 for feature {}".format(feature_id))
+        print("processing feature {} (range {}-{})".format(feature_id, args.feature_id_lower, args.feature_id_upper))
         # get all the points for the feature's ms1 base peak
         ms1_base_peak_points_df = pd.read_sql_query("select * from summed_ms1_regions where feature_id={} and peak_id={}".format(feature_id, base_peak_id), source_conn)
 
@@ -115,14 +114,13 @@ def main():
         ############################
         # Now process the ms2 points
         ############################
-        print("processing ms2 for feature {}".format(feature_id))
 
         # get the raw (unsummed) points the ms2 peaks mz belonging to this feature
         ms2_feature_region_points_df = pd.read_sql_query("select * from ms2_feature_region_points where feature_id={}".format(feature_id), source_conn)
 
         # get the ms2 peak summary information for this feature
         ms2_peaks_df = pd.read_sql_query("select * from ms2_peaks where feature_id={} order by peak_id ASC".format(feature_id), source_conn)
-        print("correlating {} ms2 peaks for feature {} in range {}-{}".format(len(ms2_peaks_df), feature_id, args.feature_id_lower, args.feature_id_upper))
+        print("{} ms2 peaks for feature {}".format(len(ms2_peaks_df)))
 
         # calculate the 2D centroid for each of the feature's ms2 peaks
         for ms2_peak_idx in range(len(ms2_peaks_df)):
