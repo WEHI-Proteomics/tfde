@@ -28,6 +28,7 @@ src_c = source_conn.cursor()
 src_c.execute("PRAGMA journal_mode = TRUNCATE")
 
 conv_db_conn = sqlite3.connect(args.converted_database_name)
+conv_c = conv_db_conn.cursor()
 
 # Store the arguments as metadata in the database for later reference
 peak_correlation_info = []
@@ -41,7 +42,12 @@ src_c.execute("CREATE TABLE peak_correlation (feature_id INTEGER, base_peak_id I
 src_c.execute("CREATE TABLE peak_correlation_info (item TEXT, value TEXT)")
 
 print("Setting up indexes")
+src_c.execute("CREATE INDEX IF NOT EXISTS idx_feature_base_peaks_1 ON feature_base_peaks (feature_id)")
+src_c.execute("CREATE INDEX IF NOT EXISTS idx_summed_ms1_regions_3 ON summed_ms1_regions (feature_id, peak_id)")
+src_c.execute("CREATE INDEX IF NOT EXISTS idx_ms1_feature_frame_join_1 ON ms1_feature_frame_join (feature_id)")
+
 src_c.execute("CREATE INDEX IF NOT EXISTS idx_ms2_feature_region_points_1 ON ms2_feature_region_points (feature_id)")
+src_c.execute("CREATE INDEX IF NOT EXISTS idx_ms2_peaks_1 ON ms2_peaks (feature_id)")
 
 start_run = time.time()
 
@@ -119,7 +125,7 @@ for feature_ids_idx in range(0,len(base_peak_ids_df)):
 
         peak_correlation.append((feature_id, base_peak_id, ms1_centroid_scan, ms1_centroid_rt, ms2_peak_id, ms2_centroid_scan, ms2_centroid_rt, scan_distance, rt_distance, correlation))
 
-    if feature_ids_idx == 4:
+    if feature_ids_idx == 0:
         break
 
 if len(peak_correlation) > 0:
