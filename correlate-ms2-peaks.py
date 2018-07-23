@@ -119,7 +119,7 @@ def main():
         ms2_feature_region_points_df = pd.read_sql_query("select * from ms2_feature_region_points where feature_id={}".format(feature_id), source_conn)
 
         # get the ms2 peak summary information for this feature
-        ms2_peaks_df = pd.read_sql_query("select * from ms2_peaks where feature_id={} order by peak_id ASC".format(feature_id), source_conn)
+        ms2_peaks_df = pd.read_sql_query("select * from ms2_peaks where feature_id={} order by scan ASC".format(feature_id), source_conn)
         print("correlating {} ms2 peaks for feature {} in range {}-{}".format(len(ms2_peaks_df), feature_id, args.feature_id_lower, args.feature_id_upper))
 
         # calculate the 2D centroid for each of the feature's ms2 peaks
@@ -129,8 +129,8 @@ def main():
 
             # get all the mzs used to create this peak
             peak_composite_mzs = json.loads(ms2_peaks_df[ms2_peaks_df.peak_id == ms2_peak_id].composite_mzs.item())
-            print("peak_composite_mzs {}, unique values {}".format(len(peak_composite_mzs), len(set(peak_composite_mzs))))
-            peak_points = ms2_feature_region_points_df[ms2_feature_region_points_df.scaled_mz.isin(peak_composite_mzs)].sort_values(by=['scan'])
+            # peak_points = ms2_feature_region_points_df[ms2_feature_region_points_df.scaled_mz.isin(peak_composite_mzs)].sort_values(by=['scan'])
+            peak_points = ms2_feature_region_points_df[ms2_feature_region_points_df.scaled_mz.isin(peak_composite_mzs)]
             peak_points.rename(columns = {'frame_id':'raw_frame_id'}, inplace = True)
             peak_points['retention_time_secs'] = peak_points.raw_frame_id / raw_frame_ids_per_second
             ms2_centroid_scan = peakutils.centroid(peak_points.scan, peak_points.intensity)
