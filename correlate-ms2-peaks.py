@@ -120,7 +120,7 @@ def main():
 
         # get the ms2 peak summary information for this feature
         ms2_peaks_df = pd.read_sql_query("select * from ms2_peaks where feature_id={} order by peak_id ASC".format(feature_id), source_conn)
-        print("{} ms2 peaks for feature {}".format(len(ms2_peaks_df)))
+        print("{} ms2 peaks for feature {}".format(len(ms2_peaks_df), feature_id))
 
         # calculate the 2D centroid for each of the feature's ms2 peaks
         for ms2_peak_idx in range(len(ms2_peaks_df)):
