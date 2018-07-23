@@ -119,6 +119,9 @@ for feature_ids_idx in range(0,len(base_peak_ids_df)):
 
         peak_correlation.append((feature_id, base_peak_id, ms1_centroid_scan, ms1_centroid_rt, ms2_peak_id, ms2_centroid_scan, ms2_centroid_rt, scan_distance, rt_distance, correlation))
 
+    if feature_ids_idx == 4:
+        break
+
 if len(peak_correlation) > 0:
     print("Writing out the peak correlations for features {}-{}".format(args.feature_id_lower, args.feature_id_upper))
     # feature_id, base_peak_id, ms1_centroid_scan, ms1_centroid_rt, ms2_peak_id, ms2_centroid_scan, ms2_centroid_rt, scan_distance, rt_distance, correlation
