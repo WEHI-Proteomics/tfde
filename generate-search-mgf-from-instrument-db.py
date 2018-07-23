@@ -424,6 +424,7 @@ if process_this_step(this_step='correlate_peaks', first_step=args.operation):
         peak_correlation_processes.append("python -u ./otf-peak-detect/correlate-ms2-peaks.py -db '{}' -cdb '{}' -fl {} -fu {} -st {} -rtt {}".format(destination_db_name, converted_database_name, feature_range[0], feature_range[1], args.correlation_scan_tolerance, args.correlation_rt_tolerance))
     
     print("correlating peaks...")
+    run_process("python -u ./otf-peak-detect/correlate-ms2-peaks-prep.py -cdb '{}'".format(converted_database_name))
     pool.map(run_process, peak_correlation_processes)
     peak_correlation_stop_time = time.time()
     processing_times.append(("peak correlation", peak_correlation_stop_time-peak_correlation_start_time))
