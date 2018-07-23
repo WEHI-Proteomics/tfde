@@ -116,7 +116,7 @@ def main():
         print("processing ms2 for feature {}".format(feature_id))
 
         # get the raw (unsummed) points the ms2 peaks mz belonging to this feature
-        ms2_feature_region_points_df = pd.read_sql_query("select * from ms2_feature_region_points where feature_id={} order by scan ASC".format(feature_id), source_conn)
+        ms2_feature_region_points_df = pd.read_sql_query("select * from ms2_feature_region_points where feature_id={}".format(feature_id), source_conn)
 
         # get the ms2 peak summary information for this feature
         ms2_peaks_df = pd.read_sql_query("select * from ms2_peaks where feature_id={} order by peak_id ASC".format(feature_id), source_conn)
@@ -128,9 +128,9 @@ def main():
             ms2_peak_id = ms2_peaks_df.loc[ms2_peak_idx].peak_id.astype(int)
 
             # get all the mzs used to create this peak
-            peak_composite_mzs = json.loads(ms2_peaks_df[ms2_peaks_df.peak_id == ms2_peak_id].composite_mzs.item())
-            peak_points = ms2_feature_region_points_df[ms2_feature_region_points_df.scaled_mz.isin(peak_composite_mzs)].sort_values(by=['scan'])
-            # peak_points = ms2_feature_region_points_df[ms2_feature_region_points_df.scaled_mz.isin(peak_composite_mzs)].copy()
+            peak_composite_mzs = pd.Series(json.loads(ms2_peaks_df[ms2_peaks_df.peak_id == ms2_peak_id].composite_mzs.item()))
+            # peak_points = ms2_feature_region_points_df[ms2_feature_region_points_df.scaled_mz.isin(peak_composite_mzs)].sort_values(by=['scan'])
+            peak_points = ms2_feature_region_points_df[ms2_feature_region_points_df.scaled_mz.isin(peak_composite_mzs)].copy()
             peak_points.rename(columns = {'frame_id':'raw_frame_id'}, inplace = True)
             peak_points['retention_time_secs'] = peak_points.raw_frame_id / raw_frame_ids_per_second
             ms2_centroid_scan = peakutils.centroid(peak_points.scan, peak_points.intensity)
