@@ -90,6 +90,10 @@ def main():
     conv_conn = sqlite3.connect(args.converted_database_name)
     conv_c = conv_conn.cursor()
 
+    # remove the destination database if it remains from a previous run - it's faster to recreate it
+    if os.path.isfile(args.destination_database_name):
+        os.remove(args.destination_database_name)
+
     dest_conn = sqlite3.connect(args.destination_database_name)
     dest_c = dest_conn.cursor()
 
