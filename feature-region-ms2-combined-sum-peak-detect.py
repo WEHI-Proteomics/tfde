@@ -169,7 +169,7 @@ def main():
                 ms2_frame_ids += ms2_frame_ids_from_ms1_frame_id(frame_id, args.frames_to_sum, args.frame_summing_offset)
             ms2_frame_ids = tuple(set(ms2_frame_ids))   # remove duplicates
             print("feature ID {} ({}-{}), MS1 frame IDs {}-{}, {} MS2 frames, scans {}-{}".format(feature_id, args.feature_id_lower, args.feature_id_upper, feature_start_frame, feature_end_frame, len(ms2_frame_ids), feature_scan_lower, feature_scan_upper))
-            frame_df = pd.read_sql_query("select frame_id,mz,scan,intensity,point_id from frames where frame_id in {} and scan <= {} and scan >= {} order by scan,mz;".format(ms2_frame_ids, feature_scan_upper, feature_scan_lower), conv_conn)
+            frame_df = pd.read_sql_query("select frame_id,mz,scan,intensity,point_id from frames where frame_id in {} and scan <= {} and scan >= {} and intensity >= 100 order by scan,mz;".format(ms2_frame_ids, feature_scan_upper, feature_scan_lower), conv_conn)
             # scale the m/z values and make them integers
             frame_df['scaled_mz'] = frame_df.mz * args.mz_scaling_factor
             frame_df = frame_df.astype(np.int32)
