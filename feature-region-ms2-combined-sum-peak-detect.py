@@ -225,8 +225,10 @@ def main():
 
                     # for each point in the region, add an entry to the list
                     for scan in scans:
-                        points.append((feature_id, peak_id, point_id, centroid_mz_descaled, min_scan+scan, peak_summed_intensities_by_scan[scan]))
-                        point_id += 1
+                        point_intensity = peak_summed_intensities_by_scan[scan]
+                        if point_intensity > 0:
+                            points.append((feature_id, peak_id, point_id, centroid_mz_descaled, min_scan+scan, point_intensity))
+                            point_id += 1
 
                     # add the peak to the list
                     peaks.append((feature_id, peak_id, centroid_mz_descaled, json.dumps((min_mz+mzs).tolist()), min_scan+centroid_scan, total_peak_intensity))
