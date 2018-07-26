@@ -10,6 +10,7 @@ import sqlite3
 import random
 import json
 from sys import getsizeof
+import os
 
 #
 # For processing all the features in a range...
