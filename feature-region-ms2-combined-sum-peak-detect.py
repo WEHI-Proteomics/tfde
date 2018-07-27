@@ -38,6 +38,8 @@ FRAME_MZ_IDX = 1
 FRAME_SCAN_IDX = 2
 FRAME_INTENSITY_IDX = 3
 
+MINIMUM_SUMMED_POINTS_PER_PEAK = 6
+
 # so we can use profiling without removing @profile
 import __builtin__
 
@@ -224,16 +226,19 @@ def main():
                     centroid_scan = peakutils.centroid(scans, peak_summed_intensities_by_scan)
                     centroid_mz_descaled = float(min_mz + centroid_mz) / args.mz_scaling_factor
 
-                    # for each point in the region, add an entry to the list
-                    for scan in scans:
-                        point_intensity = peak_summed_intensities_by_scan[scan]
-                        if point_intensity > 0:
-                            points.append((feature_id, peak_id, point_id, centroid_mz_descaled, min_scan+scan, point_intensity))
-                            point_id += 1
+                    # for each summed point in the region, add an entry to the list
+                    point_count_for_this_peak = np.count_nonzero(peak_summed_intensities_by_scan)
+                    if point_count_for_this_peak >= MINIMUM_SUMMED_POINTS_PER_PEAK:
+                        # write out the non-zero points for this peak
+                        for scan in scans:
+                            point_intensity = peak_summed_intensities_by_scan[scan]
+                            if point_intensity > 0:
+                                points.append((feature_id, peak_id, point_id, centroid_mz_descaled, min_scan+scan, point_intensity))
+                                point_id += 1
 
-                    # add the peak to the list
-                    peaks.append((feature_id, peak_id, centroid_mz_descaled, json.dumps((min_mz+mzs).tolist()), min_scan+centroid_scan, total_peak_intensity))
-                    peak_id += 1
+                        # add the peak to the list
+                        peaks.append((feature_id, peak_id, centroid_mz_descaled, json.dumps((min_mz+mzs).tolist()), min_scan+centroid_scan, total_peak_intensity))
+                        peak_id += 1
 
                     # flag all the mz points we've processed in this peak
                     summed_intensities_by_mz[mzs] = 0
