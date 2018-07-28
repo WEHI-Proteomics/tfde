@@ -38,7 +38,8 @@ FRAME_MZ_IDX = 1
 FRAME_SCAN_IDX = 2
 FRAME_INTENSITY_IDX = 3
 
-MINIMUM_SUMMED_POINTS_PER_PEAK = 6
+MIN_FEATURE_SCAN_COVERAGE = 0.9
+MIN_FEATURE_FRAME_COVERAGE = 1.0
 
 # so we can use profiling without removing @profile
 import __builtin__
@@ -228,16 +229,19 @@ def main():
                     mzs = np.arange(lower_index, upper_index+1)
 
                     # assess the peak's quality
-                    peak_composite_mzs = (min_mz+mzs).tolist()
-                    points_df = ms2_feature_region_points_df[ms2_feature_region_points_df['scaled_mz'].isin(peak_composite_mzs)]
+                    peak_composite_mzs_min = lower_index + min_mz
+                    peak_composite_mzs_max = upper_index + min_mz
+                    points_df = ms2_feature_region_points_df[(ms2_feature_region_points_df['scaled_mz'] >= peak_composite_mzs_min) & (ms2_feature_region_points_df['scaled_mz'] <= peak_composite_mzs_max)]
                     # number of scans contributing points across all frames
                     peak_number_of_scans = len(points_df.scan.unique())
                     feature_number_of_scans = feature_scan_upper-feature_scan_lower
+                    feature_scan_coverage = float(peak_number_of_scans) / feature_number_of_scans
                     # number of frames contributing points on each scan
                     peak_frame_counts = points_df.groupby(['scan'])['frame_id'].nunique()
                     feature_frame_count = len(ms2_frame_ids)
+                    feature_frame_coverage = float(peak_frame_counts) / feature_frame_count
 
-                    if (peak_number_of_scans >= feature_number_of_scans) and (peak_frame_counts.max() >= feature_frame_count):
+                    if (feature_scan_coverage >= MIN_FEATURE_SCAN_COVERAGE) and (feature_frame_coverage >= MIN_FEATURE_FRAME_COVERAGE):
                         # calculate the peak attributes
                         scans = range(0,subset_frame_a.shape[0])
                         peak_summed_intensities_by_mz = subset_frame_a[:,mzs].sum(axis=0)
