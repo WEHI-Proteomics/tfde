@@ -234,7 +234,7 @@ def main():
                     # number of frames contributing points on each scan
                     peak_frame_counts = points_df.groupby(['scan'])['frame_id'].nunique()
 
-                    if (peak_number_of_scans >= (feature_scan_upper-feature_scan_lower)) and (peak_frame_counts.max() >= ms2_frame_ids):
+                    if (peak_number_of_scans >= (feature_scan_upper-feature_scan_lower)) and (peak_frame_counts.max() >= len(ms2_frame_ids)):
                         # calculate the peak attributes
                         scans = range(0,subset_frame_a.shape[0])
                         peak_summed_intensities_by_mz = subset_frame_a[:,mzs].sum(axis=0)
