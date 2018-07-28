@@ -239,7 +239,7 @@ def main():
                     # number of frames contributing points on each scan
                     peak_frame_counts = points_df.groupby(['scan'])['frame_id'].nunique()
                     feature_frame_count = len(ms2_frame_ids)
-                    feature_frame_coverage = float(peak_frame_counts) / feature_frame_count
+                    feature_frame_coverage = float(peak_frame_counts.max()) / feature_frame_count
 
                     if (feature_scan_coverage >= MIN_FEATURE_SCAN_COVERAGE) and (feature_frame_coverage >= MIN_FEATURE_FRAME_COVERAGE):
                         # calculate the peak attributes
