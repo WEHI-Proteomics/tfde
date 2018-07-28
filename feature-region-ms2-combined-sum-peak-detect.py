@@ -216,6 +216,7 @@ def main():
             else:
                 first_zero_index = len(sorted_mzs)-1
 
+            peak_count = 0
             for mz in sorted_mzs[:first_zero_index]:
                 if (summed_intensities_by_mz[mz] > 0):  # check if we've processed this mz already
                     # calculate the indices for this point's std dev window
@@ -231,10 +232,12 @@ def main():
                     points_df = ms2_feature_region_points_df[ms2_feature_region_points_df['scaled_mz'].isin(peak_composite_mzs)]
                     # number of scans contributing points across all frames
                     peak_number_of_scans = len(points_df.scan.unique())
+                    feature_number_of_scans = feature_scan_upper-feature_scan_lower
                     # number of frames contributing points on each scan
                     peak_frame_counts = points_df.groupby(['scan'])['frame_id'].nunique()
+                    feature_frame_count = len(ms2_frame_ids)
 
-                    if (peak_number_of_scans >= (feature_scan_upper-feature_scan_lower)) and (peak_frame_counts.max() >= len(ms2_frame_ids)):
+                    if (peak_number_of_scans >= feature_number_of_scans) and (peak_frame_counts.max() >= feature_frame_count):
                         # calculate the peak attributes
                         scans = range(0,subset_frame_a.shape[0])
                         peak_summed_intensities_by_mz = subset_frame_a[:,mzs].sum(axis=0)
@@ -255,13 +258,14 @@ def main():
                         # add the peak to the list
                         peaks.append((feature_id, peak_id, centroid_mz_descaled, json.dumps((min_mz+mzs).tolist()), min_scan+centroid_scan, total_peak_intensity))
                         peak_id += 1
+                        peak_count += 1
 
                     # flag all the mz points we've processed in this peak
                     summed_intensities_by_mz[mzs] = 0
 
             feature_stop_time = time.time()
             feature_count += 1
-            print("{} sec for feature {} ({} features completed)".format(feature_stop_time-feature_start_time, feature_id, feature_count))
+            print("{} sec to find {} peaks for feature {} ({} features completed)".format(feature_stop_time-feature_start_time, peak_count, feature_id, feature_count))
             print("")
 
             if (feature_count % args.batch_size) == 0:
