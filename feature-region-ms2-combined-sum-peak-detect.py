@@ -63,6 +63,11 @@ def ms2_frame_ids_from_ms1_frame_id(ms1_frame_id, frames_to_sum, frame_summing_o
     upper_source_frame_index = lower_source_frame_index + frames_to_sum
     return tuple(ms2_frame_ids_v[lower_source_frame_index:upper_source_frame_index,0])
 
+def distinct_frames_and_scans(peak_composite_mzs, ms2_feature_region_points_df):
+    points_df = ms2_feature_region_points_df[ms2_feature_region_points_df['scaled_mz'].isin(peak_composite_mzs)]
+    # number of unique frames contributing points on this scan
+    unique_frames = len(points_df[points_df.scan==112].frame_id.unique())
+
 @profile
 def main():
     global ms2_frame_ids_v
@@ -183,6 +188,8 @@ def main():
             # write out this dataframe for processing in a later step
             frame_df['feature_id'] = feature_id
             frame_df.to_sql(name='ms2_feature_region_points', con=dest_conn, if_exists='append', index=False, chunksize=None)
+            # take a copy for determining quality of candidate peaks
+            ms2_feature_region_points_df = frame_df.copy()
             # sum the intensity for duplicate rows (scan, mz) - from https://stackoverflow.com/questions/29583312/pandas-sum-of-duplicate-attributes
             frame_df['intensity_combined'] = frame_df.groupby(['scan', 'scaled_mz'])['intensity'].transform('sum')
             # drop the duplicate rows
@@ -218,17 +225,26 @@ def main():
 
                     # find the centroid m/z
                     mzs = np.arange(lower_index, upper_index+1)
-                    scans = range(0,subset_frame_a.shape[0])
-                    peak_summed_intensities_by_mz = subset_frame_a[:,mzs].sum(axis=0)
-                    peak_summed_intensities_by_scan = subset_frame_a[:,mzs].sum(axis=1)
-                    total_peak_intensity = peak_summed_intensities_by_mz.sum()  # total intensity of the peak
-                    centroid_mz = peakutils.centroid(mzs, peak_summed_intensities_by_mz)
-                    centroid_scan = peakutils.centroid(scans, peak_summed_intensities_by_scan)
-                    centroid_mz_descaled = float(min_mz + centroid_mz) / args.mz_scaling_factor
 
-                    # for each summed point in the region, add an entry to the list
-                    point_count_for_this_peak = np.count_nonzero(peak_summed_intensities_by_scan)
-                    if point_count_for_this_peak >= MINIMUM_SUMMED_POINTS_PER_PEAK:
+                    # assess the peak's quality
+                    peak_composite_mzs = (min_mz+mzs).tolist()
+                    points_df = ms2_feature_region_points_df[ms2_feature_region_points_df['scaled_mz'].isin(peak_composite_mzs)]
+                    # number of scans contributing points across all frames
+                    peak_number_of_scans = len(points_df.scan.unique())
+                    # number of frames contributing points on each scan
+                    peak_frame_counts = points_df.groupby(['scan'])['frame_id'].nunique()
+
+                    if (peak_number_of_scans >= (feature_scan_upper-feature_scan_lower)) and (peak_frame_counts.max() >= ms2_frame_ids):
+                        # calculate the peak attributes
+                        scans = range(0,subset_frame_a.shape[0])
+                        peak_summed_intensities_by_mz = subset_frame_a[:,mzs].sum(axis=0)
+                        peak_summed_intensities_by_scan = subset_frame_a[:,mzs].sum(axis=1)
+                        total_peak_intensity = peak_summed_intensities_by_mz.sum()  # total intensity of the peak
+                        centroid_mz = peakutils.centroid(mzs, peak_summed_intensities_by_mz)
+                        centroid_scan = peakutils.centroid(scans, peak_summed_intensities_by_scan)
+                        centroid_mz_descaled = float(min_mz + centroid_mz) / args.mz_scaling_factor
+
+                        # for each summed point in the region, add an entry to the list
                         # write out the non-zero points for this peak
                         for scan in scans:
                             point_intensity = peak_summed_intensities_by_scan[scan]
