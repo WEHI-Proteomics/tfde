@@ -117,7 +117,7 @@ def main():
     dest_c.execute("CREATE TABLE summed_ms2_regions_info (item TEXT, value TEXT)")
 
     dest_c.execute("DROP TABLE IF EXISTS ms2_peaks")
-    dest_c.execute("CREATE TABLE ms2_peaks (feature_id INTEGER, peak_id INTEGER, centroid_mz REAL, composite_mzs TEXT, centroid_scan INTEGER, intensity INTEGER, PRIMARY KEY (feature_id, peak_id))")
+    dest_c.execute("CREATE TABLE ms2_peaks (feature_id INTEGER, peak_id INTEGER, centroid_mz REAL, composite_mzs_min INTEGER, composite_mzs_max INTEGER, centroid_scan INTEGER, intensity INTEGER, feature_scan_coverage REAL, feature_frame_coverage REAL, PRIMARY KEY (feature_id, peak_id))")
 
     dest_c.execute("DROP TABLE IF EXISTS ms2_feature_region_points")
 
@@ -241,28 +241,28 @@ def main():
                     feature_frame_count = len(ms2_frame_ids)
                     feature_frame_coverage = float(peak_frame_counts.max()) / feature_frame_count
 
-                    if (feature_scan_coverage >= MIN_FEATURE_SCAN_COVERAGE) and (feature_frame_coverage >= MIN_FEATURE_FRAME_COVERAGE):
-                        # calculate the peak attributes
-                        scans = range(0,subset_frame_a.shape[0])
-                        peak_summed_intensities_by_mz = subset_frame_a[:,mzs].sum(axis=0)
-                        peak_summed_intensities_by_scan = subset_frame_a[:,mzs].sum(axis=1)
-                        total_peak_intensity = peak_summed_intensities_by_mz.sum()  # total intensity of the peak
-                        centroid_mz = peakutils.centroid(mzs, peak_summed_intensities_by_mz)
-                        centroid_scan = peakutils.centroid(scans, peak_summed_intensities_by_scan)
-                        centroid_mz_descaled = float(min_mz + centroid_mz) / args.mz_scaling_factor
+                    # calculate the peak attributes
+                    scans = range(0,subset_frame_a.shape[0])
+                    peak_summed_intensities_by_mz = subset_frame_a[:,mzs].sum(axis=0)
+                    peak_summed_intensities_by_scan = subset_frame_a[:,mzs].sum(axis=1)
+                    total_peak_intensity = peak_summed_intensities_by_mz.sum()  # total intensity of the peak
+                    centroid_mz = peakutils.centroid(mzs, peak_summed_intensities_by_mz)
+                    centroid_scan = peakutils.centroid(scans, peak_summed_intensities_by_scan)
+                    centroid_mz_descaled = float(min_mz + centroid_mz) / args.mz_scaling_factor
 
-                        # for each summed point in the region, add an entry to the list
-                        # write out the non-zero points for this peak
-                        for scan in scans:
-                            point_intensity = peak_summed_intensities_by_scan[scan]
-                            if point_intensity > 0:
-                                points.append((feature_id, peak_id, point_id, centroid_mz_descaled, min_scan+scan, point_intensity))
-                                point_id += 1
+                    # for each summed point in the region, add an entry to the list
+                    # write out the non-zero points for this peak
+                    for scan in scans:
+                        point_intensity = peak_summed_intensities_by_scan[scan]
+                        if point_intensity > 0:
+                            points.append((feature_id, peak_id, point_id, centroid_mz_descaled, min_scan+scan, point_intensity))
+                            point_id += 1
 
-                        # add the peak to the list
-                        peaks.append((feature_id, peak_id, centroid_mz_descaled, json.dumps((min_mz+mzs).tolist()), min_scan+centroid_scan, total_peak_intensity))
-                        peak_id += 1
-                        peak_count += 1
+                    # add the peak to the list
+                    # feature_id INTEGER, peak_id INTEGER, centroid_mz REAL, composite_mzs_min INTEGER, composite_mzs_max INTEGER, centroid_scan INTEGER, intensity INTEGER, feature_scan_coverage REAL, feature_frame_coverage REAL
+                    peaks.append((feature_id, peak_id, centroid_mz_descaled, peak_composite_mzs_min, peak_composite_mzs_max, min_scan+centroid_scan, total_peak_intensity, feature_scan_coverage, feature_frame_coverage))
+                    peak_id += 1
+                    peak_count += 1
 
                     # flag all the mz points we've processed in this peak
                     summed_intensities_by_mz[mzs] = 0
@@ -279,7 +279,8 @@ def main():
                 dest_c.executemany("INSERT INTO summed_ms2_regions (feature_id, peak_id, point_id, mz, scan, intensity) VALUES (?, ?, ?, ?, ?, ?)", points)
                 dest_conn.commit()
                 del points[:]
-                dest_c.executemany("INSERT INTO ms2_peaks (feature_id, peak_id, centroid_mz, composite_mzs, centroid_scan, intensity) VALUES (?, ?, ?, ?, ?, ?)", peaks)
+                #                                          feature_id INTEGER, peak_id INTEGER, centroid_mz REAL, composite_mzs_min INTEGER, composite_mzs_max INTEGER, centroid_scan INTEGER, intensity INTEGER, feature_scan_coverage REAL, feature_frame_coverage REAL
+                dest_c.executemany("INSERT INTO ms2_peaks (feature_id, peak_id, centroid_mz, composite_mzs_min, composite_mzs_max, centroid_scan, intensity, feature_scan_coverage, feature_frame_coverage) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)", peaks)
                 dest_conn.commit()
                 del peaks[:]
 
@@ -289,7 +290,8 @@ def main():
 
         # Store any remaining peaks in the database
         if len(peaks) > 0:
-            dest_c.executemany("INSERT INTO ms2_peaks (feature_id, peak_id, centroid_mz, composite_mzs, centroid_scan, intensity) VALUES (?, ?, ?, ?, ?, ?)", peaks)
+            #                                          feature_id INTEGER, peak_id INTEGER, centroid_mz REAL, composite_mzs_min INTEGER, composite_mzs_max INTEGER, centroid_scan INTEGER, intensity INTEGER, feature_scan_coverage REAL, feature_frame_coverage REAL
+            dest_c.executemany("INSERT INTO ms2_peaks (feature_id, peak_id, centroid_mz, composite_mzs_min, composite_mzs_max, centroid_scan, intensity, feature_scan_coverage, feature_frame_coverage) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)", peaks)
 
         stop_run = time.time()
         print("{} seconds to process run".format(stop_run-start_run))
