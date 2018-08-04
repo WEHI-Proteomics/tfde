@@ -38,9 +38,6 @@ FRAME_MZ_IDX = 1
 FRAME_SCAN_IDX = 2
 FRAME_INTENSITY_IDX = 3
 
-MIN_FEATURE_SCAN_COVERAGE = 0.9
-MIN_FEATURE_FRAME_COVERAGE = 1.0
-
 # so we can use profiling without removing @profile
 import __builtin__
 
@@ -64,11 +61,6 @@ def ms2_frame_ids_from_ms1_frame_id(ms1_frame_id, frames_to_sum, frame_summing_o
     upper_source_frame_index = lower_source_frame_index + frames_to_sum
     return tuple(ms2_frame_ids_v[lower_source_frame_index:upper_source_frame_index,0])
 
-def distinct_frames_and_scans(peak_composite_mzs, ms2_feature_region_points_df):
-    points_df = ms2_feature_region_points_df[ms2_feature_region_points_df['scaled_mz'].isin(peak_composite_mzs)]
-    # number of unique frames contributing points on this scan
-    unique_frames = len(points_df[points_df.scan==112].frame_id.unique())
-
 @profile
 def main():
     global ms2_frame_ids_v
@@ -90,6 +82,7 @@ def main():
     parser.add_argument('-rff','--random_features_file', type=str, help='A text file containing the feature indexes to process.', required=False)
     parser.add_argument('-bs','--batch_size', type=int, default=5000, help='The number of features to be written to the database.', required=False)
     parser.add_argument('-frso','--feature_region_scan_offset', type=int, default=3, help='Cater to the drift offset in ms2 by expanding the feature region scan range.', required=False)
+    parser.add_argument('-mspp','--minimum_summed_points_per_peak', type=int, default=4, help='Minimum number of summed points to form a peak.', required=False)
     args = parser.parse_args()
 
     if (args.random_features_file is not None) and (args.number_of_random_features is not None):
@@ -117,7 +110,7 @@ def main():
     dest_c.execute("CREATE TABLE summed_ms2_regions_info (item TEXT, value TEXT)")
 
     dest_c.execute("DROP TABLE IF EXISTS ms2_peaks")
-    dest_c.execute("CREATE TABLE ms2_peaks (feature_id INTEGER, peak_id INTEGER, centroid_mz REAL, composite_mzs_min INTEGER, composite_mzs_max INTEGER, centroid_scan INTEGER, intensity INTEGER, feature_scan_coverage REAL, feature_frame_coverage REAL, PRIMARY KEY (feature_id, peak_id))")
+    dest_c.execute("CREATE TABLE ms2_peaks (feature_id INTEGER, peak_id INTEGER, centroid_mz REAL, composite_mzs_min INTEGER, composite_mzs_max INTEGER, centroid_scan INTEGER, intensity INTEGER, PRIMARY KEY (feature_id, peak_id))")
 
     dest_c.execute("DROP TABLE IF EXISTS ms2_feature_region_points")
 
@@ -182,7 +175,7 @@ def main():
                 ms2_frame_ids += ms2_frame_ids_from_ms1_frame_id(frame_id, args.frames_to_sum, args.frame_summing_offset)
             ms2_frame_ids = tuple(set(ms2_frame_ids))   # remove duplicates
             print("feature ID {} ({}-{}), MS1 frame IDs {}-{}, {} MS2 frames, scans {}-{}".format(feature_id, args.feature_id_lower, args.feature_id_upper, feature_start_frame, feature_end_frame, len(ms2_frame_ids), feature_scan_lower, feature_scan_upper))
-            frame_df = pd.read_sql_query("select frame_id,mz,scan,intensity,point_id from frames where frame_id in {} and scan <= {} and scan >= {} and intensity >= 100 order by scan,mz;".format(ms2_frame_ids, feature_scan_upper, feature_scan_lower), conv_conn)
+            frame_df = pd.read_sql_query("select frame_id,mz,scan,intensity,point_id from frames where frame_id in {} and scan <= {} and scan >= {} order by scan,mz;".format(ms2_frame_ids, feature_scan_upper, feature_scan_lower), conv_conn)
             # scale the m/z values and make them integers
             frame_df['scaled_mz'] = frame_df.mz * args.mz_scaling_factor
             frame_df = frame_df.astype(np.int32)
@@ -228,20 +221,9 @@ def main():
                     # find the centroid m/z
                     mzs = np.arange(lower_index, upper_index+1)
 
-                    # assess the peak's quality
+                    # calculate the peak attributes
                     peak_composite_mzs_min = lower_index + min_mz
                     peak_composite_mzs_max = upper_index + min_mz
-                    points_df = ms2_feature_region_points_df[(ms2_feature_region_points_df['scaled_mz'] >= peak_composite_mzs_min) & (ms2_feature_region_points_df['scaled_mz'] <= peak_composite_mzs_max)]
-                    # number of scans contributing points across all frames
-                    peak_number_of_scans = len(points_df.scan.unique())
-                    feature_number_of_scans = feature_scan_upper-feature_scan_lower
-                    feature_scan_coverage = float(peak_number_of_scans) / feature_number_of_scans
-                    # number of frames contributing points on each scan
-                    peak_frame_counts = points_df.groupby(['scan'])['frame_id'].nunique()
-                    feature_frame_count = len(ms2_frame_ids)
-                    feature_frame_coverage = float(peak_frame_counts.max()) / feature_frame_count
-
-                    # calculate the peak attributes
                     scans = range(0,subset_frame_a.shape[0])
                     peak_summed_intensities_by_mz = subset_frame_a[:,mzs].sum(axis=0)
                     peak_summed_intensities_by_scan = subset_frame_a[:,mzs].sum(axis=1)
@@ -250,19 +232,21 @@ def main():
                     centroid_scan = peakutils.centroid(scans, peak_summed_intensities_by_scan)
                     centroid_mz_descaled = float(min_mz + centroid_mz) / args.mz_scaling_factor
 
-                    # for each summed point in the region, add an entry to the list
-                    # write out the non-zero points for this peak
-                    for scan in scans:
-                        point_intensity = peak_summed_intensities_by_scan[scan]
-                        if point_intensity > 0:
-                            points.append((feature_id, peak_id, point_id, centroid_mz_descaled, min_scan+scan, point_intensity))
-                            point_id += 1
+                    point_count_for_this_peak = np.count_nonzero(peak_summed_intensities_by_scan)
+                    if point_count_for_this_peak >= args.minimum_summed_points_per_peak:
+                        # for each summed point in the region, add an entry to the list
+                        # write out the non-zero points for this peak
+                        for scan in scans:
+                            point_intensity = peak_summed_intensities_by_scan[scan]
+                            if point_intensity > 0:
+                                points.append((feature_id, peak_id, point_id, centroid_mz_descaled, min_scan+scan, point_intensity))
+                                point_id += 1
 
-                    # add the peak to the list
-                    # feature_id INTEGER, peak_id INTEGER, centroid_mz REAL, composite_mzs_min INTEGER, composite_mzs_max INTEGER, centroid_scan INTEGER, intensity INTEGER, feature_scan_coverage REAL, feature_frame_coverage REAL
-                    peaks.append((feature_id, peak_id, centroid_mz_descaled, peak_composite_mzs_min, peak_composite_mzs_max, min_scan+centroid_scan, total_peak_intensity, feature_scan_coverage, feature_frame_coverage))
-                    peak_id += 1
-                    peak_count += 1
+                        # add the peak to the list
+                        # feature_id INTEGER, peak_id INTEGER, centroid_mz REAL, composite_mzs_min INTEGER, composite_mzs_max INTEGER, centroid_scan INTEGER, intensity INTEGER
+                        peaks.append((feature_id, peak_id, centroid_mz_descaled, peak_composite_mzs_min, peak_composite_mzs_max, min_scan+centroid_scan, total_peak_intensity))
+                        peak_id += 1
+                        peak_count += 1
 
                     # flag all the mz points we've processed in this peak
                     summed_intensities_by_mz[mzs] = 0
@@ -279,8 +263,8 @@ def main():
                 dest_c.executemany("INSERT INTO summed_ms2_regions (feature_id, peak_id, point_id, mz, scan, intensity) VALUES (?, ?, ?, ?, ?, ?)", points)
                 dest_conn.commit()
                 del points[:]
-                #                                          feature_id INTEGER, peak_id INTEGER, centroid_mz REAL, composite_mzs_min INTEGER, composite_mzs_max INTEGER, centroid_scan INTEGER, intensity INTEGER, feature_scan_coverage REAL, feature_frame_coverage REAL
-                dest_c.executemany("INSERT INTO ms2_peaks (feature_id, peak_id, centroid_mz, composite_mzs_min, composite_mzs_max, centroid_scan, intensity, feature_scan_coverage, feature_frame_coverage) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)", peaks)
+                #                                          feature_id INTEGER, peak_id INTEGER, centroid_mz REAL, composite_mzs_min INTEGER, composite_mzs_max INTEGER, centroid_scan INTEGER, intensity INTEGER
+                dest_c.executemany("INSERT INTO ms2_peaks (feature_id, peak_id, centroid_mz, composite_mzs_min, composite_mzs_max, centroid_scan, intensity, feature_scan_coverage, feature_frame_coverage) VALUES (?, ?, ?, ?, ?, ?, ?)", peaks)
                 dest_conn.commit()
                 del peaks[:]
 
@@ -290,8 +274,8 @@ def main():
 
         # Store any remaining peaks in the database
         if len(peaks) > 0:
-            #                                          feature_id INTEGER, peak_id INTEGER, centroid_mz REAL, composite_mzs_min INTEGER, composite_mzs_max INTEGER, centroid_scan INTEGER, intensity INTEGER, feature_scan_coverage REAL, feature_frame_coverage REAL
-            dest_c.executemany("INSERT INTO ms2_peaks (feature_id, peak_id, centroid_mz, composite_mzs_min, composite_mzs_max, centroid_scan, intensity, feature_scan_coverage, feature_frame_coverage) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)", peaks)
+            #                                          feature_id INTEGER, peak_id INTEGER, centroid_mz REAL, composite_mzs_min INTEGER, composite_mzs_max INTEGER, centroid_scan INTEGER, intensity INTEGER
+            dest_c.executemany("INSERT INTO ms2_peaks (feature_id, peak_id, centroid_mz, composite_mzs_min, composite_mzs_max, centroid_scan, intensity, feature_scan_coverage, feature_frame_coverage) VALUES (?, ?, ?, ?, ?, ?, ?)", peaks)
 
         stop_run = time.time()
         print("{} seconds to process run".format(stop_run-start_run))
