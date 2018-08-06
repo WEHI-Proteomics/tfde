@@ -7,9 +7,6 @@
 import pandas as pd
 import sqlite3
 import numpy as np
-import matplotlib.pyplot as plt
-import peakutils
-import json
 import os
 
 
