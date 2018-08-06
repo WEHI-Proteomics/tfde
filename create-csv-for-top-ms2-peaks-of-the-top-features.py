@@ -16,6 +16,11 @@ parser.add_argument('-mnp','--maximum_number_of_peaks_per_feature', type=int, he
 parser.add_argument('-of','--output_filename', type=str, help='The output CSV filename.', required=True)
 args = parser.parse_args()
 
+db_conn = sqlite3.connect(DB_NAME)
+src_c = db_conn.cursor()
+src_c.execute("CREATE INDEX IF NOT EXISTS idx_peak_correlation_1 ON peak_correlation (feature_id, rt_distance, scan_distance)")
+db_conn.close()
+
 db_conn = sqlite3.connect(CONV_DB_NAME)
 top_features_df = pd.read_sql_query("select feature_id from features order by feature_id ASC limit {}".format(args.maximum_number_of_features), db_conn)
 db_conn.close()
