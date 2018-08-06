@@ -13,15 +13,15 @@ parser.add_argument('-mrtd','--maximum_rt_delta_tolerance', type=float, help='Th
 parser.add_argument('-msd','--maximum_scan_delta_tolerance', type=float, help='The maximum scan delta tolerance.', required=True)
 parser.add_argument('-mnf','--maximum_number_of_features', type=int, help='The maximum number of features.', required=True)
 parser.add_argument('-mnp','--maximum_number_of_peaks_per_feature', type=int, help='The maximum number of peaks per feature.', required=True)
+parser.add_argument('-of','--output_filename', type=str, help='The output CSV filename.', required=True)
 
 db_conn = sqlite3.connect(CONV_DB_NAME)
 top_features_df = pd.read_sql_query("select feature_id from features order by feature_id ASC limit {}".format(args.maximum_number_of_features), db_conn)
 db_conn.close()
 
 db_conn = sqlite3.connect(DB_NAME)
-filename = "/home/ubuntu/top_{}_peaks_for_top_{}_features.csv".format(args.maximum_number_of_peaks_per_feature, args.maximum_number_of_features)
-if os.path.isfile(filename):
-    os.remove(filename)
+if os.path.isfile(args.output_filename):
+    os.remove(args.output_filename)
     
 for idx in range(len(top_features_df)):
     feature_id = top_features_df.loc[idx].feature_id
@@ -31,9 +31,9 @@ for idx in range(len(top_features_df)):
     df = pd.merge(df_1, df_2, left_on=['feature_id','peak_id'], right_on=['feature_id','ms2_peak_id'])
     df.drop(['peak_id','correlation'], inplace=True, axis=1)
     # write the CSV
-    if os.path.isfile(filename):
-        df.to_csv(filename, mode='a', sep=',', index=False, header=False)
+    if os.path.isfile(args.output_filename):
+        df.to_csv(args.output_filename, mode='a', sep=',', index=False, header=False)
     else:
-        df.to_csv(filename, mode='a', sep=',', index=False, header=True)
+        df.to_csv(args.output_filename, mode='a', sep=',', index=False, header=True)
 
 db_conn.close()
