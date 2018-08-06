@@ -33,7 +33,7 @@ db_conn.close()
 
 
 db_conn = sqlite3.connect(DB_NAME)
-filename = "~/top_{}_peaks_for_top_{}_features.csv".format(NUMBER_OF_TOP_PEAKS, NUMBER_OF_TOP_FEATURES)
+filename = "/home/ubuntu/top_{}_peaks_for_top_{}_features.csv".format(NUMBER_OF_TOP_PEAKS, NUMBER_OF_TOP_FEATURES)
 if os.path.isfile(filename):
     os.remove(filename)
     
@@ -51,4 +51,3 @@ for idx in range(len(top_features_df)):
         df.to_csv(filename, mode='a', sep=',', index=False, header=True)
 
 db_conn.close()
-
