@@ -14,6 +14,7 @@ parser.add_argument('-msd','--maximum_scan_delta_tolerance', type=float, help='T
 parser.add_argument('-mnf','--maximum_number_of_features', type=int, help='The maximum number of features.', required=True)
 parser.add_argument('-mnp','--maximum_number_of_peaks_per_feature', type=int, help='The maximum number of peaks per feature.', required=True)
 parser.add_argument('-of','--output_filename', type=str, help='The output CSV filename.', required=True)
+args = parser.parse_args()
 
 db_conn = sqlite3.connect(CONV_DB_NAME)
 top_features_df = pd.read_sql_query("select feature_id from features order by feature_id ASC limit {}".format(args.maximum_number_of_features), db_conn)
