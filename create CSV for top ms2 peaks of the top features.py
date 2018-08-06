@@ -20,6 +20,8 @@ CONV_DB_NAME = '/home/ubuntu/UPS2_allion/UPS2_allion.sqlite'
 
 NUMBER_OF_TOP_FEATURES = 1000
 NUMBER_OF_TOP_PEAKS = 1000
+MAX_RT_DISTANCE = 0.1
+MAX_SCAN_DISTANCE = 5
 
 # get the 200 top-matching ms2 peaks for the top 200 features
 db_conn = sqlite3.connect(CONV_DB_NAME)
