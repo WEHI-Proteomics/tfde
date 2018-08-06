@@ -1,47 +1,33 @@
-
-# coding: utf-8
-
-# In[ ]:
-
-
 import pandas as pd
 import sqlite3
 import numpy as np
 import os
-
+import argparse
 
 # Write out the top peaks for the top features
-
-# In[ ]:
-
-
 DB_NAME = '/home/ubuntu/UPS2_allion/UPS2_allion-features-1-1097.sqlite'
 CONV_DB_NAME = '/home/ubuntu/UPS2_allion/UPS2_allion.sqlite'
 
-NUMBER_OF_TOP_FEATURES = 1000
-NUMBER_OF_TOP_PEAKS = 1000
-MAX_RT_DISTANCE = 0.1
-MAX_SCAN_DISTANCE = 5
+parser = argparse.ArgumentParser(description='Extract a CSV containing the top ms2 peaks for the top features.')
+parser.add_argument('-mrtd','--maximum_rt_delta_tolerance', type=float, help='The maximum RT delta tolerance.', required=True)
+parser.add_argument('-msd','--maximum_scan_delta_tolerance', type=float, help='The maximum scan delta tolerance.', required=True)
+parser.add_argument('-mnf','--maximum_number_of_features', type=int, help='The maximum number of features.', required=True)
+parser.add_argument('-mnp','--maximum_number_of_peaks_per_feature', type=int, help='The maximum number of peaks per feature.', required=True)
 
-# get the 200 top-matching ms2 peaks for the top 200 features
 db_conn = sqlite3.connect(CONV_DB_NAME)
-top_features_df = pd.read_sql_query("select feature_id from features order by feature_id ASC limit {}".format(NUMBER_OF_TOP_FEATURES), db_conn)
+top_features_df = pd.read_sql_query("select feature_id from features order by feature_id ASC limit {}".format(args.maximum_number_of_features), db_conn)
 db_conn.close()
 
-
-# In[ ]:
-
-
 db_conn = sqlite3.connect(DB_NAME)
-filename = "/home/ubuntu/top_{}_peaks_for_top_{}_features.csv".format(NUMBER_OF_TOP_PEAKS, NUMBER_OF_TOP_FEATURES)
+filename = "/home/ubuntu/top_{}_peaks_for_top_{}_features.csv".format(args.maximum_number_of_peaks_per_feature, args.maximum_number_of_features)
 if os.path.isfile(filename):
     os.remove(filename)
     
 for idx in range(len(top_features_df)):
     feature_id = top_features_df.loc[idx].feature_id
     print("feature ID {}".format(feature_id))
-    df_1 = pd.read_sql_query("select feature_id,peak_id,centroid_mz from ms2_peaks where feature_id || '-' || peak_id in (select feature_id || '-' || ms2_peak_id from peak_correlation where feature_id == {} and abs(rt_distance) <= {} and abs(scan_distance) <= {} order by ms2_peak_id limit {})".format(feature_id, MAX_RT_DISTANCE, MAX_SCAN_DISTANCE, NUMBER_OF_TOP_PEAKS), db_conn)
-    df_2 = pd.read_sql_query("select * from peak_correlation where feature_id=={} and abs(rt_distance) <= {} and abs(scan_distance) <= {} order by ms2_peak_id limit {}".format(feature_id, MAX_RT_DISTANCE, MAX_SCAN_DISTANCE, NUMBER_OF_TOP_PEAKS), db_conn)
+    df_1 = pd.read_sql_query("select feature_id,peak_id,centroid_mz from ms2_peaks where feature_id || '-' || peak_id in (select feature_id || '-' || ms2_peak_id from peak_correlation where feature_id == {} and abs(rt_distance) <= {} and abs(scan_distance) <= {} order by ms2_peak_id limit {})".format(feature_id, args.maximum_rt_delta_tolerance, args.maximum_scan_delta_tolerance, args.maximum_number_of_peaks_per_feature), db_conn)
+    df_2 = pd.read_sql_query("select * from peak_correlation where feature_id=={} and abs(rt_distance) <= {} and abs(scan_distance) <= {} order by ms2_peak_id limit {}".format(feature_id, args.maximum_rt_delta_tolerance, args.maximum_scan_delta_tolerance, args.maximum_number_of_peaks_per_feature), db_conn)
     df = pd.merge(df_1, df_2, left_on=['feature_id','peak_id'], right_on=['feature_id','ms2_peak_id'])
     df.drop(['peak_id','correlation'], inplace=True, axis=1)
     # write the CSV
