@@ -28,11 +28,11 @@ db_conn.close()
 db_conn = sqlite3.connect(DB_NAME)
 if os.path.isfile(args.output_filename):
     os.remove(args.output_filename)
-    
+
 for idx in range(len(top_features_df)):
     feature_id = top_features_df.loc[idx].feature_id
     print("feature ID {}".format(feature_id))
-    df_1 = pd.read_sql_query("select feature_id,peak_id,centroid_mz from ms2_peaks where feature_id || '-' || peak_id in (select feature_id || '-' || ms2_peak_id from peak_correlation where feature_id == {} and abs(rt_distance) <= {} and abs(scan_distance) <= {} order by ms2_peak_id limit {})".format(feature_id, args.maximum_rt_delta_tolerance, args.maximum_scan_delta_tolerance, args.maximum_number_of_peaks_per_feature), db_conn)
+    df_1 = pd.read_sql_query("select feature_id,peak_id,centroid_mz,intensity from ms2_peaks where feature_id || '-' || peak_id in (select feature_id || '-' || ms2_peak_id from peak_correlation where feature_id == {} and abs(rt_distance) <= {} and abs(scan_distance) <= {} order by ms2_peak_id limit {})".format(feature_id, args.maximum_rt_delta_tolerance, args.maximum_scan_delta_tolerance, args.maximum_number_of_peaks_per_feature), db_conn)
     df_2 = pd.read_sql_query("select * from peak_correlation where feature_id=={} and abs(rt_distance) <= {} and abs(scan_distance) <= {} order by ms2_peak_id limit {}".format(feature_id, args.maximum_rt_delta_tolerance, args.maximum_scan_delta_tolerance, args.maximum_number_of_peaks_per_feature), db_conn)
     df = pd.merge(df_1, df_2, left_on=['feature_id','peak_id'], right_on=['feature_id','ms2_peak_id'])
     df.drop(['peak_id','correlation'], inplace=True, axis=1)
