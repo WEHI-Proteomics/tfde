@@ -11,17 +11,12 @@ import glob
 
 parser = argparse.ArgumentParser(description='Extract a CSV containing the top ms2 peaks for the top features.')
 parser.add_argument('-db','--database_name', type=str, help='The name of the source database.', required=True)
-parser.add_argument('-cdb','--converted_database_name', type=str, help='The name of the converted database.', required=True)
 parser.add_argument('-nrtd','--negative_rt_delta_tolerance', type=float, help='The negative RT delta tolerance.', required=True)
 parser.add_argument('-prtd','--positive_rt_delta_tolerance', type=float, help='The positive RT delta tolerance.', required=True)
 parser.add_argument('-nsd','--negative_scan_delta_tolerance', type=float, help='The negative scan delta tolerance.', required=True)
 parser.add_argument('-psd','--positive_scan_delta_tolerance', type=float, help='The positive scan delta tolerance.', required=True)
 parser.add_argument('-mnp','--maximum_number_of_peaks_per_feature', type=int, help='The maximum number of peaks per feature.', required=True)
 args = parser.parse_args()
-
-db_conn = sqlite3.connect(args.converted_database_name)
-features_df = pd.read_sql_query("select feature_id from features order by feature_id ASC", db_conn)
-db_conn.close()
 
 print("processing {}".format(args.database_name))
 db_conn = sqlite3.connect(args.database_name)
@@ -30,6 +25,7 @@ src_c.execute("CREATE INDEX IF NOT EXISTS idx_peak_correlation_1 ON peak_correla
 
 output_filename = "{}-nrtd-{}-prtd-{}-nsd-{}-psd-{}-mnp-{}.csv".format(args.database_name.split(".sqlite")[0], args.negative_rt_delta_tolerance, args.positive_rt_delta_tolerance, args.negative_scan_delta_tolerance, args.positive_scan_delta_tolerance, args.maximum_number_of_peaks_per_feature)
 
+features_df = pd.read_sql_query("select distinct(feature_id) from peak_correlation order by feature_id ASC", db_conn)
 for idx in range(len(features_df)):
     feature_id = features_df.loc[idx].feature_id
     print("feature ID {}".format(feature_id), end="")
