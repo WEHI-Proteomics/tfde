@@ -14,7 +14,6 @@ parser.add_argument('-nrtd','--negative_rt_delta_tolerance', type=float, help='T
 parser.add_argument('-prtd','--positive_rt_delta_tolerance', type=float, help='The positive RT delta tolerance.', required=True)
 parser.add_argument('-nsd','--negative_scan_delta_tolerance', type=float, help='The negative scan delta tolerance.', required=True)
 parser.add_argument('-psd','--positive_scan_delta_tolerance', type=float, help='The positive scan delta tolerance.', required=True)
-parser.add_argument('-mnf','--maximum_number_of_features', type=int, help='The maximum number of features.', required=True)
 parser.add_argument('-mnp','--maximum_number_of_peaks_per_feature', type=int, help='The maximum number of peaks per feature.', required=True)
 parser.add_argument('-of','--output_filename', type=str, help='The output CSV filename.', required=True)
 args = parser.parse_args()
@@ -25,15 +24,15 @@ src_c.execute("CREATE INDEX IF NOT EXISTS idx_peak_correlation_1 ON peak_correla
 db_conn.close()
 
 db_conn = sqlite3.connect(args.converted_database_name)
-top_features_df = pd.read_sql_query("select feature_id from features order by feature_id ASC limit {}".format(args.maximum_number_of_features), db_conn)
+features_df = pd.read_sql_query("select feature_id from features order by feature_id ASC", db_conn)
 db_conn.close()
 
 db_conn = sqlite3.connect(args.database_name)
 if os.path.isfile(args.output_filename):
     os.remove(args.output_filename)
 
-for idx in range(len(top_features_df)):
-    feature_id = top_features_df.loc[idx].feature_id
+for idx in range(len(features_df)):
+    feature_id = features_df.loc[idx].feature_id
     print("feature ID {}".format(feature_id), end="")
     peak_correlation_df = pd.read_sql_query("select * from peak_correlation where feature_id=={} and rt_distance >= {} and rt_distance <= {} and scan_distance >= {} and scan_distance <= {} order by rt_distance ASC limit {}".format(feature_id, args.negative_rt_delta_tolerance, args.positive_rt_delta_tolerance, args.negative_scan_delta_tolerance, args.positive_scan_delta_tolerance, args.maximum_number_of_peaks_per_feature), db_conn)
     peak_correlation_df["feature_id-ms2_peak_id"] = peak_correlation_df.feature_id.astype(str) + '-' + peak_correlation_df.ms2_peak_id.astype(str)
