@@ -6,10 +6,10 @@ import os
 import argparse
 
 # Write out the top peaks for the top features
-DB_NAME = '/home/ubuntu/UPS2_allion/UPS2_allion-features-1-1097.sqlite'
-CONV_DB_NAME = '/home/ubuntu/UPS2_allion/UPS2_allion.sqlite'
 
 parser = argparse.ArgumentParser(description='Extract a CSV containing the top ms2 peaks for the top features.')
+parser.add_argument('-cdb','--converted_database_name', type=str, help='The name of the converted database.', required=True)
+parser.add_argument('-db','--database_name', type=str, help='The name of the database.', required=True)
 parser.add_argument('-nrtd','--negative_rt_delta_tolerance', type=float, help='The negative RT delta tolerance.', required=True)
 parser.add_argument('-prtd','--positive_rt_delta_tolerance', type=float, help='The positive RT delta tolerance.', required=True)
 parser.add_argument('-nsd','--negative_scan_delta_tolerance', type=float, help='The negative scan delta tolerance.', required=True)
@@ -19,16 +19,16 @@ parser.add_argument('-mnp','--maximum_number_of_peaks_per_feature', type=int, he
 parser.add_argument('-of','--output_filename', type=str, help='The output CSV filename.', required=True)
 args = parser.parse_args()
 
-db_conn = sqlite3.connect(DB_NAME)
+db_conn = sqlite3.connect(args.database_name)
 src_c = db_conn.cursor()
 src_c.execute("CREATE INDEX IF NOT EXISTS idx_peak_correlation_1 ON peak_correlation (feature_id, rt_distance, scan_distance)")
 db_conn.close()
 
-db_conn = sqlite3.connect(CONV_DB_NAME)
+db_conn = sqlite3.connect(args.converted_database_name)
 top_features_df = pd.read_sql_query("select feature_id from features order by feature_id ASC limit {}".format(args.maximum_number_of_features), db_conn)
 db_conn.close()
 
-db_conn = sqlite3.connect(DB_NAME)
+db_conn = sqlite3.connect(args.database_name)
 if os.path.isfile(args.output_filename):
     os.remove(args.output_filename)
 
