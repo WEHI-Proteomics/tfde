@@ -454,39 +454,21 @@ if process_this_step(this_step='deconvolve_ms2_spectra', first_step=args.operati
         print("Not continuing to the next step - exiting")
         sys.exit(0)
 
-########################################
-# OPERATION: recombine_feature_databases
-########################################
-if process_this_step(this_step='recombine_feature_databases', first_step=args.operation):
-    print("Starting the \'recombine_feature_databases\' step")
-    # recombine the feature range databases back into a combined database
-    recombine_feature_databases_start_time = time.time()
-    table_exceptions = []
-    template_feature_range = feature_ranges[0]
-    template_db_name = "{}-{}-{}.sqlite".format(feature_database_root, template_feature_range[0], template_feature_range[1])
-    merge_summed_regions_prep(template_db_name, feature_database_name, exceptions=table_exceptions)
-    for feature_range in feature_ranges:
-        source_db_name = "{}-{}-{}.sqlite".format(feature_database_root, feature_range[0], feature_range[1])
-        print("merging {} into {}".format(source_db_name, feature_database_name))
-        merge_summed_regions(source_db_name, feature_database_name, exceptions=table_exceptions)
-    recombine_feature_databases_stop_time = time.time()
-    processing_times.append(("feature recombine", recombine_feature_databases_stop_time-recombine_feature_databases_start_time))
-
-    if not continue_processing(this_step='recombine_feature_databases', final_step=args.final_operation):
-        print("Not continuing to the next step - exiting")
-        sys.exit(0)
-
 ##############################
 # OPERATION: create_search_mgf
 ##############################
 if process_this_step(this_step='create_search_mgf', first_step=args.operation):
     print("Starting the \'create_search_mgf\' step")
-    create_search_mgf_process = "python -u ./otf-peak-detect/create-search-mgf.py -fdb '{}' -bfn {} -dbd {} -mpc {}".format(feature_database_name, args.database_base_name, args.data_directory, args.minimum_peak_correlation)
+    create_search_mgf_processes = []
+    for feature_range in feature_ranges:
+        destination_db_name = "{}-{}-{}.sqlite".format(feature_database_root, feature_range[0], feature_range[1])
+        base_mgf_name = "features-{}-{}".format(feature_range[0], feature_range[1])
+        create_search_mgf_processes.append("python -u ./otf-peak-detect/create-search-mgf.py -fdb '{}' -bfn {} -dbd {}".format(destination_db_name, base_mgf_name, args.data_directory))
 
     # create search MGF
     create_search_mgf_start_time = time.time()
     print("creating the search MGF...")
-    run_process(create_search_mgf_process)
+    pool.map(run_process, create_search_mgf_processes)
     create_search_mgf_stop_time = time.time()
     processing_times.append(("create search mgf", create_search_mgf_stop_time-create_search_mgf_stop_time))
 

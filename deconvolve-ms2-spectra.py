@@ -24,6 +24,11 @@ parser.add_argument('-bfn','--base_mgf_filename', type=str, help='The base name 
 parser.add_argument('-dbd','--data_directory', type=str, help='The directory for the processing data.', required=True)
 parser.add_argument('-mpc','--minimum_peak_correlation', type=float, default=0.6, help='Process ms2 peaks with at least this much correlation with the feature''s ms1 base peak.', required=False)
 parser.add_argument('-fps','--frames_per_second', type=float, help='Effective frame rate.', required=True)
+parser.add_argument('-nrtd','--negative_rt_delta_tolerance', type=float, default=-0.25, help='The negative RT delta tolerance.', required=False)
+parser.add_argument('-prtd','--positive_rt_delta_tolerance', type=float, default=0.25, help='The positive RT delta tolerance.', required=False)
+parser.add_argument('-nsd','--negative_scan_delta_tolerance', type=float, default=-4.0, help='The negative scan delta tolerance.', required=False)
+parser.add_argument('-psd','--positive_scan_delta_tolerance', type=float, default=0.1, help='The positive scan delta tolerance.', required=False)
+parser.add_argument('-mnp','--maximum_number_of_peaks_per_feature', type=int, default=500, help='The maximum number of peaks per feature.', required=False)
 args = parser.parse_args()
 
 mgf_directory = "{}/mgf".format(args.data_directory)
@@ -136,6 +141,7 @@ def peak_ratio(monoisotopic_mass, peak_number, number_of_sulphur):
 print("Setting up indexes")
 db_conn = sqlite3.connect(args.feature_region_database)
 db_conn.cursor().execute("CREATE INDEX IF NOT EXISTS idx_peak_correlation_1 ON peak_correlation (feature_id)")
+db_conn.cursor().execute("CREATE INDEX IF NOT EXISTS idx_peak_correlation_2 ON peak_correlation (feature_id, rt_distance, scan_distance)")
 
 db_conn.cursor().execute("DROP TABLE IF EXISTS feature_isotopes")
 db_conn.cursor().execute("DROP TABLE IF EXISTS feature_list")
@@ -167,8 +173,12 @@ for feature_ids_idx in range(0,len(feature_ids_df)):
     db_conn.close()
 
     db_conn = sqlite3.connect(args.feature_region_database)
+    # get the ms1 peaks
     peaks_df = pd.read_sql_query("select * from summed_ms1_regions where feature_id = {} order by peak_id".format(feature_id), db_conn)
-    ms2_peaks_df = pd.read_sql_query("select * from ms2_peaks where (feature_id,peak_id) in (select feature_id,ms2_peak_id from peak_correlation where feature_id={} and correlation > {})".format(feature_id, args.minimum_peak_correlation), db_conn)
+    # get the ms2 peaks
+    peak_correlation_df = pd.read_sql_query("select * from peak_correlation where feature_id=={} and rt_distance >= {} and rt_distance <= {} and scan_distance >= {} and scan_distance <= {} order by abs(rt_distance) ASC limit {}".format(feature_id, args.negative_rt_delta_tolerance, args.positive_rt_delta_tolerance, args.negative_scan_delta_tolerance, args.positive_scan_delta_tolerance, args.maximum_number_of_peaks_per_feature), db_conn)
+    peak_correlation_df["feature_id-ms2_peak_id"] = peak_correlation_df.feature_id.astype(str) + '-' + peak_correlation_df.ms2_peak_id.astype(str)
+    ms2_peaks_df = pd.read_sql_query("select feature_id,peak_id,centroid_mz,intensity from ms2_peaks where feature_id || '-' || peak_id in {}".format(tuple(peak_correlation_df["feature_id-ms2_peak_id"])), db_conn)
     db_conn.close()
 
     mzs = peaks_df.groupby('peak_id').apply(wavg, "mz", "intensity").reset_index(name='mz_centroid')
