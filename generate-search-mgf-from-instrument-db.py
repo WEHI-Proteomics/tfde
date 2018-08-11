@@ -97,7 +97,6 @@ parser.add_argument('-dbn','--database_base_name', type=str, help='The base name
 parser.add_argument('-fts','--frames_to_sum', type=int, help='The number of MS1 source frames to sum.', required=True)
 parser.add_argument('-fso','--frame_summing_offset', type=int, help='The number of MS1 source frames to shift for each summation.', required=True)
 parser.add_argument('-cems1','--ms1_collision_energy', type=int, help='Collision energy for ms1, in eV.', required=True)
-parser.add_argument('-mpc','--minimum_peak_correlation', type=float, help='Minimum peak correlation', required=True)
 parser.add_argument('-op','--operation', type=str, default='all', help='The operation to perform.', required=False)
 parser.add_argument('-fop','--final_operation', type=str, help='The final operation to perform.', required=False)
 parser.add_argument('-sd','--shutdown_on_completion', action='store_true', help='Shut down the instance when complete.')
@@ -441,7 +440,7 @@ if process_this_step(this_step='deconvolve_ms2_spectra', first_step=args.operati
     deconvolve_ms2_spectra_processes = []
     for feature_range in feature_ranges:
         destination_db_name = "{}-{}-{}.sqlite".format(feature_database_root, feature_range[0], feature_range[1])
-        deconvolve_ms2_spectra_processes.append("python -u ./otf-peak-detect/deconvolve-ms2-spectra.py -fdb '{}' -frdb '{}' -bfn {} -dbd {} -mpc {} -fps {}".format(feature_database_name, destination_db_name, args.database_base_name, args.data_directory, args.minimum_peak_correlation, frames_per_second))
+        deconvolve_ms2_spectra_processes.append("python -u ./otf-peak-detect/deconvolve-ms2-spectra.py -fdb '{}' -frdb '{}' -bfn {} -dbd {} -fps {}".format(feature_database_name, destination_db_name, args.database_base_name, args.data_directory, frames_per_second))
 
     # deconvolve the ms2 spectra with Hardklor
     deconvolve_ms2_spectra_start_time = time.time()
