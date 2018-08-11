@@ -29,8 +29,6 @@ src_c = db_conn.cursor()
 src_c.execute("CREATE INDEX IF NOT EXISTS idx_peak_correlation_1 ON peak_correlation (feature_id, rt_distance, scan_distance)")
 
 output_filename = "{}-nrtd-{}-prtd-{}-nsd-{}-psd-{}-mnp-{}.csv".format(args.database_name.split(".sqlite")[0], args.negative_rt_delta_tolerance, args.positive_rt_delta_tolerance, args.negative_scan_delta_tolerance, args.positive_scan_delta_tolerance, args.maximum_number_of_peaks_per_feature)
-if os.path.isfile(output_filename):
-    os.remove(output_filename)
 
 for idx in range(len(features_df)):
     feature_id = features_df.loc[idx].feature_id
@@ -43,9 +41,9 @@ for idx in range(len(features_df)):
     df.rename(columns={'intensity': 'ms2_peak_intensity', 'rt_distance': 'rt_delta', 'scan_distance': 'scan_delta', 'centroid_mz': 'ms2_peak_centroid_mz'}, inplace=True)
     print(" - {} ms2 peaks".format(len(df)))
     # write the CSV
-    if os.path.isfile(output_filename):
-        df.to_csv(output_filename, mode='a', sep=',', index=False, header=False)
+    if idx == 0:
+        df.to_csv(output_filename, mode='w', sep=',', index=False, header=True)
     else:
-        df.to_csv(output_filename, mode='a', sep=',', index=False, header=True)
+        df.to_csv(output_filename, mode='a', sep=',', index=False, header=False)
 
 db_conn.close()
