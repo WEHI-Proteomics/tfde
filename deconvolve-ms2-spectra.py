@@ -219,6 +219,7 @@ for feature_ids_idx in range(0,len(feature_ids_df)):
         base_peak_index = len(cluster_df)-1
         print("dodgy cluster for this feature")
 
+    updated_min_error = False
     for test_mono_index in range(0,base_peak_index+1):  # consider moving it up to the base peak (but not beyond)
         test_monoisotopic_mass = (cluster_df.loc[test_mono_index].mz_centroid - PROTON_MASS) * charge_state
         for sulphur in range(0,MAX_NUMBER_OF_SULPHUR_ATOMS):
@@ -233,6 +234,12 @@ for feature_ids_idx in range(0,len(feature_ids_df)):
                     minimum_error = error
                     minimum_error_sulphur = sulphur
                     minimum_error_mono_index = test_mono_index
+                    updated_min_error = True
+
+    if updated_min_error:
+        error_as_string = "{:.2f}".format(minimum_error)
+    else:
+        error_as_string = "None"
 
     cluster_df['mz_mod'] = cluster_df.mz_centroid - ((cluster_df.peak_id-1)*expected_spacing)
     cluster_df['feature_id'] = feature_id
@@ -264,7 +271,7 @@ for feature_ids_idx in range(0,len(feature_ids_df)):
     spectrum["m/z array"] = pairs_df.centroid_mz.values
     spectrum["intensity array"] = pairs_df.intensity.values
     params = {}
-    params["TITLE"] = "{}, {}, {}, {:.2f}, {}".format(feature_id, args.base_mgf_filename, args.minimum_peak_correlation, minimum_error, minimum_error_sulphur)
+    params["TITLE"] = "{}, {}, {}, {}, {}".format(feature_id, args.base_mgf_filename, args.minimum_peak_correlation, error_as_string, minimum_error_sulphur)
     params["INSTRUMENT"] = "ESI-QUAD-TOF"
     params["PEPMASS"] = "{} {}".format(round(cluster_mz_centroid,6), cluster_summed_intensity)
     params["CHARGE"] = "{}+".format(charge_state)
