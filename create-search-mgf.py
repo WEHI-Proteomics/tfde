@@ -13,6 +13,7 @@ parser = argparse.ArgumentParser(description='A tree descent method for MS2 peak
 parser.add_argument('-fdb','--features_database', type=str, help='The name of the features database.', required=True)
 parser.add_argument('-bfn','--base_mgf_filename', type=str, help='The base name of the MGF.', required=True)
 parser.add_argument('-dbd','--data_directory', type=str, help='The directory for the processing data.', required=True)
+parser.add_argument('-mpc','--minimum_peak_correlation', type=float, default=0.6, help='Process ms2 peaks with at least this much correlation with the feature''s ms1 base peak.', required=False)
 args = parser.parse_args()
 
 mgf_directory = "{}/mgf".format(args.data_directory)
@@ -20,21 +21,14 @@ hk_directory = "{}/hk".format(args.data_directory)
 search_headers_directory = "{}/search-headers".format(args.data_directory)
 output_directory = "{}/search".format(mgf_directory)
 
-# make sure the output directory exist
-if not os.path.exists(mgf_directory):
-    os.makedirs(mgf_directory)    
-if not os.path.exists(hk_directory):
-    os.makedirs(hk_directory)    
-if not os.path.exists(search_headers_directory):
-    os.makedirs(search_headers_directory)    
+# make sure the output directory exists
 if not os.path.exists(output_directory):
     os.makedirs(output_directory)    
 
 print("Setting up tables and indexes")
 db_conn = sqlite3.connect(args.features_database)
-# db_conn.cursor().execute("DROP TABLE IF EXISTS deconvoluted_ions")
-db_conn.cursor().execute("CREATE TABLE IF NOT EXISTS deconvoluted_ions (feature_id INTEGER, minimum_correlation REAL, ion_id INTEGER, mz REAL, intensity INTEGER, PRIMARY KEY (feature_id, minimum_correlation, ion_id))")
-db_conn.cursor().execute("delete from deconvoluted_ions where minimum_correlation={}".format(args.minimum_peak_correlation))
+db_conn.cursor().execute("DROP TABLE IF EXISTS deconvoluted_ions")
+db_conn.cursor().execute("CREATE TABLE deconvoluted_ions (feature_id INTEGER, ion_id INTEGER, mz REAL, intensity INTEGER, PRIMARY KEY (feature_id, ion_id))")
 db_conn.commit()
 db_conn.close()
 
