@@ -68,7 +68,7 @@ for feature_ids_idx in range(0,len(feature_ids_df)):
             index, data = row
             fragments.append("{} {}\n".format(round(data.monoisotopic_mass,4), data.intensity.astype(int)))
             ion_id += 1
-            deconvoluted_ions.append((int(feature_id), float(args.minimum_peak_correlation), int(ion_id), round(data.monoisotopic_mass,4), int(data.intensity)))
+            deconvoluted_ions.append((int(feature_id), int(ion_id), round(data.monoisotopic_mass,4), int(data.intensity)))
 
         with open(mgf_filename, 'a') as file_handler:
             # write the header
@@ -85,6 +85,6 @@ print("writing out the search MGF to {}".format(mgf_filename))
 
 # store the deconvoluted ions in the database
 db_conn = sqlite3.connect(args.features_database)
-db_conn.cursor().executemany("INSERT INTO deconvoluted_ions (feature_id, minimum_correlation, ion_id, mz, intensity) VALUES (?, ?, ?, ?, ?)", deconvoluted_ions)
+db_conn.cursor().executemany("INSERT INTO deconvoluted_ions (feature_id, ion_id, mz, intensity) VALUES (?, ?, ?, ?)", deconvoluted_ions)
 db_conn.commit()
 db_conn.close()
