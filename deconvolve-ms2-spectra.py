@@ -178,6 +178,9 @@ for feature_ids_idx in range(0,len(feature_ids_df)):
     # get the ms2 peaks
     peak_correlation_df = pd.read_sql_query("select * from peak_correlation where feature_id=={} and rt_distance >= {} and rt_distance <= {} and scan_distance >= {} and scan_distance <= {} order by abs(rt_distance) ASC limit {}".format(feature_id, args.negative_rt_delta_tolerance, args.positive_rt_delta_tolerance, args.negative_scan_delta_tolerance, args.positive_scan_delta_tolerance, args.maximum_number_of_peaks_per_feature), db_conn)
     peak_correlation_df["feature_id-ms2_peak_id"] = peak_correlation_df.feature_id.astype(str) + '-' + peak_correlation_df.ms2_peak_id.astype(str)
+    # a bit of a hack to avoid the single-element tuple with trailing comma upsetting the SQL query
+    if len(peak_correlation_df) == 1:
+        peak_correlation_df = peak_correlation_df.append(peak_correlation_df)
     ms2_peaks_df = pd.read_sql_query("select feature_id,peak_id,centroid_mz,intensity from ms2_peaks where feature_id || '-' || peak_id in {}".format(tuple(peak_correlation_df["feature_id-ms2_peak_id"])), db_conn)
     db_conn.close()
 
@@ -261,7 +264,7 @@ for feature_ids_idx in range(0,len(feature_ids_df)):
     spectrum["m/z array"] = pairs_df.centroid_mz.values
     spectrum["intensity array"] = pairs_df.intensity.values
     params = {}
-    params["TITLE"] = "feature {}, file {}, correlation {}, model error {:.2f}, sulphurs {}".format(feature_id, args.base_mgf_filename, args.minimum_peak_correlation, minimum_error, minimum_error_sulphur)
+    params["TITLE"] = "{}, {}, {}, {:.2f}, {}".format(feature_id, args.base_mgf_filename, args.minimum_peak_correlation, minimum_error, minimum_error_sulphur)
     params["INSTRUMENT"] = "ESI-QUAD-TOF"
     params["PEPMASS"] = "{} {}".format(round(cluster_mz_centroid,6), cluster_summed_intensity)
     params["CHARGE"] = "{}+".format(charge_state)
