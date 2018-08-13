@@ -111,6 +111,7 @@ parser.add_argument('-crt','--correlation_rt_tolerance', type=int, help='RT dist
 parser.add_argument('-mzsf','--ms2_mz_scaling_factor', type=float, default=1000.0, help='Scaling factor to convert m/z range to integers in ms2.', required=False)
 parser.add_argument('-frts','--frame_tasks', type=int, default=1000, help='Number of worker tasks for frames.', required=False)
 parser.add_argument('-fets','--feature_tasks', type=int, default=1000, help='Number of worker tasks for features.', required=False)
+parser.add_argument('-mnp','--maximum_number_of_peaks_per_feature', type=int, default=500, help='The maximum number of peaks per feature.', required=False)
 args = parser.parse_args()
 
 processing_times = []
@@ -440,7 +441,7 @@ if process_this_step(this_step='deconvolve_ms2_spectra', first_step=args.operati
     deconvolve_ms2_spectra_processes = []
     for feature_range in feature_ranges:
         destination_db_name = "{}-{}-{}.sqlite".format(feature_database_root, feature_range[0], feature_range[1])
-        deconvolve_ms2_spectra_processes.append("python -u ./otf-peak-detect/deconvolve-ms2-spectra.py -fdb '{}' -frdb '{}' -bfn {} -dbd {} -fps {}".format(feature_database_name, destination_db_name, args.database_base_name, args.data_directory, frames_per_second))
+        deconvolve_ms2_spectra_processes.append("python -u ./otf-peak-detect/deconvolve-ms2-spectra.py -fdb '{}' -frdb '{}' -bfn {} -dbd {} -fps {} -mnp {}".format(feature_database_name, destination_db_name, args.database_base_name, args.data_directory, frames_per_second, args.maximum_number_of_peaks_per_feature))
 
     # deconvolve the ms2 spectra with Hardklor
     deconvolve_ms2_spectra_start_time = time.time()
