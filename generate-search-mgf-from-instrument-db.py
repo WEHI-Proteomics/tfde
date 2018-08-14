@@ -469,6 +469,18 @@ if process_this_step(this_step='create_search_mgf', first_step=args.operation):
     create_search_mgf_start_time = time.time()
     print("creating the search MGF...")
     pool.map(run_process, create_search_mgf_processes)
+    # now join them all together
+    mgf_directory = "{}/mgf".format(args.data_directory)
+    hk_directory = "{}/hk".format(args.data_directory)
+    search_headers_directory = "{}/search-headers".format(args.data_directory)
+    output_directory = "{}/search".format(mgf_directory)
+    combined_mgf_filename = "{}/search.mgf".format(output_directory)
+    os.remove(combined_mgf_filename)
+    for feature_range in feature_ranges:
+        base_mgf_name = "features-{}-{}".format(feature_range[0], feature_range[1])
+        mgf_filename = "{}/{}-search.mgf".format(output_directory, base_mgf_name)
+        run_process("cat {} >> {}".format(mgf_filename, combined_mgf_filename))
+
     create_search_mgf_stop_time = time.time()
     processing_times.append(("create search mgf", create_search_mgf_stop_time-create_search_mgf_stop_time))
 
