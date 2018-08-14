@@ -15,6 +15,7 @@ def run_process(process):
     os.system(process)
 
 def merge_summed_regions(source_db_name, destination_db_name, exceptions):
+    print("merging {} with {}".format(source_db_name, destination_db_name))
     source_conn = sqlite3.connect(source_db_name)
     src_cur = source_conn.cursor()
     destination_conn = sqlite3.connect(destination_db_name)	
@@ -38,6 +39,8 @@ def merge_summed_regions(source_db_name, destination_db_name, exceptions):
 
             # drop the table in the source database
             # src_cur.execute('DROP TABLE IF EXISTS {table_name}'.format(table_name=table_name))
+        else:
+            print("skipping merge of {}".format(table_name))
 
     # if we moved all the tables to the destination, delete the database file. Otherwise, vacuum it 
     # to minimise disk space.
@@ -51,6 +54,7 @@ def merge_summed_regions(source_db_name, destination_db_name, exceptions):
     source_conn.close()
 
 def merge_summed_regions_prep(source_db_name, destination_db_name, exceptions):
+    print("preparing to merge {} with {}".format(source_db_name, destination_db_name))
     source_conn = sqlite3.connect(source_db_name)
     destination_conn = sqlite3.connect(destination_db_name)
     dst_cur = destination_conn.cursor()
@@ -58,11 +62,13 @@ def merge_summed_regions_prep(source_db_name, destination_db_name, exceptions):
     source_df = pd.read_sql_query("SELECT tbl_name,sql FROM sqlite_master WHERE type='table'", source_conn)
     for t_idx in range(0,len(source_df)):
         table_name = source_df.loc[t_idx].tbl_name
-        print("preparing {}".format(table_name))
-        dst_cur.execute("drop table if exists {}".format(table_name))
         if table_name not in exceptions:
+            print("preparing {}".format(table_name))
+            dst_cur.execute("drop table if exists {}".format(table_name))
             print("executing {}".format(source_df.loc[t_idx].sql))
             dst_cur.execute(source_df.loc[t_idx].sql)
+        else:
+            print("skipping preparation of {}".format(table_name))
 
     source_conn.close()
     destination_conn.commit()
@@ -284,7 +290,6 @@ if process_this_step(this_step='recombine_frame_databases', first_step=args.oper
     merge_summed_regions_prep(template_db_name, frame_database_name, exceptions=table_exceptions)
     for summed_frame_range in summed_frame_ranges:
         source_db_name = "{}-{}-{}.sqlite".format(frame_database_root, summed_frame_range[0], summed_frame_range[1])
-        print("merging {} into {}".format(source_db_name, frame_database_name))
         merge_summed_regions(source_db_name, frame_database_name, exceptions=[])
 
     recombine_frames_stop_time = time.time()
@@ -516,7 +521,6 @@ if process_this_step(this_step='recombine_feature_databases', first_step=args.op
     merge_summed_regions_prep(template_db_name, feature_database_name, exceptions=table_exceptions)
     for feature_range in feature_ranges:
         source_db_name = "{}-{}-{}.sqlite".format(feature_database_root, feature_range[0], feature_range[1])
-        print("merging {} into {}".format(source_db_name, feature_database_name))
         merge_summed_regions(source_db_name, feature_database_name, exceptions=table_exceptions)
     recombine_feature_databases_stop_time = time.time()
     processing_times.append(("feature recombine", recombine_feature_databases_stop_time-recombine_feature_databases_start_time))
