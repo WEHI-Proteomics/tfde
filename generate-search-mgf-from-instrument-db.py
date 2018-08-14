@@ -475,7 +475,8 @@ if process_this_step(this_step='create_search_mgf', first_step=args.operation):
     search_headers_directory = "{}/search-headers".format(args.data_directory)
     output_directory = "{}/search".format(mgf_directory)
     combined_mgf_filename = "{}/search.mgf".format(output_directory)
-    os.remove(combined_mgf_filename)
+    if os.path.exists(combined_mgf_filename):
+        os.remove(combined_mgf_filename)
     for feature_range in feature_ranges:
         base_mgf_name = "features-{}-{}".format(feature_range[0], feature_range[1])
         mgf_filename = "{}/{}-search.mgf".format(output_directory, base_mgf_name)
