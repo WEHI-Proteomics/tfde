@@ -516,6 +516,7 @@ if process_this_step(this_step='recombine_feature_databases', first_step=args.op
     table_exceptions.append('ms1_feature_region_peaks')
     table_exceptions.append('ms2_feature_region_points')
     table_exceptions.append('ms2_peaks')
+    table_exceptions.append('peak_correlation')
     template_feature_range = feature_ranges[0]
     template_db_name = "{}-{}-{}.sqlite".format(feature_database_root, template_feature_range[0], template_feature_range[1])
     merge_summed_regions_prep(template_db_name, feature_database_name, exceptions=table_exceptions)
