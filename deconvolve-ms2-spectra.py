@@ -318,6 +318,8 @@ print("writing out the feature list...")
 feature_list_df = pd.DataFrame(feature_list, columns=feature_list_columns)
 feature_list_df.to_sql(name='feature_list', con=db_conn, if_exists='append', index=False)
 db_conn.close()
+# write it out as a CSV as well
+feature_list_df.to_csv("{}-feature-list.csv".format(args.feature_region_database.split(".sqlite")[0]), mode='w', sep=',', index=False, header=True)
 
 # Set up the processing pool for Hardklor
 print("running Hardklor...")
