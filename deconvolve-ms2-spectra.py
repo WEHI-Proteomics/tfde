@@ -265,8 +265,7 @@ for feature_ids_idx in range(0,len(feature_ids_df)):
 
     # add the peak ID to the intensity to make it easier to match fragments with the Digger output
     ms2_peaks_df['intensity_peak_id'] = (ms2_peaks_df['intensity'].astype(str) + "." + ms2_peaks_df['peak_id'].map('{0:05d}'.format)).astype(float)
-
-    pairs_df = ms2_peaks_df[['centroid_mz', 'intensity']].copy().sort_values(by=['intensity'], ascending=False)
+    pairs_df = ms2_peaks_df[['centroid_mz', 'intensity_peak_id']].copy().sort_values(by=['intensity'], ascending=False)
 
     # Write out the spectrum
     spectra = []
