@@ -263,18 +263,15 @@ for feature_ids_idx in range(0,len(feature_ids_df)):
     isotope_count = len(cluster_df)
     feature_list.append((feature_id, charge_state, monoisotopic_mass, retention_time_secs, isotope_count, round(cluster_mz_centroid,6), cluster_summed_intensity, minimum_error, minimum_error_sulphur))
 
-    # add the peak ID to the intensity to make it easier to match fragments with the Digger output
-    ms2_peaks_df['intensity_peak_id'] = (ms2_peaks_df['intensity'].astype(str) + "." + ms2_peaks_df['peak_id'].map('{0:05d}'.format)).astype(float)
-
     pairs_df = ms2_peaks_df[['centroid_mz', 'intensity']].copy().sort_values(by=['intensity'], ascending=False)
 
     # Write out the spectrum
     spectra = []
     spectrum = {}
     spectrum["m/z array"] = pairs_df.centroid_mz.values
-    spectrum["intensity array"] = pairs_df.intensity_peak_id.values
+    spectrum["intensity array"] = pairs_df.intensity.values
     params = {}
-    params["TITLE"] = "RawFile: {} Index: NA Feature#: {0:06d}".format(os.path.basename(args.features_database), feature_id)
+    params["TITLE"] = "{}, {}, {}, {}, {}".format(feature_id, args.base_mgf_filename, args.minimum_peak_correlation, error_as_string, minimum_error_sulphur)
     params["INSTRUMENT"] = "ESI-QUAD-TOF"
     params["PEPMASS"] = "{} {}".format(round(cluster_mz_centroid,6), cluster_summed_intensity)
     params["CHARGE"] = "{}+".format(charge_state)
