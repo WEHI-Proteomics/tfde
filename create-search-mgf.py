@@ -54,7 +54,16 @@ for feature_ids_idx in range(0,len(feature_ids_df)):
     # see https://proteome.gs.washington.edu/software/hardklor/docs/hardklorresults.html
     hk_results_df = pd.read_table(hk_filename, skiprows=1, header=None, names=['monoisotopic_mass','charge','intensity','base_isotope_peak','analysis_window','deprecated','modifications','correlation'])
     if len(hk_results_df) > 0:
-        fragments_df = hk_results_df[['monoisotopic_mass', 'intensity']].copy().sort_values(by=['monoisotopic_mass'], ascending=True)
+        # get the ms2 peaks for this feature
+        db_conn = sqlite3.connect(args.features_database)
+        ms2_peaks_df = pd.read_sql_query("select feature_id,peak_id,centroid_mz from ms2_peaks where feature_id={}".format(feature_id), db_conn)
+        db_conn.close()
+        # merge so the HK rows are annotated with the ms2 peak ID
+        hk_results_df = pd.merge(hk_results_df, ms2_peaks_df, left_on=['base_isotope_peak'], right_on=['centroid_mz'])
+        # append the peak ID to the intensity
+        hk_results_df['intensity_peak_id'] = hk_results_df['intensity'].astype(str) + "." + hk_results_df['peak_id'].map('{0:05d}'.format)
+
+        fragments_df = hk_results_df[['monoisotopic_mass', 'intensity', 'intensity_peak_id']].copy().sort_values(by=['monoisotopic_mass'], ascending=True)
         fragments_df.monoisotopic_mass += PROTON_MASS  # the monoisotopic_mass from Hardklor is the zero charge M, so we add the proton mass to get M+H
 
         # read the header for this feature
@@ -66,7 +75,7 @@ for feature_ids_idx in range(0,len(feature_ids_df)):
         fragments = []
         for row in fragments_df.iterrows():
             index, data = row
-            fragments.append("{} {}\n".format(round(data.monoisotopic_mass,4), data.intensity.astype(int)))
+            fragments.append("{} {}\n".format(round(data.monoisotopic_mass,4), data.intensity_peak_id))
             ion_id += 1
             deconvoluted_ions.append((int(feature_id), int(ion_id), round(data.monoisotopic_mass,4), int(data.intensity)))
 
