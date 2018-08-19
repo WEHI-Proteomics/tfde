@@ -10,6 +10,7 @@ import os.path
 import argparse
 import os
 from multiprocessing import Pool
+import shutil
 
 DELTA_MZ = 1.003355     # Mass difference between Carbon-12 and Carbon-13 isotopes, in Da. For calculating the spacing between isotopic peaks.
 PROTON_MASS = 1.007276  # Mass of a proton in unified atomic mass units, or Da. For calculating the monoisotopic mass.
@@ -36,30 +37,22 @@ hk_directory = "{}/hk".format(args.data_directory)
 search_headers_directory = "{}/search-headers".format(args.data_directory)
 hardklor_commands_directory = "{}/hardklor-commands".format(args.data_directory)
 
-# make sure the processing directories exist
-try: 
-    os.makedirs(mgf_directory)
-except OSError:
-    if not os.path.isdir(mgf_directory):
-        raise
+# clean up the output directories if they already exist
+if os.path.exists(mgf_directory):
+    shutil.rmtree(mgf_directory)
+if os.path.exists(hk_directory):
+    shutil.rmtree(hk_directory)
+if os.path.exists(search_headers_directory):
+    shutil.rmtree(search_headers_directory)
+if os.path.exists(hardklor_commands_directory):
+    shutil.rmtree(hardklor_commands_directory)
 
-try: 
-    os.makedirs(hk_directory)
-except OSError:
-    if not os.path.isdir(hk_directory):
-        raise
+# create the output directories
+os.makedirs(mgf_directory)
+os.makedirs(hk_directory)
+os.makedirs(search_headers_directory)
+os.makedirs(hardklor_commands_directory)
 
-try: 
-    os.makedirs(search_headers_directory)
-except OSError:
-    if not os.path.isdir(search_headers_directory):
-        raise
-
-try: 
-    os.makedirs(hardklor_commands_directory)
-except OSError:
-    if not os.path.isdir(hardklor_commands_directory):
-        raise
 
 def standard_deviation(mz):
     instrument_resolution = 40000.0
