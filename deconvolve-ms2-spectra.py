@@ -264,7 +264,7 @@ for feature_ids_idx in range(0,len(feature_ids_df)):
     feature_list.append((feature_id, charge_state, monoisotopic_mass, retention_time_secs, isotope_count, round(cluster_mz_centroid,6), cluster_summed_intensity, minimum_error, minimum_error_sulphur))
 
     # add the peak ID to the intensity to make it easier to match fragments with the Digger output
-    ms2_peaks_df['intensity_peak_id'] = ms2_peaks_df['intensity'].astype(str) + "." + ms2_peaks_df['peak_id'].map('{0:05d}'.format)
+    ms2_peaks_df['intensity_peak_id'] = (ms2_peaks_df['intensity'].astype(str) + "." + ms2_peaks_df['peak_id'].map('{0:05d}'.format)).astype(float)
     pairs_df = ms2_peaks_df[['centroid_mz', 'intensity', 'intensity_peak_id']].copy().sort_values(by=['intensity'], ascending=False)
 
     # Write out the spectrum
