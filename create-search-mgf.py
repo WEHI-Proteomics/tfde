@@ -36,6 +36,7 @@ db_conn = sqlite3.connect(args.features_database)
 feature_ids_df = pd.read_sql_query("select distinct(feature_id) from peak_correlation", db_conn)
 db_conn.close()
 
+# delete the MGF if it already exists
 mgf_filename = "{}/{}-search.mgf".format(output_directory, args.base_mgf_filename)
 if os.path.isfile(mgf_filename):
     os.remove(mgf_filename)
