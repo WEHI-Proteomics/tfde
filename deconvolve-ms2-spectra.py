@@ -35,23 +35,6 @@ args = parser.parse_args()
 mgf_directory = "{}/mgf".format(args.data_directory)
 hk_directory = "{}/hk".format(args.data_directory)
 search_headers_directory = "{}/search-headers".format(args.data_directory)
-hardklor_commands_directory = "{}/hardklor-commands".format(args.data_directory)
-
-# clean up the output directories if they already exist
-if os.path.exists(mgf_directory):
-    shutil.rmtree(mgf_directory)
-if os.path.exists(hk_directory):
-    shutil.rmtree(hk_directory)
-if os.path.exists(search_headers_directory):
-    shutil.rmtree(search_headers_directory)
-if os.path.exists(hardklor_commands_directory):
-    shutil.rmtree(hardklor_commands_directory)
-
-# create the output directories
-os.makedirs(mgf_directory)
-os.makedirs(hk_directory)
-os.makedirs(search_headers_directory)
-os.makedirs(hardklor_commands_directory)
 
 
 def standard_deviation(mz):

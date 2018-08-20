@@ -451,6 +451,7 @@ if process_this_step(this_step='deconvolve_ms2_spectra', first_step=args.operati
     # deconvolve the ms2 spectra with Hardklor
     deconvolve_ms2_spectra_start_time = time.time()
     print("deconvolving ms2 spectra...")
+    run_process("python -u ./otf-peak-detect/deconvolve-ms2-spectra-prep.py -dbd '{}'".format(args.data_directory))
     pool.map(run_process, deconvolve_ms2_spectra_processes)
     deconvolve_ms2_spectra_stop_time = time.time()
     processing_times.append(("deconvolve ms2 spectra", deconvolve_ms2_spectra_stop_time-deconvolve_ms2_spectra_start_time))
