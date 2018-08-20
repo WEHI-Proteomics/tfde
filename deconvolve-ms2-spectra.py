@@ -264,7 +264,7 @@ for feature_ids_idx in range(0,len(feature_ids_df)):
     spectrum["m/z array"] = pairs_df.centroid_mz.values
     spectrum["intensity array"] = pairs_df.intensity.values
     params = {}
-    params["TITLE"] = "{}, {}, {}, {}, {}".format(feature_id, args.base_mgf_filename, args.minimum_peak_correlation, error_as_string, minimum_error_sulphur)
+    params["TITLE"] = "RawFile: {} Index: 1318 precursor: 1 Charge: {} FeatureIntensity: {} Feature#: {} RtApex: {}".format(os.path.basename(args.features_database).split('.')[0], charge_state, cluster_summed_intensity, feature_id, retention_time_secs)
     params["INSTRUMENT"] = "ESI-QUAD-TOF"
     params["PEPMASS"] = "{} {}".format(round(cluster_mz_centroid,6), cluster_summed_intensity)
     params["CHARGE"] = "{}+".format(charge_state)
