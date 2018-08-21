@@ -16,6 +16,7 @@ DELTA_MZ = 1.003355     # Mass difference between Carbon-12 and Carbon-13 isotop
 PROTON_MASS = 1.007276  # Mass of a proton in unified atomic mass units, or Da. For calculating the monoisotopic mass.
 
 def run_process(process):
+    print("Executing: {}".format(process))
     os.system(process)
 
 parser = argparse.ArgumentParser(description='Generate a text file containing the Hardklor commands.')
