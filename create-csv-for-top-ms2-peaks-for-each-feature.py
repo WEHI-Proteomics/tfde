@@ -48,7 +48,7 @@ for idx in range(len(features_df)):
     df.drop(['peak_id','correlation','feature_id-ms2_peak_id'], inplace=True, axis=1)
     df.rename(columns={'intensity': 'ms2_peak_intensity', 'rt_distance': 'rt_delta', 'scan_distance': 'scan_delta', 'centroid_mz': 'ms2_peak_centroid_mz'}, inplace=True)
     # merge the ms2 peaks with the MSCypher output
-    df = pd.merge(df, mscypher_subset_df, left_on=['feature_id'], right_on=['FeatureNum'])
+    df = pd.merge(df, mscypher_subset_df, how='left', left_on=['feature_id'], right_on=['FeatureNum'])
     # write out the CSV
     print(" - {} ms2 peaks".format(len(df)))
     if idx == 0:
