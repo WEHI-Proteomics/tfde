@@ -122,6 +122,7 @@ db_conn.cursor().execute("CREATE INDEX IF NOT EXISTS idx_peak_correlation_2 ON p
 
 db_conn.cursor().execute("DROP TABLE IF EXISTS feature_isotopes")
 db_conn.cursor().execute("DROP TABLE IF EXISTS feature_list")
+db_conn.cursor().execute("DROP TABLE IF EXISTS ms2_peaks_within_window")
 db_conn.close()
 
 
@@ -159,6 +160,8 @@ for feature_ids_idx in range(0,len(feature_ids_df)):
     if len(peak_correlation_df) == 1:
         peak_correlation_df = peak_correlation_df.append(peak_correlation_df)
     ms2_peaks_df = pd.read_sql_query("select feature_id,peak_id,centroid_mz,intensity from ms2_peaks where feature_id || '-' || peak_id in {}".format(tuple(peak_correlation_df["feature_id-ms2_peak_id"])), db_conn)
+    # write out the ms2 peaks we are about to deconvolve and deisotope, for later matching with MSCypher output
+    ms2_peaks_df.to_sql(name='ms2_peaks_within_window', con=db_conn, if_exists='append', index=False)
     db_conn.close()
 
     mzs = peaks_df.groupby('peak_id').apply(wavg, "mz", "intensity").reset_index(name='mz_centroid')
