@@ -8,7 +8,7 @@ import glob
 import sys
 
 # Write out the top peaks for the top features
-# python -u ./otf-peak-detect/create-csv-for-top-ms2-peaks-for-each-feature.py -db ./UPS2_allion/UPS2_allion-features-1-1097.sqlite -nrtd -0.25 -prtd 0.25 -nsd -4.0 -psd 4.0 -mnp 50000
+# python -u ./otf-peak-detect/create-csv-for-top-ms2-peaks-for-each-feature.py -msc UPS2_allion/MSCypher.txt -db ./UPS2_allion/UPS2_allion-features-1-1097.sqlite -nrtd -0.25 -prtd 0.25 -nsd -4.0 -psd 4.0 -mnp 50000
 
 parser = argparse.ArgumentParser(description='Extract a CSV containing the top ms2 peaks for all the features in the database.')
 parser.add_argument('-db','--database_name', type=str, help='The name of the source database.', required=True)
@@ -55,14 +55,17 @@ for idx in range(len(feature_ids_df)):
     df.rename(columns={'intensity': 'ms2_peak_intensity', 'rt_distance': 'rt_delta', 'scan_distance': 'scan_delta', 'centroid_mz': 'ms2_peak_centroid_mz'}, inplace=True)
 
     # break out the fragments reported by MSC for this feature
-    msc_fragments = msc_subset_df[msc_subset_df.FeatureNum==feature_id].iloc[0]
-    FragMZ = list(map(float, msc_fragments.FragMZ.split(';')))
-    FragInt = list(map(float, msc_fragments.FragInt.split(';')))
-    FragError = list(map(float, msc_fragments.FragError.split(';')))
-    FragIonTypes = list(map(str, msc_fragments.FragIonTypes.split(';')))
-    FragPos = list(map(int, msc_fragments.FragPos.split(';')))
-    FragCharge = list(map(int, msc_fragments.FragCharge.split(';')))
-    msc_fragments_df = pd.DataFrame(list(zip(FragMZ, FragInt, FragError, FragIonTypes, FragPos, FragCharge)), columns=['FragMZ', 'FragInt', 'FragError', 'FragIonTypes', 'FragPos', 'FragCharge'])
+    if len(msc_subset_df[msc_subset_df.FeatureNum==feature_id]):
+        msc_fragments = msc_subset_df[msc_subset_df.FeatureNum==feature_id].iloc[0]
+        FragMZ = list(map(float, msc_fragments.FragMZ.split(';')))
+        FragInt = list(map(float, msc_fragments.FragInt.split(';')))
+        FragError = list(map(float, msc_fragments.FragError.split(';')))
+        FragIonTypes = list(map(str, msc_fragments.FragIonTypes.split(';')))
+        FragPos = list(map(int, msc_fragments.FragPos.split(';')))
+        FragCharge = list(map(int, msc_fragments.FragCharge.split(';')))
+        msc_fragments_df = pd.DataFrame(list(zip(FragMZ, FragInt, FragError, FragIonTypes, FragPos, FragCharge)), columns=['FragMZ', 'FragInt', 'FragError', 'FragIonTypes', 'FragPos', 'FragCharge'])
+    else:
+        msc_fragments_df = pd.DataFrame([], columns=['FragMZ', 'FragInt', 'FragError', 'FragIonTypes', 'FragPos', 'FragCharge'])
 
     # round the join column to match the ms2 peaks with the fragments reported by MSC
     msc_fragments_df["FragMZ_round"] = msc_fragments_df.FragMZ.round(3)
