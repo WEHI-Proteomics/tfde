@@ -73,6 +73,8 @@ for idx in range(len(feature_ids_df)):
 
     # match up the ms2 peaks with the fragments reported by MSC
     ms2_peaks_msc_fragments_df = pd.merge(ms2_peaks_df, msc_fragments_df, how='left', left_on=['centroid_mz_round'], right_on=['FragMZ_round'])
+    ms2_peaks_msc_fragments_df.drop(['centroid_mz_round','FragMZ_round'], inplace=True, axis=1)
+    ms2_peaks_msc_fragments_df.rename(columns={'FragMZ': 'msc_FragMZ', 'FragInt': 'msc_FragInt', 'FragError': 'msc_FragError', 'FragIonTypes': 'msc_FragIonTypes', 'FragPos': 'msc_FragPos', 'FragCharge': 'msc_FragCharge'}, inplace=True)
 
     # write out the CSV of ms2 peaks
     print(" - {} ms2 peaks".format(len(ms2_peaks_msc_fragments_df)))
