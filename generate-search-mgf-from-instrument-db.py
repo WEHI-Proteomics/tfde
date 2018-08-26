@@ -480,7 +480,7 @@ if process_this_step(this_step='create_search_mgf', first_step=args.operation):
     hk_directory = "{}/hk".format(args.data_directory)
     search_headers_directory = "{}/search-headers".format(args.data_directory)
     output_directory = "{}/search".format(mgf_directory)
-    combined_mgf_filename = "{}/search.mgf".format(output_directory)
+    combined_mgf_filename = "{}/{}-search.mgf".format(output_directory, args.database_base_name)
     # delete the search MGF if it already exists
     if os.path.exists(combined_mgf_filename):
         os.remove(combined_mgf_filename)
