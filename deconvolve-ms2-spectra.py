@@ -11,6 +11,7 @@ import argparse
 import os
 from multiprocessing import Pool
 import shutil
+import json
 
 DELTA_MZ = 1.003355     # Mass difference between Carbon-12 and Carbon-13 isotopes, in Da. For calculating the spacing between isotopic peaks.
 PROTON_MASS = 1.007276  # Mass of a proton in unified atomic mass units, or Da. For calculating the monoisotopic mass.
@@ -33,9 +34,20 @@ parser.add_argument('-psd','--positive_scan_delta_tolerance', type=float, defaul
 parser.add_argument('-mnp','--maximum_number_of_peaks_per_feature', type=int, default=500, help='The maximum number of peaks per feature.', required=False)
 args = parser.parse_args()
 
+# Store the arguments as metadata in the database for later reference
+info = []
+for arg in vars(args):
+    info.append((arg, getattr(args, arg)))
+
+start_run = time.time()
+
 mgf_directory = "{}/mgf".format(args.data_directory)
 hk_directory = "{}/hk".format(args.data_directory)
 search_headers_directory = "{}/search-headers".format(args.data_directory)
+
+info.append(("mgf directory", mgf_directory))
+info.append(("hk directory", hk_directory))
+info.append(("search headers directory", search_headers_directory))
 
 
 def standard_deviation(mz):
@@ -305,3 +317,16 @@ feature_list_df.to_csv("{}-feature-list.csv".format(args.feature_region_database
 print("running Hardklor...")
 pool = Pool()
 pool.map(run_process, hk_processes)
+
+stop_run = time.time()
+print("{} seconds to process run".format(stop_run-start_run))
+
+info.append(("run processing time (sec)", stop_run-start_run))
+info.append(("processed", time.ctime()))
+
+info_entry = []
+info_entry.append(("{}".format(os.path.basename(args.feature_region_database).split('.')[0]), json.dumps(info)))
+info_entry_df = pd.DataFrame(info_entry, columns=['item', 'value'])
+db_conn = sqlite3.connect(args.feature_region_database)
+info_entry_df.to_sql(name='deconvolve_ms2_spectra_info', con=db_conn, if_exists='append', index=False)
+db_conn.close()
