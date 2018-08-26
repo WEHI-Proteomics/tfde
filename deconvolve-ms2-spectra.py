@@ -328,5 +328,5 @@ info_entry = []
 info_entry.append(("{}".format(os.path.basename(args.feature_region_database).split('.')[0]), json.dumps(info)))
 info_entry_df = pd.DataFrame(info_entry, columns=['item', 'value'])
 db_conn = sqlite3.connect(args.feature_region_database)
-info_entry_df.to_sql(name='deconvolve_ms2_spectra_info', con=db_conn, if_exists='append', index=False)
+info_entry_df.to_sql(name='deconvolve_ms2_spectra_info', con=db_conn, if_exists='replace', index=False)
 db_conn.close()
