@@ -31,7 +31,7 @@ parser.add_argument('-nrtd','--negative_rt_delta_tolerance', type=float, default
 parser.add_argument('-prtd','--positive_rt_delta_tolerance', type=float, default=0.25, help='The positive RT delta tolerance.', required=False)
 parser.add_argument('-nsd','--negative_scan_delta_tolerance', type=float, default=-4.0, help='The negative scan delta tolerance.', required=False)
 parser.add_argument('-psd','--positive_scan_delta_tolerance', type=float, default=4.0, help='The positive scan delta tolerance.', required=False)
-parser.add_argument('-mnp','--maximum_number_of_peaks_per_feature', type=int, default=500, help='The maximum number of peaks per feature.', required=False)
+parser.add_argument('-mnp','--maximum_number_of_peaks_per_feature', type=int, default=50000, help='The maximum number of peaks per feature.', required=False)
 args = parser.parse_args()
 
 # Store the arguments as metadata in the database for later reference
