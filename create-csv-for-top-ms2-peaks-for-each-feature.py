@@ -52,7 +52,7 @@ for idx in range(len(feature_ids_df)):
     ms2_peaks_df = pd.read_sql_query("select feature_id,peak_id,centroid_mz,intensity from ms2_peaks_within_window where feature_id || '-' || peak_id in {}".format(tuple(peak_correlation_df["feature_id-ms2_peak_id"])), db_conn)
     ms2_peaks_df = pd.merge(ms2_peaks_df, peak_correlation_df, left_on=['feature_id','peak_id'], right_on=['feature_id','ms2_peak_id'])
     ms2_peaks_df.drop(['peak_id','correlation','feature_id-ms2_peak_id'], inplace=True, axis=1)
-    ms2_peaks_df.rename(columns={'intensity': 'ms2_peak_intensity', 'rt_distance': 'rt_delta', 'scan_distance': 'scan_delta', 'centroid_mz': 'ms2_peak_centroid_mz'}, inplace=True)
+    ms2_peaks_df.rename(columns={'intensity': 'ms2_peak_intensity', 'rt_distance': 'rt_delta', 'scan_distance': 'scan_delta', 'centroid_mz': 'peak_centroid_mz'}, inplace=True)
 
     # break out the fragments reported by MSC for this feature
     if len(msc_subset_df[msc_subset_df.FeatureNum==feature_id]):
@@ -69,7 +69,7 @@ for idx in range(len(feature_ids_df)):
 
     # round the join column to match the ms2 peaks with the fragments reported by MSC
     msc_fragments_df["FragMZ_round"] = msc_fragments_df.FragMZ.round(3)
-    ms2_peaks_df["centroid_mz_round"] = ms2_peaks_df.centroid_mz.round(3)
+    ms2_peaks_df["centroid_mz_round"] = ms2_peaks_df.peak_centroid_mz.round(3)
 
     # match up the ms2 peaks with the fragments reported by MSC
     ms2_peaks_df = pd.merge(ms2_peaks_df, msc_fragments_df, how='left', left_on=['centroid_mz_round'], right_on=['FragMZ_round'])
