@@ -50,9 +50,9 @@ for idx in range(len(feature_ids_df)):
     peak_correlation_df = pd.read_sql_query("select * from peak_correlation where feature_id=={} and rt_distance >= {} and rt_distance <= {} and scan_distance >= {} and scan_distance <= {} order by ms2_peak_id ASC limit {}".format(feature_id, args.negative_rt_delta_tolerance, args.positive_rt_delta_tolerance, args.negative_scan_delta_tolerance, args.positive_scan_delta_tolerance, args.maximum_number_of_peaks_per_feature), db_conn)
     peak_correlation_df["feature_id-ms2_peak_id"] = peak_correlation_df.feature_id.astype(str) + '-' + peak_correlation_df.ms2_peak_id.astype(str)
     ms2_peaks_df = pd.read_sql_query("select feature_id,peak_id,centroid_mz,intensity from ms2_peaks_within_window where feature_id || '-' || peak_id in {}".format(tuple(peak_correlation_df["feature_id-ms2_peak_id"])), db_conn)
-    df = pd.merge(ms2_peaks_df, peak_correlation_df, left_on=['feature_id','peak_id'], right_on=['feature_id','ms2_peak_id'])
-    df.drop(['peak_id','correlation','feature_id-ms2_peak_id'], inplace=True, axis=1)
-    df.rename(columns={'intensity': 'ms2_peak_intensity', 'rt_distance': 'rt_delta', 'scan_distance': 'scan_delta', 'centroid_mz': 'ms2_peak_centroid_mz'}, inplace=True)
+    ms2_peaks_df = pd.merge(ms2_peaks_df, peak_correlation_df, left_on=['feature_id','peak_id'], right_on=['feature_id','ms2_peak_id'])
+    ms2_peaks_df.drop(['peak_id','correlation','feature_id-ms2_peak_id'], inplace=True, axis=1)
+    ms2_peaks_df.rename(columns={'intensity': 'ms2_peak_intensity', 'rt_distance': 'rt_delta', 'scan_distance': 'scan_delta', 'centroid_mz': 'ms2_peak_centroid_mz'}, inplace=True)
 
     # break out the fragments reported by MSC for this feature
     if len(msc_subset_df[msc_subset_df.FeatureNum==feature_id]):
@@ -72,16 +72,16 @@ for idx in range(len(feature_ids_df)):
     ms2_peaks_df["centroid_mz_round"] = ms2_peaks_df.centroid_mz.round(3)
 
     # match up the ms2 peaks with the fragments reported by MSC
-    ms2_peaks_msc_fragments_df = pd.merge(ms2_peaks_df, msc_fragments_df, how='left', left_on=['centroid_mz_round'], right_on=['FragMZ_round'])
-    ms2_peaks_msc_fragments_df.drop(['centroid_mz_round','FragMZ_round'], inplace=True, axis=1)
-    ms2_peaks_msc_fragments_df.rename(columns={'FragMZ': 'msc_FragMZ', 'FragInt': 'msc_FragInt', 'FragError': 'msc_FragError', 'FragIonTypes': 'msc_FragIonTypes', 'FragPos': 'msc_FragPos', 'FragCharge': 'msc_FragCharge'}, inplace=True)
+    ms2_peaks_df = pd.merge(ms2_peaks_df, msc_fragments_df, how='left', left_on=['centroid_mz_round'], right_on=['FragMZ_round'])
+    ms2_peaks_df.drop(['centroid_mz_round','FragMZ_round'], inplace=True, axis=1)
+    ms2_peaks_df.rename(columns={'FragMZ': 'msc_FragMZ', 'FragInt': 'msc_FragInt', 'FragError': 'msc_FragError', 'FragIonTypes': 'msc_FragIonTypes', 'FragPos': 'msc_FragPos', 'FragCharge': 'msc_FragCharge'}, inplace=True)
 
     # write out the CSV of ms2 peaks
-    print(" - {} ms2 peaks".format(len(ms2_peaks_msc_fragments_df)))
+    print(" - {} ms2 peaks".format(len(ms2_peaks_df)))
     if idx == 0:
-        ms2_peaks_msc_fragments_df.to_csv(output_filename_ms2, mode='w', sep=',', index=False, header=True)
+        ms2_peaks_df.to_csv(output_filename_ms2, mode='w', sep=',', index=False, header=True)
     else:
-        ms2_peaks_msc_fragments_df.to_csv(output_filename_ms2, mode='a', sep=',', index=False, header=False)
+        ms2_peaks_df.to_csv(output_filename_ms2, mode='a', sep=',', index=False, header=False)
 
 # now write out the anotated features
 feature_list_df = pd.read_sql_query("select * from feature_list", db_conn)
