@@ -9,6 +9,8 @@ import argparse
 
 PROTON_MASS = 1.0073  # Mass of a proton in unified atomic mass units, or Da. For calculating the monoisotopic mass.
 
+# nohup python -u ./otf-peak-detect/create-search-mgf.py -fdb './UPS2_allion/UPS2_allion-features-1-1097.sqlite' -bfn features-1-1097 -dbd ./UPS2_allion > search-mgf.log 2>&1 &
+
 parser = argparse.ArgumentParser(description='A tree descent method for MS2 peak detection.')
 parser.add_argument('-fdb','--features_database', type=str, help='The name of the features database.', required=True)
 parser.add_argument('-bfn','--base_mgf_filename', type=str, help='The base name of the MGF.', required=True)
