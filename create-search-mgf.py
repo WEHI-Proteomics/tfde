@@ -29,7 +29,7 @@ if not os.path.exists(output_directory):
 
 db_conn = sqlite3.connect(args.features_database)
 feature_ids_df = pd.read_sql_query("select distinct(feature_id) from peak_correlation", db_conn)
-db_conn.cursor().execute("DROP TABLE IF EXISTS deconvolved_ions")
+db_conn.cursor().execute("DROP TABLE IF EXISTS deconvoluted_ions")
 db_conn.close()
 
 # delete the MGF if it already exists
@@ -59,7 +59,7 @@ for feature_ids_idx in range(0,len(feature_ids_df)):
         hk_results_df = pd.merge(hk_results_df, ms2_peaks_df, how='left', left_on=['base_isotope_peak'], right_on=['centroid_mz'])
         # write out the deconvolved and de-isotoped peaks from HK
         db_conn = sqlite3.connect(args.features_database)
-        hk_results_df.to_sql(name='deconvolved_ions', con=db_conn, if_exists='append', index=False)
+        hk_results_df.to_sql(name='deconvoluted_ions', con=db_conn, if_exists='append', index=False)
         db_conn.close()
         # append the peak ID to the intensity
         hk_results_df['intensity_peak_id'] = hk_results_df['intensity'].astype(str) + "." + hk_results_df['peak_id'].map('{0:05d}'.format)
