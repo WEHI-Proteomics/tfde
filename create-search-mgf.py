@@ -27,23 +27,15 @@ output_directory = "{}/search".format(mgf_directory)
 if not os.path.exists(output_directory):
     os.makedirs(output_directory)    
 
-print("Setting up tables and indexes")
-db_conn = sqlite3.connect(args.features_database)
-db_conn.cursor().execute("DROP TABLE IF EXISTS deconvoluted_ions")
-db_conn.cursor().execute("CREATE TABLE deconvoluted_ions (feature_id INTEGER, ion_id INTEGER, mz REAL, intensity INTEGER, PRIMARY KEY (feature_id, ion_id))")
-db_conn.commit()
-db_conn.close()
-
 db_conn = sqlite3.connect(args.features_database)
 feature_ids_df = pd.read_sql_query("select distinct(feature_id) from peak_correlation", db_conn)
+db_conn.cursor().execute("DROP TABLE IF EXISTS deconvolved_ions")
 db_conn.close()
 
 # delete the MGF if it already exists
 mgf_filename = "{}/{}-search.mgf".format(output_directory, args.base_mgf_filename)
 if os.path.isfile(mgf_filename):
     os.remove(mgf_filename)
-
-deconvoluted_ions = []
 
 for feature_ids_idx in range(0,len(feature_ids_df)):
     feature_id = feature_ids_df.loc[feature_ids_idx].feature_id.astype(int)
@@ -57,17 +49,22 @@ for feature_ids_idx in range(0,len(feature_ids_df)):
     # see https://proteome.gs.washington.edu/software/hardklor/docs/hardklorresults.html
     hk_results_df = pd.read_table(hk_filename, skiprows=1, header=None, names=['monoisotopic_mass','charge','intensity','base_isotope_peak','analysis_window','deprecated','modifications','correlation'])
     if len(hk_results_df) > 0:
-        # get the ms2 peaks for this feature
+        # the monoisotopic_mass from Hardklor is the zero charge M, so we add the proton mass to get M+H
+        hk_results_df.monoisotopic_mass += PROTON_MASS
+        # get the ms2 peaks for this feature within the extraction window
         db_conn = sqlite3.connect(args.features_database)
-        ms2_peaks_df = pd.read_sql_query("select feature_id,peak_id,centroid_mz from ms2_peaks where feature_id={}".format(feature_id), db_conn)
+        ms2_peaks_df = pd.read_sql_query("select feature_id,peak_id,centroid_mz from ms2_peaks_within_window where feature_id={}".format(feature_id), db_conn)
         db_conn.close()
-        # merge so the HK rows are annotated with the ms2 peak ID
-        hk_results_df = pd.merge(hk_results_df, ms2_peaks_df, left_on=['base_isotope_peak'], right_on=['centroid_mz'])
+        # annotate the HK rows with the corresponding ms2 peak ID
+        hk_results_df = pd.merge(hk_results_df, ms2_peaks_df, how='left', left_on=['base_isotope_peak'], right_on=['centroid_mz'])
+        # write out the deconvolved and de-isotoped peaks from HK
+        db_conn = sqlite3.connect(args.features_database)
+        hk_results_df.to_sql(name='deconvolved_ions', con=db_conn, if_exists='append', index=False)
+        db_conn.close()
         # append the peak ID to the intensity
         hk_results_df['intensity_peak_id'] = hk_results_df['intensity'].astype(str) + "." + hk_results_df['peak_id'].map('{0:05d}'.format)
 
         fragments_df = hk_results_df[['monoisotopic_mass', 'intensity', 'intensity_peak_id']].copy().sort_values(by=['monoisotopic_mass'], ascending=True)
-        fragments_df.monoisotopic_mass += PROTON_MASS  # the monoisotopic_mass from Hardklor is the zero charge M, so we add the proton mass to get M+H
 
         # read the header for this feature
         with open(header_filename) as f:
@@ -79,8 +76,6 @@ for feature_ids_idx in range(0,len(feature_ids_df)):
         for row in fragments_df.iterrows():
             index, data = row
             fragments.append("{} {}\n".format(round(data.monoisotopic_mass,4), data.intensity_peak_id))
-            ion_id += 1
-            deconvoluted_ions.append((int(feature_id), int(ion_id), round(data.monoisotopic_mass,4), int(data.intensity)))
 
         with open(mgf_filename, 'a') as file_handler:
             # write the header
@@ -94,9 +89,3 @@ for feature_ids_idx in range(0,len(feature_ids_df)):
                 file_handler.write("{}".format(item))
 
 print("writing out the search MGF to {}".format(mgf_filename))
-
-# store the deconvoluted ions in the database
-db_conn = sqlite3.connect(args.features_database)
-db_conn.cursor().executemany("INSERT INTO deconvoluted_ions (feature_id, ion_id, mz, intensity) VALUES (?, ?, ?, ?)", deconvoluted_ions)
-db_conn.commit()
-db_conn.close()
