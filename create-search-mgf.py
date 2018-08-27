@@ -53,7 +53,7 @@ for feature_ids_idx in range(0,len(feature_ids_df)):
         hk_results_df.monoisotopic_mass += PROTON_MASS
         # get the ms2 peaks for this feature within the extraction window
         db_conn = sqlite3.connect(args.features_database)
-        ms2_peaks_df = pd.read_sql_query("select feature_id,peak_id,centroid_mz from ms2_peaks_within_window where feature_id={}".format(feature_id), db_conn)
+        ms2_peaks_df = pd.read_sql_query("select feature_id,peak_id,centroid_mz,intensity from ms2_peaks_within_window where feature_id={}".format(feature_id), db_conn)
         db_conn.close()
         # round the join column to match the ms2 peaks with the fragments reported by HK
         hk_results_df["base_isotope_peak_round"] = hk_results_df.base_isotope_peak.round(3)
@@ -63,7 +63,7 @@ for feature_ids_idx in range(0,len(feature_ids_df)):
         # drop the columsn we don't need
         hk_results_df.drop(['base_isotope_peak_round','centroid_mz_round','analysis_window','deprecated','modifications'], inplace=True, axis=1)
         # rearrange the column order to be a bit nicer
-        hk_results_df = hk_results_df[['feature_id','peak_id','centroid_mz','monoisotopic_mass','charge','intensity','base_isotope_peak']]
+        hk_results_df = hk_results_df[['feature_id','peak_id','centroid_mz','intensity','monoisotopic_mass','charge','intensity','base_isotope_peak']]
         # rename the HK columns to be clearer
         hk_results_df.rename(columns={'monoisotopic_mass': 'hk_monoisotopic_mass','charge': 'hk_charge','intensity': 'hk_intensity','base_isotope_peak': 'hk_base_isotope_peak'}, inplace=True)
         # write out the deconvolved and de-isotoped peaks reported by HK
