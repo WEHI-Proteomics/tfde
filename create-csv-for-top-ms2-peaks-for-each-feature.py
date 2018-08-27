@@ -92,6 +92,6 @@ msc_feature_df = msc_subset_df[["FeatureNum","DiggerPepScore","DeltaMassDa","Del
 feature_list_msc_df = pd.merge(feature_list_df, msc_feature_df, how='left', left_on=['feature_id'], right_on=['FeatureNum'])
 feature_list_msc_df.drop(['FeatureNum'], inplace=True, axis=1)
 feature_list_msc_df.rename(columns={'DiggerPepScore': 'msc_DiggerPepScore', 'DeltaMassDa': 'msc_DeltaMassDa', 'DeltaMassPPM': 'msc_DeltaMassPPM'}, inplace=True)
-feature_list_msc_df.to_csv(output_filename_features, mode='a', sep=',', index=False, header=True)
+feature_list_msc_df.to_csv(output_filename_features, mode='w', sep=',', index=False, header=True)
 
 db_conn.close()
