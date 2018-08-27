@@ -71,9 +71,9 @@ for feature_ids_idx in range(0,len(feature_ids_df)):
         hk_results_df.to_sql(name='deconvoluted_ions', con=db_conn, if_exists='append', index=False)
         db_conn.close()
         # append the peak ID to the intensity
-        hk_results_df['intensity_peak_id'] = hk_results_df['intensity'].astype(str) + "." + hk_results_df['peak_id'].map('{0:05d}'.format)
+        hk_results_df['hk_intensity_peak_id'] = hk_results_df['hk_intensity'].astype(str) + "." + hk_results_df['peak_id'].map('{0:05d}'.format)
 
-        fragments_df = hk_results_df[['monoisotopic_mass', 'intensity', 'intensity_peak_id']].copy().sort_values(by=['monoisotopic_mass'], ascending=True)
+        fragments_df = hk_results_df[['hk_monoisotopic_mass', 'hk_intensity', 'hk_intensity_peak_id']].copy().sort_values(by=['hk_monoisotopic_mass'], ascending=True)
 
         # read the header for this feature
         with open(header_filename) as f:
@@ -84,7 +84,7 @@ for feature_ids_idx in range(0,len(feature_ids_df)):
         fragments = []
         for row in fragments_df.iterrows():
             index, data = row
-            fragments.append("{} {}\n".format(round(data.monoisotopic_mass,4), data.intensity_peak_id))
+            fragments.append("{} {}\n".format(round(data.hk_monoisotopic_mass,4), data.hk_intensity_peak_id))
 
         with open(mgf_filename, 'a') as file_handler:
             # write the header
