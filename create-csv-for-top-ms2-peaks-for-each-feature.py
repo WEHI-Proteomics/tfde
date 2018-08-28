@@ -7,7 +7,7 @@ import argparse
 import glob
 import sys
 
-# Write out the top peaks for the top features
+# Write out the deconvoluted/deisotoped peaks for the top features and what MSCypher reported for them
 # python -u ./otf-peak-detect/create-csv-for-top-ms2-peaks-for-each-feature.py -msc UPS2_allion/MSCypher.txt -db ./UPS2_allion/UPS2_allion-features-1-1097.sqlite -nrtd -0.25 -prtd 0.25 -nsd -4.0 -psd 4.0 -mnp 50000
 
 parser = argparse.ArgumentParser(description='Extract a CSV containing the top ms2 peaks for all the features in the database.')
