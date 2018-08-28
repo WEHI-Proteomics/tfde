@@ -6,6 +6,7 @@ import numpy as np
 import peakutils
 import time
 import json
+import os.path
 
 # frames array indexes
 FRAME_ID_IDX = 0
@@ -36,6 +37,10 @@ args = parser.parse_args()
 # Connect to the databases
 source_conn = sqlite3.connect(args.source_database_name)
 src_c = source_conn.cursor()
+
+# remove the destination database if it remains from a previous run - it's faster to recreate it
+if os.path.isfile(args.destination_database_name):
+    os.remove(args.destination_database_name)
 
 dest_conn = sqlite3.connect(args.destination_database_name)
 dest_c = dest_conn.cursor()
