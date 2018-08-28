@@ -25,7 +25,7 @@ def merge_summed_regions(source_db_name, destination_db_name, exceptions):
     for t_idx in range(0,len(df)):
         table_name = df.loc[t_idx].tbl_name
         if table_name not in exceptions:
-            print("merging {}".format(table_name))
+            print("merging {} from {} to {}".format(table_name, source_db_name, destination_db_name))
 
             row_count = int(pd.read_sql('SELECT COUNT(*) FROM {table_name}'.format(table_name=table_name), source_conn).values)
             chunksize = 5000000
@@ -38,18 +38,20 @@ def merge_summed_regions(source_db_name, destination_db_name, exceptions):
                 table_df.to_sql(name=table_name, con=destination_conn, if_exists='append', index=False, chunksize=None)
 
             # drop the table in the source database
-            # src_cur.execute('DROP TABLE IF EXISTS {table_name}'.format(table_name=table_name))
+            print("dropping table {} from {}".format(table_name, source_db_name))
+            src_cur.execute('DROP TABLE IF EXISTS {table_name}'.format(table_name=table_name))
         else:
             print("skipping merge of {}".format(table_name))
 
     # if we moved all the tables to the destination, delete the database file. Otherwise, vacuum it 
     # to minimise disk space.
-    # if len(exceptions) == 0:
-    #     source_conn.close()
-    #     os.remove(source_db_name)
-    # else:
-    #     src_cur.execute('VACUUM')
-    #     source_conn.close()
+    if len(exceptions) == 0:
+        source_conn.close()
+        os.remove(source_db_name)
+    else:
+        print("vacuuming {}".format(source_db_name))
+        src_cur.execute('VACUUM')
+        source_conn.close()
 
     source_conn.close()
 
