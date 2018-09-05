@@ -128,8 +128,8 @@ def main():
             # get all the mzs used to create this peak
             composite_mzs_min = ms2_peaks_df.loc[ms2_peak_idx].composite_mzs_min.item()
             composite_mzs_max = ms2_peaks_df.loc[ms2_peak_idx].composite_mzs_max.item()
+            ms2_feature_region_points_df['retention_time_secs'] = ms2_feature_region_points_df.frame_id / raw_frame_ids_per_second
             peak_points = ms2_feature_region_points_df[(ms2_feature_region_points_df.scaled_mz >= composite_mzs_min) & (ms2_feature_region_points_df.scaled_mz <= composite_mzs_max)]
-            peak_points['retention_time_secs'] = peak_points.frame_id / raw_frame_ids_per_second
             ms2_centroid_scan = peakutils.centroid(peak_points.scan.astype(float), peak_points.intensity)
             ms2_centroid_rt = peakutils.centroid(peak_points.retention_time_secs.astype(float), peak_points.intensity)
 
