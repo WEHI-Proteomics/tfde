@@ -114,8 +114,6 @@ parser.add_argument('-mu','--mz_upper', type=float, help='Upper feature m/z to p
 parser.add_argument('-fl','--frame_lower', type=int, help='The lower summed frame number to process.', required=False)
 parser.add_argument('-fu','--frame_upper', type=int, help='The upper summed frame number to process.', required=False)
 parser.add_argument('-mnf','--minimum_number_of_frames', type=int, default=3, help='Minimum number of frames for a feature to be valid.', required=False)
-parser.add_argument('-cst','--correlation_scan_tolerance', type=int, help='Scan distance either side of the feature base peak to include an ms2 peak for correlation.', required=True)
-parser.add_argument('-crt','--correlation_rt_tolerance', type=int, help='RT distance either side of the feature base peak to include an ms2 peak for correlation.', required=True)
 parser.add_argument('-mzsf','--ms2_mz_scaling_factor', type=float, default=1000.0, help='Scaling factor to convert m/z range to integers in ms2.', required=False)
 parser.add_argument('-frts','--frame_tasks', type=int, default=1000, help='Number of worker tasks for frames.', required=False)
 parser.add_argument('-fets','--feature_tasks', type=int, default=1000, help='Number of worker tasks for features.', required=False)
@@ -428,7 +426,7 @@ if process_this_step(this_step='correlate_peaks', first_step=args.operation):
     peak_correlation_processes = []
     for feature_range in feature_ranges:
         destination_db_name = "{}-{}-{}.sqlite".format(feature_database_root, feature_range[0], feature_range[1])
-        peak_correlation_processes.append("python -u ./otf-peak-detect/correlate-ms2-peaks.py -db '{}' -cdb '{}' -fl {} -fu {} -st {} -rtt {}".format(destination_db_name, converted_database_name, feature_range[0], feature_range[1], args.correlation_scan_tolerance, args.correlation_rt_tolerance))
+        peak_correlation_processes.append("python -u ./otf-peak-detect/correlate-ms2-peaks.py -db '{}' -cdb '{}' -fl {} -fu {}".format(destination_db_name, converted_database_name, feature_range[0], feature_range[1]))
     
     print("correlating peaks...")
     run_process("python -u ./otf-peak-detect/correlate-ms2-peaks-prep.py -cdb '{}'".format(converted_database_name))
