@@ -28,7 +28,7 @@ except AttributeError:
 @profile
 def main():
     pd.options.mode.chained_assignment = None
-    
+
     parser = argparse.ArgumentParser(description='Calculate correlation between MS1 and MS2 peaks for features.')
     parser.add_argument('-db','--database_name', type=str, help='The name of the source database.', required=True)
     parser.add_argument('-cdb','--converted_database_name', type=str, help='The name of the converted database.', required=True)
@@ -51,7 +51,7 @@ def main():
     print("Setting up tables")
     src_c.execute("DROP TABLE IF EXISTS peak_correlation")
     src_c.execute("DROP TABLE IF EXISTS peak_correlation_info")
-    src_c.execute("CREATE TABLE peak_correlation (feature_id INTEGER, base_peak_id INTEGER, ms1_scan_centroid REAL, ms1_rt_centroid REAL, ms2_peak_id INTEGER, ms2_scan_centroid REAL, ms2_rt_centroid REAL, scan_distance REAL, rt_distance REAL, correlation REAL, PRIMARY KEY (feature_id, base_peak_id, ms2_peak_id))")
+    src_c.execute("CREATE TABLE peak_correlation (feature_id INTEGER, base_peak_id INTEGER, ms1_scan_centroid REAL, ms1_rt_centroid REAL, ms2_peak_id INTEGER, ms2_scan_centroid REAL, ms2_rt_centroid REAL, scan_delta REAL, rt_delta REAL, correlation REAL, PRIMARY KEY (feature_id, base_peak_id, ms2_peak_id))")
     src_c.execute("CREATE TABLE peak_correlation_info (item TEXT, value TEXT)")
 
     print("Setting up indexes")
@@ -115,31 +115,24 @@ def main():
         # Now process the ms2 points
         ############################
 
-        # get the raw (unsummed) points the ms2 peaks mz belonging to this feature
-        ms2_feature_region_points_df = pd.read_sql_query("select * from ms2_feature_region_points where feature_id={}".format(feature_id), source_conn)
-
         # get the ms2 peak summary information for this feature
         ms2_peaks_df = pd.read_sql_query("select * from ms2_peaks where feature_id={} order by peak_id ASC".format(feature_id), source_conn)
         print("{} ms2 peaks for feature {}".format(len(ms2_peaks_df), feature_id))
 
-        # calculate the 2D centroid for each of the feature's ms2 peaks
+        ms2_peaks_df["scan_delta"] = ms1_centroid_scan - ms2_peaks_df.cofi_scan
+        ms2_peaks_df["rt_delta"] = ms1_centroid_rt - ms2_peaks_df.cofi_rt
+        ms2_peaks_df["correlation"] = 0.0
+
+        # calculate the 2D centroid delta for each of the feature's ms2 peaks
         for ms2_peak_idx in range(len(ms2_peaks_df)):
-            # get all the points for this ms2 peak
             ms2_peak_id = ms2_peaks_df.loc[ms2_peak_idx].peak_id.astype(int)
+            ms2_centroid_scan = ms2_peaks_df.loc[ms2_peak_idx].cofi_scan
+            ms2_centroid_rt = ms2_peaks_df.loc[ms2_peak_idx].cofi_rt
+            scan_delta = ms2_peaks_df.loc[ms2_peak_idx].scan_delta
+            rt_delta = ms2_peaks_df.loc[ms2_peak_idx].rt_delta
+            correlation = ms2_peaks_df.loc[ms2_peak_idx].correlation
+            peak_correlation.append((feature_id, base_peak_id, ms1_centroid_scan, ms1_centroid_rt, ms2_peak_id, ms2_centroid_scan, ms2_centroid_rt, scan_delta, rt_delta, correlation))
 
-            # get all the mzs used to create this peak
-            composite_mzs_min = ms2_peaks_df.loc[ms2_peak_idx].composite_mzs_min.item()
-            composite_mzs_max = ms2_peaks_df.loc[ms2_peak_idx].composite_mzs_max.item()
-            peak_points = ms2_feature_region_points_df[(ms2_feature_region_points_df.scaled_mz >= composite_mzs_min) & (ms2_feature_region_points_df.scaled_mz <= composite_mzs_max)]
-            peak_points['retention_time_secs'] = peak_points.frame_id / raw_frame_ids_per_second
-            ms2_centroid_scan = peakutils.centroid(peak_points.scan.astype(float), peak_points.intensity)
-            ms2_centroid_rt = peakutils.centroid(peak_points.retention_time_secs.astype(float), peak_points.intensity)
-
-            scan_distance = ms1_centroid_scan - ms2_centroid_scan
-            rt_distance = ms1_centroid_rt - ms2_centroid_rt
-            correlation = 0.0
-
-            peak_correlation.append((feature_id, base_peak_id, ms1_centroid_scan, ms1_centroid_rt, ms2_peak_id, ms2_centroid_scan, ms2_centroid_rt, scan_distance, rt_distance, correlation))
         feature_stop_time = time.time()
         print("processed feature {} in {} seconds".format(feature_id, feature_stop_time-feature_start_time))
 

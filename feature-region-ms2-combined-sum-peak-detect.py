@@ -110,7 +110,7 @@ def main():
     dest_c.execute("CREATE TABLE summed_ms2_regions_info (item TEXT, value TEXT)")
 
     dest_c.execute("DROP TABLE IF EXISTS ms2_peaks")
-    dest_c.execute("CREATE TABLE ms2_peaks (feature_id INTEGER, peak_id INTEGER, centroid_mz REAL, composite_mzs_min INTEGER, composite_mzs_max INTEGER, centroid_scan INTEGER, intensity INTEGER, PRIMARY KEY (feature_id, peak_id))")
+    dest_c.execute("CREATE TABLE ms2_peaks (feature_id INTEGER, peak_id INTEGER, centroid_mz REAL, composite_mzs_min INTEGER, composite_mzs_max INTEGER, centroid_scan INTEGER, intensity INTEGER, cofi_scan REAL, cofi_rt REAL, PRIMARY KEY (feature_id, peak_id))")
 
     dest_c.execute("DROP TABLE IF EXISTS ms2_feature_region_points")
 
@@ -125,6 +125,12 @@ def main():
     ms2_frame_ids_df = pd.read_sql_query("select frame_id from frame_properties where collision_energy <> {} order by frame_id ASC;".format(args.ms1_collision_energy), conv_conn)
     ms2_frame_ids_v = ms2_frame_ids_df.values
     print("{} MS2 frames loaded".format(len(ms2_frame_ids_v)))
+
+    # calculate the ms2 frame rate - assume they alternate 
+    df = pd.read_sql_query("select value from convert_info where item=\'{}\'".format("raw_frame_period_in_msec"), conv_conn)
+    raw_frame_period_in_msec = float(df.loc[0].value)
+    raw_frame_ids_per_second = 1.0 / (raw_frame_period_in_msec * 10**-3)
+    print("ms2 raw frames per second: {}".format(raw_frame_ids_per_second))
 
     if len(ms2_frame_ids_v) > 0:
 
@@ -242,9 +248,15 @@ def main():
                                 points.append((feature_id, peak_id, point_id, centroid_mz_descaled, min_scan+scan, point_intensity))
                                 point_id += 1
 
+                        # calculate the peak's centre of intensity
+                        peak_points = ms2_feature_region_points_df[(ms2_feature_region_points_df.scaled_mz >= peak_composite_mzs_min) & (ms2_feature_region_points_df.scaled_mz <= peak_composite_mzs_max)]
+                        peak_points['retention_time_secs'] = peak_points.frame_id / raw_frame_ids_per_second
+                        centre_of_intensity_scan = peakutils.centroid(peak_points.scan.astype(float), peak_points.intensity)
+                        centre_of_intensity_rt = peakutils.centroid(peak_points.retention_time_secs.astype(float), peak_points.intensity)
+
                         # add the peak to the list
-                        # feature_id INTEGER, peak_id INTEGER, centroid_mz REAL, composite_mzs_min INTEGER, composite_mzs_max INTEGER, centroid_scan INTEGER, intensity INTEGER
-                        peaks.append((feature_id, peak_id, centroid_mz_descaled, peak_composite_mzs_min, peak_composite_mzs_max, min_scan+centroid_scan, total_peak_intensity))
+                        # feature_id INTEGER, peak_id INTEGER, centroid_mz REAL, composite_mzs_min INTEGER, composite_mzs_max INTEGER, centroid_scan INTEGER, intensity INTEGER, centre_of_intensity_scan REAL, centre_of_intensity_rt REAL
+                        peaks.append((feature_id, peak_id, centroid_mz_descaled, peak_composite_mzs_min, peak_composite_mzs_max, min_scan+centroid_scan, total_peak_intensity, centre_of_intensity_scan, centre_of_intensity_rt))
                         peak_id += 1
                         peak_count += 1
 
@@ -263,8 +275,8 @@ def main():
                 dest_c.executemany("INSERT INTO summed_ms2_regions (feature_id, peak_id, point_id, mz, scan, intensity) VALUES (?, ?, ?, ?, ?, ?)", points)
                 dest_conn.commit()
                 del points[:]
-                #                                          feature_id INTEGER, peak_id INTEGER, centroid_mz REAL, composite_mzs_min INTEGER, composite_mzs_max INTEGER, centroid_scan INTEGER, intensity INTEGER
-                dest_c.executemany("INSERT INTO ms2_peaks (feature_id, peak_id, centroid_mz, composite_mzs_min, composite_mzs_max, centroid_scan, intensity) VALUES (?, ?, ?, ?, ?, ?, ?)", peaks)
+                #                                          feature_id INTEGER, peak_id INTEGER, centroid_mz REAL, composite_mzs_min INTEGER, composite_mzs_max INTEGER, centroid_scan INTEGER, intensity INTEGER, centre_of_intensity_scan REAL, centre_of_intensity_rt REAL
+                dest_c.executemany("INSERT INTO ms2_peaks (feature_id, peak_id, centroid_mz, composite_mzs_min, composite_mzs_max, centroid_scan, intensity, cofi_scan, cofi_rt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)", peaks)
                 dest_conn.commit()
                 del peaks[:]
 
@@ -274,8 +286,8 @@ def main():
 
         # Store any remaining peaks in the database
         if len(peaks) > 0:
-            #                                          feature_id INTEGER, peak_id INTEGER, centroid_mz REAL, composite_mzs_min INTEGER, composite_mzs_max INTEGER, centroid_scan INTEGER, intensity INTEGER
-            dest_c.executemany("INSERT INTO ms2_peaks (feature_id, peak_id, centroid_mz, composite_mzs_min, composite_mzs_max, centroid_scan, intensity) VALUES (?, ?, ?, ?, ?, ?, ?)", peaks)
+            #                                          feature_id INTEGER, peak_id INTEGER, centroid_mz REAL, composite_mzs_min INTEGER, composite_mzs_max INTEGER, centroid_scan INTEGER, intensity INTEGER, centre_of_intensity_scan REAL, centre_of_intensity_rt REAL
+            dest_c.executemany("INSERT INTO ms2_peaks (feature_id, peak_id, centroid_mz, composite_mzs_min, composite_mzs_max, centroid_scan, intensity, cofi_scan, cofi_rt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)", peaks)
 
         stop_run = time.time()
         print("{} seconds to process run".format(stop_run-start_run))
