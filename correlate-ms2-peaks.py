@@ -27,8 +27,6 @@ except AttributeError:
 
 @profile
 def main():
-    pd.options.mode.chained_assignment = None
-
     parser = argparse.ArgumentParser(description='Calculate correlation between MS1 and MS2 peaks for features.')
     parser.add_argument('-db','--database_name', type=str, help='The name of the source database.', required=True)
     parser.add_argument('-cdb','--converted_database_name', type=str, help='The name of the converted database.', required=True)

@@ -38,6 +38,9 @@ FRAME_MZ_IDX = 1
 FRAME_SCAN_IDX = 2
 FRAME_INTENSITY_IDX = 3
 
+# to avoid warnings about assigning to a dataframe view not being reflected in the original
+pd.options.mode.chained_assignment = None
+
 # so we can use profiling without removing @profile
 import __builtin__
 
