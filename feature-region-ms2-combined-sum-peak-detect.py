@@ -13,14 +13,7 @@ from sys import getsizeof
 import os
 
 #
-# For processing all the features in a range...
-# python -u ./otf-peak-detect/feature-region-ms2-combined-sum-peak-detect.py -cdb /media/data-drive/Hela_20A_20R_500.sqlite -ddb /media/data-drive/Hela_20A_20R_500-features-5-4546-5454.sqlite -fl 4546 -fu 5454 -ms2ce 27.0 -ml 440.0 -mu 555.0
-#
-# For picking and processing a random selection of feature indexes...
-# python -u ./otf-peak-detect/feature-region-ms2-combined-sum-peak-detect.py -cdb /media/data-drive/Hela_20A_20R_500.sqlite -ddb /media/data-drive/Hela_20A_20R_500-features-1-100000-random-1000-sf-1000.sqlite -fl 1 -fu 100000 -ms2ce 27.0 -ml 440.0 -mu 555.0 -nrf 1000
-#
-# For processing a previously-generated file of feature indexes...
-# python -u ./otf-peak-detect/feature-region-ms2-combined-sum-peak-detect.py -cdb /media/data-drive/Hela_20A_20R_500.sqlite -ddb /media/data-drive/Hela_20A_20R_500-features-1-100000-random-1000-sf-1000.sqlite -fl 1 -fu 100000 -ms2ce 27.0 -ml 440.0 -mu 555.0 -rff random_feature_indexes.txt
+# python -u ./otf-peak-detect/feature-region-ms2-combined-sum-peak-detect.py -cdb './UPS2_allion/UPS2_allion.sqlite' -ddb './UPS2_allion/UPS2_allion-features-1-455.sqlite' -ms1ce 10 -fl 1 -fu 455 -ml 100.0 -mu 2200.0 -bs 20 -fts 30 -fso 5 -mzsf 1000.0
 #
 
 # feature array indices
