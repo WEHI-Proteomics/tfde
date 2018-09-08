@@ -224,8 +224,8 @@ def main():
                     mzs = np.arange(lower_index, upper_index+1)
 
                     # calculate the peak attributes
-                    peak_composite_mzs_min = lower_index + min_mz
-                    peak_composite_mzs_max = upper_index + min_mz
+                    peak_composite_mzs_min = int(lower_index + min_mz)
+                    peak_composite_mzs_max = int(upper_index + min_mz)
                     scans = range(0,subset_frame_a.shape[0])
                     peak_summed_intensities_by_mz = subset_frame_a[:,mzs].sum(axis=0)
                     peak_summed_intensities_by_scan = subset_frame_a[:,mzs].sum(axis=1)
