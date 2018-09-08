@@ -186,6 +186,7 @@ def main():
             frame_df.to_sql(name='ms2_feature_region_points', con=dest_conn, if_exists='append', index=False, chunksize=None)
             # take a copy for determining quality of candidate peaks
             ms2_feature_region_points_df = frame_df.copy()
+            ms2_feature_region_points_df.set_index('scaled_mz', inplace=True)
             # sum the intensity for duplicate rows (scan, mz) - from https://stackoverflow.com/questions/29583312/pandas-sum-of-duplicate-attributes
             frame_df['intensity_combined'] = frame_df.groupby(['scan', 'scaled_mz'])['intensity'].transform('sum')
             # drop the duplicate rows
@@ -224,8 +225,8 @@ def main():
                     mzs = np.arange(lower_index, upper_index+1)
 
                     # calculate the peak attributes
-                    peak_composite_mzs_min = int(lower_index + min_mz)
-                    peak_composite_mzs_max = int(upper_index + min_mz)
+                    peak_composite_mzs_min = lower_index + min_mz
+                    peak_composite_mzs_max = upper_index + min_mz
                     scans = range(0,subset_frame_a.shape[0])
                     peak_summed_intensities_by_mz = subset_frame_a[:,mzs].sum(axis=0)
                     peak_summed_intensities_by_scan = subset_frame_a[:,mzs].sum(axis=1)
