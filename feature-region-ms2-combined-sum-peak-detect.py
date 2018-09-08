@@ -186,6 +186,7 @@ def main():
             frame_df.to_sql(name='ms2_feature_region_points', con=dest_conn, if_exists='append', index=False, chunksize=None)
             # take a copy for determining quality of candidate peaks
             ms2_feature_region_points_df = frame_df.copy()
+            ms2_feature_region_points_df.sort_values('scaled_mz', inplace=True, ascending = True)
             ms2_feature_region_points_df.set_index('scaled_mz', inplace=True)
             # sum the intensity for duplicate rows (scan, mz) - from https://stackoverflow.com/questions/29583312/pandas-sum-of-duplicate-attributes
             frame_df['intensity_combined'] = frame_df.groupby(['scan', 'scaled_mz'])['intensity'].transform('sum')
@@ -246,7 +247,7 @@ def main():
                                 point_id += 1
 
                         # calculate the peak's centre of intensity
-                        peak_points = ms2_feature_region_points_df[(ms2_feature_region_points_df.scaled_mz >= peak_composite_mzs_min) & (ms2_feature_region_points_df.scaled_mz <= peak_composite_mzs_max)]
+                        peak_points = ms2_feature_region_points_df.loc[peak_composite_mzs_min:peak_composite_mzs_max]
                         peak_points['retention_time_secs'] = peak_points.frame_id / raw_frame_ids_per_second
                         centre_of_intensity_scan = peakutils.centroid(peak_points.scan.astype(float), peak_points.intensity)
                         centre_of_intensity_rt = peakutils.centroid(peak_points.retention_time_secs.astype(float), peak_points.intensity)
