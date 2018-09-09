@@ -10,6 +10,7 @@ import csv
 
 # Usage: python convert-instrument-db.py -sdb "S:\data\Projects\ProtemicsLab\Bruker timsTOF\databases\20170714_SN34_UPS2_yeast200ng_AIF15_Slot1-39_01_728.d" -ddb "S:\data\Projects\ProtemicsLab\Bruker timsTOF\converted\20170714_SN34_UPS2_yeast200ng_AIF15_Slot1-39_01_728.sqlite"
 
+COLLISION_ENERGY_MS1_SET_PROPERTY_NAME = "Collision_Energy_Set"
 COLLISION_ENERGY_PROPERTY_NAME = "Collision_Energy_Act"
 FRAME_RATE_PROPERTY_NAME = "Digitizer_AcquisitionTime_Set"
 TARGET_MASS_START_PROPERTY_NAME = "Mode_TargetMassStart"
@@ -30,6 +31,11 @@ parser.add_argument('-csv','--destination_csv_file_name', type=str, help='The na
 parser.add_argument('-bs','--batch_size', type=int, default=10000, help='The size of the frames to be written to the database.', required=False)
 parser.add_argument('-nf','--number_of_frames', type=int, help='The number of frames to convert.', required=False)
 args = parser.parse_args()
+
+# Store the arguments as metadata in the database for later reference
+info = []
+for arg in vars(args):
+    info.append((arg, getattr(args, arg)))
 
 if (args.destination_database_name is None) and (args.destination_csv_file_name is None):
     print("No destination was given, so there is nothing to do.")
@@ -68,6 +74,11 @@ df = pd.read_sql_query("SELECT Id FROM PropertyDefinitions WHERE PermanentName=\
 property_id = df.loc[0].Id
 df = pd.read_sql_query("SELECT Value FROM GroupProperties WHERE Property={}".format(property_id), source_conn)
 mz_upper = df.loc[0].Value
+
+df = pd.read_sql_query("SELECT Id FROM PropertyDefinitions WHERE PermanentName=\"{}\"".format(COLLISION_ENERGY_MS1_SET_PROPERTY_NAME), source_conn)
+property_id = df.loc[0].Id
+df = pd.read_sql_query("SELECT Value FROM GroupProperties WHERE Property={}".format(property_id), source_conn)
+ms1_collision_energy = df.loc[0].Value
 
 # Get the collision energy property values
 q = source_conn.execute("SELECT Id FROM PropertyDefinitions WHERE PermanentName=\"{}\"".format(COLLISION_ENERGY_PROPERTY_NAME))
@@ -120,7 +131,6 @@ if args.destination_csv_file_name is not None:
 
 points = []
 frame_properties = []
-convert_info = []
 
 start_run = time.time()
 peak_id = 0 # set the peak ID to be zero for now
@@ -198,20 +208,23 @@ if args.destination_csv_file_name is not None:
         writer.writerows(frame_properties)
 
 stop_run = time.time()
-print("{} seconds to process run".format(stop_run-start_run))
 
-convert_info.append(("source_frame_lower", int(min_frame_id)))
-convert_info.append(("source_frame_upper", int(frame_count)))
-convert_info.append(("source_frame_count", int(frame_count)))
-convert_info.append(("num_scans", int(max_scans)))
-convert_info.append(("raw_frame_period_in_msec", float(raw_frame_period_in_msec)))
-convert_info.append(("mz_lower", float(mz_lower)))
-convert_info.append(("mz_upper", float(mz_upper)))
-convert_info.append(("run processing time (sec)", float(stop_run-start_run)))
-convert_info.append(("processed", time.ctime()))
+info.append(("source_frame_lower", int(min_frame_id)))
+info.append(("source_frame_upper", int(frame_count)))
+info.append(("source_frame_count", int(frame_count)))
+info.append(("num_scans", int(max_scans)))
+info.append(("raw_frame_period_in_msec", float(raw_frame_period_in_msec)))
+info.append(("mz_lower", float(mz_lower)))
+info.append(("mz_upper", float(mz_upper)))
+info.append(("ms1_collision_energy", float(ms1_collision_energy)))
+info.append(("run processing time (sec)", float(stop_run-start_run)))
+info.append(("processed", time.ctime()))
+info.append(("processor", parser.prog))
+
+print("convert-instrument-db info: {}".format(info))
 
 if args.destination_database_name is not None:
-    dest_c.executemany("INSERT INTO convert_info VALUES (?, ?)", convert_info)
+    dest_c.executemany("INSERT INTO convert_info VALUES (?, ?)", info)
 
     # Commit changes and close the connection
     dest_conn.commit()
@@ -220,4 +233,4 @@ if args.destination_database_name is not None:
 if args.destination_csv_file_name is not None:
     with open(convert_info_csv_filename, 'a') as outcsv:
         writer = csv.writer(outcsv)
-        writer.writerows(convert_info)
+        writer.writerows(info)
