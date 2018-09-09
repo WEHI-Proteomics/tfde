@@ -42,9 +42,9 @@ def main():
     conv_c = conv_db_conn.cursor()
 
     # Store the arguments as metadata in the database for later reference
-    peak_correlation_info = []
+    info = []
     for arg in vars(args):
-        peak_correlation_info.append((arg, getattr(args, arg)))
+        info.append((arg, getattr(args, arg)))
 
     print("Setting up tables")
     src_c.execute("DROP TABLE IF EXISTS peak_correlation")
@@ -142,16 +142,17 @@ def main():
         print("Error: there are no peak correlations for feature range {}-{}".format(args.feature_id_lower, args.feature_id_upper))
 
     stop_run = time.time()
-    print("{} seconds to process features {} to {}".format(stop_run-start_run, args.feature_id_lower, args.feature_id_upper))
+    print("{} seconds to process features {} to {} by ".format(stop_run-start_run, args.feature_id_lower, args.feature_id_upper, parser.prog))
 
     # write out the processing info
-    peak_correlation_info.append(("run processing time (sec)", stop_run-start_run))
-    peak_correlation_info.append(("processed", time.ctime()))
+    info.append(("run processing time (sec)", stop_run-start_run))
+    info.append(("processed", time.ctime()))
+    info.append(("processor", parser.prog))
 
-    peak_correlation_info_entry = []
-    peak_correlation_info_entry.append(("features {}-{}".format(args.feature_id_lower, args.feature_id_upper), ' '.join(str(e) for e in peak_correlation_info)))
+    info_entry = []
+    info_entry.append(("features {}-{}".format(args.feature_id_lower, args.feature_id_upper), json.dumps(info)))
 
-    src_c.executemany("INSERT INTO peak_correlation_info VALUES (?, ?)", peak_correlation_info_entry)
+    src_c.executemany("INSERT INTO peak_correlation_info VALUES (?, ?)", info_entry)
 
     source_conn.commit()
     source_conn.close()
