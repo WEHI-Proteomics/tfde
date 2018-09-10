@@ -7,6 +7,7 @@ import os
 import argparse
 import time
 import csv
+import os.path
 
 # Usage: python convert-instrument-db.py -sdb "S:\data\Projects\ProtemicsLab\Bruker timsTOF\databases\20170714_SN34_UPS2_yeast200ng_AIF15_Slot1-39_01_728.d" -ddb "S:\data\Projects\ProtemicsLab\Bruker timsTOF\converted\20170714_SN34_UPS2_yeast200ng_AIF15_Slot1-39_01_728.sqlite"
 
@@ -89,6 +90,10 @@ collision_energies_df = pd.read_sql_query("SELECT Frame,Value FROM FrameProperti
 collision_energies_v = collision_energies_df.values
 
 if args.destination_database_name is not None:
+    # remove the destination database if it remains from a previous run - it's faster to recreate it
+    if os.path.isfile(args.destination_database_name):
+        os.remove(args.destination_database_name)
+
     # Connect to the destination database
     dest_conn = sqlite3.connect(args.destination_database_name)
     dest_c = dest_conn.cursor()
