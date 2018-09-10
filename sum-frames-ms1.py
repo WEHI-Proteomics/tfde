@@ -92,9 +92,10 @@ raw_summed_join = []
 for summedFrameId in range(args.frame_lower,args.frame_upper+1):
     baseFrameIdsIndex = (summedFrameId-1)*args.frame_summing_offset
     frameIdsToSum = frame_ids[baseFrameIdsIndex:baseFrameIdsIndex+args.frames_to_sum]
-    if len(frameIdsToSum) == 1:
+    numberOfFramesToSum = len(frameIdsToSum)
+    if numberOfFramesToSum == 1:
         frameIdsToSum = "({})".format(frameIdsToSum[0])
-    print("Processing {} frames ({}) to create summed frame {}".format(len(frameIdsToSum), frameIdsToSum, summedFrameId))
+    print("Processing {} frames ({}) to create summed frame {}".format(numberOfFramesToSum, frameIdsToSum, summedFrameId))
     frame_df = pd.read_sql_query("select frame_id,mz,scan,intensity,point_id from frames where frame_id in {} order by frame_id, mz, scan asc;".format(frameIdsToSum), source_conn)
     frame_v = frame_df.values
 
