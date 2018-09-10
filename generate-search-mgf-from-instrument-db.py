@@ -104,6 +104,7 @@ parser.add_argument('-idb','--instrument_database_name', type=str, help='The nam
 parser.add_argument('-dbn','--database_base_name', type=str, help='The base name of the destination databases.', required=True)
 parser.add_argument('-fts','--frames_to_sum', type=int, help='The number of MS1 source frames to sum.', required=True)
 parser.add_argument('-fso','--frame_summing_offset', type=int, help='The number of MS1 source frames to shift for each summation.', required=True)
+parser.add_argument('-cbs','--conversion_batch_size', type=int, help='The size of the frames to be written to the database during conversion.', required=False)
 parser.add_argument('-cems1','--ms1_collision_energy', type=int, help='Collision energy for ms1, in eV.', required=True)
 parser.add_argument('-op','--operation', type=str, default='all', help='The operation to perform.', required=False)
 parser.add_argument('-fop','--final_operation', type=str, help='The final operation to perform.', required=False)
@@ -179,9 +180,9 @@ if process_this_step(this_step='convert_instrument_db', first_step=args.operatio
         sys.exit(1)
 
     if args.number_of_frames is not None:
-        run_process("python -u ./otf-peak-detect/convert-instrument-db.py -sdb '{}' -ddb '{}' -nf {}".format(args.instrument_database_name, converted_database_name, args.number_of_frames))
+        run_process("python -u ./otf-peak-detect/convert-instrument-db.py -sdb '{}' -ddb '{}' -nf {} -bs {}".format(args.instrument_database_name, converted_database_name, args.number_of_frames, args.conversion_batch_size))
     else:
-        run_process("python -u ./otf-peak-detect/convert-instrument-db.py -sdb '{}' -ddb '{}'".format(args.instrument_database_name, converted_database_name))
+        run_process("python -u ./otf-peak-detect/convert-instrument-db.py -sdb '{}' -ddb '{}' -bs {}".format(args.instrument_database_name, converted_database_name, args.conversion_batch_size))
 
     # gather statistics
     source_conn = sqlite3.connect(converted_database_name)
