@@ -264,7 +264,7 @@ if args.scan_upper is None:
     df = pd.read_sql_query("select value from convert_info where item = \'num_scans\'", source_conn)
     source_conn.close()
     if len(df) > 0:
-        args.scan_upper = float(df.loc[0].value)
+        args.scan_upper = int(df.loc[0].value)
         print("scan_upper set to {} from the data".format(args.scan_upper))
     else:
         print("Error - could not find scan_upper from the convert_info table and it's needed in sebsequent steps. Exiting.")
