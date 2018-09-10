@@ -43,10 +43,10 @@ def findNearestLessThan(searchVal, inputData):
 
 parser = argparse.ArgumentParser(description='A tree descent method for peak detection.')
 parser.add_argument('-db','--database_name', type=str, help='The name of the source database.', required=True)
-parser.add_argument('-fl','--frame_lower', type=int, help='The lower frame number.', required=False)
-parser.add_argument('-fu','--frame_upper', type=int, help='The upper frame number.', required=False)
-parser.add_argument('-sl','--scan_lower', type=int, default=1, help='The lower scan number.', required=False)
-parser.add_argument('-su','--scan_upper', type=int, default=176, help='The upper scan number.', required=False)
+parser.add_argument('-fl','--frame_lower', type=int, help='The lower frame number.', required=True)
+parser.add_argument('-fu','--frame_upper', type=int, help='The upper frame number.', required=True)
+parser.add_argument('-sl','--scan_lower', type=int, help='The lower scan number.', required=True)
+parser.add_argument('-su','--scan_upper', type=int, help='The upper scan number.', required=True)
 parser.add_argument('-es','--empty_scans', type=int, default=2, help='Maximum number of empty scans to tolerate.', required=False)
 parser.add_argument('-sd','--standard_deviations', type=int, default=4, help='Number of standard deviations to look either side of a point.', required=False)
 parser.add_argument('-bs','--batch_size', type=int, default=10000, help='The size of the frames to be written to the database.', required=False)
@@ -69,24 +69,12 @@ src_c.execute("CREATE INDEX IF NOT EXISTS idx_summed_frames ON summed_frames (fr
 src_c.execute("CREATE INDEX IF NOT EXISTS idx_summed_frames_2 ON summed_frames (frame_id,point_id)")
 src_c.execute("CREATE INDEX IF NOT EXISTS idx_summed_frames_3 ON summed_frames (frame_id,peak_id)")
 
-if args.frame_lower is None:
-    src_c.execute("SELECT value FROM summing_info WHERE item=\"frame_lower\"")
-    row = src_c.fetchone()
-    args.frame_lower = int(row[0])
-    print("lower frame_id set to {} from the data".format(args.frame_lower))
-
-if args.frame_upper is None:
-    src_c.execute("SELECT value FROM summing_info WHERE item=\"frame_upper\"")
-    row = src_c.fetchone()
-    args.frame_upper = int(row[0])
-    print("upper frame_id set to {} from the data".format(args.frame_upper))
-
 src_c.execute("update summed_frames set peak_id=0 where frame_id>={} and frame_id<={} and peak_id!=0".format(args.frame_lower, args.frame_upper))
 
 # Store the arguments as metadata in the database for later reference
-peak_detect_info = []
+info = []
 for arg in vars(args):
-    peak_detect_info.append((arg, getattr(args, arg)))
+    info.append((arg, getattr(args, arg)))
 
 # Peak array indices
 FRAME_MZ_IDX = 0
@@ -270,15 +258,17 @@ if len(point_updates) > 0:
     del point_updates[:]
 
 stop_run = time.time()
-print("{} seconds to detect ms1 peaks in frames {} to {}".format(stop_run-start_run, args.frame_lower, args.frame_upper))
 
 # write out the processing info
-peak_detect_info.append(("run processing time (sec)", stop_run-start_run))
-peak_detect_info.append(("processed", time.ctime()))
+info.append(("run processing time (sec)", stop_run-start_run))
+info.append(("processed", time.ctime()))
+info.append(("processor", parser.prog))
 
-peak_detect_info_entry = []
-peak_detect_info_entry.append(("summed frames {}-{}".format(args.frame_lower, args.frame_upper), ' '.join(str(e) for e in peak_detect_info)))
+print("{} info: {}".format(parser.prog, info))
 
-src_c.executemany("INSERT INTO peak_detect_info VALUES (?, ?)", peak_detect_info_entry)
+info_entry = []
+info_entry.append(("summed frames {}-{}".format(args.frame_lower, args.frame_upper), json.dumps(info)))
+
+src_c.executemany("INSERT INTO peak_detect_info VALUES (?, ?)", info_entry)
 source_conn.commit()
 source_conn.close()

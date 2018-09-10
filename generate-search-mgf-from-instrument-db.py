@@ -87,7 +87,18 @@ def continue_processing(this_step, final_step):
     if (result == False) and (args.shutdown_on_completion == True):
         run_process("sudo shutdown -P +5")
     return result
-    
+
+def store_info(info, processing_times):
+    processing_stop_time = time.time()
+    info.append(("total processing", processing_stop_time-processing_start_time))
+    info.append(("processing times", json.dumps(processing_times)))
+    # store it in the database
+    info_entry_df = pd.DataFrame(info, columns=['item', 'value'])
+    db_conn = sqlite3.connect(converted_database_name)
+    info_entry_df.to_sql(name='processing_info', con=db_conn, if_exists='replace', index=False)
+    db_conn.close()
+
+
 #
 # source activate py27
 # python -u ./otf-peak-detect/generate-search-mgf-from-instrument-db.py -idb /stornext/Sysbio/data/Projects/ProtemicsLab/Development/AllIon/BSA_All_Ion/BSA_All_Ion_Slot1-46_01_266.d -dbd ./BSA_All_Ion -dbn BSA_All_Ion -cems1 10 -mpc 0.9 -fts 30 -fso 5 -op cluster_detect_ms1 > BSA_All_Ion.log 2>&1
@@ -112,6 +123,8 @@ parser.add_argument('-sd','--shutdown_on_completion', action='store_true', help=
 parser.add_argument('-nf','--number_of_frames', type=int, help='The number of frames to convert.', required=False)
 parser.add_argument('-ml','--mz_lower', type=float, help='Lower feature m/z to process.', required=False)
 parser.add_argument('-mu','--mz_upper', type=float, help='Upper feature m/z to process.', required=False)
+parser.add_argument('-sl','--scan_lower', type=int, help='Lower scan to process.', required=False)
+parser.add_argument('-su','--scan_upper', type=int, help='Upper scan to process.', required=False)
 parser.add_argument('-fl','--frame_lower', type=int, help='The lower summed frame number to process.', required=False)
 parser.add_argument('-fu','--frame_upper', type=int, help='The upper summed frame number to process.', required=False)
 parser.add_argument('-mnf','--minimum_number_of_frames', type=int, default=3, help='Minimum number of frames for a feature to be valid.', required=False)
@@ -124,7 +137,7 @@ args = parser.parse_args()
 processing_times = []
 processing_start_time = time.time()
 
-statistics = []
+info = []
 
 steps = []
 steps.append('convert_instrument_db')
@@ -164,6 +177,18 @@ feature_database_name = converted_database_name  # combined the feature-based se
 # find out about the compute environment
 number_of_cores = mp.cpu_count()
 
+# Store the arguments as metadata in the database for later reference
+info = []
+for arg in vars(args):
+    info.append((arg, getattr(args, arg)))
+
+info.append(("converted_database_name", converted_database_name))
+info.append(("frame_database_root", frame_database_root))
+info.append(("frame_database_name", frame_database_name))
+info.append(("feature_database_root", feature_database_root))
+info.append(("feature_database_name", feature_database_name))
+info.append(("number_of_cores", number_of_cores))
+
 # Set up the processing pool
 pool = Pool()
 
@@ -177,6 +202,7 @@ if process_this_step(this_step='convert_instrument_db', first_step=args.operatio
     # make sure the processing directories exist
     if not os.path.exists(args.instrument_database_name):
         print("Error - the instrument database directory does not exist. Exiting.")
+        store_info(info, processing_times)
         sys.exit(1)
 
     if args.number_of_frames is not None:
@@ -188,7 +214,7 @@ if process_this_step(this_step='convert_instrument_db', first_step=args.operatio
     source_conn = sqlite3.connect(converted_database_name)
     frame_info_df = pd.read_sql_query("select max(frame_id) from frames", source_conn)
     number_of_converted_frames = int(frame_info_df.values[0][0])
-    statistics.append(("number of converted frames", number_of_converted_frames))
+    info.append(("number of converted frames", number_of_converted_frames))
     source_conn.close()
 
     convert_stop_time = time.time()
@@ -196,10 +222,12 @@ if process_this_step(this_step='convert_instrument_db', first_step=args.operatio
 
     if not continue_processing(this_step='convert_instrument_db', final_step=args.final_operation):
         print("Not continuing to the next step - exiting")
+        store_info(info, processing_times)
         sys.exit(0)
 
 if not os.path.exists(converted_database_name):
     print("Error - the converted database does not exist. Exiting.")
+    store_info(info, processing_times)
     sys.exit(1)
 
 # Determine the mass range if it's not specified
@@ -212,6 +240,7 @@ if args.mz_lower is None:
         print("mz_lower set to {} from the data".format(args.mz_lower))
     else:
         print("Error - could not find mz_lower from the convert_info table and it's needed in sebsequent steps. Exiting.")
+        store_info(info, processing_times)
         sys.exit(1)
 
 if args.mz_upper is None:
@@ -223,6 +252,23 @@ if args.mz_upper is None:
         print("mz_upper set to {} from the data".format(args.mz_upper))
     else:
         print("Error - could not find mz_upper from the convert_info table and it's needed in sebsequent steps. Exiting.")
+        store_info(info, processing_times)
+        sys.exit(1)
+
+# Determine the scan range if it's not specified
+if args.scan_lower is None:
+    args.scan_lower = 1
+
+if args.scan_upper is None:
+    source_conn = sqlite3.connect(converted_database_name)
+    df = pd.read_sql_query("select value from convert_info where item = \'num_scans\'", source_conn)
+    source_conn.close()
+    if len(df) > 0:
+        args.scan_upper = float(df.loc[0].value)
+        print("scan_upper set to {} from the data".format(args.scan_upper))
+    else:
+        print("Error - could not find scan_upper from the convert_info table and it's needed in sebsequent steps. Exiting.")
+        store_info(info, processing_times)
         sys.exit(1)
 
 # find the total number of summed ms1 frames in the database
@@ -261,8 +307,8 @@ if process_this_step(this_step='cluster_detect_ms1', first_step=args.operation):
     cluster_detect_ms1_processes = []
     for summed_frame_range in summed_frame_ranges:
         destination_db_name = "{}-{}-{}.sqlite".format(frame_database_root, summed_frame_range[0], summed_frame_range[1])
-        sum_frame_ms1_processes.append("python -u ./otf-peak-detect/sum-frames-ms1.py -sdb '{}' -ddb '{}' -ce {} -fl {} -fu {} -fts {} -fso {}".format(converted_database_name, destination_db_name, args.ms1_collision_energy, summed_frame_range[0], summed_frame_range[1], args.frames_to_sum, args.frame_summing_offset))
-        peak_detect_ms1_processes.append("python -u ./otf-peak-detect/peak-detect-ms1.py -db '{}' -fl {} -fu {}".format(destination_db_name, summed_frame_range[0], summed_frame_range[1]))
+        sum_frame_ms1_processes.append("python -u ./otf-peak-detect/sum-frames-ms1.py -sdb '{}' -ddb '{}' -ce {} -fl {} -fu {} -fts {} -fso {} -sl {} -su {}".format(converted_database_name, destination_db_name, args.ms1_collision_energy, summed_frame_range[0], summed_frame_range[1], args.frames_to_sum, args.frame_summing_offset, args.scan_lower, args.scan_upper))
+        peak_detect_ms1_processes.append("python -u ./otf-peak-detect/peak-detect-ms1.py -db '{}' -fl {} -fu {} -sl {} -su {}".format(destination_db_name, summed_frame_range[0], summed_frame_range[1], args.scan_lower, args.scan_upper))
         cluster_detect_ms1_processes.append("python -u ./otf-peak-detect/cluster-detect-ms1.py -db '{}' -fl {} -fu {}".format(destination_db_name, summed_frame_range[0], summed_frame_range[1]))
 
     run_process("python -u ./otf-peak-detect/sum-frames-ms1-prep.py -sdb '{}'".format(converted_database_name))
@@ -275,6 +321,7 @@ if process_this_step(this_step='cluster_detect_ms1', first_step=args.operation):
 
     if not continue_processing(this_step='cluster_detect_ms1', final_step=args.final_operation):
         print("Not continuing to the next step - exiting")
+        store_info(info, processing_times)
         sys.exit(0)
 
 ######################################
@@ -298,6 +345,7 @@ if process_this_step(this_step='recombine_frame_databases', first_step=args.oper
 
     if not continue_processing(this_step='recombine_frame_databases', final_step=args.final_operation):
         print("Not continuing to the next step - exiting")
+        store_info(info, processing_times)
         sys.exit(0)
 
 # retrieve the summed frame rate
@@ -310,6 +358,7 @@ if len(df) > 0:
     print("Frames per second is {}".format(frames_per_second))
 else:
     print("Error - could not find the frame rate from the summing_info table and it's needed in sebsequent steps. Exiting.")
+    store_info(info, processing_times)
     sys.exit(1)
 
 ###############################
@@ -327,6 +376,7 @@ if process_this_step(this_step='feature_detect_ms1', first_step=args.operation):
 
     if not continue_processing(this_step='feature_detect_ms1', final_step=args.final_operation):
         print("Not continuing to the next step - exiting")
+        store_info(info, processing_times)
         sys.exit(0)
 
 # find out how many features were detected
@@ -367,6 +417,7 @@ if process_this_step(this_step='feature_region_ms2_peak_detect', first_step=args
 
     if not continue_processing(this_step='feature_region_ms2_peak_detect', final_step=args.final_operation):
         print("Not continuing to the next step - exiting")
+        store_info(info, processing_times)
         sys.exit(0)
 
 ###########################################
@@ -393,6 +444,7 @@ if process_this_step(this_step='feature_region_ms1_peak_detect', first_step=args
 
     if not continue_processing(this_step='feature_region_ms1_peak_detect', final_step=args.final_operation):
         print("Not continuing to the next step - exiting")
+        store_info(info, processing_times)
         sys.exit(0)
 
 ######################################
@@ -415,6 +467,7 @@ if process_this_step(this_step='match_precursor_ms2_peaks', first_step=args.oper
 
     if not continue_processing(this_step='match_precursor_ms2_peaks', final_step=args.final_operation):
         print("Not continuing to the next step - exiting")
+        store_info(info, processing_times)
         sys.exit(0)
 
 ############################
@@ -437,6 +490,7 @@ if process_this_step(this_step='correlate_peaks', first_step=args.operation):
 
     if not continue_processing(this_step='correlate_peaks', final_step=args.final_operation):
         print("Not continuing to the next step - exiting")
+        store_info(info, processing_times)
         sys.exit(0)
 
 ###################################
@@ -459,6 +513,7 @@ if process_this_step(this_step='deconvolve_ms2_spectra', first_step=args.operati
 
     if not continue_processing(this_step='deconvolve_ms2_spectra', final_step=args.final_operation):
         print("Not continuing to the next step - exiting")
+        store_info(info, processing_times)
         sys.exit(0)
 
 ##############################
@@ -502,6 +557,7 @@ if process_this_step(this_step='create_search_mgf', first_step=args.operation):
 
     if not continue_processing(this_step='create_search_mgf', final_step=args.final_operation):
         print("Not continuing to the next step - exiting")
+        store_info(info, processing_times)
         sys.exit(0)
 
 ########################################
@@ -531,20 +587,9 @@ if process_this_step(this_step='recombine_feature_databases', first_step=args.op
 
     if not continue_processing(this_step='recombine_feature_databases', final_step=args.final_operation):
         print("Not continuing to the next step - exiting")
+        store_info(info, processing_times)
         sys.exit(0)
 
-processing_stop_time = time.time()
-processing_times.append(("total processing", processing_stop_time-processing_start_time))
-
-# print statistics
-print("")
-print("processing times")
-for t in processing_times:
-    print("{}\t\t{:.1f} seconds\t\t{:.1f}%".format(t[0], t[1], t[1]/(processing_stop_time-processing_start_time)*100.))
-# print("")
-# print("data")
-# for s in statistics:
-#     print("{}\t\t{:.1f}".format(s[0], s[1]))
-
+# shutdown the machine
 if args.shutdown_on_completion == True:
     run_process("sudo shutdown -P +5")

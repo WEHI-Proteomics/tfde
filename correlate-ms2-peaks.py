@@ -142,12 +142,13 @@ def main():
         print("Error: there are no peak correlations for feature range {}-{}".format(args.feature_id_lower, args.feature_id_upper))
 
     stop_run = time.time()
-    print("{} seconds to process features {} to {} by ".format(stop_run-start_run, args.feature_id_lower, args.feature_id_upper, parser.prog))
 
     # write out the processing info
     info.append(("run processing time (sec)", stop_run-start_run))
     info.append(("processed", time.ctime()))
     info.append(("processor", parser.prog))
+
+    print("{} info: {}".format(parser.prog, info))
 
     info_entry = []
     info_entry.append(("features {}-{}".format(args.feature_id_lower, args.feature_id_upper), json.dumps(info)))

@@ -251,9 +251,9 @@ args = parser.parse_args()
 NUMBER_OF_FRAMES_TO_LOOK = int(args.number_of_seconds_each_side * args.frames_per_second)
 
 # Store the arguments as metadata in the database for later reference
-feature_info = []
+info = []
 for arg in vars(args):
-    feature_info.append((arg, getattr(args, arg)))
+    info.append((arg, getattr(args, arg)))
 
 # Connect to the database file
 source_conn = sqlite3.connect(args.database_name)
@@ -372,12 +372,14 @@ if len(cluster_updates) > 0:
 
 stop_run = time.time()
 
-print("found {} features in {} seconds".format(feature_id-1, stop_run-start_run))
+info.append(("features found", feature_id-1))
+info.append(("run processing time (sec)", stop_run-start_run))
+info.append(("processed", time.ctime()))
+info.append(("processor", parser.prog))
 
-feature_info.append(("features found", feature_id-1))
-feature_info.append(("run processing time (sec)", stop_run-start_run))
-feature_info.append(("processed", time.ctime()))
-c.executemany("INSERT INTO feature_info VALUES (?, ?)", feature_info)
+print("{} info: {}".format(parser.prog, info))
+
+c.executemany("INSERT INTO feature_info VALUES (?, ?)", info)
 
 source_conn.commit()
 source_conn.close()

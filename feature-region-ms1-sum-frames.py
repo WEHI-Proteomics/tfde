@@ -51,10 +51,9 @@ dest_conn = sqlite3.connect(args.destination_database_name)
 dest_c = dest_conn.cursor()
 
 # Store the arguments as metadata in the database for later reference
-ms1_feature_region_summing_info = []
+info = []
 for arg in vars(args):
-    ms1_feature_region_summing_info.append((arg, getattr(args, arg)))
-print(ms1_feature_region_summing_info)
+    info.append((arg, getattr(args, arg)))
 
 # Set up the tables if they don't exist already
 print("Setting up tables and indexes")
@@ -128,14 +127,16 @@ composite_points_df = pd.DataFrame(composite_points, columns=['feature_id','feat
 composite_points_df.to_sql(name='ms1_feature_frame_join', con=dest_conn, if_exists='append', index=False, chunksize=None)
 
 stop_run = time.time()
-print("{} seconds to process run".format(stop_run-start_run))
 
-ms1_feature_region_summing_info.append(("run processing time (sec)", stop_run-start_run))
-ms1_feature_region_summing_info.append(("processed", time.ctime()))
+info.append(("run processing time (sec)", stop_run-start_run))
+info.append(("processed", time.ctime()))
+info.append(("processor", parser.prog))
 
-ms1_feature_region_summing_info_entry = []
-ms1_feature_region_summing_info_entry.append(("features {}-{}".format(args.feature_id_lower, args.feature_id_upper), ' '.join(str(e) for e in ms1_feature_region_summing_info)))
+print("{} info: {}".format(parser.prog, info))
 
-dest_c.executemany("INSERT INTO summed_ms1_regions_info VALUES (?, ?)", ms1_feature_region_summing_info_entry)
+info_entry = []
+info_entry.append(("features {}-{}".format(args.feature_id_lower, args.feature_id_upper), json.dumps(info)))
+
+dest_c.executemany("INSERT INTO summed_ms1_regions_info VALUES (?, ?)", info_entry)
 dest_conn.commit()
 dest_conn.close()

@@ -29,8 +29,8 @@ parser.add_argument('-mf','--noise_threshold', type=int, default=2, help='Minimu
 parser.add_argument('-ce','--collision_energy', type=int, help='Collision energy for ms1, in eV.', required=True)
 parser.add_argument('-fl','--frame_lower', type=int, help='The lower frame number.', required=False)
 parser.add_argument('-fu','--frame_upper', type=int, help='The upper frame number.', required=False)
-parser.add_argument('-sl','--scan_lower', type=int, default=1, help='The lower scan number.', required=False)
-parser.add_argument('-su','--scan_upper', type=int, default=176, help='The upper scan number.', required=False)
+parser.add_argument('-sl','--scan_lower', type=int, help='The lower scan number.', required=True)
+parser.add_argument('-su','--scan_upper', type=int, help='The upper scan number.', required=True)
 parser.add_argument('-bs','--batch_size', type=int, default=10000, help='The size of the frames to be written to the database.', required=False)
 args = parser.parse_args()
 
@@ -56,9 +56,9 @@ dest_c.execute("CREATE TABLE summing_info (item TEXT, value TEXT)")
 dest_c.execute("CREATE TABLE elution_profile (frame_id INTEGER, intensity INTEGER)")
 
 # Store the arguments as metadata in the database for later reference
-summing_info = {}
+info = []
 for arg in vars(args):
-    summing_info[arg] = getattr(args, arg)
+    info.append((arg, getattr(args, arg)))
 
 # calculate the summed frame rate
 df = pd.read_sql_query("select value from convert_info where item=\'{}\'".format("raw_frame_period_in_msec"), source_conn)
@@ -92,6 +92,8 @@ raw_summed_join = []
 for summedFrameId in range(args.frame_lower,args.frame_upper+1):
     baseFrameIdsIndex = (summedFrameId-1)*args.frame_summing_offset
     frameIdsToSum = frame_ids[baseFrameIdsIndex:baseFrameIdsIndex+args.frames_to_sum]
+    if len(frameIdsToSum) == 1:
+        frameIdsToSum = "({})".format(frameIdsToSum[0])
     print("Processing {} frames ({}) to create summed frame {}".format(len(frameIdsToSum), frameIdsToSum, summedFrameId))
     frame_df = pd.read_sql_query("select frame_id,mz,scan,intensity,point_id from frames where frame_id in {} order by frame_id, mz, scan asc;".format(frameIdsToSum), source_conn)
     frame_v = frame_df.values
@@ -158,19 +160,20 @@ raw_summed_join_df = pd.DataFrame(raw_summed_join, columns=raw_summed_join_colum
 raw_summed_join_df.to_sql(name='raw_summed_join', con=dest_conn, if_exists='replace', index=False)
 
 stop_run = time.time()
-print("{} seconds to sum frames {} to {}".format(stop_run-start_run, args.frame_lower, args.frame_upper))
 
-summing_info["scan_lower"] = args.scan_lower
-summing_info["scan_upper"] = args.scan_upper
-summing_info["frames_per_second"] = summed_frames_per_second
+info.append(("scan_lower", args.scan_lower))
+info.append(("scan_upper", args.scan_upper))
+info.append(("frames_per_second", summed_frames_per_second))
+info.append(("run processing time (sec)", stop_run-start_run))
+info.append(("processed", time.ctime()))
+info.append(("processor", parser.prog))
 
-summing_info["run processing time (sec)"] = stop_run-start_run
-summing_info["processed"] = time.ctime()
+print("{} info: {}".format(parser.prog, info))
 
-summing_info_entry = []
-summing_info_entry.append(("summed frames {}-{}".format(args.frame_lower, args.frame_upper), json.dumps(summing_info)))
+info_entry = []
+info_entry.append(("summed frames {}-{}".format(args.frame_lower, args.frame_upper), json.dumps(info)))
 
-dest_c.executemany("INSERT INTO summing_info VALUES (?, ?)", summing_info_entry)
+dest_c.executemany("INSERT INTO summing_info VALUES (?, ?)", info_entry)
 
 source_conn.close()
 

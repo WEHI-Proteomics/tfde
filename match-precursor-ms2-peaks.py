@@ -31,9 +31,9 @@ if args.feature_id_upper is None:
     print("feature_id_upper set to {} from the data".format(args.feature_id_upper))
 
 # Store the arguments as metadata in the database for later reference
-precursor_ms2_peak_match_info = []
+info = []
 for arg in vars(args):
-    precursor_ms2_peak_match_info.append((arg, getattr(args, arg)))
+    info.append((arg, getattr(args, arg)))
 
 print("Setting up tables and indexes")
 db_c.execute("DROP TABLE IF EXISTS precursor_ms2_peak_matches")
@@ -94,13 +94,16 @@ stop_run = time.time()
 print("{:.2f} seconds to match peaks for features {} to {}".format(stop_run-start_run, args.feature_id_lower, args.feature_id_upper))
 
 # write out the processing info
-precursor_ms2_peak_match_info.append(("run processing time (sec)", stop_run-start_run))
-precursor_ms2_peak_match_info.append(("processed", time.ctime()))
+info.append(("run processing time (sec)", stop_run-start_run))
+info.append(("processed", time.ctime()))
+info.append(("processor", parser.prog))
 
-precursor_ms2_peak_match_info_entry = []
-precursor_ms2_peak_match_info_entry.append(("features {}-{}".format(args.feature_id_lower, args.feature_id_upper), ' '.join(str(e) for e in precursor_ms2_peak_match_info)))
+print("{} info: {}".format(parser.prog, info))
 
-db_c.executemany("INSERT INTO precursor_ms2_peak_matches_info VALUES (?, ?)", precursor_ms2_peak_match_info_entry)
+info_entry = []
+info_entry.append(("features {}-{}".format(args.feature_id_lower, args.feature_id_upper), json.dumps(info)))
+
+db_c.executemany("INSERT INTO precursor_ms2_peak_matches_info VALUES (?, ?)", info_entry)
 
 db_conn.commit()
 db_conn.close()

@@ -111,9 +111,9 @@ def main():
     dest_c.execute("DROP TABLE IF EXISTS ms2_feature_region_points")
 
     # Store the arguments as metadata in the database for later reference
-    ms2_feature_info = []
+    info = []
     for arg in vars(args):
-        ms2_feature_info.append((arg, getattr(args, arg)))
+        info.append((arg, getattr(args, arg)))
 
     start_run = time.time()
 
@@ -288,16 +288,17 @@ def main():
             dest_c.executemany("INSERT INTO ms2_peaks (feature_id, peak_id, centroid_mz, composite_mzs_min, composite_mzs_max, centroid_scan, intensity, cofi_scan, cofi_rt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)", peaks)
 
         stop_run = time.time()
-        print("{} seconds to process run by {}".format(stop_run-start_run, parser.prog))
 
-        ms2_feature_info.append(("run processing time (sec)", stop_run-start_run))
-        ms2_feature_info.append(("processed", time.ctime()))
-        ms2_feature_info.append(("processor", parser.prog))
+        info.append(("run processing time (sec)", stop_run-start_run))
+        info.append(("processed", time.ctime()))
+        info.append(("processor", parser.prog))
 
-        ms2_feature_info_entry = []
-        ms2_feature_info_entry.append(("features {}-{}".format(args.feature_id_lower, args.feature_id_upper), ' '.join(str(e) for e in ms2_feature_info)))
+        print("{} info: {}".format(parser.prog, info))
 
-        dest_c.executemany("INSERT INTO summed_ms2_regions_info VALUES (?, ?)", ms2_feature_info_entry)
+        info_entry = []
+        info_entry.append(("features {}-{}".format(args.feature_id_lower, args.feature_id_upper), json.dumps(info)))
+
+        dest_c.executemany("INSERT INTO summed_ms2_regions_info VALUES (?, ?)", info_entry)
         dest_conn.commit()
 
     dest_conn.close()

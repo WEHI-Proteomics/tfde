@@ -319,13 +319,16 @@ pool = Pool()
 pool.map(run_process, hk_processes)
 
 stop_run = time.time()
-print("{} seconds to process run".format(stop_run-start_run))
 
 info.append(("run processing time (sec)", stop_run-start_run))
 info.append(("processed", time.ctime()))
+info.append(("processor", parser.prog))
+
+print("{} info: {}".format(parser.prog, info))
 
 info_entry = []
 info_entry.append(("{}".format(os.path.basename(args.feature_region_database).split('.')[0]), json.dumps(info)))
+
 info_entry_df = pd.DataFrame(info_entry, columns=['item', 'value'])
 db_conn = sqlite3.connect(args.feature_region_database)
 info_entry_df.to_sql(name='deconvolve_ms2_spectra_info', con=db_conn, if_exists='replace', index=False)

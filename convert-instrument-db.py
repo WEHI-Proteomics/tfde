@@ -226,7 +226,7 @@ info.append(("run processing time (sec)", float(stop_run-start_run)))
 info.append(("processed", time.ctime()))
 info.append(("processor", parser.prog))
 
-print("convert-instrument-db info: {}".format(info))
+print("{} info: {}".format(parser.prog, info))
 
 if args.destination_database_name is not None:
     dest_c.executemany("INSERT INTO convert_info VALUES (?, ?)", info)

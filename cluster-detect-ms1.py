@@ -70,10 +70,8 @@ def peak_ratio(monoisotopic_mass, peak_number, number_of_sulphur):
 
 parser = argparse.ArgumentParser(description='A tree descent method for clustering peaks.')
 parser.add_argument('-db','--database_name', type=str, help='The name of the source database.', required=True)
-parser.add_argument('-fl','--frame_lower', type=int, help='The lower frame number to process.', required=False)
-parser.add_argument('-fu','--frame_upper', type=int, help='The upper frame number to process.', required=False)
-parser.add_argument('-sl','--scan_lower', type=int, default=1, help='The lower scan number to process.', required=False)
-parser.add_argument('-su','--scan_upper', type=int, default=176, help='The upper scan number to process.', required=False)
+parser.add_argument('-fl','--frame_lower', type=int, help='The lower frame number to process.', required=True)
+parser.add_argument('-fu','--frame_upper', type=int, help='The upper frame number to process.', required=True)
 parser.add_argument('-ir','--isotope_number_right', type=int, default=5, help='Isotope numbers to look on the right.', required=False)
 parser.add_argument('-il','--isotope_number_left', type=int, default=2, help='Isotope numbers to look on the left.', required=False)
 parser.add_argument('-mi','--minimum_peak_intensity', type=int, default=250, help='Minimum peak intensity to process.', required=False)
@@ -121,32 +119,12 @@ src_c.execute("CREATE INDEX IF NOT EXISTS idx_peaks ON peaks (frame_id)")
 src_c.execute("CREATE INDEX IF NOT EXISTS idx_peaks_2 ON peaks (frame_id,peak_id)")
 src_c.execute("CREATE INDEX IF NOT EXISTS idx_peaks_3 ON peaks (cluster_id)")
 
-if args.frame_lower is None:
-    src_c.execute("SELECT value FROM summing_info WHERE item=\"frame_lower\"")
-    row = src_c.fetchone()
-    args.frame_lower = int(row[0])
-    print("lower frame_id set to {} from the data".format(args.frame_lower))
-
-if args.frame_upper is None:
-    src_c.execute("SELECT value FROM summing_info WHERE item=\"frame_upper\"")
-    row = src_c.fetchone()
-    args.frame_upper = int(row[0])
-    print("upper frame_id set to {} from the data".format(args.frame_upper))
-
-if args.scan_lower is None:
-    args.scan_lower = 1
-    print("lower scan set to {} from the data".format(args.scan_lower))
-
-if args.scan_upper is None:
-    args.scan_lower = 176
-    print("lower scan set to {} from the data".format(args.scan_lower))
-
 src_c.execute("update peaks set cluster_id=0 where cluster_id!=0")
 
 # Store the arguments as metadata in the database for later reference
-cluster_detect_info = []
+info = []
 for arg in vars(args):
-    cluster_detect_info.append((arg, getattr(args, arg)))
+    info.append((arg, getattr(args, arg)))
 
 DELTA_MZ = 1.003355     # mass difference between Carbon-12 and Carbon-13 isotopes, in Da
 PROTON_MASS = 1.007276  # mass of a proton in unified atomic mass units, or Da
@@ -407,13 +385,16 @@ src_c.executemany("UPDATE peaks SET cluster_id=? WHERE frame_id=? AND peak_id=?"
 stop_run = time.time()
 
 # Store some metadata about clustering
-cluster_detect_info.append(("run processing time (sec)", stop_run-start_run))
-cluster_detect_info.append(("processed", time.ctime()))
+info.append(("run processing time (sec)", stop_run-start_run))
+info.append(("processed", time.ctime()))
+info.append(("processor", parser.prog))
 
-cluster_detect_info_entry = []
-cluster_detect_info_entry.append(("summed frames {}-{}".format(args.frame_lower, args.frame_upper), ' '.join(str(e) for e in cluster_detect_info)))
+print("{} info: {}".format(parser.prog, info))
 
-src_c.executemany("INSERT INTO cluster_detect_info VALUES (?, ?)", cluster_detect_info_entry)
+info_entry = []
+info_entry.append(("summed frames {}-{}".format(args.frame_lower, args.frame_upper), json.dumps(info)))
+
+src_c.executemany("INSERT INTO cluster_detect_info VALUES (?, ?)", info_entry)
 
 source_conn.commit()
 source_conn.close()

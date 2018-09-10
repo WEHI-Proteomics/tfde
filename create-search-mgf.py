@@ -6,6 +6,7 @@ import sqlite3
 import operator
 import os.path
 import argparse
+import json
 
 PROTON_MASS = 1.0073  # Mass of a proton in unified atomic mass units, or Da. For calculating the monoisotopic mass.
 
@@ -18,10 +19,22 @@ parser.add_argument('-dbd','--data_directory', type=str, help='The directory for
 parser.add_argument('-mpc','--minimum_peak_correlation', type=float, default=0.6, help='Process ms2 peaks with at least this much correlation with the feature''s ms1 base peak.', required=False)
 args = parser.parse_args()
 
+# Store the arguments as metadata in the database for later reference
+info = []
+for arg in vars(args):
+    info.append((arg, getattr(args, arg)))
+
+start_run = time.time()
+
 mgf_directory = "{}/mgf".format(args.data_directory)
 hk_directory = "{}/hk".format(args.data_directory)
 search_headers_directory = "{}/search-headers".format(args.data_directory)
 output_directory = "{}/search".format(mgf_directory)
+
+info.append(("mgf_directory", mgf_directory))
+info.append(("hk_directory", hk_directory))
+info.append(("search_headers_directory", search_headers_directory))
+info.append(("output_directory", output_directory))
 
 # make sure the output directory exists
 if not os.path.exists(output_directory):
@@ -30,12 +43,15 @@ if not os.path.exists(output_directory):
 db_conn = sqlite3.connect(args.features_database)
 feature_ids_df = pd.read_sql_query("select distinct(feature_id) from peak_correlation", db_conn)
 db_conn.cursor().execute("DROP TABLE IF EXISTS deconvoluted_ions")
+db_conn.cursor().execute("DROP TABLE IF EXISTS search_mgf_info")
+db_conn.cursor().execute("CREATE TABLE search_mgf_info (item TEXT, value TEXT)")
 db_conn.close()
 
 # delete the MGF if it already exists
 mgf_filename = "{}/{}-search.mgf".format(output_directory, args.base_mgf_filename)
 if os.path.isfile(mgf_filename):
     os.remove(mgf_filename)
+info.append(("mgf_filename", mgf_filename))
 
 for feature_ids_idx in range(0,len(feature_ids_df)):
     feature_id = feature_ids_df.loc[feature_ids_idx].feature_id.astype(int)
@@ -97,4 +113,17 @@ for feature_ids_idx in range(0,len(feature_ids_df)):
             for item in header_content[len(header_content)-1:]:
                 file_handler.write("{}".format(item))
 
-print("writing out the search MGF to {}".format(mgf_filename))
+stop_run = time.time()
+
+info.append(("run processing time (sec)", stop_run-start_run))
+info.append(("processed", time.ctime()))
+info.append(("processor", parser.prog))
+
+print("{} info: {}".format(parser.prog, info))
+
+info_entry = []
+info_entry.append(("features {}".format(args.features_database), json.dumps(info)))
+
+db_conn = sqlite3.connect(args.features_database)
+db_conn.cursor().executemany("INSERT INTO search_mgf_info VALUES (?, ?)", info_entry)
+db_conn.close()
