@@ -130,7 +130,7 @@ def peak_ratio(monoisotopic_mass, peak_number, number_of_sulphur):
 print("Setting up indexes")
 db_conn = sqlite3.connect(args.feature_region_database)
 db_conn.cursor().execute("CREATE INDEX IF NOT EXISTS idx_peak_correlation_1 ON peak_correlation (feature_id)")
-db_conn.cursor().execute("CREATE INDEX IF NOT EXISTS idx_peak_correlation_2 ON peak_correlation (feature_id, rt_distance, scan_distance)")
+db_conn.cursor().execute("CREATE INDEX IF NOT EXISTS idx_peak_correlation_2 ON peak_correlation (feature_id, rt_delta, scan_delta)")
 
 db_conn.cursor().execute("DROP TABLE IF EXISTS feature_isotopes")
 db_conn.cursor().execute("DROP TABLE IF EXISTS feature_list")
@@ -166,7 +166,7 @@ for feature_ids_idx in range(0,len(feature_ids_df)):
     # get the ms1 peaks
     peaks_df = pd.read_sql_query("select * from summed_ms1_regions where feature_id = {} order by peak_id".format(feature_id), db_conn)
     # get the ms2 peaks
-    peak_correlation_df = pd.read_sql_query("select * from peak_correlation where feature_id=={} and rt_distance >= {} and rt_distance <= {} and scan_distance >= {} and scan_distance <= {} order by ms2_peak_id ASC limit {}".format(feature_id, args.negative_rt_delta_tolerance, args.positive_rt_delta_tolerance, args.negative_scan_delta_tolerance, args.positive_scan_delta_tolerance, args.maximum_number_of_peaks_per_feature), db_conn)
+    peak_correlation_df = pd.read_sql_query("select * from peak_correlation where feature_id=={} and rt_delta >= {} and rt_delta <= {} and scan_delta >= {} and scan_delta <= {} order by ms2_peak_id ASC limit {}".format(feature_id, args.negative_rt_delta_tolerance, args.positive_rt_delta_tolerance, args.negative_scan_delta_tolerance, args.positive_scan_delta_tolerance, args.maximum_number_of_peaks_per_feature), db_conn)
     peak_correlation_df["feature_id-ms2_peak_id"] = peak_correlation_df.feature_id.astype(str) + '-' + peak_correlation_df.ms2_peak_id.astype(str)
     # a bit of a hack to avoid the single-element tuple with trailing comma upsetting the SQL query
     if len(peak_correlation_df) == 1:
