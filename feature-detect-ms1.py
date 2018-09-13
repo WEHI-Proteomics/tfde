@@ -281,6 +281,8 @@ if args.elution_start_sec is not None:
 if args.elution_end_sec is not None:
     frame_upper = int(args.elution_end_sec * args.frames_per_second)
 
+print("frame range of clusters adjusted by elution time: {} to {}".format(frame_lower, frame_upper))
+
 print("Setting up tables...")
 
 c.execute("DROP TABLE IF EXISTS features")
