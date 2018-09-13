@@ -132,6 +132,8 @@ parser.add_argument('-mzsf','--ms2_mz_scaling_factor', type=float, default=1000.
 parser.add_argument('-frts','--frame_tasks', type=int, default=1000, help='Number of worker tasks for frames.', required=False)
 parser.add_argument('-fets','--feature_tasks', type=int, default=1000, help='Number of worker tasks for features.', required=False)
 parser.add_argument('-mnp','--maximum_number_of_peaks_per_feature', type=int, default=500, help='The maximum number of peaks per feature.', required=False)
+parser.add_argument('-es','--elution_start_sec', type=int, help='Only process frames from this time in sec.', required=False)
+parser.add_argument('-ee','--elution_end_sec', type=int, help='Only process frames up to this time in sec.', required=False)
 args = parser.parse_args()
 
 processing_times = []
@@ -368,7 +370,7 @@ if process_this_step(this_step='feature_detect_ms1', first_step=args.operation):
     feature_detect_start_time = time.time()
 
     print("detecting features...")
-    run_process("python -u ./otf-peak-detect/feature-detect-ms1.py -db '{}' -fps {} -mnf {}".format(feature_database_name, frames_per_second, args.minimum_number_of_frames))
+    run_process("python -u ./otf-peak-detect/feature-detect-ms1.py -db '{}' -fps {} -mnf {} -es {} -ee {}".format(feature_database_name, frames_per_second, args.minimum_number_of_frames, args.elution_start_sec, args.elution_end_sec))
 
     feature_detect_stop_time = time.time()
     processing_times.append(("feature detect ms1", feature_detect_stop_time-feature_detect_start_time))
@@ -382,6 +384,7 @@ if process_this_step(this_step='feature_detect_ms1', first_step=args.operation):
 source_conn = sqlite3.connect(feature_database_name)
 feature_info_df = pd.read_sql_query("select value from feature_info where item='features found'", source_conn)
 number_of_features = int(feature_info_df.values[0][0])
+print("Number of features detected: {}".format(number_of_features))
 source_conn.close()
 
 # split the feature range into batches
@@ -390,6 +393,7 @@ feature_ranges = []
 for s in batch_splits:
     if len(s) > 0:
         feature_ranges.append((s[0],s[len(s)-1]))
+print("Feature ranges: {}".format(feature_ranges))
 
 #
 # from here, split the combined features database into feature range databases

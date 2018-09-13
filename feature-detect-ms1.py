@@ -246,6 +246,8 @@ parser.add_argument('-mfe','--magnitude_for_feature_endpoints', type=float, defa
 parser.add_argument('-fps','--frames_per_second', type=float, help='Effective frame rate for the summed frames.', required=True)
 parser.add_argument('-nbf','--number_of_features', type=int, help='The number of features to find.', required=False)
 parser.add_argument('-bs','--batch_size', type=int, default=10000, help='The number of features to be written to the database.', required=False)
+parser.add_argument('-es','--elution_start_sec', type=int, help='Only process frames from this time in sec.', required=False)
+parser.add_argument('-ee','--elution_end_sec', type=int, help='Only process frames up to this time in sec.', required=False)
 args = parser.parse_args()
 
 NUMBER_OF_FRAMES_TO_LOOK = int(args.number_of_seconds_each_side * args.frames_per_second)
@@ -271,7 +273,13 @@ c.execute("SELECT max(frame_id) FROM clusters")
 row = c.fetchone()
 frame_upper = int(row[0])
 
-print("frame range: {} to {}".format(frame_lower, frame_upper))
+print("frame range of clusters detected: {} to {}".format(frame_lower, frame_upper))
+
+# adjust the frame range if an elution period-of-interest was specified
+if args.elution_start_sec is not None:
+    frame_lower = int(args.elution_start_sec * args.frames_per_second)
+if args.elution_end_sec is not None:
+    frame_upper = int(args.elution_end_sec * args.frames_per_second)
 
 print("Setting up tables...")
 
@@ -291,7 +299,7 @@ print("Resetting the feature IDs in the cluster table.")
 c.execute("update clusters set feature_id=0 where feature_id!=0;")
 
 print("Loading the clusters information")
-c.execute("select frame_id, cluster_id, charge_state, base_peak_scan_std_dev, base_peak_max_point_mz, base_peak_max_point_scan, intensity_sum, scan_lower, scan_upper, mz_lower, mz_upper from clusters where charge_state >= {} order by frame_id, cluster_id asc;".format(args.minimum_charge_state))
+c.execute("select frame_id, cluster_id, charge_state, base_peak_scan_std_dev, base_peak_max_point_mz, base_peak_max_point_scan, intensity_sum, scan_lower, scan_upper, mz_lower, mz_upper from clusters where charge_state >= {} and frame_id >= {} and frame_id <= {} order by frame_id, cluster_id asc;".format(args.minimum_charge_state, frame_lower, frame_upper))
 clusters_v = np.array(c.fetchall(), dtype=np.float32)
 
 print("clusters array occupies {} bytes".format(clusters_v.nbytes))
