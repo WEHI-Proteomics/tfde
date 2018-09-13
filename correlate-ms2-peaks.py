@@ -94,7 +94,11 @@ def main():
         ms1_feature_frame_join_df['frame_point'] = ms1_feature_frame_join_df['frame_id'].map(str) + '|' + ms1_feature_frame_join_df['frame_point_id'].map(str)
         frame_points = ms1_feature_frame_join_df.loc[ms1_feature_frame_join_df.feature_point.isin(ms1_base_peak_points_df.feature_point)]
         frames_list = tuple(frame_points.frame_id.astype(int))
+        if len(frames_list) == 1:
+            frames_list = "({})".format(frames_list[0])
         frame_point_list = tuple(frame_points.frame_point_id.astype(int))
+        if len(frame_point_list) == 1:
+            frame_point_list = "({})".format(frame_point_list[0])
 
         # get the summed to raw point mapping
         raw_point_ids_df = pd.read_sql_query("select * from raw_summed_join where summed_frame_id in {} and summed_point_id in {}".format(frames_list,frame_point_list), conv_db_conn)
@@ -102,7 +106,11 @@ def main():
         raw_point_ids = raw_point_ids_df.loc[raw_point_ids_df.summed_frame_point.isin(frame_points.frame_point)]
 
         raw_frame_list = tuple(raw_point_ids.raw_frame_id.astype(int))
+        if len(raw_frame_list) == 1:
+            raw_frame_list = "({})".format(raw_frame_list[0])
         raw_point_list = tuple(raw_point_ids.raw_point_id.astype(int))
+        if len(raw_point_list) == 1:
+            raw_point_list = "({})".format(raw_point_list[0])
         raw_points_df = pd.read_sql_query("select frame_id,point_id,mz,scan,intensity from frames where frame_id in {} and point_id in {}".format(raw_frame_list,raw_point_list), conv_db_conn)
         raw_points_df['retention_time_secs'] = raw_points_df.frame_id / raw_frame_ids_per_second
 
