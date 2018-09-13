@@ -46,6 +46,7 @@ def merge_summed_regions(source_db_name, destination_db_name, exceptions):
     # if we moved all the tables to the destination, delete the database file. Otherwise, vacuum it 
     # to minimise disk space.
     if len(exceptions) == 0:
+        print("deleting {}".format(source_db_name))
         source_conn.close()
         os.remove(source_db_name)
     else:
