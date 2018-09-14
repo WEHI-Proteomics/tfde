@@ -516,8 +516,8 @@ if process_this_step(this_step='deconvolve_ms2_spectra', first_step=args.operati
     # write out the feature list as a CSV
     for idx,feature_range in enumerate(feature_ranges):
         destination_db_name = "{}-{}-{}.sqlite".format(feature_database_root, feature_range[0], feature_range[1])
-        db_conn = sqlite3.connect(feature_database_name)
-        print("processing {}".format(feature_database_name))
+        db_conn = sqlite3.connect(destination_db_name)
+        print("processing {}".format(destination_db_name))
         feature_list_df = pd.read_sql_query("select * from feature_list", db_conn)
         csv_file_name = "{}-feature-list.csv".format(feature_database_root)
         if idx == 0:
