@@ -50,11 +50,10 @@ def merge_summed_regions(source_db_name, destination_db_name, exceptions):
         source_conn.close()
         os.remove(source_db_name)
     else:
-        print("vacuuming {}".format(source_db_name))
-        src_cur.execute('VACUUM')
+        if args.vacuum_databases == True:
+            print("vacuuming {}".format(source_db_name))
+            src_cur.execute('VACUUM')
         source_conn.close()
-
-    source_conn.close()
 
 def merge_summed_regions_prep(source_db_name, destination_db_name, exceptions):
     print("preparing to merge {} with {}".format(source_db_name, destination_db_name))
@@ -135,6 +134,7 @@ parser.add_argument('-fets','--feature_tasks', type=int, default=1000, help='Num
 parser.add_argument('-mnp','--maximum_number_of_peaks_per_feature', type=int, default=500, help='The maximum number of peaks per feature.', required=False)
 parser.add_argument('-es','--elution_start_sec', type=int, help='Only process frames from this time in sec.', required=False)
 parser.add_argument('-ee','--elution_end_sec', type=int, help='Only process frames up to this time in sec.', required=False)
+parser.add_argument('-vacdb','--vacuum_databases', action='store_true', help='Vacuum databases to reduce disk space.')
 args = parser.parse_args()
 
 processing_times = []
