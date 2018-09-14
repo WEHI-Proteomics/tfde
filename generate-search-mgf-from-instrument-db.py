@@ -509,9 +509,22 @@ if process_this_step(this_step='deconvolve_ms2_spectra', first_step=args.operati
 
     # deconvolve the ms2 spectra with Hardklor
     deconvolve_ms2_spectra_start_time = time.time()
-    print("deconvolving ms2 spectra...")
-    run_process("python -u ./otf-peak-detect/deconvolve-ms2-spectra-prep.py -dbd '{}'".format(args.data_directory))
-    pool.map(run_process, deconvolve_ms2_spectra_processes)
+    # print("deconvolving ms2 spectra...")
+    # run_process("python -u ./otf-peak-detect/deconvolve-ms2-spectra-prep.py -dbd '{}'".format(args.data_directory))
+    # pool.map(run_process, deconvolve_ms2_spectra_processes)
+
+    # write out the feature list as a CSV
+    for idx,feature_range in enumerate(feature_ranges):
+        destination_db_name = "{}-{}-{}.sqlite".format(feature_database_root, feature_range[0], feature_range[1])
+        db_conn = sqlite3.connect(feature_database_name)
+        feature_list_df = pd.read_sql_query("select * from feature_list", db_conn)
+        csv_file_name = "{}-feature-list.csv".format(feature_database_root)
+        if idx == 0:
+            feature_list_df.to_csv(csv_file_name, mode='w', sep=',', index=False, header=True)
+        else:
+            feature_list_df.to_csv(csv_file_name, mode='a', sep=',', index=False, header=False)
+        db_conn.close()
+
     deconvolve_ms2_spectra_stop_time = time.time()
     processing_times.append(("deconvolve ms2 spectra", deconvolve_ms2_spectra_stop_time-deconvolve_ms2_spectra_start_time))
 
