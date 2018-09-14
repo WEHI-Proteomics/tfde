@@ -146,6 +146,9 @@ if len(feature_ids_df) == 0:
     print("Error: no feature IDs found in peak_correlation for feature DB {}. Exiting.".format(args.feature_region_database))
     sys.exit(1)
 
+feature_id_lower = int(feature_ids_df.feature_id.min())
+feature_id_upper = int(feature_ids_df.feature_id.max())
+
 hk_processes = []
 feature_cluster_df = None
 
@@ -154,7 +157,7 @@ feature_list = []
 
 for feature_ids_idx in range(0,len(feature_ids_df)):
     feature_id = feature_ids_df.loc[feature_ids_idx].feature_id.astype(int)
-    print("Processing feature {}".format(feature_id))
+    print("Processing feature {} ({} processed, {} remaining)".format(feature_id, feature_id-feature_id_lower, feature_id_upper-feature_id))
 
     db_conn = sqlite3.connect(args.features_database)
     feature_df = pd.read_sql_query("select * from features where feature_id = {}".format(feature_id), db_conn)
