@@ -16,8 +16,6 @@ PROTON_MASS = 1.007276  # Mass of a proton in unified atomic mass units, or Da. 
 parser = argparse.ArgumentParser(description='Finalise the feature list and the deconvoluted ions for each feature.')
 parser.add_argument('-fdb','--features_database', type=str, help='The name of the features database.', required=True)
 parser.add_argument('-frdb','--feature_region_database', type=str, help='The name of the feature region database.', required=True)
-parser.add_argument('-dbd','--data_directory', type=str, help='The directory for the processing data.', required=True)
-parser.add_argument('-mpc','--minimum_peak_correlation', type=float, default=0.6, help='Process ms2 peaks with at least this much correlation with the feature''s ms1 base peak.', required=False)
 parser.add_argument('-fps','--frames_per_second', type=float, help='Effective frame rate.', required=True)
 args = parser.parse_args()
 
