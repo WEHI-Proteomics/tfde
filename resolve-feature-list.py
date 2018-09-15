@@ -105,12 +105,6 @@ def peak_ratio(monoisotopic_mass, peak_number, number_of_sulphur):
         ratio = beta0 + (beta1*scaled_m) + beta2*(scaled_m**2) + beta3*(scaled_m**3) + beta4*(scaled_m**4)
     return ratio
 
-print("Setting up tables")
-db_conn = sqlite3.connect(args.feature_region_database)
-db_conn.cursor().execute("DROP TABLE IF EXISTS feature_isotopes")
-db_conn.cursor().execute("DROP TABLE IF EXISTS feature_list")
-db_conn.close()
-
 feature_cluster_df = None
 
 feature_list_columns = ['feature_id', 'charge_state', 'monoisotopic_mass', 'retention_time_secs', 'isotope_count', 'cluster_mz_centroid', 'cluster_summed_intensity', 'minimum_error', 'minimum_error_sulphur']
@@ -212,10 +206,10 @@ for feature_id in range(args.feature_id_lower, args.feature_id_upper+1):
 # write out the deconvolved feature ms1 isotopes and the feature list
 db_conn = sqlite3.connect(args.feature_region_database)
 print("writing out the deconvolved feature ms1 isotopes...")
-feature_cluster_df.to_sql(name='feature_isotopes', con=db_conn, if_exists='append', index=False)
+feature_cluster_df.to_sql(name='feature_isotopes', con=db_conn, if_exists='replace', index=False)
 print("writing out the feature list...")
 feature_list_df = pd.DataFrame(feature_list, columns=feature_list_columns)
-feature_list_df.to_sql(name='feature_list', con=db_conn, if_exists='append', index=False)
+feature_list_df.to_sql(name='feature_list', con=db_conn, if_exists='replace', index=False)
 db_conn.close()
 
 stop_run = time.time()
