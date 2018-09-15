@@ -16,6 +16,8 @@ PROTON_MASS = 1.007276  # Mass of a proton in unified atomic mass units, or Da. 
 parser = argparse.ArgumentParser(description='Finalise the feature list and the deconvoluted ions for each feature.')
 parser.add_argument('-fdb','--features_database', type=str, help='The name of the features database.', required=True)
 parser.add_argument('-frdb','--feature_region_database', type=str, help='The name of the feature region database.', required=True)
+parser.add_argument('-fl','--feature_id_lower', type=int, help='Lower feature ID to process.', required=True)
+parser.add_argument('-fu','--feature_id_upper', type=int, help='Upper feature ID to process.', required=True)
 parser.add_argument('-fps','--frames_per_second', type=float, help='Effective frame rate.', required=True)
 args = parser.parse_args()
 
@@ -109,24 +111,12 @@ db_conn.cursor().execute("DROP TABLE IF EXISTS feature_isotopes")
 db_conn.cursor().execute("DROP TABLE IF EXISTS feature_list")
 db_conn.close()
 
-db_conn = sqlite3.connect(args.features_database)
-feature_ids_df = pd.read_sql_query("select feature_id from feature_base_peaks", db_conn)
-db_conn.close()
-
-if len(feature_ids_df) == 0:
-    print("Error: no feature IDs found in feature_base_peaks for feature DB {}. Exiting.".format(args.feature_region_database))
-    sys.exit(1)
-
-feature_id_lower = int(feature_ids_df.feature_id.min())
-feature_id_upper = int(feature_ids_df.feature_id.max())
-
 feature_cluster_df = None
 
 feature_list_columns = ['feature_id', 'charge_state', 'monoisotopic_mass', 'retention_time_secs', 'isotope_count', 'cluster_mz_centroid', 'cluster_summed_intensity', 'minimum_error', 'minimum_error_sulphur']
 feature_list = []
 
-for feature_ids_idx in range(0,len(feature_ids_df)):
-    feature_id = feature_ids_df.loc[feature_ids_idx].feature_id.astype(int)
+for feature_id in range(args.feature_id_lower, args.feature_id_upper+1):
     print("Processing feature {} ({} processed, {} remaining)".format(feature_id, feature_id-feature_id_lower, feature_id_upper-feature_id))
 
     db_conn = sqlite3.connect(args.features_database)
