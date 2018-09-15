@@ -65,7 +65,7 @@ for feature_list_idx in range(0,len(feature_list_df)):
     feature_id = feature_list_df.loc[feature_list_idx].feature_id.astype(int)
     charge_state = feature_list_df.loc[feature_list_idx].charge_state.astype(int)
     cluster_mz_centroid = feature_list_df.loc[feature_list_idx].cluster_mz_centroid
-    cluster_summed_intensity = feature_list_df.loc[feature_list_idx].cluster_summed_intensity
+    cluster_summed_intensity = feature_list_df.loc[feature_list_idx].cluster_summed_intensity.astype(int)
     retention_time_secs = feature_list_df.loc[feature_list_idx].retention_time_secs
     base_frame_number = int(retention_time_secs * args.frames_per_second)
 
