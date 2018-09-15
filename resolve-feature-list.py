@@ -124,85 +124,85 @@ for feature_id in range(args.feature_id_lower, args.feature_id_upper+1):
     peaks_df = pd.read_sql_query("select * from summed_ms1_regions where feature_id = {} order by peak_id".format(feature_id), db_conn)
     db_conn.close()
 
-    print("length of peaks_df for feature {}: {}".format(feature_id, len(peaks_df)))
-    mzs = peaks_df.groupby('peak_id').apply(wavg, "mz", "intensity").reset_index(name='mz_centroid')
-    intensities = peaks_df.groupby('peak_id').intensity.sum().reset_index(name='summed_intensity')
+    if len(peaks_df)>0:
+        mzs = peaks_df.groupby('peak_id').apply(wavg, "mz", "intensity").reset_index(name='mz_centroid')
+        intensities = peaks_df.groupby('peak_id').intensity.sum().reset_index(name='summed_intensity')
 
-    cluster_df = pd.concat([mzs, intensities.summed_intensity], axis=1)
-    cluster_df.sort_values(by='mz_centroid', inplace=True)
+        cluster_df = pd.concat([mzs, intensities.summed_intensity], axis=1)
+        cluster_df.sort_values(by='mz_centroid', inplace=True)
 
-    cluster_df.reset_index(drop=True, inplace=True)
-    base_peak_index = cluster_df.summed_intensity.idxmax()
+        cluster_df.reset_index(drop=True, inplace=True)
+        base_peak_index = cluster_df.summed_intensity.idxmax()
 
-    base_peak_mz = cluster_df.iloc[base_peak_index].mz_centroid
-    std_dev = standard_deviation(base_peak_mz)
+        base_peak_mz = cluster_df.iloc[base_peak_index].mz_centroid
+        std_dev = standard_deviation(base_peak_mz)
 
-    spacing_from_base = abs(cluster_df.mz_centroid - base_peak_mz) % expected_spacing
-    close_to_next_isotope = (abs(spacing_from_base - expected_spacing) < (std_dev * 4))
-    close_to_this_isotope = spacing_from_base < (std_dev * 4)
-    indexes_to_drop = ~(close_to_next_isotope | close_to_this_isotope)
-    cluster_df.drop(cluster_df.index[indexes_to_drop], inplace=True)
-    cluster_df.reset_index(drop=True, inplace=True)
+        spacing_from_base = abs(cluster_df.mz_centroid - base_peak_mz) % expected_spacing
+        close_to_next_isotope = (abs(spacing_from_base - expected_spacing) < (std_dev * 4))
+        close_to_this_isotope = spacing_from_base < (std_dev * 4)
+        indexes_to_drop = ~(close_to_next_isotope | close_to_this_isotope)
+        cluster_df.drop(cluster_df.index[indexes_to_drop], inplace=True)
+        cluster_df.reset_index(drop=True, inplace=True)
 
-    base_peak_index = cluster_df.summed_intensity.idxmax()
-    base_peak_mz = cluster_df.iloc[base_peak_index].mz_centroid
+        base_peak_index = cluster_df.summed_intensity.idxmax()
+        base_peak_mz = cluster_df.iloc[base_peak_index].mz_centroid
 
-    indexes_to_drop = abs(cluster_df.mz_centroid.diff() - expected_spacing) > 0.5
-    cluster_df.drop(cluster_df.index[indexes_to_drop], inplace=True)
-    cluster_df.reset_index(drop=True, inplace=True)
+        indexes_to_drop = abs(cluster_df.mz_centroid.diff() - expected_spacing) > 0.5
+        cluster_df.drop(cluster_df.index[indexes_to_drop], inplace=True)
+        cluster_df.reset_index(drop=True, inplace=True)
 
-    # find the combination of mono index and sulphurs that gives the smallest total height ratio error
-    minimum_error = sys.float_info.max
-    minimum_error_sulphur = None
-    minimum_error_mono_index = None
+        # find the combination of mono index and sulphurs that gives the smallest total height ratio error
+        minimum_error = sys.float_info.max
+        minimum_error_sulphur = None
+        minimum_error_mono_index = None
 
-    if (base_peak_index+1) >= len(cluster_df):
-        base_peak_index = len(cluster_df)-1
-        print("dodgy cluster for this feature")
+        if (base_peak_index+1) >= len(cluster_df):
+            base_peak_index = len(cluster_df)-1
+            print("dodgy cluster for this feature")
 
-    updated_min_error = False
-    for test_mono_index in range(0,base_peak_index+1):  # consider moving it up to the base peak (but not beyond)
-        test_monoisotopic_mass = (cluster_df.loc[test_mono_index].mz_centroid - PROTON_MASS) * charge_state
-        for sulphur in range(0,MAX_NUMBER_OF_SULPHUR_ATOMS):
-            error = 0
-            number_of_peaks_to_test = min(MAX_NUMBER_OF_PREDICTED_RATIOS, len(cluster_df)-test_mono_index)
-            for peak_number in range(1,number_of_peaks_to_test):
-                predicted_ratio = peak_ratio(test_monoisotopic_mass, peak_number=peak_number, number_of_sulphur=sulphur)
-                if predicted_ratio > 0:
-                    observed_ratio = cluster_df.loc[test_mono_index+peak_number].summed_intensity / cluster_df.loc[test_mono_index+peak_number-1].summed_intensity
-                    error += (predicted_ratio - observed_ratio)**2 / predicted_ratio
-                if error < minimum_error:
-                    minimum_error = error
-                    minimum_error_sulphur = sulphur
-                    minimum_error_mono_index = test_mono_index
-                    updated_min_error = True
+        updated_min_error = False
+        for test_mono_index in range(0,base_peak_index+1):  # consider moving it up to the base peak (but not beyond)
+            test_monoisotopic_mass = (cluster_df.loc[test_mono_index].mz_centroid - PROTON_MASS) * charge_state
+            for sulphur in range(0,MAX_NUMBER_OF_SULPHUR_ATOMS):
+                error = 0
+                number_of_peaks_to_test = min(MAX_NUMBER_OF_PREDICTED_RATIOS, len(cluster_df)-test_mono_index)
+                for peak_number in range(1,number_of_peaks_to_test):
+                    predicted_ratio = peak_ratio(test_monoisotopic_mass, peak_number=peak_number, number_of_sulphur=sulphur)
+                    if predicted_ratio > 0:
+                        observed_ratio = cluster_df.loc[test_mono_index+peak_number].summed_intensity / cluster_df.loc[test_mono_index+peak_number-1].summed_intensity
+                        error += (predicted_ratio - observed_ratio)**2 / predicted_ratio
+                    if error < minimum_error:
+                        minimum_error = error
+                        minimum_error_sulphur = sulphur
+                        minimum_error_mono_index = test_mono_index
+                        updated_min_error = True
 
-    if updated_min_error:
-        error_as_string = "{:.2f}".format(minimum_error)
-    else:
-        error_as_string = "None"
+        if updated_min_error:
+            error_as_string = "{:.2f}".format(minimum_error)
+        else:
+            error_as_string = "None"
 
-    cluster_df['mz_mod'] = cluster_df.mz_centroid - ((cluster_df.peak_id-1)*expected_spacing)
-    cluster_df['feature_id'] = feature_id
+        cluster_df['mz_mod'] = cluster_df.mz_centroid - ((cluster_df.peak_id-1)*expected_spacing)
+        cluster_df['feature_id'] = feature_id
 
-    # add to the feature clusters
-    if feature_cluster_df is None:
-        feature_cluster_df = cluster_df.copy()
-    else:
-        feature_cluster_df = feature_cluster_df.append(cluster_df, ignore_index=True)
+        # add to the feature clusters
+        if feature_cluster_df is None:
+            feature_cluster_df = cluster_df.copy()
+        else:
+            feature_cluster_df = feature_cluster_df.append(cluster_df, ignore_index=True)
 
-    # calculate the centroid of the feature's cluster
-    cluster_mz_centroid = wavg(cluster_df, "mz_mod", "summed_intensity")
-    cluster_summed_intensity = cluster_df.summed_intensity.sum()
+        # calculate the centroid of the feature's cluster
+        cluster_mz_centroid = wavg(cluster_df, "mz_mod", "summed_intensity")
+        cluster_summed_intensity = cluster_df.summed_intensity.sum()
 
-    # calculate the monoisotopic mass
-    monoisotopic_mass = (cluster_mz_centroid - PROTON_MASS) * charge_state
+        # calculate the monoisotopic mass
+        monoisotopic_mass = (cluster_mz_centroid - PROTON_MASS) * charge_state
 
-    # ... and the retention time
-    retention_time_secs = feature_df.loc[0].base_frame_id / args.frames_per_second
+        # ... and the retention time
+        retention_time_secs = feature_df.loc[0].base_frame_id / args.frames_per_second
 
-    isotope_count = len(cluster_df)
-    feature_list.append((feature_id, charge_state, monoisotopic_mass, retention_time_secs, isotope_count, round(cluster_mz_centroid,6), cluster_summed_intensity, minimum_error, minimum_error_sulphur))
+        isotope_count = len(cluster_df)
+        feature_list.append((feature_id, charge_state, monoisotopic_mass, retention_time_secs, isotope_count, round(cluster_mz_centroid,6), cluster_summed_intensity, minimum_error, minimum_error_sulphur))
 
 # write out the deconvolved feature ms1 isotopes and the feature list
 db_conn = sqlite3.connect(args.feature_region_database)
