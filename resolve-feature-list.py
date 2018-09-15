@@ -135,18 +135,9 @@ for feature_ids_idx in range(0,len(feature_ids_df)):
     expected_spacing = DELTA_MZ / charge_state
     db_conn.close()
 
-    db_conn = sqlite3.connect(args.feature_region_database)
     # get the ms1 peaks
+    db_conn = sqlite3.connect(args.feature_region_database)
     peaks_df = pd.read_sql_query("select * from summed_ms1_regions where feature_id = {} order by peak_id".format(feature_id), db_conn)
-    # get the ms2 peaks
-    peak_correlation_df = pd.read_sql_query("select * from peak_correlation where feature_id=={} and rt_delta >= {} and rt_delta <= {} and scan_delta >= {} and scan_delta <= {} order by ms2_peak_id ASC limit {}".format(feature_id, args.negative_rt_delta_tolerance, args.positive_rt_delta_tolerance, args.negative_scan_delta_tolerance, args.positive_scan_delta_tolerance, args.maximum_number_of_peaks_per_feature), db_conn)
-    peak_correlation_df["feature_id-ms2_peak_id"] = peak_correlation_df.feature_id.astype(str) + '-' + peak_correlation_df.ms2_peak_id.astype(str)
-    # a bit of a hack to avoid the single-element tuple with trailing comma upsetting the SQL query
-    if len(peak_correlation_df) == 1:
-        peak_correlation_df = peak_correlation_df.append(peak_correlation_df)
-    ms2_peaks_df = pd.read_sql_query("select feature_id,peak_id,centroid_mz,intensity from ms2_peaks where feature_id || '-' || peak_id in {}".format(tuple(peak_correlation_df["feature_id-ms2_peak_id"])), db_conn)
-    # write out the ms2 peaks we are about to deconvolve and deisotope, for later matching with MSCypher output
-    ms2_peaks_df.to_sql(name='ms2_peaks_within_window', con=db_conn, if_exists='append', index=False)
     db_conn.close()
 
     mzs = peaks_df.groupby('peak_id').apply(wavg, "mz", "intensity").reset_index(name='mz_centroid')
