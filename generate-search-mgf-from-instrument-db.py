@@ -447,9 +447,9 @@ if process_this_step(this_step='resolve_feature_list', first_step=args.operation
     for idx,feature_range in enumerate(feature_ranges):
         destination_db_name = "{}-{}-{}.sqlite".format(feature_database_root, feature_range[0], feature_range[1])
         db_conn = sqlite3.connect(destination_db_name)
-        print("processing {}".format(destination_db_name))
-        feature_list_df = pd.read_sql_query("select * from feature_list", db_conn)
         csv_file_name = "{}-feature-list.csv".format(feature_database_root)
+        print("writing feature list from {} to {}".format(destination_db_name, csv_file_name))
+        feature_list_df = pd.read_sql_query("select * from feature_list", db_conn)
         if idx == 0:
             feature_list_df.to_csv(csv_file_name, mode='w', sep=',', index=False, header=True)
         else:
