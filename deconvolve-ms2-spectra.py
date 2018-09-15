@@ -16,7 +16,7 @@ def run_process(process):
     print("Executing: {}".format(process))
     os.system(process)
 
-parser = argparse.ArgumentParser(description='Generate a text file containing the Hardklor commands.')
+parser = argparse.ArgumentParser(description='Use Hardklor to deconvolve and deisotope the ms2 spectra.')
 parser.add_argument('-fdb','--features_database', type=str, help='The name of the features database.', required=True)
 parser.add_argument('-frdb','--feature_region_database', type=str, help='The name of the feature region database.', required=True)
 parser.add_argument('-dbd','--data_directory', type=str, help='The directory for the processing data.', required=True)
@@ -69,7 +69,7 @@ for feature_list_idx in range(0,len(feature_list_df)):
     retention_time_secs = feature_list_df.loc[feature_list_idx].retention_time_secs
     base_frame_number = int(retention_time_secs * args.frames_per_second)
 
-    print("Processing feature {} ({} processed, {} remaining)".format(feature_id, feature_id-feature_id_lower, feature_id_upper-feature_id))
+    print("Generating Hardklor file for feature {} ({}% complete)".format(feature_id, round(feature_id/feature_id_upper*100,1)))
 
     db_conn = sqlite3.connect(args.feature_region_database)
     # get the ms2 peaks
