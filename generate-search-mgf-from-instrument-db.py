@@ -148,6 +148,7 @@ steps.append('cluster_detect_ms1')
 steps.append('recombine_frame_databases')
 steps.append('feature_detect_ms1')
 steps.append('feature_region_ms1_peak_detect')
+steps.append('resolve_feature_list')
 steps.append('feature_region_ms2_peak_detect')
 steps.append('match_precursor_ms2_peaks')
 steps.append('correlate_peaks')
@@ -427,6 +428,42 @@ if process_this_step(this_step='feature_region_ms1_peak_detect', first_step=args
         store_info(info, processing_times)
         sys.exit(0)
 
+#################################
+# OPERATION: resolve_feature_list
+#################################
+if process_this_step(this_step='resolve_feature_list', first_step=args.operation):
+    print("Starting the \'resolve_feature_list\' step")
+    resolve_feature_list_start_time = time.time()
+
+    # build the process lists
+    resolve_feature_list_processes = []
+    for feature_range in feature_ranges:
+        destination_db_name = "{}-{}-{}.sqlite".format(feature_database_root, feature_range[0], feature_range[1])
+        resolve_feature_list_processes.append("python -u ./otf-peak-detect/resolve-feature-list.py -fdb '{}' -frdb '{}' -dbd {} -fps {} -mnp {}".format(feature_database_name, destination_db_name, args.data_directory, frames_per_second, args.maximum_number_of_peaks_per_feature))
+
+    print("resolving the feature list...")
+    pool.map(run_process, resolve_feature_list_processes)
+    # write out the feature lists as a global CSV
+    for idx,feature_range in enumerate(feature_ranges):
+        destination_db_name = "{}-{}-{}.sqlite".format(feature_database_root, feature_range[0], feature_range[1])
+        db_conn = sqlite3.connect(destination_db_name)
+        print("processing {}".format(destination_db_name))
+        feature_list_df = pd.read_sql_query("select * from feature_list", db_conn)
+        csv_file_name = "{}-feature-list.csv".format(feature_database_root)
+        if idx == 0:
+            feature_list_df.to_csv(csv_file_name, mode='w', sep=',', index=False, header=True)
+        else:
+            feature_list_df.to_csv(csv_file_name, mode='a', sep=',', index=False, header=False)
+        db_conn.close()
+
+    resolve_feature_list_stop_time = time.time()
+    processing_times.append(("resolve feature list", resolve_feature_list_stop_time-resolve_feature_list_start_time))
+
+    if not continue_processing(this_step='resolve_feature_list', final_step=args.final_operation):
+        print("Not continuing to the next step - exiting")
+        store_info(info, processing_times)
+        sys.exit(0)
+
 ###########################################
 # OPERATION: feature_region_ms2_peak_detect
 ###########################################
@@ -505,27 +542,13 @@ if process_this_step(this_step='deconvolve_ms2_spectra', first_step=args.operati
     deconvolve_ms2_spectra_processes = []
     for feature_range in feature_ranges:
         destination_db_name = "{}-{}-{}.sqlite".format(feature_database_root, feature_range[0], feature_range[1])
-        deconvolve_ms2_spectra_processes.append("python -u ./otf-peak-detect/deconvolve-ms2-spectra.py -fdb '{}' -frdb '{}' -bfn {} -dbd {} -fps {} -mnp {}".format(feature_database_name, destination_db_name, args.database_base_name, args.data_directory, frames_per_second, args.maximum_number_of_peaks_per_feature))
+        deconvolve_ms2_spectra_processes.append("python -u ./otf-peak-detect/deconvolve-ms2-spectra.py -fdb '{}' -frdb '{}' -dbd {} -fps {} -mnp {}".format(feature_database_name, destination_db_name, args.data_directory, frames_per_second, args.maximum_number_of_peaks_per_feature))
 
     # deconvolve the ms2 spectra with Hardklor
     deconvolve_ms2_spectra_start_time = time.time()
     print("deconvolving ms2 spectra...")
     run_process("python -u ./otf-peak-detect/deconvolve-ms2-spectra-prep.py -dbd '{}'".format(args.data_directory))
     pool.map(run_process, deconvolve_ms2_spectra_processes)
-
-    # write out the feature list as a CSV
-    for idx,feature_range in enumerate(feature_ranges):
-        destination_db_name = "{}-{}-{}.sqlite".format(feature_database_root, feature_range[0], feature_range[1])
-        db_conn = sqlite3.connect(destination_db_name)
-        print("processing {}".format(destination_db_name))
-        feature_list_df = pd.read_sql_query("select * from feature_list", db_conn)
-        csv_file_name = "{}-feature-list.csv".format(feature_database_root)
-        if idx == 0:
-            feature_list_df.to_csv(csv_file_name, mode='w', sep=',', index=False, header=True)
-        else:
-            feature_list_df.to_csv(csv_file_name, mode='a', sep=',', index=False, header=False)
-        db_conn.close()
-
     deconvolve_ms2_spectra_stop_time = time.time()
     processing_times.append(("deconvolve ms2 spectra", deconvolve_ms2_spectra_stop_time-deconvolve_ms2_spectra_start_time))
 
