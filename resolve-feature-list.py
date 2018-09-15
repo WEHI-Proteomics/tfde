@@ -124,6 +124,7 @@ for feature_id in range(args.feature_id_lower, args.feature_id_upper+1):
     peaks_df = pd.read_sql_query("select * from summed_ms1_regions where feature_id = {} order by peak_id".format(feature_id), db_conn)
     db_conn.close()
 
+    print("length of peaks_df: {}".format(len(peaks_df)))
     mzs = peaks_df.groupby('peak_id').apply(wavg, "mz", "intensity").reset_index(name='mz_centroid')
     intensities = peaks_df.groupby('peak_id').intensity.sum().reset_index(name='summed_intensity')
 
