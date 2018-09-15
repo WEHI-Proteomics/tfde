@@ -109,7 +109,7 @@ db_conn.cursor().execute("DROP TABLE IF EXISTS feature_isotopes")
 db_conn.cursor().execute("DROP TABLE IF EXISTS feature_list")
 db_conn.close()
 
-db_conn = sqlite3.connect(args.feature_region_database)
+db_conn = sqlite3.connect(args.features_database)
 feature_ids_df = pd.read_sql_query("select feature_id from feature_base_peaks", db_conn)
 db_conn.close()
 
