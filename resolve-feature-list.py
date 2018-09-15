@@ -117,7 +117,7 @@ feature_list_columns = ['feature_id', 'charge_state', 'monoisotopic_mass', 'rete
 feature_list = []
 
 for feature_id in range(args.feature_id_lower, args.feature_id_upper+1):
-    print("Processing feature {} ({} processed, {} remaining)".format(feature_id, feature_id-feature_id_lower, feature_id_upper-feature_id))
+    print("Processing feature {} ({} processed, {} remaining)".format(feature_id, feature_id-args.feature_id_lower, args.feature_id_upper-feature_id))
 
     db_conn = sqlite3.connect(args.features_database)
     feature_df = pd.read_sql_query("select * from features where feature_id = {}".format(feature_id), db_conn)
