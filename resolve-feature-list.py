@@ -215,6 +215,8 @@ db_conn.close()
 
 stop_run = time.time()
 
+info.append(("features resolved", len(feature_list_df)))
+
 info.append(("run processing time (sec)", stop_run-start_run))
 info.append(("processed", time.ctime()))
 info.append(("processor", parser.prog))
