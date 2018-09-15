@@ -439,7 +439,7 @@ if process_this_step(this_step='resolve_feature_list', first_step=args.operation
     resolve_feature_list_processes = []
     for feature_range in feature_ranges:
         destination_db_name = "{}-{}-{}.sqlite".format(feature_database_root, feature_range[0], feature_range[1])
-        resolve_feature_list_processes.append("python -u ./otf-peak-detect/resolve-feature-list.py -fdb '{}' -frdb '{}' -dbd {} -fps {} -mnp {}".format(feature_database_name, destination_db_name, args.data_directory, frames_per_second, args.maximum_number_of_peaks_per_feature))
+        resolve_feature_list_processes.append("python -u ./otf-peak-detect/resolve-feature-list.py -fdb '{}' -frdb '{}' -dbd {} -fl {} -fu {} -fps {} -mnp {}".format(feature_database_name, destination_db_name, args.data_directory, feature_range[0], feature_range[1], frames_per_second, args.maximum_number_of_peaks_per_feature))
 
     print("resolving the feature list...")
     pool.map(run_process, resolve_feature_list_processes)
