@@ -154,7 +154,6 @@ steps.append('match_precursor_ms2_peaks')
 steps.append('correlate_peaks')
 steps.append('deconvolve_ms2_spectra')
 steps.append('create_search_mgf')
-steps.append('recombine_feature_databases')
 
 processing_steps = {j:i for i,j in enumerate(steps)}
 
@@ -499,7 +498,7 @@ if process_this_step(this_step='match_precursor_ms2_peaks', first_step=args.oper
     match_precursor_ms2_peaks_processes = []
     for feature_range in feature_ranges:
         destination_db_name = "{}-{}-{}.sqlite".format(feature_database_root, feature_range[0], feature_range[1])
-        match_precursor_ms2_peaks_processes.append("python -u ./otf-peak-detect/match-precursor-ms2-peaks.py -db '{}' -fdb '{}' -fl {} -fu {} -fps {}".format(destination_db_name, feature_database_name, feature_range[0], feature_range[1], frames_per_second))
+        match_precursor_ms2_peaks_processes.append("python -u ./otf-peak-detect/match-precursor-ms2-peaks.py -ddb '{}' -sdb '{}' -fl {} -fu {} -fps {}".format(destination_db_name, feature_database_name, feature_range[0], feature_range[1], frames_per_second))
 
     print("matching precursor ms2 peaks...")
     pool.map(run_process, match_precursor_ms2_peaks_processes)
@@ -597,36 +596,6 @@ if process_this_step(this_step='create_search_mgf', first_step=args.operation):
     # source_conn.close()
 
     if not continue_processing(this_step='create_search_mgf', final_step=args.final_operation):
-        print("Not continuing to the next step - exiting")
-        store_info(info, processing_times)
-        sys.exit(0)
-
-########################################
-# OPERATION: recombine_feature_databases
-########################################
-if process_this_step(this_step='recombine_feature_databases', first_step=args.operation):
-    print("Starting the \'recombine_feature_databases\' step")
-    # recombine the feature range databases back into a combined database
-    recombine_feature_databases_start_time = time.time()
-    table_exceptions = []
-    table_exceptions.append('summed_ms1_regions')
-    table_exceptions.append('summed_ms1_regions_info')
-    table_exceptions.append('summed_ms2_regions')
-    table_exceptions.append('summed_ms2_regions_info')
-    table_exceptions.append('ms1_feature_region_peaks')
-    table_exceptions.append('ms2_feature_region_points')
-    table_exceptions.append('ms2_peaks')
-    table_exceptions.append('peak_correlation')
-    template_feature_range = feature_ranges[0]
-    template_db_name = "{}-{}-{}.sqlite".format(feature_database_root, template_feature_range[0], template_feature_range[1])
-    merge_summed_regions_prep(template_db_name, feature_database_name, exceptions=table_exceptions)
-    for feature_range in feature_ranges:
-        source_db_name = "{}-{}-{}.sqlite".format(feature_database_root, feature_range[0], feature_range[1])
-        merge_summed_regions(source_db_name, feature_database_name, exceptions=table_exceptions)
-    recombine_feature_databases_stop_time = time.time()
-    processing_times.append(("feature recombine", recombine_feature_databases_stop_time-recombine_feature_databases_start_time))
-
-    if not continue_processing(this_step='recombine_feature_databases', final_step=args.final_operation):
         print("Not continuing to the next step - exiting")
         store_info(info, processing_times)
         sys.exit(0)
