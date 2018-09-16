@@ -8,6 +8,7 @@ import pandas as pd
 import peakutils
 from operator import itemgetter
 import json
+import os.path
 
 # feature array indices
 FEATURE_ID_IDX = 0
@@ -44,6 +45,10 @@ parser.add_argument('-mcs','--minimum_charge_state', type=int, default=2, help='
 parser.add_argument('-sd','--standard_deviations', type=int, default=8, help='Number of standard deviations in m/z to look either side of a point.', required=False)
 parser.add_argument('-rff','--random_features_file', type=str, help='A text file containing the feature indexes to process.', required=False)
 args = parser.parse_args()
+
+# remove the destination database if it remains from a previous run - it's faster to recreate it
+if os.path.isfile(args.destination_database_name):
+    os.remove(args.destination_database_name)
 
 src_conn = sqlite3.connect(args.source_database_name)
 src_c = src_conn.cursor()
