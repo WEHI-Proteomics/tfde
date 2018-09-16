@@ -10,24 +10,24 @@ import json
 #
 
 parser = argparse.ArgumentParser(description='Find the precursor\'s base peak in ms2.')
-parser.add_argument('-db','--database_name', type=str, help='The name of the source database.', required=True)
-parser.add_argument('-fdb','--features_database_name', type=str, help='The name of the features database.', required=True)
+parser.add_argument('-sdb','--source_database_name', type=str, help='The name of the source database.', required=True)
+parser.add_argument('-ddb','--destination_database_name', type=str, help='The name of the destination database.', required=True)
 parser.add_argument('-fl','--feature_id_lower', type=int, help='Lower feature ID to process.', required=True)
 parser.add_argument('-fu','--feature_id_upper', type=int, help='Upper feature ID to process.', required=True)
 parser.add_argument('-ppm','--mz_tolerance_ppm', type=int, default=2, help='m/z matching tolerance in PPM.', required=False)
 parser.add_argument('-fps','--frames_per_second', type=float, help='Effective frame rate for the summed frames.', required=True)
 args = parser.parse_args()
 
-db_conn = sqlite3.connect(args.database_name)
-db_c = db_conn.cursor()
+ddb_conn = sqlite3.connect(args.destination_database_name)
+ddb_c = ddb_conn.cursor()
 
 if args.feature_id_lower is None:
-    feature_id_range_df = pd.read_sql_query("select min(feature_id) from feature_base_peaks", db_conn)
+    feature_id_range_df = pd.read_sql_query("select min(feature_id) from feature_base_peaks", ddb_conn)
     args.feature_id_lower = feature_id_range_df.loc[0][0]
     print("feature_id_lower set to {} from the data".format(args.feature_id_lower))
 
 if args.feature_id_upper is None:
-    feature_id_range_df = pd.read_sql_query("select max(feature_id) from feature_base_peaks", db_conn)
+    feature_id_range_df = pd.read_sql_query("select max(feature_id) from feature_base_peaks", ddb_conn)
     args.feature_id_upper = feature_id_range_df.loc[0][0]
     print("feature_id_upper set to {} from the data".format(args.feature_id_upper))
 
@@ -37,15 +37,15 @@ for arg in vars(args):
     info.append((arg, getattr(args, arg)))
 
 print("Setting up tables and indexes")
-db_c.execute("DROP TABLE IF EXISTS precursor_ms2_peak_matches")
-db_c.execute("DROP TABLE IF EXISTS precursor_ms2_peak_matches_info")
-db_c.execute("CREATE TABLE precursor_ms2_peak_matches (feature_id INTEGER, base_peak_id INTEGER, base_peak_rt REAL, ms2_peak_id INTEGER, mz_centroid REAL, mz_delta REAL, scan_delta REAL, PRIMARY KEY (feature_id, base_peak_id))")
-db_c.execute("CREATE TABLE precursor_ms2_peak_matches_info (item TEXT, value TEXT)")
+ddb_c.execute("DROP TABLE IF EXISTS precursor_ms2_peak_matches")
+ddb_c.execute("DROP TABLE IF EXISTS precursor_ms2_peak_matches_info")
+ddb_c.execute("CREATE TABLE precursor_ms2_peak_matches (feature_id INTEGER, base_peak_id INTEGER, base_peak_rt REAL, ms2_peak_id INTEGER, mz_centroid REAL, mz_delta REAL, scan_delta REAL, PRIMARY KEY (feature_id, base_peak_id))")
+ddb_c.execute("CREATE TABLE precursor_ms2_peak_matches_info (item TEXT, value TEXT)")
 
 start_run = time.time()
 
 print("Loading the MS1 base peaks")
-features_df = pd.read_sql_query("select feature_id,base_peak_id from feature_base_peaks where feature_id >= {} and feature_id <= {} order by feature_id ASC;".format(args.feature_id_lower, args.feature_id_upper), db_conn)
+features_df = pd.read_sql_query("select feature_id,base_peak_id from feature_base_peaks where feature_id >= {} and feature_id <= {} order by feature_id ASC;".format(args.feature_id_lower, args.feature_id_upper), ddb_conn)
 print("found features {}-{}".format(np.min(features_df.feature_id), np.max(features_df.feature_id)))
 
 peak_matches = []
@@ -56,18 +56,18 @@ for feature_ids_idx in range(0,len(features_df)):
     base_peak_id = features_df.loc[feature_ids_idx].base_peak_id.astype(int)
     print("Matching the base peak for feature {}".format(feature_id))
 
-    ms1_peak_df = pd.read_sql_query("select * from ms1_feature_region_peaks where feature_id={} and peak_id={}".format(feature_id,base_peak_id), db_conn)
+    ms1_peak_df = pd.read_sql_query("select * from ms1_feature_region_peaks where feature_id={} and peak_id={}".format(feature_id,base_peak_id), ddb_conn)
     base_centroid_mz = ms1_peak_df.loc[0].centroid_mz.astype(float)
     base_centroid_scan = ms1_peak_df.loc[0].centroid_scan.astype(float)
 
     # find the feature's retention time
-    fdb_conn = sqlite3.connect(args.features_database_name)
-    feature_df = pd.read_sql_query("select * from features where feature_id={}".format(feature_id), fdb_conn)
+    db_conn = sqlite3.connect(args.source_database_name)
+    feature_df = pd.read_sql_query("select * from features where feature_id={}".format(feature_id), db_conn)
     retention_time = feature_df.loc[0].base_frame_id.astype(float) / args.frames_per_second
-    fdb_conn.close()
+    db_conn.close()
 
     # read all the ms2 peaks for this feature
-    ms2_peaks_df = pd.read_sql_query("select * from ms2_peaks where feature_id={}".format(feature_id), db_conn)
+    ms2_peaks_df = pd.read_sql_query("select * from ms2_peaks where feature_id={}".format(feature_id), ddb_conn)
 
     # find the matching ms2 peaks within tolerance
     ms2_peaks_df['mz_delta'] = abs(ms2_peaks_df.centroid_mz - base_centroid_mz)
@@ -89,7 +89,7 @@ for feature_ids_idx in range(0,len(features_df)):
     peak_matches.append((feature_id, base_peak_id, retention_time, ms2_peak_id, base_centroid_mz, mz_delta, scan_delta))
 
 print("Writing out the peak matches")
-db_c.executemany("INSERT INTO precursor_ms2_peak_matches VALUES (?, ?, ?, ?, ?, ?, ?)", peak_matches)
+ddb_c.executemany("INSERT INTO precursor_ms2_peak_matches VALUES (?, ?, ?, ?, ?, ?, ?)", peak_matches)
 
 stop_run = time.time()
 print("{:.2f} seconds to match peaks for features {} to {}".format(stop_run-start_run, args.feature_id_lower, args.feature_id_upper))
@@ -104,7 +104,7 @@ print("{} info: {}".format(parser.prog, info))
 info_entry = []
 info_entry.append(("features {}-{}".format(args.feature_id_lower, args.feature_id_upper), json.dumps(info)))
 
-db_c.executemany("INSERT INTO precursor_ms2_peak_matches_info VALUES (?, ?)", info_entry)
+ddb_c.executemany("INSERT INTO precursor_ms2_peak_matches_info VALUES (?, ?)", info_entry)
 
-db_conn.commit()
-db_conn.close()
+ddb_conn.commit()
+ddb_conn.close()
