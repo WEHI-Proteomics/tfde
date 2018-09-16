@@ -147,7 +147,7 @@ frame_count = 0
 
 start_run = time.time()
 for frame_id in range(args.frame_lower, args.frame_upper+1):
-    print "Detecting clusters in frame {}".format(frame_id)
+    print("Detecting clusters in frame {} ({}% complete)".format(frame_id, round(float(frame_id-args.frame_lower)/(args.frame_upper-args.frame_lower)*100,1)))
     start_frame = time.time()
     cluster_id = 1
     # Get all the peaks for this frame
