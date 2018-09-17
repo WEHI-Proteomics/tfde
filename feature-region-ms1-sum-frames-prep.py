@@ -3,9 +3,12 @@ import sys
 import argparse
 import time
 import sqlite3
+import glob	
+import os
 
 parser = argparse.ArgumentParser(description='Prepare the database for MS1 frame summing in the region of the MS1 feature\'s drift and retention time.')
 parser.add_argument('-sdb','--source_database_name', type=str, help='The name of the source database.', required=True)
+parser.add_argument('-fdbr','--feature_database_root', type=str, help='The root name of the feature databases.', required=True)
 args = parser.parse_args()
 
 # Connect to the database
@@ -21,3 +24,8 @@ src_c.execute("CREATE INDEX IF NOT EXISTS idx_summed_ms1_regions_4 on peaks (fra
 
 src_conn.commit()
 src_conn.close()
+
+# Remove all feature databases from previous runs
+filelist = glob.glob("{}-*".format(args.feature_database_root))	
+for file in filelist:	
+  os.remove(file)

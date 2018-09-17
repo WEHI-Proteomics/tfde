@@ -76,14 +76,32 @@ def merge_summed_regions_prep(source_db_name, destination_db_name, exceptions):
     destination_conn.commit()
     destination_conn.close()
 
+# returns true if there is an entry in each of the specified tables in each of the specified databases
+def step_successful(databases, tables):
+    expected_ok_count = len(databases) * len(tables)
+    ok_count = 0
+    for db in databases:
+        db_conn = sqlite3.connect(db)
+        tables_df = pd.read_sql_query("SELECT tbl_name FROM sqlite_master WHERE type='table'", db_conn)
+        for tab in tables:
+            if len(tables_df[tables.tbl_name == "{}".format(tab)]) == 1: # does the table exist
+                df = pd.read_sql_query("select * from {}".format(tab), db_conn) # does it have an entry
+                if len(df) > 0:
+                    ok_count += 1
+                else:
+                    print("{} in {} does not have an entry".format(tab, db))
+            else:
+                print("{} does not have the table {}".format(db, tab))
+    return (ok_count == expected_ok_count)
+
 # return true if the specified step should be processed
 def process_this_step(this_step, first_step):
     result = (processing_steps[this_step] >= processing_steps[first_step])
     return result
 
 # return true if this isn't the last step
-def continue_processing(this_step, final_step):
-    result = (processing_steps[this_step] < processing_steps[final_step])
+def continue_processing(this_step, final_step, databases=[], tables=[]):
+    result = step_successful(databases, tables) and (processing_steps[this_step] < processing_steps[final_step])
     if (result == False) and (args.shutdown_on_completion == True):
         run_process("sudo shutdown -P +5")
     return result
@@ -410,19 +428,21 @@ if process_this_step(this_step='feature_region_ms1_peak_detect', first_step=args
     # build the process lists
     feature_region_ms1_sum_processes = []
     feature_region_ms1_peak_processes = []
+    databases = []
     for feature_range in feature_ranges:
         destination_db_name = "{}-{}-{}.sqlite".format(feature_database_root, feature_range[0], feature_range[1])
+        databases.append(destination_db_name)
         feature_region_ms1_sum_processes.append("python -u ./otf-peak-detect/feature-region-ms1-sum-frames.py -sdb '{}' -ddb '{}' -fl {} -fu {} -ml {} -mu {}".format(feature_database_name, destination_db_name, feature_range[0], feature_range[1], args.mz_lower, args.mz_upper))
         feature_region_ms1_peak_processes.append("python -u ./otf-peak-detect/feature-region-ms1-peak-detect.py -sdb '{}' -ddb '{}' -fl {} -fu {} -ml {} -mu {}".format(feature_database_name, destination_db_name, feature_range[0], feature_range[1], args.mz_lower, args.mz_upper))
 
     print("summing ms1 frames, detecting peaks in the feature region...")
-    run_process("python -u ./otf-peak-detect/feature-region-ms1-sum-frames-prep.py -sdb '{}'".format(feature_database_name))
+    run_process("python -u ./otf-peak-detect/feature-region-ms1-sum-frames-prep.py -sdb '{}' -fdbr '{}'".format(feature_database_name, feature_database_root))
     pool.map(run_process, feature_region_ms1_sum_processes)
     pool.map(run_process, feature_region_ms1_peak_processes)
     ms1_peak_detect_stop_time = time.time()
     processing_times.append(("feature region ms1 peak detect", ms1_peak_detect_stop_time-ms1_peak_detect_start_time))
 
-    if not continue_processing(this_step='feature_region_ms1_peak_detect', final_step=args.final_operation):
+    if not continue_processing(this_step='feature_region_ms1_peak_detect', final_step=args.final_operation, databases=databases, tables=['summed_ms1_regions_info','ms1_feature_region_peak_detect_info']):
         print("Not continuing to the next step - exiting")
         store_info(info, processing_times)
         sys.exit(0)
