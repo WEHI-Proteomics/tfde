@@ -81,11 +81,10 @@ def step_successful(databases, tables):
     expected_ok_count = len(databases) * len(tables)
     ok_count = 0
     for db in databases:
-        print("testing completion: {}".format(db))
         db_conn = sqlite3.connect(db)
         tables_df = pd.read_sql_query("SELECT tbl_name FROM sqlite_master WHERE type='table'", db_conn)
         for tab in tables:
-            if len(tables_df[tables.tbl_name == "{}".format(tab)]) == 1: # does the table exist
+            if len(tables_df[tables_df.tbl_name == "{}".format(tab)]) == 1: # does the table exist
                 df = pd.read_sql_query("select * from {}".format(tab), db_conn) # does it have an entry
                 if len(df) > 0:
                     ok_count += 1
