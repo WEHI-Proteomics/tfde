@@ -81,6 +81,7 @@ def step_successful(databases, tables):
     expected_ok_count = len(databases) * len(tables)
     ok_count = 0
     for db in databases:
+        print("testing completion: {}".format(db))
         db_conn = sqlite3.connect(db)
         tables_df = pd.read_sql_query("SELECT tbl_name FROM sqlite_master WHERE type='table'", db_conn)
         for tab in tables:
