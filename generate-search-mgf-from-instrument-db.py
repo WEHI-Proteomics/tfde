@@ -82,8 +82,8 @@ def process_this_step(this_step, first_step):
     return result
 
 # return true if this isn't the last step
-def continue_processing(this_step, final_step):
-    result = (processing_steps[this_step] < processing_steps[final_step])
+def continue_processing(this_step, final_step, databases=[], tables=[]):
+    result = step_successful(databases, tables) and (processing_steps[this_step] < processing_steps[final_step])
     if (result == False) and (args.shutdown_on_completion == True):
         run_process("sudo shutdown -P +5")
     return result
@@ -98,6 +98,23 @@ def store_info(info, processing_times):
     info_entry_df.to_sql(name='processing_info', con=db_conn, if_exists='replace', index=False)
     db_conn.close()
 
+def step_successful(databases, tables):
+    # returns true if there is an entry in each of the specified tables in each of the specified databases
+    expected_ok_count = len(databases) * len(tables)
+    ok_count = 0
+    for db in databases:
+        db_conn = sqlite3.connect(db)
+        tables_df = pd.read_sql_query("SELECT tbl_name FROM sqlite_master WHERE type='table'", db_conn)
+        for tab in tables:
+            if len(tables_df[tables.tbl_name == "{}".format(tab)]) == 1: # does the table exist
+                df = pd.read_sql_query("select * from {}".format(tab), db_conn) # does it have an entry
+                if len(df) > 0:
+                    ok_count += 1
+                else:
+                    print("{} in {} does not have an entry".format(tab, db))
+            else:
+                print("{} does not have the table {}".format(db, tab))
+    return (ok_count == expected_ok_count)
 
 #
 # source activate py27
@@ -436,9 +453,11 @@ if process_this_step(this_step='resolve_feature_list', first_step=args.operation
 
     # build the process lists
     resolve_feature_list_processes = []
+    databases = []
     for feature_range in feature_ranges:
         destination_db_name = "{}-{}-{}.sqlite".format(feature_database_root, feature_range[0], feature_range[1])
         resolve_feature_list_processes.append("python -u ./otf-peak-detect/resolve-feature-list.py -fdb '{}' -frdb '{}' -fl {} -fu {} -fps {}".format(feature_database_name, destination_db_name, feature_range[0], feature_range[1], frames_per_second))
+        databases.append(destination_db_name)
 
     print("resolving the feature list...")
     pool.map(run_process, resolve_feature_list_processes)
@@ -458,7 +477,7 @@ if process_this_step(this_step='resolve_feature_list', first_step=args.operation
     resolve_feature_list_stop_time = time.time()
     processing_times.append(("resolve feature list", resolve_feature_list_stop_time-resolve_feature_list_start_time))
 
-    if not continue_processing(this_step='resolve_feature_list', final_step=args.final_operation):
+    if not continue_processing(this_step='resolve_feature_list', final_step=args.final_operation, databases=databases, tables=['resolve_feature_list_info']):
         print("Not continuing to the next step - exiting")
         store_info(info, processing_times)
         sys.exit(0)
