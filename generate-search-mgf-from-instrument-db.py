@@ -401,30 +401,6 @@ print("Feature ranges: {}".format(feature_ranges))
 #
 
 ###########################################
-# OPERATION: feature_region_ms2_peak_detect
-###########################################
-if process_this_step(this_step='feature_region_ms2_peak_detect', first_step=args.operation):
-    print("Starting the \'feature_region_ms2_peak_detect\' step")
-    ms2_peak_detect_start_time = time.time()
-
-    # build the process lists
-    feature_region_ms2_sum_peak_processes = []
-    for feature_range in feature_ranges:
-        destination_db_name = "{}-{}-{}.sqlite".format(feature_database_root, feature_range[0], feature_range[1])
-        feature_region_ms2_sum_peak_processes.append("python -u ./otf-peak-detect/feature-region-ms2-combined-sum-peak-detect.py -cdb '{}' -ddb '{}' -ms1ce {} -fl {} -fu {} -ml {} -mu {} -bs 20 -fts {} -fso {} -mzsf {}".format(converted_database_name, destination_db_name, args.ms1_collision_energy, feature_range[0], feature_range[1], args.mz_lower, args.mz_upper, args.frames_to_sum, args.frame_summing_offset, args.ms2_mz_scaling_factor))
-
-    run_process("python -u ./otf-peak-detect/feature-region-ms2-combined-sum-peak-detect-prep.py -cdb '{}'".format(converted_database_name))
-    print("detecting ms2 peaks in the feature region...")
-    pool.map(run_process, feature_region_ms2_sum_peak_processes)
-    ms2_peak_detect_stop_time = time.time()
-    processing_times.append(("feature region ms2 peak detect", ms2_peak_detect_stop_time-ms2_peak_detect_start_time))
-
-    if not continue_processing(this_step='feature_region_ms2_peak_detect', final_step=args.final_operation):
-        print("Not continuing to the next step - exiting")
-        store_info(info, processing_times)
-        sys.exit(0)
-
-###########################################
 # OPERATION: feature_region_ms1_peak_detect
 ###########################################
 if process_this_step(this_step='feature_region_ms1_peak_detect', first_step=args.operation):
