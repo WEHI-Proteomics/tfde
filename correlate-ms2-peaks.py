@@ -79,7 +79,7 @@ def main():
         feature_id = base_peak_ids_df.loc[feature_ids_idx].feature_id.astype(int)
         base_peak_id = base_peak_ids_df.loc[feature_ids_idx].base_peak_id.astype(int)
 
-        print("processing feature {} (range {}-{})".format(feature_id, args.feature_id_lower, args.feature_id_upper))
+        print("processing feature {} ({}% complete)".format(feature_id, round(float(feature_id-args.feature_id_lower)/(args.feature_id_upper-args.feature_id_lower)*100,1)))
         # get all the points for the feature's ms1 base peak
         ms1_base_peak_points_df = pd.read_sql_query("select * from summed_ms1_regions where feature_id={} and peak_id={}".format(feature_id, base_peak_id), source_conn)
 
