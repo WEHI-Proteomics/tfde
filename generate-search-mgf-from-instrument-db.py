@@ -122,7 +122,7 @@ def store_info(info, processing_times):
 def cleanup(info, processing_times, shutdown):
     store_info(info, processing_times)
     if shutdown == True:
-        run_process("sudo shutdown -P +5")
+        run_process("sudo shutdown -P +5") # shutdown the instance in 5 minutes from now
     sys.exit(1)
 
 #
@@ -245,7 +245,7 @@ if process_this_step(this_step=step_name, first_step=args.operation):
     step_stop_time = time.time()
     processing_times.append((step_name, step_stop_time-step_start_time))
 
-    if continue_processing(this_step=step_name, final_step=args.final_operation):
+    if continue_processing(this_step=step_name, final_step=args.final_operation, databases=[converted_database_name], tables=['convert_info']):
         print("Completed {}. Continuing to the next step.".format(step_name))
     else:
         print("Not continuing to the next step - exiting.")
@@ -361,7 +361,7 @@ if process_this_step(this_step=step_name, first_step=args.operation):
     step_stop_time = time.time()
     processing_times.append((step_name, step_stop_time-step_start_time))
 
-    if continue_processing(this_step=step_name, final_step=args.final_operation):
+    if continue_processing(this_step=step_name, final_step=args.final_operation, databases=frame_batch_df.db.tolist(), tables=['summing_info','peak_detect_info','cluster_detect_info']):
         print("Completed {}. Continuing to the next step.".format(step_name))
     else:
         print("Not continuing to the next step - exiting.")
@@ -417,7 +417,7 @@ if process_this_step(this_step=step_name, first_step=args.operation):
     step_stop_time = time.time()
     processing_times.append((step_name, step_stop_time-step_start_time))
 
-    if continue_processing(this_step=step_name, final_step=args.final_operation):
+    if continue_processing(this_step=step_name, final_step=args.final_operation, databases=[feature_database_name], tables=['feature_info']):
         print("Completed {}. Continuing to the next step.".format(step_name))
     else:
         print("Not continuing to the next step - exiting.")
@@ -480,7 +480,7 @@ if process_this_step(this_step=step_name, first_step=args.operation):
     step_stop_time = time.time()
     processing_times.append((step_name, step_stop_time-step_start_time))
 
-    if continue_processing(this_step=step_name, final_step=args.final_operation):
+    if continue_processing(this_step=step_name, final_step=args.final_operation, databases=feature_batch_df.db.tolist(), tables=['summed_ms1_regions_info','ms1_feature_region_peak_detect_info']):
         print("Completed {}. Continuing to the next step.".format(step_name))
     else:
         print("Not continuing to the next step - exiting.")
@@ -520,7 +520,7 @@ if process_this_step(this_step=step_name, first_step=args.operation):
     step_stop_time = time.time()
     processing_times.append((step_name, step_stop_time-step_start_time))
 
-    if continue_processing(this_step=step_name, final_step=args.final_operation):
+    if continue_processing(this_step=step_name, final_step=args.final_operation, databases=feature_batch_df.db.tolist(), tables=['resolve_feature_list_info']):
         print("Completed {}. Continuing to the next step.".format(step_name))
     else:
         print("Not continuing to the next step - exiting.")
@@ -548,7 +548,7 @@ if process_this_step(this_step=step_name, first_step=args.operation):
     step_stop_time = time.time()
     processing_times.append((step_name, step_stop_time-step_start_time))
 
-    if continue_processing(this_step=step_name, final_step=args.final_operation):
+    if continue_processing(this_step=step_name, final_step=args.final_operation, databases=feature_batch_df.db.tolist(), tables=['summed_ms2_regions_info']):
         print("Completed {}. Continuing to the next step.".format(step_name))
     else:
         print("Not continuing to the next step - exiting.")
@@ -575,7 +575,7 @@ if process_this_step(this_step=step_name, first_step=args.operation):
     step_stop_time = time.time()
     processing_times.append((step_name, step_stop_time-step_start_time))
 
-    if continue_processing(this_step=step_name, final_step=args.final_operation):
+    if continue_processing(this_step=step_name, final_step=args.final_operation, databases=feature_batch_df.db.tolist(), tables=['precursor_ms2_peak_matches_info']):
         print("Completed {}. Continuing to the next step.".format(step_name))
     else:
         print("Not continuing to the next step - exiting.")
@@ -602,7 +602,7 @@ if process_this_step(this_step=step_name, first_step=args.operation):
     step_stop_time = time.time()
     processing_times.append((step_name, step_stop_time-step_start_time))
 
-    if continue_processing(this_step=step_name, final_step=args.final_operation):
+    if continue_processing(this_step=step_name, final_step=args.final_operation, databases=feature_batch_df.db.tolist(), tables=['peak_correlation_info']):
         print("Completed {}. Continuing to the next step.".format(step_name))
     else:
         print("Not continuing to the next step - exiting.")
@@ -627,7 +627,7 @@ if process_this_step(this_step=step_name, first_step=args.operation):
     step_stop_time = time.time()
     processing_times.append((step_name, step_stop_time-step_start_time))
 
-    if continue_processing(this_step=step_name, final_step=args.final_operation):
+    if continue_processing(this_step=step_name, final_step=args.final_operation, databases=feature_batch_df.db.tolist(), tables=['deconvolve_ms2_spectra_info']):
         print("Completed {}. Continuing to the next step.".format(step_name))
     else:
         print("Not continuing to the next step - exiting.")
@@ -670,7 +670,7 @@ if process_this_step(this_step=step_name, first_step=args.operation):
     step_stop_time = time.time()
     processing_times.append((step_name, step_stop_time-step_start_time))
 
-    if continue_processing(this_step=step_name, final_step=args.final_operation):
+    if continue_processing(this_step=step_name, final_step=args.final_operation, databases=feature_batch_df.db.tolist(), tables=['search_mgf_info']):
         print("Completed {}. Continuing to the next step.".format(step_name))
     else:
         print("Not continuing to the next step - exiting.")
