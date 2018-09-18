@@ -111,7 +111,7 @@ def continue_processing(this_step, final_step, databases=[], tables=[]):
 
 def store_info(info, processing_times):
     processing_stop_time = time.time()
-    info.append(("total processing", processing_stop_time-processing_start_time))
+    info.append(("total processing", round(processing_stop_time-processing_start_time,1)))
     info.append(("processing times", json.dumps(processing_times)))
     # store it in the database
     info_entry_df = pd.DataFrame(info, columns=['item', 'value'])
@@ -249,7 +249,7 @@ if process_this_step(this_step=step_name, first_step=args.operation):
     source_conn.close()
 
     step_stop_time = time.time()
-    processing_times.append((step_name, step_stop_time-step_start_time))
+    processing_times.append((step_name, round(step_stop_time-step_start_time,1)))
 
     if continue_processing(this_step=step_name, final_step=args.final_operation, databases=[converted_database_name], tables=['convert_info']):
         print("Completed {}. Continuing to the next step.".format(step_name))
@@ -365,7 +365,7 @@ if process_this_step(this_step=step_name, first_step=args.operation):
     pool.map(run_process, cluster_detect_ms1_processes)
 
     step_stop_time = time.time()
-    processing_times.append((step_name, step_stop_time-step_start_time))
+    processing_times.append((step_name, round(step_stop_time-step_start_time,1)))
 
     if continue_processing(this_step=step_name, final_step=args.final_operation, databases=frame_batch_df.db.tolist(), tables=['summing_info','peak_detect_info','cluster_detect_info']):
         print("Completed {}. Continuing to the next step.".format(step_name))
@@ -390,7 +390,7 @@ if process_this_step(this_step=step_name, first_step=args.operation):
         merge_summed_regions(source_db_name, frame_database_name, exceptions=[])
 
     step_stop_time = time.time()
-    processing_times.append((step_name, step_stop_time-step_start_time))
+    processing_times.append((step_name, round(step_stop_time-step_start_time,1)))
 
     if continue_processing(this_step=step_name, final_step=args.final_operation):
         print("Completed {}. Continuing to the next step.".format(step_name))
@@ -421,7 +421,7 @@ if process_this_step(this_step=step_name, first_step=args.operation):
     run_process("python -u ./otf-peak-detect/feature-detect-ms1.py -db '{}' -fps {} -mnf {} -es {} -ee {}".format(feature_database_name, frames_per_second, args.minimum_number_of_frames, args.elution_start_sec, args.elution_end_sec))
 
     step_stop_time = time.time()
-    processing_times.append((step_name, step_stop_time-step_start_time))
+    processing_times.append((step_name, round(step_stop_time-step_start_time,1)))
 
     if continue_processing(this_step=step_name, final_step=args.final_operation, databases=[feature_database_name], tables=['feature_info']):
         print("Completed {}. Continuing to the next step.".format(step_name))
@@ -484,7 +484,7 @@ if process_this_step(this_step=step_name, first_step=args.operation):
     pool.map(run_process, feature_region_ms1_sum_processes)
     pool.map(run_process, feature_region_ms1_peak_processes)
     step_stop_time = time.time()
-    processing_times.append((step_name, step_stop_time-step_start_time))
+    processing_times.append((step_name, round(step_stop_time-step_start_time,1)))
 
     if continue_processing(this_step=step_name, final_step=args.final_operation, databases=feature_batch_df.db.tolist(), tables=['summed_ms1_regions_info','ms1_feature_region_peak_detect_info']):
         print("Completed {}. Continuing to the next step.".format(step_name))
@@ -524,7 +524,7 @@ if process_this_step(this_step=step_name, first_step=args.operation):
         db_conn.close()
 
     step_stop_time = time.time()
-    processing_times.append((step_name, step_stop_time-step_start_time))
+    processing_times.append((step_name, round(step_stop_time-step_start_time,1)))
 
     if continue_processing(this_step=step_name, final_step=args.final_operation, databases=feature_batch_df.db.tolist(), tables=['resolve_feature_list_info']):
         print("Completed {}. Continuing to the next step.".format(step_name))
@@ -552,7 +552,7 @@ if process_this_step(this_step=step_name, first_step=args.operation):
     print("detecting ms2 peaks in the feature region...")
     pool.map(run_process, feature_region_ms2_sum_peak_processes)
     step_stop_time = time.time()
-    processing_times.append((step_name, step_stop_time-step_start_time))
+    processing_times.append((step_name, round(step_stop_time-step_start_time,1)))
 
     if continue_processing(this_step=step_name, final_step=args.final_operation, databases=feature_batch_df.db.tolist(), tables=['summed_ms2_regions_info']):
         print("Completed {}. Continuing to the next step.".format(step_name))
@@ -579,7 +579,7 @@ if process_this_step(this_step=step_name, first_step=args.operation):
     print("matching precursor ms2 peaks...")
     pool.map(run_process, match_precursor_ms2_peaks_processes)
     step_stop_time = time.time()
-    processing_times.append((step_name, step_stop_time-step_start_time))
+    processing_times.append((step_name, round(step_stop_time-step_start_time,1)))
 
     if continue_processing(this_step=step_name, final_step=args.final_operation, databases=feature_batch_df.db.tolist(), tables=['precursor_ms2_peak_matches_info']):
         print("Completed {}. Continuing to the next step.".format(step_name))
@@ -606,7 +606,7 @@ if process_this_step(this_step=step_name, first_step=args.operation):
     run_process("python -u ./otf-peak-detect/correlate-ms2-peaks-prep.py -cdb '{}'".format(converted_database_name))
     pool.map(run_process, peak_correlation_processes)
     step_stop_time = time.time()
-    processing_times.append((step_name, step_stop_time-step_start_time))
+    processing_times.append((step_name, round(step_stop_time-step_start_time,1)))
 
     if continue_processing(this_step=step_name, final_step=args.final_operation, databases=feature_batch_df.db.tolist(), tables=['peak_correlation_info']):
         print("Completed {}. Continuing to the next step.".format(step_name))
@@ -631,7 +631,7 @@ if process_this_step(this_step=step_name, first_step=args.operation):
     run_process("python -u ./otf-peak-detect/deconvolve-ms2-spectra-prep.py -dbd '{}'".format(args.data_directory))
     pool.map(run_process, deconvolve_ms2_spectra_processes)
     step_stop_time = time.time()
-    processing_times.append((step_name, step_stop_time-step_start_time))
+    processing_times.append((step_name, round(step_stop_time-step_start_time,1)))
 
     if continue_processing(this_step=step_name, final_step=args.final_operation, databases=feature_batch_df.db.tolist(), tables=['deconvolve_ms2_spectra_info']):
         print("Completed {}. Continuing to the next step.".format(step_name))
@@ -674,7 +674,7 @@ if process_this_step(this_step=step_name, first_step=args.operation):
         run_process("cat {} >> {}".format(mgf_filename, combined_mgf_filename))
 
     step_stop_time = time.time()
-    processing_times.append((step_name, step_stop_time-step_start_time))
+    processing_times.append((step_name, round(step_stop_time-step_start_time,1)))
 
     if continue_processing(this_step=step_name, final_step=args.final_operation, databases=feature_batch_df.db.tolist(), tables=['search_mgf_info']):
         print("Completed {}. Continuing to the next step.".format(step_name))
