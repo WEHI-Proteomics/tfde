@@ -125,6 +125,12 @@ def cleanup(info, processing_times, shutdown):
         run_process("sudo shutdown -P +5") # shutdown the instance in 5 minutes from now
     sys.exit(1)
 
+# break up the list l into chunks of n items
+# source: https://stackoverflow.com/a/1751478/1184799
+def chunks(l, n):
+    n = max(1, n)
+    return list(l[i:i+n] for i in xrange(0, len(l), n))
+
 #
 # source activate py27
 # python -u ./otf-peak-detect/generate-search-mgf-from-instrument-db.py -idb /stornext/Sysbio/data/Projects/ProtemicsLab/Development/AllIon/BSA_All_Ion/BSA_All_Ion_Slot1-46_01_266.d -dbd ./BSA_All_Ion -dbn BSA_All_Ion -cems1 10 -mpc 0.9 -fts 30 -fso 5 -op cluster_detect_ms1 > BSA_All_Ion.log 2>&1
@@ -155,8 +161,8 @@ parser.add_argument('-fl','--frame_lower', type=int, help='The lower summed fram
 parser.add_argument('-fu','--frame_upper', type=int, help='The upper summed frame number to process.', required=False)
 parser.add_argument('-mnf','--minimum_number_of_frames', type=int, default=3, help='Minimum number of frames for a feature to be valid.', required=False)
 parser.add_argument('-mzsf','--ms2_mz_scaling_factor', type=float, default=1000.0, help='Scaling factor to convert m/z range to integers in ms2.', required=False)
-parser.add_argument('-frts','--frame_tasks', type=int, default=1000, help='Number of worker tasks for frames.', required=False)
-parser.add_argument('-fets','--feature_tasks', type=int, default=1000, help='Number of worker tasks for features.', required=False)
+parser.add_argument('-frts','--frame_tasks_per_worker', type=int, default=5, help='Number of frame tasks assigned to each worker in the pool.', required=False)
+parser.add_argument('-fets','--feature_tasks_per_worker', type=int, default=5, help='Number of feature tasks assigned to each worker in the pool.', required=False)
 parser.add_argument('-mnp','--maximum_number_of_peaks_per_feature', type=int, default=500, help='The maximum number of peaks per feature.', required=False)
 parser.add_argument('-es','--elution_start_sec', type=int, help='Only process frames from this time in sec.', required=False)
 parser.add_argument('-ee','--elution_end_sec', type=int, help='Only process frames up to this time in sec.', required=False)
@@ -313,8 +319,8 @@ if args.frame_upper is None:
 for arg in vars(args):
     info.append((arg, getattr(args, arg)))
 
-# split the summed frame range into batches
-batch_splits = np.array_split(range(args.frame_lower,args.frame_upper+1), args.frame_tasks)
+# split the summed frame range into batches of tasks for each worker in the pool
+batch_splits = chunks(range(args.frame_lower,args.frame_upper+1), args.frame_tasks_per_worker)
 summed_frame_ranges = []
 for s in batch_splits:
     if len(s) > 0:
@@ -430,8 +436,8 @@ number_of_features = int(feature_info_df.values[0][0])
 print("Number of features detected: {}".format(number_of_features))
 source_conn.close()
 
-# split the feature range into batches
-batch_splits = np.array_split(range(1,number_of_features+1), args.feature_tasks)
+# split the feature range into batches of tasks for each worker in the pool
+batch_splits = chunks(range(1,number_of_features+1), args.feature_tasks_per_worker)
 feature_ranges = []
 for s in batch_splits:
     if len(s) > 0:
