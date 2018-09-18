@@ -107,8 +107,6 @@ def process_this_step(this_step, first_step):
 # return true if this isn't the last step
 def continue_processing(this_step, final_step, databases=[], tables=[]):
     result = step_successful(this_step, databases, tables) and (processing_steps[this_step] < processing_steps[final_step])
-    if (result == False) and (args.shutdown_on_completion == True):
-        run_process("sudo shutdown -P +5")
     return result
 
 def store_info(info, processing_times):
@@ -121,6 +119,11 @@ def store_info(info, processing_times):
     info_entry_df.to_sql(name='processing_info', con=db_conn, if_exists='replace', index=False)
     db_conn.close()
 
+def cleanup(info, processing_times, shutdown):
+    store_info(info, processing_times)
+    if shutdown == True:
+        run_process("sudo shutdown -P +5")
+    sys.exit(1)
 
 #
 # source activate py27
@@ -216,7 +219,7 @@ info.append(("feature_database_name", feature_database_name))
 info.append(("number_of_cores", number_of_cores))
 
 # Set up the processing pool
-pool = Pool()
+pool = Pool() # the number of worker processes in the pool will be the number returned by cpu_count()
 
 ##################################
 # OPERATION: convert_instrument_db
@@ -229,8 +232,7 @@ if process_this_step(this_step=step_name, first_step=args.operation):
     # make sure the processing directories exist
     if not os.path.exists(args.instrument_database_name):
         print("Error - the instrument database directory does not exist. Exiting.")
-        store_info(info, processing_times)
-        sys.exit(1)
+        cleanup(info, processing_times, args.shutdown_on_completion)
 
     if args.number_of_frames is not None:
         run_process("python -u ./otf-peak-detect/convert-instrument-db.py -sdb '{}' -ddb '{}' -nf {} -bs {}".format(args.instrument_database_name, converted_database_name, args.number_of_frames, args.conversion_batch_size))
@@ -251,13 +253,11 @@ if process_this_step(this_step=step_name, first_step=args.operation):
         print("Completed {}. Continuing to the next step.".format(step_name))
     else:
         print("Not continuing to the next step - exiting.")
-        store_info(info, processing_times)
-        sys.exit(0)
+        cleanup(info, processing_times, args.shutdown_on_completion)
 
 if not os.path.exists(converted_database_name):
     print("Error - the converted database does not exist. Exiting.")
-    store_info(info, processing_times)
-    sys.exit(1)
+    cleanup(info, processing_times, args.shutdown_on_completion)
 
 # Determine the mass range if it's not specified
 if args.mz_lower is None:
@@ -269,8 +269,7 @@ if args.mz_lower is None:
         print("mz_lower set to {} from the data".format(args.mz_lower))
     else:
         print("Error - could not find mz_lower from the convert_info table and it's needed in sebsequent steps. Exiting.")
-        store_info(info, processing_times)
-        sys.exit(1)
+        cleanup(info, processing_times, args.shutdown_on_completion)
 
 if args.mz_upper is None:
     source_conn = sqlite3.connect(converted_database_name)
@@ -281,8 +280,7 @@ if args.mz_upper is None:
         print("mz_upper set to {} from the data".format(args.mz_upper))
     else:
         print("Error - could not find mz_upper from the convert_info table and it's needed in sebsequent steps. Exiting.")
-        store_info(info, processing_times)
-        sys.exit(1)
+        cleanup(info, processing_times, args.shutdown_on_completion)
 
 # Determine the scan range if it's not specified
 if args.scan_lower is None:
@@ -297,8 +295,7 @@ if args.scan_upper is None:
         print("scan_upper set to {} from the data".format(args.scan_upper))
     else:
         print("Error - could not find scan_upper from the convert_info table and it's needed in sebsequent steps. Exiting.")
-        store_info(info, processing_times)
-        sys.exit(1)
+        cleanup(info, processing_times, args.shutdown_on_completion)
 
 # find the total number of summed ms1 frames in the database
 source_conn = sqlite3.connect(converted_database_name)
@@ -353,8 +350,7 @@ if process_this_step(this_step=step_name, first_step=args.operation):
         print("Completed {}. Continuing to the next step.".format(step_name))
     else:
         print("Not continuing to the next step - exiting.")
-        store_info(info, processing_times)
-        sys.exit(0)
+        cleanup(info, processing_times, args.shutdown_on_completion)
 
 ######################################
 # OPERATION: recombine_frame_databases
@@ -380,8 +376,7 @@ if process_this_step(this_step=step_name, first_step=args.operation):
         print("Completed {}. Continuing to the next step.".format(step_name))
     else:
         print("Not continuing to the next step - exiting.")
-        store_info(info, processing_times)
-        sys.exit(0)
+        cleanup(info, processing_times, args.shutdown_on_completion)
 
 # retrieve the summed frame rate
 source_conn = sqlite3.connect(frame_database_name)
@@ -392,8 +387,7 @@ if len(df) > 0:
     print("Summed frames per second is {}".format(frames_per_second))
 else:
     print("Error - could not find the frame rate from the summing_info table and it's needed in sebsequent steps. Exiting.")
-    store_info(info, processing_times)
-    sys.exit(1)
+    cleanup(info, processing_times, args.shutdown_on_completion)
 
 ###############################
 # OPERATION: feature_detect_ms1
@@ -413,8 +407,7 @@ if process_this_step(this_step=step_name, first_step=args.operation):
         print("Completed {}. Continuing to the next step.".format(step_name))
     else:
         print("Not continuing to the next step - exiting.")
-        store_info(info, processing_times)
-        sys.exit(0)
+        cleanup(info, processing_times, args.shutdown_on_completion)
 
 # find out how many features were detected
 source_conn = sqlite3.connect(feature_database_name)
@@ -464,8 +457,7 @@ if process_this_step(this_step=step_name, first_step=args.operation):
         print("Completed {}. Continuing to the next step.".format(step_name))
     else:
         print("Not continuing to the next step - exiting.")
-        store_info(info, processing_times)
-        sys.exit(0)
+        cleanup(info, processing_times, args.shutdown_on_completion)
 
 #################################
 # OPERATION: resolve_feature_list
@@ -503,8 +495,7 @@ if process_this_step(this_step=step_name, first_step=args.operation):
         print("Completed {}. Continuing to the next step.".format(step_name))
     else:
         print("Not continuing to the next step - exiting.")
-        store_info(info, processing_times)
-        sys.exit(0)
+        cleanup(info, processing_times, args.shutdown_on_completion)
 
 ###########################################
 # OPERATION: feature_region_ms2_peak_detect
@@ -530,8 +521,7 @@ if process_this_step(this_step=step_name, first_step=args.operation):
         print("Completed {}. Continuing to the next step.".format(step_name))
     else:
         print("Not continuing to the next step - exiting.")
-        store_info(info, processing_times)
-        sys.exit(0)
+        cleanup(info, processing_times, args.shutdown_on_completion)
 
 ######################################
 # OPERATION: match_precursor_ms2_peaks
@@ -556,8 +546,7 @@ if process_this_step(this_step=step_name, first_step=args.operation):
         print("Completed {}. Continuing to the next step.".format(step_name))
     else:
         print("Not continuing to the next step - exiting.")
-        store_info(info, processing_times)
-        sys.exit(0)
+        cleanup(info, processing_times, args.shutdown_on_completion)
 
 ############################
 # OPERATION: correlate_peaks
@@ -582,8 +571,7 @@ if process_this_step(this_step=step_name, first_step=args.operation):
         print("Completed {}. Continuing to the next step.".format(step_name))
     else:
         print("Not continuing to the next step - exiting.")
-        store_info(info, processing_times)
-        sys.exit(0)
+        cleanup(info, processing_times, args.shutdown_on_completion)
 
 ###################################
 # OPERATION: deconvolve_ms2_spectra
@@ -608,8 +596,7 @@ if process_this_step(this_step=step_name, first_step=args.operation):
         print("Completed {}. Continuing to the next step.".format(step_name))
     else:
         print("Not continuing to the next step - exiting.")
-        store_info(info, processing_times)
-        sys.exit(0)
+        cleanup(info, processing_times, args.shutdown_on_completion)
 
 ##############################
 # OPERATION: create_search_mgf
@@ -648,9 +635,4 @@ if process_this_step(this_step=step_name, first_step=args.operation):
         print("Completed {}. Continuing to the next step.".format(step_name))
     else:
         print("Not continuing to the next step - exiting.")
-        store_info(info, processing_times)
-        sys.exit(0)
-
-# shutdown the machine
-if args.shutdown_on_completion == True:
-    run_process("sudo shutdown -P +5")
+        cleanup(info, processing_times, args.shutdown_on_completion)
