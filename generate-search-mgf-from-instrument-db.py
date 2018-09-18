@@ -77,7 +77,7 @@ def merge_summed_regions_prep(source_db_name, destination_db_name, exceptions):
     destination_conn.close()
 
 # returns true if there is an entry in each of the specified tables in each of the specified databases
-def step_successful(databases, tables):
+def step_successful(step_name, databases, tables):
     expected_ok_count = len(databases) * len(tables)
     ok_count = 0
     for db in databases:
@@ -89,10 +89,15 @@ def step_successful(databases, tables):
                 if len(df) > 0:
                     ok_count += 1
                 else:
-                    print("{} in {} does not have an entry".format(tab, db))
+                    print("step {}: {} in {} does not have an entry".format(step_name, tab, db))
             else:
-                print("{} does not have the table {}".format(db, tab))
-    return (ok_count == expected_ok_count)
+                print("step {}: {} does not have the table {}".format(step_name, db, tab))
+        result = (ok_count == expected_ok_count)
+        if result:
+            print("step {} passed".format(step_name))
+        else:
+            print("step {} failed".format(step_name))
+    return result
 
 # return true if the specified step should be processed
 def process_this_step(this_step, first_step):
@@ -101,7 +106,7 @@ def process_this_step(this_step, first_step):
 
 # return true if this isn't the last step
 def continue_processing(this_step, final_step, databases=[], tables=[]):
-    result = step_successful(databases, tables) and (processing_steps[this_step] < processing_steps[final_step])
+    result = step_successful(this_step, databases, tables) and (processing_steps[this_step] < processing_steps[final_step])
     if (result == False) and (args.shutdown_on_completion == True):
         run_process("sudo shutdown -P +5")
     return result
@@ -216,9 +221,10 @@ pool = Pool()
 ##################################
 # OPERATION: convert_instrument_db
 ##################################
-if process_this_step(this_step='convert_instrument_db', first_step=args.operation):
-    print("Starting the \'convert_instrument_db\' step")
-    convert_start_time = time.time()
+step_name = 'convert_instrument_db'
+if process_this_step(this_step=step_name, first_step=args.operation):
+    print("Starting the \'{}\' step".format(step_name))
+    step_start_time = time.time()
 
     # make sure the processing directories exist
     if not os.path.exists(args.instrument_database_name):
@@ -238,11 +244,13 @@ if process_this_step(this_step='convert_instrument_db', first_step=args.operatio
     info.append(("number of converted frames", number_of_converted_frames))
     source_conn.close()
 
-    convert_stop_time = time.time()
-    processing_times.append(("database conversion", convert_stop_time-convert_start_time))
+    step_stop_time = time.time()
+    processing_times.append((step_name, step_stop_time-step_start_time))
 
-    if not continue_processing(this_step='convert_instrument_db', final_step=args.final_operation):
-        print("Not continuing to the next step - exiting")
+    if continue_processing(this_step=step_name, final_step=args.final_operation):
+        print("Completed {}. Continuing to the next step.".format(step_name))
+    else:
+        print("Not continuing to the next step - exiting.")
         store_info(info, processing_times)
         sys.exit(0)
 
@@ -318,9 +326,10 @@ for s in batch_splits:
 ###############################
 # OPERATION: cluster_detect_ms1
 ###############################
-if process_this_step(this_step='cluster_detect_ms1', first_step=args.operation):
-    print("Starting the \'cluster_detect_ms1\' step")
-    cluster_detect_start_time = time.time()
+step_name = 'cluster_detect_ms1'
+if process_this_step(this_step=step_name, first_step=args.operation):
+    print("Starting the \'{}\' step".format(step_name))
+    step_start_time = time.time()
 
     # build the process lists
     sum_frame_ms1_processes = []
@@ -337,20 +346,23 @@ if process_this_step(this_step='cluster_detect_ms1', first_step=args.operation):
     pool.map(run_process, peak_detect_ms1_processes)
     pool.map(run_process, cluster_detect_ms1_processes)
 
-    cluster_detect_stop_time = time.time()
-    processing_times.append(("cluster detect", cluster_detect_stop_time-cluster_detect_start_time))
+    step_stop_time = time.time()
+    processing_times.append((step_name, step_stop_time-step_start_time))
 
-    if not continue_processing(this_step='cluster_detect_ms1', final_step=args.final_operation):
-        print("Not continuing to the next step - exiting")
+    if continue_processing(this_step=step_name, final_step=args.final_operation):
+        print("Completed {}. Continuing to the next step.".format(step_name))
+    else:
+        print("Not continuing to the next step - exiting.")
         store_info(info, processing_times)
         sys.exit(0)
 
 ######################################
 # OPERATION: recombine_frame_databases
 ######################################
-if process_this_step(this_step='recombine_frame_databases', first_step=args.operation):
-    print("Starting the \'recombine_frame_databases\' step")
-    recombine_frames_start_time = time.time()
+step_name = 'recombine_frame_databases'
+if process_this_step(this_step=step_name, first_step=args.operation):
+    print("Starting the \'{}\' step".format(step_name))
+    step_start_time = time.time()
 
     # recombine the frame range databases back into a combined database
     template_frame_range = summed_frame_ranges[0]
@@ -361,11 +373,13 @@ if process_this_step(this_step='recombine_frame_databases', first_step=args.oper
         source_db_name = "{}-{}-{}.sqlite".format(frame_database_root, summed_frame_range[0], summed_frame_range[1])
         merge_summed_regions(source_db_name, frame_database_name, exceptions=[])
 
-    recombine_frames_stop_time = time.time()
-    processing_times.append(("frame-based recombine", recombine_frames_stop_time-recombine_frames_start_time))
+    step_stop_time = time.time()
+    processing_times.append((step_name, step_stop_time-step_start_time))
 
-    if not continue_processing(this_step='recombine_frame_databases', final_step=args.final_operation):
-        print("Not continuing to the next step - exiting")
+    if continue_processing(this_step=step_name, final_step=args.final_operation):
+        print("Completed {}. Continuing to the next step.".format(step_name))
+    else:
+        print("Not continuing to the next step - exiting.")
         store_info(info, processing_times)
         sys.exit(0)
 
@@ -384,18 +398,21 @@ else:
 ###############################
 # OPERATION: feature_detect_ms1
 ###############################
-if process_this_step(this_step='feature_detect_ms1', first_step=args.operation):
-    print("Starting the \'feature_detect_ms1\' step")
-    feature_detect_start_time = time.time()
+step_name = 'feature_detect_ms1'
+if process_this_step(this_step=step_name, first_step=args.operation):
+    print("Starting the \'{}\' step".format(step_name))
+    step_start_time = time.time()
 
     print("detecting features...")
     run_process("python -u ./otf-peak-detect/feature-detect-ms1.py -db '{}' -fps {} -mnf {} -es {} -ee {}".format(feature_database_name, frames_per_second, args.minimum_number_of_frames, args.elution_start_sec, args.elution_end_sec))
 
-    feature_detect_stop_time = time.time()
-    processing_times.append(("feature detect ms1", feature_detect_stop_time-feature_detect_start_time))
+    step_stop_time = time.time()
+    processing_times.append((step_name, step_stop_time-step_start_time))
 
-    if not continue_processing(this_step='feature_detect_ms1', final_step=args.final_operation):
-        print("Not continuing to the next step - exiting")
+    if continue_processing(this_step=step_name, final_step=args.final_operation):
+        print("Completed {}. Continuing to the next step.".format(step_name))
+    else:
+        print("Not continuing to the next step - exiting.")
         store_info(info, processing_times)
         sys.exit(0)
 
@@ -421,9 +438,10 @@ print("Feature ranges: {}".format(feature_ranges))
 ###########################################
 # OPERATION: feature_region_ms1_peak_detect
 ###########################################
-if process_this_step(this_step='feature_region_ms1_peak_detect', first_step=args.operation):
-    print("Starting the \'feature_region_ms1_peak_detect\' step")
-    ms1_peak_detect_start_time = time.time()
+step_name = 'feature_region_ms1_peak_detect'
+if process_this_step(this_step=step_name, first_step=args.operation):
+    print("Starting the \'{}\' step".format(step_name))
+    step_start_time = time.time()
 
     # build the process lists
     feature_region_ms1_sum_processes = []
@@ -439,20 +457,23 @@ if process_this_step(this_step='feature_region_ms1_peak_detect', first_step=args
     run_process("python -u ./otf-peak-detect/feature-region-ms1-sum-frames-prep.py -sdb '{}' -fdbr '{}'".format(feature_database_name, feature_database_root))
     pool.map(run_process, feature_region_ms1_sum_processes)
     pool.map(run_process, feature_region_ms1_peak_processes)
-    ms1_peak_detect_stop_time = time.time()
-    processing_times.append(("feature region ms1 peak detect", ms1_peak_detect_stop_time-ms1_peak_detect_start_time))
+    step_stop_time = time.time()
+    processing_times.append((step_name, step_stop_time-step_start_time))
 
-    if not continue_processing(this_step='feature_region_ms1_peak_detect', final_step=args.final_operation, databases=databases, tables=['summed_ms1_regions_info','ms1_feature_region_peak_detect_info']):
-        print("Not continuing to the next step - exiting")
+    if continue_processing(this_step=step_name, final_step=args.final_operation):
+        print("Completed {}. Continuing to the next step.".format(step_name))
+    else:
+        print("Not continuing to the next step - exiting.")
         store_info(info, processing_times)
         sys.exit(0)
 
 #################################
 # OPERATION: resolve_feature_list
 #################################
-if process_this_step(this_step='resolve_feature_list', first_step=args.operation):
-    print("Starting the \'resolve_feature_list\' step")
-    resolve_feature_list_start_time = time.time()
+step_name = 'resolve_feature_list'
+if process_this_step(this_step=step_name, first_step=args.operation):
+    print("Starting the \'{}\' step".format(step_name))
+    step_start_time = time.time()
 
     # build the process lists
     resolve_feature_list_processes = []
@@ -475,20 +496,23 @@ if process_this_step(this_step='resolve_feature_list', first_step=args.operation
             feature_list_df.to_csv(csv_file_name, mode='a', sep=',', index=False, header=False)
         db_conn.close()
 
-    resolve_feature_list_stop_time = time.time()
-    processing_times.append(("resolve feature list", resolve_feature_list_stop_time-resolve_feature_list_start_time))
+    step_stop_time = time.time()
+    processing_times.append((step_name, step_stop_time-step_start_time))
 
-    if not continue_processing(this_step='resolve_feature_list', final_step=args.final_operation):
-        print("Not continuing to the next step - exiting")
+    if continue_processing(this_step=step_name, final_step=args.final_operation):
+        print("Completed {}. Continuing to the next step.".format(step_name))
+    else:
+        print("Not continuing to the next step - exiting.")
         store_info(info, processing_times)
         sys.exit(0)
 
 ###########################################
 # OPERATION: feature_region_ms2_peak_detect
 ###########################################
-if process_this_step(this_step='feature_region_ms2_peak_detect', first_step=args.operation):
-    print("Starting the \'feature_region_ms2_peak_detect\' step")
-    ms2_peak_detect_start_time = time.time()
+step_name = 'feature_region_ms2_peak_detect'
+if process_this_step(this_step=step_name, first_step=args.operation):
+    print("Starting the \'{}\' step".format(step_name))
+    step_start_time = time.time()
 
     # build the process lists
     feature_region_ms2_sum_peak_processes = []
@@ -499,20 +523,23 @@ if process_this_step(this_step='feature_region_ms2_peak_detect', first_step=args
     run_process("python -u ./otf-peak-detect/feature-region-ms2-combined-sum-peak-detect-prep.py -cdb '{}' -fdbr '{}'".format(converted_database_name, feature_database_root))
     print("detecting ms2 peaks in the feature region...")
     pool.map(run_process, feature_region_ms2_sum_peak_processes)
-    ms2_peak_detect_stop_time = time.time()
-    processing_times.append(("feature region ms2 peak detect", ms2_peak_detect_stop_time-ms2_peak_detect_start_time))
+    step_stop_time = time.time()
+    processing_times.append((step_name, step_stop_time-step_start_time))
 
-    if not continue_processing(this_step='feature_region_ms2_peak_detect', final_step=args.final_operation):
-        print("Not continuing to the next step - exiting")
+    if continue_processing(this_step=step_name, final_step=args.final_operation):
+        print("Completed {}. Continuing to the next step.".format(step_name))
+    else:
+        print("Not continuing to the next step - exiting.")
         store_info(info, processing_times)
         sys.exit(0)
 
 ######################################
 # OPERATION: match_precursor_ms2_peaks
 ######################################
-if process_this_step(this_step='match_precursor_ms2_peaks', first_step=args.operation):
-    print("Starting the \'match_precursor_ms2_peaks\' step")
-    match_precursor_ms2_peaks_start_time = time.time()
+step_name = 'match_precursor_ms2_peaks'
+if process_this_step(this_step=step_name, first_step=args.operation):
+    print("Starting the \'{}\' step".format(step_name))
+    step_start_time = time.time()
 
     # determine the drift offset between ms1 and ms2
     match_precursor_ms2_peaks_processes = []
@@ -522,20 +549,23 @@ if process_this_step(this_step='match_precursor_ms2_peaks', first_step=args.oper
 
     print("matching precursor ms2 peaks...")
     pool.map(run_process, match_precursor_ms2_peaks_processes)
-    match_precursor_ms2_peaks_stop_time = time.time()
-    processing_times.append(("match precursor ms2 peaks", match_precursor_ms2_peaks_stop_time-match_precursor_ms2_peaks_start_time))
+    step_stop_time = time.time()
+    processing_times.append((step_name, step_stop_time-step_start_time))
 
-    if not continue_processing(this_step='match_precursor_ms2_peaks', final_step=args.final_operation):
-        print("Not continuing to the next step - exiting")
+    if continue_processing(this_step=step_name, final_step=args.final_operation):
+        print("Completed {}. Continuing to the next step.".format(step_name))
+    else:
+        print("Not continuing to the next step - exiting.")
         store_info(info, processing_times)
         sys.exit(0)
 
 ############################
 # OPERATION: correlate_peaks
 ############################
-if process_this_step(this_step='correlate_peaks', first_step=args.operation):
-    print("Starting the \'correlate_peaks\' step")
-    peak_correlation_start_time = time.time()
+step_name = 'correlate_peaks'
+if process_this_step(this_step=step_name, first_step=args.operation):
+    print("Starting the \'{}\' step".format(step_name))
+    step_start_time = time.time()
 
     peak_correlation_processes = []
     for feature_range in feature_ranges:
@@ -545,42 +575,48 @@ if process_this_step(this_step='correlate_peaks', first_step=args.operation):
     print("correlating peaks...")
     run_process("python -u ./otf-peak-detect/correlate-ms2-peaks-prep.py -cdb '{}'".format(converted_database_name))
     pool.map(run_process, peak_correlation_processes)
-    peak_correlation_stop_time = time.time()
-    processing_times.append(("peak correlation", peak_correlation_stop_time-peak_correlation_start_time))
+    step_stop_time = time.time()
+    processing_times.append((step_name, step_stop_time-step_start_time))
 
-    if not continue_processing(this_step='correlate_peaks', final_step=args.final_operation):
-        print("Not continuing to the next step - exiting")
+    if continue_processing(this_step=step_name, final_step=args.final_operation):
+        print("Completed {}. Continuing to the next step.".format(step_name))
+    else:
+        print("Not continuing to the next step - exiting.")
         store_info(info, processing_times)
         sys.exit(0)
 
 ###################################
 # OPERATION: deconvolve_ms2_spectra
 ###################################
-if process_this_step(this_step='deconvolve_ms2_spectra', first_step=args.operation):
-    print("Starting the \'deconvolve_ms2_spectra\' step")
+step_name = 'deconvolve_ms2_spectra'
+if process_this_step(this_step=step_name, first_step=args.operation):
+    print("Starting the \'{}\' step".format(step_name))
     deconvolve_ms2_spectra_processes = []
     for feature_range in feature_ranges:
         destination_db_name = "{}-{}-{}.sqlite".format(feature_database_root, feature_range[0], feature_range[1])
         deconvolve_ms2_spectra_processes.append("python -u ./otf-peak-detect/deconvolve-ms2-spectra.py -fdb '{}' -frdb '{}' -dbd {} -fps {} -mnp {}".format(feature_database_name, destination_db_name, args.data_directory, frames_per_second, args.maximum_number_of_peaks_per_feature))
 
     # deconvolve the ms2 spectra with Hardklor
-    deconvolve_ms2_spectra_start_time = time.time()
+    step_start_time = time.time()
     print("deconvolving ms2 spectra...")
     run_process("python -u ./otf-peak-detect/deconvolve-ms2-spectra-prep.py -dbd '{}'".format(args.data_directory))
     pool.map(run_process, deconvolve_ms2_spectra_processes)
-    deconvolve_ms2_spectra_stop_time = time.time()
-    processing_times.append(("deconvolve ms2 spectra", deconvolve_ms2_spectra_stop_time-deconvolve_ms2_spectra_start_time))
+    step_stop_time = time.time()
+    processing_times.append((step_name, step_stop_time-step_start_time))
 
-    if not continue_processing(this_step='deconvolve_ms2_spectra', final_step=args.final_operation):
-        print("Not continuing to the next step - exiting")
+    if continue_processing(this_step=step_name, final_step=args.final_operation):
+        print("Completed {}. Continuing to the next step.".format(step_name))
+    else:
+        print("Not continuing to the next step - exiting.")
         store_info(info, processing_times)
         sys.exit(0)
 
 ##############################
 # OPERATION: create_search_mgf
 ##############################
-if process_this_step(this_step='create_search_mgf', first_step=args.operation):
-    print("Starting the \'create_search_mgf\' step")
+step_name = 'create_search_mgf'
+if process_this_step(this_step=step_name, first_step=args.operation):
+    print("Starting the \'{}\' step".format(step_name))
     create_search_mgf_processes = []
     for feature_range in feature_ranges:
         destination_db_name = "{}-{}-{}.sqlite".format(feature_database_root, feature_range[0], feature_range[1])
@@ -588,7 +624,7 @@ if process_this_step(this_step='create_search_mgf', first_step=args.operation):
         create_search_mgf_processes.append("python -u ./otf-peak-detect/create-search-mgf.py -fdb '{}' -bfn {} -dbd {}".format(destination_db_name, base_mgf_name, args.data_directory))
 
     # create search MGF
-    create_search_mgf_start_time = time.time()
+    step_start_time = time.time()
     print("creating the search MGF...")
     pool.map(run_process, create_search_mgf_processes)
     # now join them all together
@@ -605,18 +641,13 @@ if process_this_step(this_step='create_search_mgf', first_step=args.operation):
         mgf_filename = "{}/{}-search.mgf".format(output_directory, base_mgf_name)
         run_process("cat {} >> {}".format(mgf_filename, combined_mgf_filename))
 
-    create_search_mgf_stop_time = time.time()
-    processing_times.append(("create search mgf", create_search_mgf_stop_time-create_search_mgf_stop_time))
+    step_stop_time = time.time()
+    processing_times.append((step_name, step_stop_time-step_start_time))
 
-    # # gather statistics
-    # source_conn = sqlite3.connect(converted_database_name)
-    # deconvoluted_ions_df = pd.read_sql_query("select max(ion_id) from deconvoluted_ions", source_conn)
-    # number_of_deconvoluted_ions = int(deconvoluted_ions_df.values[0][0])
-    # statistics.append(("number of deconvoluted ions", number_of_deconvoluted_ions))
-    # source_conn.close()
-
-    if not continue_processing(this_step='create_search_mgf', final_step=args.final_operation):
-        print("Not continuing to the next step - exiting")
+    if continue_processing(this_step=step_name, final_step=args.final_operation):
+        print("Completed {}. Continuing to the next step.".format(step_name))
+    else:
+        print("Not continuing to the next step - exiting.")
         store_info(info, processing_times)
         sys.exit(0)
 
