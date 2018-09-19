@@ -325,6 +325,7 @@ summed_frame_ranges = []
 for s in batch_splits:
     if len(s) > 0:
         summed_frame_ranges.append((s[0],s[len(s)-1]))
+print("summed frame ranges: {}".format(summed_frame_ranges))
 
 # define the frame database filenames
 frame_databases = []
