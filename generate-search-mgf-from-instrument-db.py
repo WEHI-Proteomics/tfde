@@ -92,11 +92,11 @@ def step_successful(step_name, databases, tables):
                     print("step {}: {} in {} does not have an entry".format(step_name, tab, db))
             else:
                 print("step {}: {} does not have the table {}".format(step_name, db, tab))
-        result = (ok_count == expected_ok_count)
-        if result:
-            print("step {} passed".format(step_name))
-        else:
-            print("step {} failed".format(step_name))
+    result = (ok_count == expected_ok_count)
+    if result:
+        print("step {} passed".format(step_name))
+    else:
+        print("step {} failed".format(step_name))
     return result
 
 # return true if the specified step should be processed
