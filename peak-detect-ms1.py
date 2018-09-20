@@ -91,7 +91,7 @@ for frame_id in range(args.frame_lower, args.frame_upper+1):
     peak_id = 1
     frame_df = pd.read_sql_query("select mz,scan,intensity,point_id from summed_frames where frame_id={} order by intensity desc;".format(frame_id), source_conn)
     if len(frame_df) > 0:
-        print("Detecting peaks in ms1 frame {} ({}% complete)".format(frame_id, round(float(frame_id-args.frame_lower)/(args.frame_upper-args.frame_lower)*100,1)))
+        print("Detecting peaks in ms1 frame {} ({}% complete)".format(frame_id, round(float(frame_id-args.frame_lower)/(args.frame_upper-args.frame_lower+1)*100,1)))
         start_frame = time.time()
         frame_v = frame_df.values
         # Find the intensity of the point at the bottom of the top tenth percentile of points

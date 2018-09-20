@@ -69,7 +69,7 @@ for feature_list_idx in range(0,len(feature_list_df)):
     retention_time_secs = feature_list_df.loc[feature_list_idx].retention_time_secs
     base_frame_number = int(retention_time_secs * args.frames_per_second)
 
-    print("Generating Hardklor file for feature {} ({}% complete)".format(feature_id, round(float(feature_id-feature_id_lower)/(feature_id_upper-feature_id_lower)*100,1)))
+    print("Generating Hardklor file for feature {} ({}% complete)".format(feature_id, round(float(feature_id-feature_id_lower)/(feature_id_upper-feature_id_lower+1)*100,1)))
 
     db_conn = sqlite3.connect(args.feature_region_database)
     # get the ms2 peaks within the specified RT and drift tolerance
