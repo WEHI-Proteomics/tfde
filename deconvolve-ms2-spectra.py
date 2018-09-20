@@ -79,55 +79,56 @@ for feature_list_idx in range(0,len(feature_list_df)):
     if len(peak_correlation_df) == 1:
         peak_correlation_df = peak_correlation_df.append(peak_correlation_df)
     ms2_peaks_df = pd.read_sql_query("select feature_id,peak_id,centroid_mz,intensity from ms2_peaks where feature_id || '-' || peak_id in {}".format(tuple(peak_correlation_df["feature_id-ms2_peak_id"])), db_conn)
-    # write out the ms2 peaks we are about to deconvolve and deisotope, for later matching with MSCypher output
-    ms2_peaks_df.to_sql(name='ms2_peaks_within_window', con=db_conn, if_exists='append', index=False)
-    db_conn.close()
-    pairs_df = ms2_peaks_df[['centroid_mz', 'intensity']].copy().sort_values(by=['intensity'], ascending=False)
+    if len(ms2_peaks_df) > 0:
+        # write out the ms2 peaks we are about to deconvolve and deisotope, for later matching with MSCypher output
+        ms2_peaks_df.to_sql(name='ms2_peaks_within_window', con=db_conn, if_exists='append', index=False)
+        db_conn.close()
+        pairs_df = ms2_peaks_df[['centroid_mz', 'intensity']].copy().sort_values(by=['intensity'], ascending=False)
 
-    # Write out the spectrum
-    spectra = []
-    spectrum = {}
-    spectrum["m/z array"] = pairs_df.centroid_mz.values
-    spectrum["intensity array"] = pairs_df.intensity.values
-    params = {}
-    params["TITLE"] = "RawFile: {} Index: 1318 precursor: 1 Charge: {} FeatureIntensity: {} Feature#: {} RtApex: {}".format(os.path.basename(args.features_database).split('.')[0], charge_state, cluster_summed_intensity, feature_id, retention_time_secs)
-    params["INSTRUMENT"] = "ESI-QUAD-TOF"
-    params["PEPMASS"] = "{} {}".format(round(cluster_mz_centroid,6), cluster_summed_intensity)
-    params["CHARGE"] = "{}+".format(charge_state)
-    params["RTINSECONDS"] = "{}".format(retention_time_secs)
-    params["SCANS"] = "{}".format(base_frame_number)
-    spectrum["params"] = params
-    spectra.append(spectrum)
+        # Write out the spectrum
+        spectra = []
+        spectrum = {}
+        spectrum["m/z array"] = pairs_df.centroid_mz.values
+        spectrum["intensity array"] = pairs_df.intensity.values
+        params = {}
+        params["TITLE"] = "RawFile: {} Index: 1318 precursor: 1 Charge: {} FeatureIntensity: {} Feature#: {} RtApex: {}".format(os.path.basename(args.features_database).split('.')[0], charge_state, cluster_summed_intensity, feature_id, retention_time_secs)
+        params["INSTRUMENT"] = "ESI-QUAD-TOF"
+        params["PEPMASS"] = "{} {}".format(round(cluster_mz_centroid,6), cluster_summed_intensity)
+        params["CHARGE"] = "{}+".format(charge_state)
+        params["RTINSECONDS"] = "{}".format(retention_time_secs)
+        params["SCANS"] = "{}".format(base_frame_number)
+        spectrum["params"] = params
+        spectra.append(spectrum)
 
-    mgf_filename = "{}/feature-{}-correlation-{}.mgf".format(mgf_directory, feature_id, args.minimum_peak_correlation)
-    hk_filename = "{}/feature-{}-correlation-{}.hk".format(hk_directory, feature_id, args.minimum_peak_correlation)
-    header_filename = "{}/feature-{}-correlation-{}.txt".format(search_headers_directory, feature_id, args.minimum_peak_correlation)
+        mgf_filename = "{}/feature-{}-correlation-{}.mgf".format(mgf_directory, feature_id, args.minimum_peak_correlation)
+        hk_filename = "{}/feature-{}-correlation-{}.hk".format(hk_directory, feature_id, args.minimum_peak_correlation)
+        header_filename = "{}/feature-{}-correlation-{}.txt".format(search_headers_directory, feature_id, args.minimum_peak_correlation)
 
-    # write out the MGF file
-    if os.path.isfile(mgf_filename):
-        os.remove(mgf_filename)
-    if os.path.isfile(hk_filename):
-        os.remove(hk_filename)
-    if os.path.isfile(header_filename):
-        os.remove(header_filename)
-    mgf.write(output=mgf_filename, spectra=spectra)
+        # write out the MGF file
+        if os.path.isfile(mgf_filename):
+            os.remove(mgf_filename)
+        if os.path.isfile(hk_filename):
+            os.remove(hk_filename)
+        if os.path.isfile(header_filename):
+            os.remove(header_filename)
+        mgf.write(output=mgf_filename, spectra=spectra)
 
-    # remove blank lines from the MGF file
-    with open(mgf_filename, 'r') as file_handler:
-        file_content = file_handler.readlines()
-    file_content = [x for x in file_content if not x == '\n']
-    with open(mgf_filename, 'w') as file_handler:
-        file_handler.writelines(file_content)
+        # remove blank lines from the MGF file
+        with open(mgf_filename, 'r') as file_handler:
+            file_content = file_handler.readlines()
+        file_content = [x for x in file_content if not x == '\n']
+        with open(mgf_filename, 'w') as file_handler:
+            file_handler.writelines(file_content)
 
-    # write out the header with no fragment ions (with which to build the search MGF)
-    spectra = []
-    spectrum["m/z array"] = np.empty(0)
-    spectrum["intensity array"] = np.empty(0)
-    spectra.append(spectrum)
-    mgf.write(output=header_filename, spectra=spectra)
+        # write out the header with no fragment ions (with which to build the search MGF)
+        spectra = []
+        spectrum["m/z array"] = np.empty(0)
+        spectrum["intensity array"] = np.empty(0)
+        spectra.append(spectrum)
+        mgf.write(output=header_filename, spectra=spectra)
 
-    # append the Hardklor command to process it
-    hk_processes.append("./hardklor/hardklor -cmd -instrument TOF -resolution 40000 -centroided 1 -ms_level 2 -algorithm Version2 -charge_algorithm Quick -charge_min 1 -charge_max {} -correlation {} -mz_window 5.25 -sensitivity 2 -depth 2 -max_features 12 -distribution_area 1 -xml 0 {} {}".format(charge_state, args.minimum_peak_correlation, mgf_filename, hk_filename))
+        # append the Hardklor command to process it
+        hk_processes.append("./hardklor/hardklor -cmd -instrument TOF -resolution 40000 -centroided 1 -ms_level 2 -algorithm Version2 -charge_algorithm Quick -charge_min 1 -charge_max {} -correlation {} -mz_window 5.25 -sensitivity 2 -depth 2 -max_features 12 -distribution_area 1 -xml 0 {} {}".format(charge_state, args.minimum_peak_correlation, mgf_filename, hk_filename))
 
 # Set up the processing pool for Hardklor
 print("running Hardklor...")
