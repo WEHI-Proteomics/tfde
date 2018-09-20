@@ -44,8 +44,6 @@ try:
     db_conn = sqlite3.connect(args.features_database)
     feature_ids_df = pd.read_sql_query("select distinct(feature_id) from peak_correlation", db_conn)
     db_conn.cursor().execute("DROP TABLE IF EXISTS deconvoluted_ions")
-    db_conn.cursor().execute("DROP TABLE IF EXISTS search_mgf_info")
-    db_conn.cursor().execute("CREATE TABLE search_mgf_info (item TEXT, value TEXT)")
     db_conn.close()
 
     # delete the MGF if it already exists
@@ -128,8 +126,10 @@ try:
     info_entry = []
     info_entry.append(("features {}".format(args.features_database), json.dumps(info)))
 
+    info_entry_df = pd.DataFrame(info_entry, columns=['item', 'value'])
     db_conn = sqlite3.connect(args.features_database)
-    db_conn.cursor().executemany("INSERT INTO search_mgf_info VALUES (?, ?)", info_entry)
+    info_entry_df.to_sql(name='search_mgf_info', con=db_conn, if_exists='replace', index=False)
     db_conn.close()
+
 except Exception as e:
     print("Exception {} caught in {} for {}".format(str(e), parser.prog, info))
