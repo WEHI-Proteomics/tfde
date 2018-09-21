@@ -206,8 +206,9 @@ for feature_id in range(args.feature_id_lower, args.feature_id_upper+1):
 
 # write out the deconvolved feature ms1 isotopes and the feature list
 db_conn = sqlite3.connect(args.feature_region_database)
-print("writing out the deconvolved feature ms1 isotopes...")
-feature_cluster_df.to_sql(name='feature_isotopes', con=db_conn, if_exists='replace', index=False)
+if feature_cluster_df is not None:
+    print("writing out the deconvolved feature ms1 isotopes...")
+    feature_cluster_df.to_sql(name='feature_isotopes', con=db_conn, if_exists='replace', index=False)
 print("writing out the feature list...")
 feature_list_df = pd.DataFrame(feature_list, columns=feature_list_columns)
 feature_list_df.to_sql(name='feature_list', con=db_conn, if_exists='replace', index=False)
