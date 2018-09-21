@@ -106,7 +106,7 @@ def peak_ratio(monoisotopic_mass, peak_number, number_of_sulphur):
     return ratio
 
 feature_list = []
-feature_list_columns = ['feature_id', 'charge_state', 'monoisotopic_mass', 'retention_time_secs', 'isotope_count', 'cluster_mz_centroid', 'cluster_summed_intensity', 'minimum_error', 'minimum_error_sulphur']
+feature_list_columns = ['feature_id', 'charge_state', 'monoisotopic_mass', 'retention_time_secs', 'base_peak_id', 'isotope_count', 'cluster_mz_centroid', 'cluster_summed_intensity', 'minimum_error', 'minimum_error_sulphur']
 
 feature_isotopes_columns = ['feature_id', 'peak_id', 'mz_centroid', 'summed_intensity', 'mz_mod']
 feature_cluster_df = pd.DataFrame([], columns=feature_isotopes_columns)
@@ -147,6 +147,7 @@ for feature_id in range(args.feature_id_lower, args.feature_id_upper+1):
 
         base_peak_index = cluster_df.summed_intensity.idxmax()
         base_peak_mz = cluster_df.iloc[base_peak_index].mz_centroid
+        base_peak_id = cluster_df.iloc[base_peak_index].peak_id
 
         indexes_to_drop = abs(cluster_df.mz_centroid.diff() - expected_spacing) > 0.5
         cluster_df.drop(cluster_df.index[indexes_to_drop], inplace=True)
@@ -202,7 +203,7 @@ for feature_id in range(args.feature_id_lower, args.feature_id_upper+1):
             retention_time_secs = feature_df.loc[0].base_frame_id / args.frames_per_second
 
             isotope_count = len(cluster_df)
-            feature_list.append((feature_id, charge_state, monoisotopic_mass, retention_time_secs, isotope_count, round(cluster_mz_centroid,6), cluster_summed_intensity, minimum_error, minimum_error_sulphur))
+            feature_list.append((feature_id, charge_state, monoisotopic_mass, retention_time_secs, base_peak_id, isotope_count, round(cluster_mz_centroid,6), cluster_summed_intensity, minimum_error, minimum_error_sulphur))
         else:
             print("feature {}: there are no ms1 peaks remaining, so we're not including this feature.".format(feature_id))
     else:
