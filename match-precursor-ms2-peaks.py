@@ -22,12 +22,12 @@ ddb_conn = sqlite3.connect(args.destination_database_name)
 ddb_c = ddb_conn.cursor()
 
 if args.feature_id_lower is None:
-    feature_id_range_df = pd.read_sql_query("select min(feature_id) from feature_base_peaks", ddb_conn)
+    feature_id_range_df = pd.read_sql_query("select min(feature_id) from feature_list", ddb_conn)
     args.feature_id_lower = feature_id_range_df.loc[0][0]
     print("feature_id_lower set to {} from the data".format(args.feature_id_lower))
 
 if args.feature_id_upper is None:
-    feature_id_range_df = pd.read_sql_query("select max(feature_id) from feature_base_peaks", ddb_conn)
+    feature_id_range_df = pd.read_sql_query("select max(feature_id) from feature_list", ddb_conn)
     args.feature_id_upper = feature_id_range_df.loc[0][0]
     print("feature_id_upper set to {} from the data".format(args.feature_id_upper))
 

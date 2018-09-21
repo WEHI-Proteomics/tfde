@@ -53,7 +53,7 @@ def main():
     src_c.execute("CREATE TABLE peak_correlation_info (item TEXT, value TEXT)")
 
     print("Setting up indexes")
-    src_c.execute("CREATE INDEX IF NOT EXISTS idx_feature_base_peaks_1 ON feature_base_peaks (feature_id)")
+    src_c.execute("CREATE INDEX IF NOT EXISTS idx_feature_list_1 ON feature_list (feature_id)")
     src_c.execute("CREATE INDEX IF NOT EXISTS idx_summed_ms1_regions_3 ON summed_ms1_regions (feature_id, peak_id)")
     src_c.execute("CREATE INDEX IF NOT EXISTS idx_ms1_feature_frame_join_1 ON ms1_feature_frame_join (feature_id)")
 
@@ -68,7 +68,7 @@ def main():
     raw_frame_ids_per_second = 1.0 / (raw_frame_period_in_msec * 10**-3)
 
     print("Loading the MS1 base peaks for the feature range")
-    base_peak_ids_df = pd.read_sql_query("select feature_id,base_peak_id from feature_base_peaks where feature_id >= {} and feature_id <= {} order by feature_id ASC;".format(args.feature_id_lower, args.feature_id_upper), source_conn)
+    base_peak_ids_df = pd.read_sql_query("select feature_id,base_peak_id from feature_list where feature_id >= {} and feature_id <= {} order by feature_id ASC;".format(args.feature_id_lower, args.feature_id_upper), source_conn)
 
     peak_correlation = []
 

@@ -18,7 +18,6 @@ dest_c.execute("CREATE OR REPLACE TABLE peak_correlation (feature_id INTEGER, ba
 dest_c.execute("CREATE OR REPLACE TABLE peak_correlation_info (item TEXT, value TEXT)")
 
 dest_c.execute("CREATE INDEX IF NOT EXISTS idx_peak_correlation_1 on summed_ms1_regions (feature_id, peak_id)")
-dest_c.execute("CREATE INDEX IF NOT EXISTS idx_peak_correlation_2 on feature_base_peaks (feature_id)")
 
 dest_conn.commit()
 dest_conn.close()
