@@ -168,6 +168,7 @@ def main():
 
                 point_id = 1
                 peak_id = 1
+                peak_count = 0
 
                 # Load the MS2 frame points for the feature's region
                 ms2_frame_ids = ()
@@ -213,7 +214,6 @@ def main():
                     else:
                         first_zero_index = len(sorted_mzs)-1
 
-                    peak_count = 0
                     for mz in sorted_mzs[:first_zero_index]:
                         if (summed_intensities_by_mz[mz] > 0):  # check if we've processed this mz already
                             # calculate the indices for this point's std dev window
