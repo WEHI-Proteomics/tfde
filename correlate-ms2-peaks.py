@@ -123,21 +123,22 @@ def main():
 
         # get the ms2 peak summary information for this feature
         ms2_peaks_df = pd.read_sql_query("select * from ms2_peaks where feature_id={} order by peak_id ASC".format(feature_id), source_conn)
-        print("{} ms2 peaks for feature {}".format(len(ms2_peaks_df), feature_id))
+        if len(ms2_peaks_df) > 0:
+            print("{} ms2 peaks for feature {}".format(len(ms2_peaks_df), feature_id))
 
-        ms2_peaks_df["scan_delta"] = ms1_centroid_scan - ms2_peaks_df.cofi_scan
-        ms2_peaks_df["rt_delta"] = ms1_centroid_rt - ms2_peaks_df.cofi_rt
-        ms2_peaks_df["correlation"] = 0.0
+            ms2_peaks_df["scan_delta"] = ms1_centroid_scan - ms2_peaks_df.cofi_scan
+            ms2_peaks_df["rt_delta"] = ms1_centroid_rt - ms2_peaks_df.cofi_rt
+            ms2_peaks_df["correlation"] = 0.0
 
-        # calculate the 2D centroid delta for each of the feature's ms2 peaks
-        for ms2_peak_idx in range(len(ms2_peaks_df)):
-            ms2_peak_id = ms2_peaks_df.loc[ms2_peak_idx].peak_id.astype(int)
-            ms2_centroid_scan = ms2_peaks_df.loc[ms2_peak_idx].cofi_scan
-            ms2_centroid_rt = ms2_peaks_df.loc[ms2_peak_idx].cofi_rt
-            scan_delta = ms2_peaks_df.loc[ms2_peak_idx].scan_delta
-            rt_delta = ms2_peaks_df.loc[ms2_peak_idx].rt_delta
-            correlation = ms2_peaks_df.loc[ms2_peak_idx].correlation
-            peak_correlation.append((feature_id, base_peak_id, ms1_centroid_scan, ms1_centroid_rt, ms2_peak_id, ms2_centroid_scan, ms2_centroid_rt, scan_delta, rt_delta, correlation))
+            # calculate the 2D centroid delta for each of the feature's ms2 peaks
+            for ms2_peak_idx in range(len(ms2_peaks_df)):
+                ms2_peak_id = ms2_peaks_df.loc[ms2_peak_idx].peak_id.astype(int)
+                ms2_centroid_scan = ms2_peaks_df.loc[ms2_peak_idx].cofi_scan
+                ms2_centroid_rt = ms2_peaks_df.loc[ms2_peak_idx].cofi_rt
+                scan_delta = ms2_peaks_df.loc[ms2_peak_idx].scan_delta
+                rt_delta = ms2_peaks_df.loc[ms2_peak_idx].rt_delta
+                correlation = ms2_peaks_df.loc[ms2_peak_idx].correlation
+                peak_correlation.append((feature_id, base_peak_id, ms1_centroid_scan, ms1_centroid_rt, ms2_peak_id, ms2_centroid_scan, ms2_centroid_rt, scan_delta, rt_delta, correlation))
 
         feature_stop_time = time.time()
         print("processed feature {} in {} seconds".format(feature_id, feature_stop_time-feature_start_time))
