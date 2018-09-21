@@ -191,6 +191,7 @@ def main():
                 # drop the duplicate rows
                 frame_df.drop_duplicates(subset=('scan','scaled_mz'), inplace=True)
                 # create the frame array
+                print("frame_df length {}".len(frame_df))
                 print("scan max {}, scaled_mz max {}".format(frame_df.scan.max(), frame_df.scaled_mz.max()))
                 frame_a = np.zeros(shape=(int(frame_df.scan.max()+1),int(frame_df.scaled_mz.max()+1)), dtype=np.int32)
                 print("allocated {} bytes for the frame array".format(getsizeof(frame_a)))
