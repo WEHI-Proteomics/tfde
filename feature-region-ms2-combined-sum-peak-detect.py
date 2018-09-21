@@ -11,6 +11,7 @@ import random
 import json
 from sys import getsizeof
 import os
+import traceback
 
 #
 # python -u ./otf-peak-detect/feature-region-ms2-combined-sum-peak-detect.py -cdb './UPS2_allion/UPS2_allion.sqlite' -ddb './UPS2_allion/UPS2_allion-features-1-455.sqlite' -ms1ce 10 -fl 1 -fu 455 -ml 100.0 -mu 2200.0 -bs 20 -fts 30 -fso 5 -mzsf 1000.0
@@ -301,7 +302,7 @@ def main():
         dest_conn.close()
         conv_conn.close()
     except Exception as e:
-        print("Exception {} caught in {} for {}".format(str(e), parser.prog, info))
+        print("Exception {} caught in {} for {}".format(traceback.format_exc(), parser.prog, info))
 
 if __name__ == "__main__":
     main()
