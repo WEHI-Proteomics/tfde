@@ -39,11 +39,8 @@ parser.add_argument('-sdb','--source_database_name', type=str, help='The name of
 parser.add_argument('-ddb','--destination_database_name', type=str, help='The name of the destination database.', required=True)
 parser.add_argument('-fl','--feature_id_lower', type=int, help='Lower feature ID to process.', required=False)
 parser.add_argument('-fu','--feature_id_upper', type=int, help='Upper feature ID to process.', required=False)
-parser.add_argument('-ml','--mz_lower', type=float, help='Lower feature m/z to process.', required=True)
-parser.add_argument('-mu','--mz_upper', type=float, help='Upper feature m/z to process.', required=True)
 parser.add_argument('-mcs','--minimum_charge_state', type=int, default=2, help='Minimum charge state to process.', required=False)
 parser.add_argument('-sd','--standard_deviations', type=int, default=8, help='Number of standard deviations in m/z to look either side of a point.', required=False)
-parser.add_argument('-rff','--random_features_file', type=str, help='A text file containing the feature indexes to process.', required=False)
 args = parser.parse_args()
 
 # remove the destination database if it remains from a previous run - it's faster to recreate it
@@ -76,13 +73,7 @@ start_run = time.time()
 
 print("Loading the MS1 features")
 features_df = pd.read_sql_query("""select feature_id,start_frame,end_frame,scan_lower,scan_upper,mz_lower,mz_upper from features where feature_id >= {} and 
-    feature_id <= {} and charge_state >= {} and mz_lower <= {} and mz_upper >= {} order by feature_id ASC;""".format(args.feature_id_lower, args.feature_id_upper, args.minimum_charge_state, args.mz_upper, args.mz_lower), src_conn)
-if args.random_features_file is not None:
-    # read the file of feature indexes
-    random_feature_indexes_file = open(args.random_features_file, 'r')
-    random_feature_indexes = list(map(int, random_feature_indexes_file.read().splitlines()))
-    random_feature_indexes_file.close()
-    features_df = features_df.iloc[random_feature_indexes]
+    feature_id <= {} and charge_state >= {} order by feature_id ASC;""".format(args.feature_id_lower, args.feature_id_upper, args.minimum_charge_state), src_conn)
 features_v = features_df.values
 
 print("Summing ms1 feature region for features {}-{}".format(args.feature_id_lower, args.feature_id_upper))
