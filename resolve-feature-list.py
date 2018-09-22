@@ -106,7 +106,7 @@ def peak_ratio(monoisotopic_mass, peak_number, number_of_sulphur):
     return ratio
 
 feature_list = []
-feature_list_columns = ['feature_id', 'charge_state', 'monoisotopic_mass', 'retention_time_secs', 'base_peak_id', 'isotope_count', 'cluster_mz_centroid', 'cluster_summed_intensity', 'minimum_error', 'minimum_error_sulphur']
+feature_list_columns = ['feature_id', 'charge_state', 'monoisotopic_mass', 'retention_time_secs', 'base_peak_id', 'isotope_count', 'cluster_mz_centroid', 'cluster_summed_intensity', 'start_frame', 'end_frame', 'scan_lower', 'scan_upper', 'minimum_error', 'minimum_error_sulphur']
 
 feature_isotopes_columns = ['feature_id', 'peak_id', 'mz_centroid', 'summed_intensity', 'mz_mod']
 feature_cluster_df = pd.DataFrame([], columns=feature_isotopes_columns)
@@ -117,6 +117,10 @@ for feature_id in range(args.feature_id_lower, args.feature_id_upper+1):
     db_conn = sqlite3.connect(args.features_database)
     feature_df = pd.read_sql_query("select * from features where feature_id = {}".format(feature_id), db_conn)
     charge_state = feature_df.loc[0].charge_state.astype(int)
+    start_frame = feature_df.loc[0].start_frame.astype(int)
+    end_frame = feature_df.loc[0].end_frame.astype(int)
+    scan_lower = feature_df.loc[0].scan_lower.astype(int)
+    scan_upper = feature_df.loc[0].scan_upper.astype(int)
     expected_spacing = DELTA_MZ / charge_state
     db_conn.close()
 
@@ -203,7 +207,7 @@ for feature_id in range(args.feature_id_lower, args.feature_id_upper+1):
             retention_time_secs = feature_df.loc[0].base_frame_id / args.frames_per_second
 
             isotope_count = len(cluster_df)
-            feature_list.append((feature_id, charge_state, monoisotopic_mass, retention_time_secs, base_peak_id, isotope_count, round(cluster_mz_centroid,6), cluster_summed_intensity, minimum_error, minimum_error_sulphur))
+            feature_list.append((feature_id, charge_state, monoisotopic_mass, retention_time_secs, base_peak_id, isotope_count, round(cluster_mz_centroid,6), cluster_summed_intensity, start_frame, end_frame, scan_lower, scan_upper, minimum_error, minimum_error_sulphur))
         else:
             print("feature {}: there are no ms1 peaks remaining, so we're not including this feature.".format(feature_id))
     else:

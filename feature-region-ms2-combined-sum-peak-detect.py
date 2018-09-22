@@ -23,8 +23,6 @@ FEATURE_START_FRAME_IDX = 1
 FEATURE_END_FRAME_IDX = 2
 FEATURE_SCAN_LOWER_IDX = 3
 FEATURE_SCAN_UPPER_IDX = 4
-FEATURE_MZ_LOWER_IDX = 5
-FEATURE_MZ_UPPER_IDX = 6
 
 # frame array indices
 FRAME_ID_IDX = 0
@@ -68,7 +66,6 @@ def main():
     parser.add_argument('-ddb','--destination_database_name', type=str, help='The name of the destination database.', required=True)
     parser.add_argument('-fl','--feature_id_lower', type=int, help='Lower feature ID to process.', required=False)
     parser.add_argument('-fu','--feature_id_upper', type=int, help='Upper feature ID to process.', required=False)
-    parser.add_argument('-nrf','--number_of_random_features', type=int, help='Randomly select this many features from the specified feature range.', required=False)
     parser.add_argument('-ml','--mz_lower', type=float, help='Lower feature m/z to process.', required=True)
     parser.add_argument('-mu','--mz_upper', type=float, help='Upper feature m/z to process.', required=True)
     parser.add_argument('-mcs','--minimum_charge_state', type=int, default=2, help='Minimum charge state to process.', required=False)
@@ -76,7 +73,6 @@ def main():
     parser.add_argument('-fts','--frames_to_sum', type=int, help='The number of MS2 source frames to sum.', required=True)
     parser.add_argument('-fso','--frame_summing_offset', type=int, help='The number of MS2 source frames to shift for each summation.', required=True)
     parser.add_argument('-mzsf','--mz_scaling_factor', type=float, default=1000.0, help='Scaling factor to convert m/z range to integers.', required=False)
-    parser.add_argument('-rff','--random_features_file', type=str, help='A text file containing the feature indexes to process.', required=False)
     parser.add_argument('-bs','--batch_size', type=int, default=5000, help='The number of features to be written to the database.', required=False)
     parser.add_argument('-frso','--feature_region_scan_offset', type=int, default=3, help='Cater to the drift offset in ms2 by expanding the feature region scan range.', required=False)
     parser.add_argument('-mspp','--minimum_summed_points_per_peak', type=int, default=4, help='Minimum number of summed points to form a peak.', required=False)
@@ -133,25 +129,9 @@ def main():
 
             print("Number of source frames that were summed {}, with offset {}".format(args.frames_to_sum, args.frame_summing_offset))
             print("Loading the MS1 features")
-            features_df = pd.read_sql_query("""select feature_id,start_frame,end_frame,scan_lower,scan_upper,mz_lower,mz_upper 
-                from features where feature_id >= {} and feature_id <= {} and 
-                charge_state >= {} and mz_lower <= {} and mz_upper >= {} order by feature_id ASC;""".format(
-                    args.feature_id_lower, args.feature_id_upper, args.minimum_charge_state, args.mz_upper, args.mz_lower), 
-                conv_conn)
-            if args.number_of_random_features is not None:
-                # Create a subset of features selected at random
-                random_feature_indexes = random.sample(range(len(features_df)), args.number_of_random_features)
-                random_feature_indexes_file = open('random_feature_indexes.txt', 'w')
-                for item in random_feature_indexes:
-                    random_feature_indexes_file.write("%s\n" % item)
-                random_feature_indexes_file.close()
-                features_df = features_df.iloc[random_feature_indexes]
-            if args.random_features_file is not None:
-                # read the file of feature indexes
-                random_feature_indexes_file = open(args.random_features_file, 'r')
-                random_feature_indexes = list(map(int, random_feature_indexes_file.read().splitlines()))
-                random_feature_indexes_file.close()
-                features_df = features_df.iloc[random_feature_indexes]
+            features_df = pd.read_sql_query("""select feature_id,start_frame,end_frame,scan_lower,scan_upper 
+                from feature_list where feature_id >= {} and feature_id <= {} and 
+                charge_state >= {} order by feature_id ASC;""".format(args.feature_id_lower, args.feature_id_upper, args.minimum_charge_state), conv_conn)
             features_v = features_df.values
             print("{} MS1 features loaded (feature IDs {})".format(len(features_v), features_df.feature_id.values))
 
