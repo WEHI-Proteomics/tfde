@@ -122,8 +122,7 @@ def main():
 
         if len(ms2_frame_ids_v) > 0:
 
-            # Take the ms1 features within the m/z band of interest, and sum the ms2 frames over the whole m/z 
-            # range (as we don't know where the fragments will be in ms2)
+            # Take the ms1 features and sum the ms2 frames over the whole m/z range (as we don't know where the fragments will be in ms2)
 
             print("Number of source frames that were summed {}, with offset {}".format(args.frames_to_sum, args.frame_summing_offset))
             print("Loading the MS1 features")
