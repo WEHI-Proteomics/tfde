@@ -148,7 +148,7 @@ def main():
         # feature_id, base_peak_id, ms1_centroid_scan, ms1_centroid_rt, ms2_peak_id, ms2_centroid_scan, ms2_centroid_rt, scan_distance, rt_distance, correlation
         src_c.executemany("INSERT INTO peak_correlation VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", peak_correlation)
     else:
-        print("Error: there are no peak correlations for feature range {}-{}".format(args.feature_id_lower, args.feature_id_upper))
+        print("Found no peaks for feature range {}-{}".format(args.feature_id_lower, args.feature_id_upper))
 
     stop_run = time.time()
 
