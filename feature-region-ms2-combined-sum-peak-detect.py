@@ -158,9 +158,7 @@ def main():
                     # scale the m/z values and make them integers
                     frame_df['scaled_mz'] = frame_df.mz * args.mz_scaling_factor
                     frame_df = frame_df.astype(np.int32)
-                    # write out this dataframe for processing in a later step
                     frame_df['feature_id'] = feature_id
-                    frame_df.to_sql(name='ms2_feature_region_points', con=dest_conn, if_exists='append', index=False, chunksize=None)
                     # take a copy for determining quality of candidate peaks
                     ms2_feature_region_points_df = frame_df.copy()
                     ms2_feature_region_points_df.sort_values('scaled_mz', inplace=True, ascending = True)
