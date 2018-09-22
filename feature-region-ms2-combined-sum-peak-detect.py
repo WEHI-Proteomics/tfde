@@ -66,8 +66,6 @@ def main():
     parser.add_argument('-ddb','--destination_database_name', type=str, help='The name of the destination database.', required=True)
     parser.add_argument('-fl','--feature_id_lower', type=int, help='Lower feature ID to process.', required=False)
     parser.add_argument('-fu','--feature_id_upper', type=int, help='Upper feature ID to process.', required=False)
-    parser.add_argument('-ml','--mz_lower', type=float, help='Lower feature m/z to process.', required=True)
-    parser.add_argument('-mu','--mz_upper', type=float, help='Upper feature m/z to process.', required=True)
     parser.add_argument('-mcs','--minimum_charge_state', type=int, default=2, help='Minimum charge state to process.', required=False)
     parser.add_argument('-ms1ce','--ms1_collision_energy', type=float, help='Collision energy used for MS1.', required=True)
     parser.add_argument('-fts','--frames_to_sum', type=int, help='The number of MS2 source frames to sum.', required=True)
