@@ -481,8 +481,8 @@ if process_this_step(this_step=step_name, first_step=args.operation):
         destination_db_name = feature_batch_df.iloc[idx].db
         feature_lower = feature_batch_df.iloc[idx].lower
         feature_upper = feature_batch_df.iloc[idx].upper
-        feature_region_ms1_sum_processes.append("python -u ./otf-peak-detect/feature-region-ms1-sum-frames.py -sdb '{}' -ddb '{}' -fl {} -fu {} -ml {} -mu {}".format(feature_database_name, destination_db_name, feature_lower, feature_upper, args.mz_lower, args.mz_upper))
-        feature_region_ms1_peak_processes.append("python -u ./otf-peak-detect/feature-region-ms1-peak-detect.py -sdb '{}' -ddb '{}' -fl {} -fu {} -ml {} -mu {}".format(feature_database_name, destination_db_name, feature_lower, feature_upper, args.mz_lower, args.mz_upper))
+        feature_region_ms1_sum_processes.append("python -u ./otf-peak-detect/feature-region-ms1-sum-frames.py -sdb '{}' -ddb '{}' -fl {} -fu {}".format(feature_database_name, destination_db_name, feature_lower, feature_upper))
+        feature_region_ms1_peak_processes.append("python -u ./otf-peak-detect/feature-region-ms1-peak-detect.py -sdb '{}' -ddb '{}' -fl {} -fu {}".format(feature_database_name, destination_db_name, feature_lower, feature_upper))
 
     print("summing ms1 frames, detecting peaks in the feature region...")
     run_process("python -u ./otf-peak-detect/feature-region-ms1-sum-frames-prep.py -sdb '{}' -fdbr '{}'".format(feature_database_name, feature_database_root))
