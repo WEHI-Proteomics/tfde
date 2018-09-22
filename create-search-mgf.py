@@ -42,7 +42,7 @@ try:
         os.makedirs(output_directory)    
 
     db_conn = sqlite3.connect(args.features_database)
-    feature_ids_df = pd.read_sql_query("select distinct(feature_id) from peak_correlation", db_conn)
+    feature_ids_df = pd.read_sql_query("select feature_id from feature_list", db_conn)
     db_conn.cursor().execute("DROP TABLE IF EXISTS deconvoluted_ions")
     db_conn.close()
 
