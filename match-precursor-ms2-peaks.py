@@ -45,7 +45,7 @@ ddb_c.execute("CREATE TABLE precursor_ms2_peak_matches_info (item TEXT, value TE
 start_run = time.time()
 
 print("Loading the MS1 base peaks")
-features_df = pd.read_sql_query("select feature_id,base_peak_id from feature_list where feature_id >= {} and feature_id <= {} order by feature_id ASC;".format(args.feature_id_lower, args.feature_id_upper), ddb_conn)
+features_df = pd.read_sql_query("select * from feature_list where feature_id >= {} and feature_id <= {} order by feature_id ASC;".format(args.feature_id_lower, args.feature_id_upper), ddb_conn)
 print("found features {}-{}".format(np.min(features_df.feature_id), np.max(features_df.feature_id)))
 
 peak_matches = []
@@ -54,17 +54,13 @@ print("Finding precursor base peaks in ms2")
 for feature_ids_idx in range(0,len(features_df)):
     feature_id = features_df.loc[feature_ids_idx].feature_id.astype(int)
     base_peak_id = features_df.loc[feature_ids_idx].base_peak_id.astype(int)
+    retention_time = features_df.loc[feature_ids_idx].retention_time_secs.astype(float)
     print("Matching the base peak for feature {}".format(feature_id))
 
+    # get the info about the base peak
     ms1_peak_df = pd.read_sql_query("select * from ms1_feature_region_peaks where feature_id={} and peak_id={}".format(feature_id,base_peak_id), ddb_conn)
     base_centroid_mz = ms1_peak_df.loc[0].centroid_mz.astype(float)
     base_centroid_scan = ms1_peak_df.loc[0].centroid_scan.astype(float)
-
-    # find the feature's retention time
-    db_conn = sqlite3.connect(args.source_database_name)
-    feature_df = pd.read_sql_query("select * from features where feature_id={}".format(feature_id), db_conn)
-    retention_time = feature_df.loc[0].base_frame_id.astype(float) / args.frames_per_second
-    db_conn.close()
 
     # read all the ms2 peaks for this feature
     ms2_peaks_df = pd.read_sql_query("select * from ms2_peaks where feature_id={}".format(feature_id), ddb_conn)
