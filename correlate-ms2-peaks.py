@@ -57,7 +57,6 @@ def main():
     src_c.execute("CREATE INDEX IF NOT EXISTS idx_summed_ms1_regions_3 ON summed_ms1_regions (feature_id, peak_id)")
     src_c.execute("CREATE INDEX IF NOT EXISTS idx_ms1_feature_frame_join_1 ON ms1_feature_frame_join (feature_id)")
 
-    src_c.execute("CREATE INDEX IF NOT EXISTS idx_ms2_feature_region_points_1 ON ms2_feature_region_points (feature_id)")
     src_c.execute("CREATE INDEX IF NOT EXISTS idx_ms2_peaks_1 ON ms2_peaks (feature_id)")
 
     start_run = time.time()
@@ -117,20 +116,22 @@ def main():
         ms1_centroid_scan = peakutils.centroid(raw_points_df.scan.astype(float), raw_points_df.intensity)
         ms1_centroid_rt = peakutils.centroid(raw_points_df.retention_time_secs.astype(float), raw_points_df.intensity)
 
-        ############################
-        # Now process the ms2 points
-        ############################
+        ############################################################################################
+        # Process the ms2. We've already calculated the ms2 CofI, so now we just determine the delta 
+        # compared to the ms1 precursor
+        ############################################################################################
 
         # get the ms2 peak summary information for this feature
         ms2_peaks_df = pd.read_sql_query("select * from ms2_peaks where feature_id={} order by peak_id ASC".format(feature_id), source_conn)
         if len(ms2_peaks_df) > 0:
             print("{} ms2 peaks for feature {}".format(len(ms2_peaks_df), feature_id))
 
+            # calculate the delta
             ms2_peaks_df["scan_delta"] = ms1_centroid_scan - ms2_peaks_df.cofi_scan
             ms2_peaks_df["rt_delta"] = ms1_centroid_rt - ms2_peaks_df.cofi_rt
             ms2_peaks_df["correlation"] = 0.0
 
-            # calculate the 2D centroid delta for each of the feature's ms2 peaks
+            # store the 2D centroid delta for each of the feature's ms2 peaks
             for ms2_peak_idx in range(len(ms2_peaks_df)):
                 ms2_peak_id = ms2_peaks_df.loc[ms2_peak_idx].peak_id.astype(int)
                 ms2_centroid_scan = ms2_peaks_df.loc[ms2_peak_idx].cofi_scan
