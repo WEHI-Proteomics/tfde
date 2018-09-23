@@ -107,6 +107,8 @@ def find_feature(base_index):
         (abs(clusters_v[:, CLUSTER_BASE_MAX_POINT_SCAN_IDX] - base_max_point_scan) <= base_scan_std_dev_offset))[0]
 
     print("find_feature: feature indices 1 {}".format(feature_indices))
+    for i in feature_indices:
+        print("\tindex {}, frame {}, intensity {}".format(i, clusters_v[i, CLUSTER_FRAME_ID_IDX], clusters_v[i, CLUSTER_INTENSITY_SUM_IDX]))
 
     # make sure we don't have more than one cluster from each frame - take the most intense one if there is more than one
     frame_ids = clusters_v[feature_indices, CLUSTER_FRAME_ID_IDX]
@@ -115,6 +117,8 @@ def find_feature(base_index):
         feature_indices = feature_indices[frame_change_indices]
 
     print("find_feature: feature indices 2 {}".format(feature_indices))
+    for i in feature_indices:
+        print("\tindex {}, frame {}, intensity {}".format(i, clusters_v[i, CLUSTER_FRAME_ID_IDX], clusters_v[i, CLUSTER_INTENSITY_SUM_IDX]))
 
     # trim the ends to make sure we only get one feature
     if len(feature_indices) > 20:
