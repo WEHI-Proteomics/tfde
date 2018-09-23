@@ -151,7 +151,7 @@ for feature_id in range(args.feature_id_lower, args.feature_id_upper+1):
 
         base_peak_index = cluster_df.summed_intensity.idxmax()
         base_peak_mz = cluster_df.iloc[base_peak_index].mz_centroid
-        base_peak_id = cluster_df.iloc[base_peak_index].peak_id
+        base_peak_id = cluster_df.iloc[base_peak_index].peak_id.astype(int)
 
         indexes_to_drop = abs(cluster_df.mz_centroid.diff() - expected_spacing) > 0.5
         cluster_df.drop(cluster_df.index[indexes_to_drop], inplace=True)
