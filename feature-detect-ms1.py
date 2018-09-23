@@ -312,7 +312,6 @@ while True:
     cluster_max_index = np.argmax(clusters_v[:,CLUSTER_INTENSITY_SUM_IDX])
     cluster = clusters_v[cluster_max_index]
     cluster_intensity = int(cluster[CLUSTER_INTENSITY_SUM_IDX])
-    print("cluster max index {}, cluster id {}, cluster frame {}, intensity {}".format(cluster_max_index, int(cluster[CLUSTER_ID_IDX]), int(cluster[CLUSTER_FRAME_ID_IDX]), cluster_intensity))
 
     feature = find_feature(base_index=cluster_max_index)
     base_cluster_frame_id = feature['base_cluster_frame_id']
@@ -331,6 +330,7 @@ while True:
     if len(noise_level_readings) > 0:
         estimated_noise_level = int(np.average(noise_level_readings))
 
+    print("cluster max index {}, cluster id {}, cluster frame {}, cluster intensity {}, cluster indices {}".format(cluster_max_index, int(cluster[CLUSTER_ID_IDX]), int(cluster[CLUSTER_FRAME_ID_IDX]), cluster_intensity, cluster_indices))
     if quality > 0.5:
         print("feature {}, intensity {}, length {} (poor quality rate {}, base noise {})".format(feature_id, cluster_intensity, len(cluster_indices), poor_quality_rate, estimated_noise_level))
         # Assign this feature ID to all the clusters in the feature
@@ -345,6 +345,7 @@ while True:
         feature_id += 1
     else:
         print("poor quality feature - discarding, intensity {}, length {} (poor quality rate {}, base noise {})".format(cluster_intensity, len(cluster_indices), poor_quality_rate, estimated_noise_level))
+    print()
 
     # remove the features we've processed from the run
     clusters_v[cluster_indices, CLUSTER_INTENSITY_SUM_IDX] = -1
