@@ -67,10 +67,7 @@ def check_gap_between_points(feature_indices, max_gap_in_seconds):
     return (features_max_gap_in_seconds <= max_gap_in_seconds)
 
 def find_feature(base_index):
-    global clusters_v
     global noise_level_readings
-    global frame_lower
-    global frame_upper
 
     noise_level_1 = None
     noise_level_2 = None
@@ -315,6 +312,7 @@ while True:
     cluster_max_index = np.argmax(clusters_v[:,CLUSTER_INTENSITY_SUM_IDX])
     cluster = clusters_v[cluster_max_index]
     cluster_intensity = int(cluster[CLUSTER_INTENSITY_SUM_IDX])
+    print("cluster max index {}, cluster id {}, cluster frame {}, intensity {}".format(cluster_max_index, int(cluster[CLUSTER_ID_IDX]), int(cluster[CLUSTER_FRAME_ID_IDX]), cluster_intensity))
 
     feature = find_feature(base_index=cluster_max_index)
     base_cluster_frame_id = feature['base_cluster_frame_id']
