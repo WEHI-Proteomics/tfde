@@ -124,7 +124,7 @@ def main():
             print("Loading the MS1 features")
             features_df = pd.read_sql_query("""select feature_id,start_frame,end_frame,scan_lower,scan_upper 
                 from feature_list where feature_id >= {} and feature_id <= {} and 
-                charge_state >= {} order by feature_id ASC;""".format(args.feature_id_lower, args.feature_id_upper, args.minimum_charge_state), conv_conn)
+                charge_state >= {} order by feature_id ASC;""".format(args.feature_id_lower, args.feature_id_upper, args.minimum_charge_state), dest_conn)
             features_v = features_df.values
             print("{} MS1 features loaded (feature IDs {})".format(len(features_v), features_df.feature_id.values))
 
