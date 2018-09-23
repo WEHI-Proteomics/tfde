@@ -76,10 +76,6 @@ def main():
     parser.add_argument('-mspp','--minimum_summed_points_per_peak', type=int, default=4, help='Minimum number of summed points to form a peak.', required=False)
     args = parser.parse_args()
 
-    if (args.random_features_file is not None) and (args.number_of_random_features is not None):
-        print("Error: cannot specify -nrf and -rff at the same time.")
-        exit
-
     try:
         conv_conn = sqlite3.connect(args.converted_database_name)
         conv_c = conv_conn.cursor()
