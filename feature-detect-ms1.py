@@ -69,8 +69,6 @@ def check_gap_between_points(feature_indices, max_gap_in_seconds):
 def find_feature(base_index):
     global noise_level_readings
 
-    print("find_feature: base_index {}".format(base_index))
-
     noise_level_1 = None
     noise_level_2 = None
 
@@ -106,10 +104,6 @@ def find_feature(base_index):
         ) &
         (abs(clusters_v[:, CLUSTER_BASE_MAX_POINT_SCAN_IDX] - base_max_point_scan) <= base_scan_std_dev_offset))[0]
 
-    print("find_feature: feature indices 1 {}".format(feature_indices))
-    for i in feature_indices:
-        print("\tindex {}, frame {}, intensity {}".format(i, clusters_v[i, CLUSTER_FRAME_ID_IDX], clusters_v[i, CLUSTER_INTENSITY_SUM_IDX]))
-
     # make sure we don't have more than one cluster from each frame - take the most intense one if there is more than one
     frame_ids_list = clusters_v[feature_indices, CLUSTER_FRAME_ID_IDX].astype(int).tolist()
     intensities_list = clusters_v[feature_indices, CLUSTER_INTENSITY_SUM_IDX].astype(int).tolist()
@@ -119,10 +113,6 @@ def find_feature(base_index):
     df['intensity'] = intensities_list
     df['feature_index'] = feature_indices_list
     feature_indices = df.sort_values('intensity', ascending=False).drop_duplicates(['frame_id']).feature_index.values
-
-    print("find_feature: feature indices 2 {}".format(feature_indices))
-    for i in feature_indices:
-        print("\tindex {}, frame {}, intensity {}".format(i, clusters_v[i, CLUSTER_FRAME_ID_IDX], clusters_v[i, CLUSTER_INTENSITY_SUM_IDX]))
 
     # trim the ends to make sure we only get one feature
     if len(feature_indices) > 20:
@@ -161,8 +151,6 @@ def find_feature(base_index):
         if high_snip_index is not None:
             indices_to_delete = np.concatenate((indices_to_delete,np.arange(high_snip_index+1,len(filtered))))
         feature_indices = np.delete(feature_indices, indices_to_delete, 0)
-
-        print("find_feature: feature indices 3 {}".format(feature_indices))
 
     # score the feature quality
     feature_start_frame = int(clusters_v[feature_indices[0],CLUSTER_FRAME_ID_IDX])
@@ -228,8 +216,6 @@ def find_feature(base_index):
         feature_scan_upper = 0
         feature_mz_lower = 0
         feature_mz_upper = 0
-
-    print("find_feature: feature indices 4 {}".format(feature_indices))
 
     # package the result
     results = {}
