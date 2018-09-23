@@ -114,7 +114,10 @@ def find_feature(base_index):
     frame_ids_list = clusters_v[feature_indices, CLUSTER_FRAME_ID_IDX].astype(int).tolist()
     intensities_list = clusters_v[feature_indices, CLUSTER_INTENSITY_SUM_IDX].astype(int).tolist()
     feature_indices_list = feature_indices.tolist()
-    df = pd.DataFrame([frame_ids_list, intensities_list, feature_indices_list], columns=['frame_id', 'intensity', 'index'])
+    df = pd.DataFrame()
+    df['frame_id'] = frame_ids_list
+    df['intensity'] = intensities_list
+    df['index'] = feature_indices_list
     feature_indices = df.sort_values('intensity', ascending=False).drop_duplicates(['frame_id']).index.values
 
     print("find_feature: feature indices 2 {}".format(feature_indices))
