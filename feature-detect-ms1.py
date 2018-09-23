@@ -111,10 +111,11 @@ def find_feature(base_index):
         print("\tindex {}, frame {}, intensity {}".format(i, clusters_v[i, CLUSTER_FRAME_ID_IDX], clusters_v[i, CLUSTER_INTENSITY_SUM_IDX]))
 
     # make sure we don't have more than one cluster from each frame - take the most intense one if there is more than one
-    frame_ids = clusters_v[feature_indices, CLUSTER_FRAME_ID_IDX]
-    if len(np.unique(frame_ids)) > 1:
-        frame_change_indices = np.where(np.roll(frame_ids,1) != frame_ids)[0]     # for when there is more than one cluster found in a frame, the first cluster will be the most intense
-        feature_indices = feature_indices[frame_change_indices]
+    frame_ids_list = clusters_v[feature_indices, CLUSTER_FRAME_ID_IDX].astype(int).tolist()
+    intensities_list = clusters_v[feature_indices, CLUSTER_INTENSITY_SUM_IDX].astype(int).tolist()
+    feature_indices_list = feature_indices.tolist()
+    df = pd.DataFrame([frame_ids_list, intensities_list, feature_indices_list], columns=['frame_id', 'intensity', 'index'])
+    feature_indices = df.sort_values('intensity', ascending=False).drop_duplicates(['frame_id']).index.values
 
     print("find_feature: feature indices 2 {}".format(feature_indices))
     for i in feature_indices:
