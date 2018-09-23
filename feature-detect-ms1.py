@@ -99,17 +99,22 @@ def find_feature(base_index):
         (clusters_v[:, CLUSTER_FRAME_ID_IDX] <= search_end_frame) &
         (clusters_v[:, CLUSTER_CHARGE_STATE_IDX] == charge_state) &
         (
+            # look at the isotope we expect but also one up and one down, in case we missed the correct isotope
             (abs(clusters_v[:, CLUSTER_BASE_MAX_POINT_MZ_IDX] - base_max_point_mz) <= base_mz_std_dev_offset) | 
             (abs(clusters_v[:, CLUSTER_BASE_MAX_POINT_MZ_IDX] - lower_isotope_mz) <= base_mz_std_dev_offset) | 
             (abs(clusters_v[:, CLUSTER_BASE_MAX_POINT_MZ_IDX] - upper_isotope_mz) <= base_mz_std_dev_offset)
         ) &
         (abs(clusters_v[:, CLUSTER_BASE_MAX_POINT_SCAN_IDX] - base_max_point_scan) <= base_scan_std_dev_offset))[0]
 
+    print("find_feature: feature indices 1 {}".format(feature_indices))
+
     # make sure we don't have more than one cluster from each frame - take the most intense one if there is more than one
     frame_ids = clusters_v[feature_indices, CLUSTER_FRAME_ID_IDX]
     if len(np.unique(frame_ids)) > 1:
         frame_change_indices = np.where(np.roll(frame_ids,1) != frame_ids)[0]     # for when there is more than one cluster found in a frame, the first cluster will be the most intense
         feature_indices = feature_indices[frame_change_indices]
+
+    print("find_feature: feature indices 2 {}".format(feature_indices))
 
     # trim the ends to make sure we only get one feature
     if len(feature_indices) > 20:
@@ -148,6 +153,8 @@ def find_feature(base_index):
         if high_snip_index is not None:
             indices_to_delete = np.concatenate((indices_to_delete,np.arange(high_snip_index+1,len(filtered))))
         feature_indices = np.delete(feature_indices, indices_to_delete, 0)
+
+        print("find_feature: feature indices 3 {}".format(feature_indices))
 
     # score the feature quality
     feature_start_frame = int(clusters_v[feature_indices[0],CLUSTER_FRAME_ID_IDX])
@@ -214,7 +221,7 @@ def find_feature(base_index):
         feature_mz_lower = 0
         feature_mz_upper = 0
 
-    print("find_feature: feature indices {}".format(feature_indices))
+    print("find_feature: feature indices 4 {}".format(feature_indices))
 
     # package the result
     results = {}
