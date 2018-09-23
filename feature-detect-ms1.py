@@ -69,6 +69,8 @@ def check_gap_between_points(feature_indices, max_gap_in_seconds):
 def find_feature(base_index):
     global noise_level_readings
 
+    print("find_feature: base_index {}".format(base_index))
+
     noise_level_1 = None
     noise_level_2 = None
 
@@ -211,6 +213,8 @@ def find_feature(base_index):
         feature_scan_upper = 0
         feature_mz_lower = 0
         feature_mz_upper = 0
+
+    print("find_feature: feature indices {}".format(feature_indices))
 
     # package the result
     results = {}
