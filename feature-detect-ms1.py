@@ -117,8 +117,8 @@ def find_feature(base_index):
     df = pd.DataFrame()
     df['frame_id'] = frame_ids_list
     df['intensity'] = intensities_list
-    df['index'] = feature_indices_list
-    feature_indices = df.sort_values('intensity', ascending=False).drop_duplicates(['frame_id']).index.values
+    df['feature_index'] = feature_indices_list
+    feature_indices = df.sort_values('intensity', ascending=False).drop_duplicates(['frame_id']).feature_index.values
 
     print("find_feature: feature indices 2 {}".format(feature_indices))
     for i in feature_indices:
