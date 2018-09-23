@@ -684,12 +684,14 @@ if process_this_step(this_step=step_name, first_step=args.operation):
     for idx in range(len(feature_batch_df)):
         destination_db_name = feature_batch_df.iloc[idx].db
         db_conn = sqlite3.connect(destination_db_name)
-        print("writing deconvoluted ions from {} to {}".format(destination_db_name, csv_file_name))
-        df = pd.read_sql_query("select * from deconvoluted_ions", db_conn)
-        if idx == 0:
-            df.to_csv(csv_file_name, mode='w', sep=',', index=False, header=True)
-        else:
-            df.to_csv(csv_file_name, mode='a', sep=',', index=False, header=False)
+        df = pd.read_sql_query("SELECT * FROM sqlite_master WHERE type='table' and tbl_name='deconvoluted_ions'", db_conn)
+        if len(df) > 0:
+            print("writing deconvoluted ions from {} to {}".format(destination_db_name, csv_file_name))
+            df = pd.read_sql_query("select * from deconvoluted_ions", db_conn)
+            if idx == 0:
+                df.to_csv(csv_file_name, mode='w', sep=',', index=False, header=True)
+            else:
+                df.to_csv(csv_file_name, mode='a', sep=',', index=False, header=False)
         db_conn.close()
 
     step_stop_time = time.time()
