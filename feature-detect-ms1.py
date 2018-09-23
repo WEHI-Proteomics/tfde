@@ -345,7 +345,7 @@ while True:
         feature_id += 1
     else:
         print("poor quality feature - discarding, intensity {}, length {} (poor quality rate {}, base noise {})".format(cluster_intensity, len(cluster_indices), poor_quality_rate, estimated_noise_level))
-    print()
+    print("")
 
     # remove the features we've processed from the run
     clusters_v[cluster_indices, CLUSTER_INTENSITY_SUM_IDX] = -1
