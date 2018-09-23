@@ -515,6 +515,7 @@ if process_this_step(this_step=step_name, first_step=args.operation):
 
     print("resolving the feature list...")
     pool.map(run_process, resolve_feature_list_processes)
+
     # write out the feature lists as a global CSV
     for idx in range(len(feature_batch_df)):
         destination_db_name = feature_batch_df.iloc[idx].db
@@ -677,6 +678,19 @@ if process_this_step(this_step=step_name, first_step=args.operation):
         base_mgf_name = "features-{}-{}".format(feature_lower, feature_upper)
         mgf_filename = "{}/{}-search.mgf".format(output_directory, base_mgf_name)
         run_process("cat {} >> {}".format(mgf_filename, combined_mgf_filename))
+
+    # write out the deconvoluted_ions table as a global CSV
+    for idx in range(len(feature_batch_df)):
+        destination_db_name = feature_batch_df.iloc[idx].db
+        db_conn = sqlite3.connect(destination_db_name)
+        csv_file_name = "{}-deconvoluted-ions.csv".format(feature_database_root)
+        print("writing deconvoluted ions from {} to {}".format(destination_db_name, csv_file_name))
+        df = pd.read_sql_query("select * from deconvoluted_ions", db_conn)
+        if idx == 0:
+            df.to_csv(csv_file_name, mode='w', sep=',', index=False, header=True)
+        else:
+            df.to_csv(csv_file_name, mode='a', sep=',', index=False, header=False)
+        db_conn.close()
 
     step_stop_time = time.time()
     processing_times.append((step_name, round(step_stop_time-step_start_time,1)))
