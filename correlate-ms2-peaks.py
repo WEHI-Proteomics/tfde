@@ -4,7 +4,6 @@ import numpy as np
 import sqlite3
 import time
 import os
-import peakutils
 import json
 
 # Number of points either side of the base peak's maximum intensity to check for correlation
@@ -67,7 +66,7 @@ def main():
     raw_frame_ids_per_second = 1.0 / (raw_frame_period_in_msec * 10**-3)
 
     print("Loading the MS1 base peaks for the feature range")
-    base_peak_ids_df = pd.read_sql_query("select feature_id,base_peak_id from feature_list where feature_id >= {} and feature_id <= {} order by feature_id ASC;".format(args.feature_id_lower, args.feature_id_upper), source_conn)
+    feature_list_df = pd.read_sql_query("select * from feature_list where feature_id >= {} and feature_id <= {} order by feature_id ASC;".format(args.feature_id_lower, args.feature_id_upper), source_conn)
 
     peak_correlation = []
 
@@ -77,44 +76,10 @@ def main():
 
         feature_id = base_peak_ids_df.loc[feature_ids_idx].feature_id.astype(int)
         base_peak_id = base_peak_ids_df.loc[feature_ids_idx].base_peak_id.astype(int)
+        ms1_centroid_scan = base_peak_ids_df.loc[feature_ids_idx].centroid_scan
+        ms1_centroid_rt = base_peak_ids_df.loc[feature_ids_idx].centroid_rt
 
         print("processing feature {} ({}% complete)".format(feature_id, round(float(feature_id-args.feature_id_lower)/(args.feature_id_upper-args.feature_id_lower+1)*100,1)))
-        # get all the points for the feature's ms1 base peak
-        ms1_base_peak_points_df = pd.read_sql_query("select * from summed_ms1_regions where feature_id={} and peak_id={}".format(feature_id, base_peak_id), source_conn)
-
-        # create a composite key for feature_id and point_id to make the next step simpler
-        ms1_base_peak_points_df['feature_point'] = ms1_base_peak_points_df['feature_id'].map(str) + '|' + ms1_base_peak_points_df['point_id'].map(str)
-
-        # get the mapping from feature points to summed frame points
-        ms1_feature_frame_join_df = pd.read_sql_query("select * from ms1_feature_frame_join where feature_id={}".format(feature_id), source_conn)
-
-        # get the raw points
-        ms1_feature_frame_join_df['feature_point'] = ms1_feature_frame_join_df['feature_id'].map(str) + '|' + ms1_feature_frame_join_df['feature_point_id'].map(str)
-        ms1_feature_frame_join_df['frame_point'] = ms1_feature_frame_join_df['frame_id'].map(str) + '|' + ms1_feature_frame_join_df['frame_point_id'].map(str)
-        frame_points = ms1_feature_frame_join_df.loc[ms1_feature_frame_join_df.feature_point.isin(ms1_base_peak_points_df.feature_point)]
-        frames_list = tuple(frame_points.frame_id.astype(int))
-        if len(frames_list) == 1:
-            frames_list = "({})".format(frames_list[0])
-        frame_point_list = tuple(frame_points.frame_point_id.astype(int))
-        if len(frame_point_list) == 1:
-            frame_point_list = "({})".format(frame_point_list[0])
-
-        # get the summed to raw point mapping
-        raw_point_ids_df = pd.read_sql_query("select * from raw_summed_join where summed_frame_id in {} and summed_point_id in {}".format(frames_list,frame_point_list), conv_db_conn)
-        raw_point_ids_df['summed_frame_point'] = raw_point_ids_df['summed_frame_id'].map(str) + '|' + raw_point_ids_df['summed_point_id'].map(str)
-        raw_point_ids = raw_point_ids_df.loc[raw_point_ids_df.summed_frame_point.isin(frame_points.frame_point)]
-
-        raw_frame_list = tuple(raw_point_ids.raw_frame_id.astype(int))
-        if len(raw_frame_list) == 1:
-            raw_frame_list = "({})".format(raw_frame_list[0])
-        raw_point_list = tuple(raw_point_ids.raw_point_id.astype(int))
-        if len(raw_point_list) == 1:
-            raw_point_list = "({})".format(raw_point_list[0])
-        raw_points_df = pd.read_sql_query("select frame_id,point_id,mz,scan,intensity from frames where frame_id in {} and point_id in {}".format(raw_frame_list,raw_point_list), conv_db_conn)
-        raw_points_df['retention_time_secs'] = raw_points_df.frame_id / raw_frame_ids_per_second
-
-        ms1_centroid_scan = peakutils.centroid(raw_points_df.scan.astype(float), raw_points_df.intensity)
-        ms1_centroid_rt = peakutils.centroid(raw_points_df.retention_time_secs.astype(float), raw_points_df.intensity)
 
         ############################################################################################
         # Process the ms2. We've already calculated the ms2 CofI, so now we just determine the delta 

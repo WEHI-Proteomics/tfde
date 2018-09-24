@@ -9,6 +9,7 @@ import os.path
 import argparse
 import os
 import json
+import peakutils
 
 DELTA_MZ = 1.003355     # Mass difference between Carbon-12 and Carbon-13 isotopes, in Da. For calculating the spacing between isotopic peaks.
 PROTON_MASS = 1.007276  # Mass of a proton in unified atomic mass units, or Da. For calculating the monoisotopic mass.
@@ -106,7 +107,7 @@ def peak_ratio(monoisotopic_mass, peak_number, number_of_sulphur):
     return ratio
 
 feature_list = []
-feature_list_columns = ['feature_id', 'charge_state', 'monoisotopic_mass', 'retention_time_secs', 'base_peak_id', 'isotope_count', 'cluster_mz_centroid', 'cluster_summed_intensity', 'start_frame', 'end_frame', 'scan_lower', 'scan_upper', 'minimum_error', 'minimum_error_sulphur']
+feature_list_columns = ['feature_id', 'charge_state', 'monoisotopic_mass', 'centroid_scan', 'centroid_rt', 'base_peak_id', 'isotope_count', 'cluster_mz_centroid', 'cluster_summed_intensity', 'start_frame', 'end_frame', 'scan_lower', 'scan_upper', 'minimum_error', 'minimum_error_sulphur']
 
 feature_isotopes_columns = ['feature_id', 'peak_id', 'mz_centroid', 'summed_intensity', 'mz_mod']
 feature_cluster_df = pd.DataFrame([], columns=feature_isotopes_columns)
@@ -117,10 +118,6 @@ for feature_id in range(args.feature_id_lower, args.feature_id_upper+1):
     db_conn = sqlite3.connect(args.features_database)
     feature_df = pd.read_sql_query("select * from features where feature_id = {}".format(feature_id), db_conn)
     charge_state = feature_df.loc[0].charge_state.astype(int)
-    start_frame = feature_df.loc[0].start_frame.astype(int)
-    end_frame = feature_df.loc[0].end_frame.astype(int)
-    scan_lower = feature_df.loc[0].scan_lower.astype(int)
-    scan_upper = feature_df.loc[0].scan_upper.astype(int)
     expected_spacing = DELTA_MZ / charge_state
     db_conn.close()
 
@@ -203,11 +200,61 @@ for feature_id in range(args.feature_id_lower, args.feature_id_upper+1):
             # calculate the monoisotopic mass
             monoisotopic_mass = (cluster_mz_centroid - PROTON_MASS) * charge_state
 
-            # ... and the retention time
-            retention_time_secs = feature_df.loc[0].base_frame_id / args.frames_per_second
+            # ... and the retention time and drift centroids
+
+            # get all the points for the feature's ms1 base peak
+            db_conn = sqlite3.connect(args.feature_region_database)
+            ms1_base_peak_points_df = pd.read_sql_query("select * from summed_ms1_regions where feature_id={} and peak_id={}".format(feature_id, base_peak_id), db_conn)
+            db_conn.close()
+
+            # create a composite key for feature_id and point_id to make the next step simpler
+            ms1_base_peak_points_df['feature_point'] = ms1_base_peak_points_df['feature_id'].map(str) + '|' + ms1_base_peak_points_df['point_id'].map(str)
+
+            # get the mapping from feature points to summed frame points
+            db_conn = sqlite3.connect(args.feature_region_database)
+            ms1_feature_frame_join_df = pd.read_sql_query("select * from ms1_feature_frame_join where feature_id={}".format(feature_id), db_conn)
+            db_conn.close()
+
+            # get the raw points
+            ms1_feature_frame_join_df['feature_point'] = ms1_feature_frame_join_df['feature_id'].map(str) + '|' + ms1_feature_frame_join_df['feature_point_id'].map(str)
+            ms1_feature_frame_join_df['frame_point'] = ms1_feature_frame_join_df['frame_id'].map(str) + '|' + ms1_feature_frame_join_df['frame_point_id'].map(str)
+            frame_points = ms1_feature_frame_join_df.loc[ms1_feature_frame_join_df.feature_point.isin(ms1_base_peak_points_df.feature_point)]
+            frames_list = tuple(frame_points.frame_id.astype(int))
+            if len(frames_list) == 1:
+                frames_list = "({})".format(frames_list[0])
+            frame_point_list = tuple(frame_points.frame_point_id.astype(int))
+            if len(frame_point_list) == 1:
+                frame_point_list = "({})".format(frame_point_list[0])
+
+            # get the summed to raw point mapping
+            db_conn = sqlite3.connect(args.features_database)
+            raw_point_ids_df = pd.read_sql_query("select * from raw_summed_join where summed_frame_id in {} and summed_point_id in {}".format(frames_list,frame_point_list), conv_db_conn)
+            db_conn.close()
+            raw_point_ids_df['summed_frame_point'] = raw_point_ids_df['summed_frame_id'].map(str) + '|' + raw_point_ids_df['summed_point_id'].map(str)
+            raw_point_ids = raw_point_ids_df.loc[raw_point_ids_df.summed_frame_point.isin(frame_points.frame_point)]
+
+            raw_frame_list = tuple(raw_point_ids.raw_frame_id.astype(int))
+            if len(raw_frame_list) == 1:
+                raw_frame_list = "({})".format(raw_frame_list[0])
+            raw_point_list = tuple(raw_point_ids.raw_point_id.astype(int))
+            if len(raw_point_list) == 1:
+                raw_point_list = "({})".format(raw_point_list[0])
+            db_conn = sqlite3.connect(args.features_database)
+            raw_points_df = pd.read_sql_query("select frame_id,point_id,mz,scan,intensity from frames where frame_id in {} and point_id in {}".format(raw_frame_list,raw_point_list), conv_db_conn)
+            db_conn.close()
+            raw_points_df['retention_time_secs'] = raw_points_df.frame_id / raw_frame_ids_per_second
+
+            start_summed_frame = min(frames_list)
+            end_summed_frame = max(frames_list)
+
+            scan_lower = raw_points_df.scan.min()
+            scan_upper = raw_points_df.scan.max()
+
+            ms1_centroid_scan = peakutils.centroid(raw_points_df.scan.astype(float), raw_points_df.intensity)
+            ms1_centroid_rt = peakutils.centroid(raw_points_df.retention_time_secs.astype(float), raw_points_df.intensity)
 
             isotope_count = len(cluster_df)
-            feature_list.append((feature_id, charge_state, monoisotopic_mass, retention_time_secs, base_peak_id, isotope_count, round(cluster_mz_centroid,6), cluster_summed_intensity, start_frame, end_frame, scan_lower, scan_upper, minimum_error, minimum_error_sulphur))
+            feature_list.append((feature_id, charge_state, monoisotopic_mass, ms1_centroid_scan, ms1_centroid_rt, base_peak_id, isotope_count, round(cluster_mz_centroid,6), cluster_summed_intensity, start_summed_frame, end_summed_frame, scan_lower, scan_upper, minimum_error, minimum_error_sulphur))
         else:
             print("feature {}: there are no ms1 peaks remaining, so we're not including this feature.".format(feature_id))
     else:
