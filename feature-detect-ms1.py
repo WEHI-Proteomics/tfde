@@ -112,7 +112,7 @@ def find_feature(base_index):
     df['frame_id'] = frame_ids_list
     df['intensity'] = intensities_list
     df['feature_index'] = feature_indices_list
-    print("clusters within window: {}".df)
+    print("clusters within window: {}".format(df.to_string)
     feature_indices = df.sort_values('intensity', ascending=False).drop_duplicates(['frame_id']).feature_index.values
     print("feature_indices after de-duping: {}".feature_indices)
 
