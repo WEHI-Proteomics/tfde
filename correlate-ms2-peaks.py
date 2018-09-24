@@ -60,11 +60,6 @@ def main():
 
     start_run = time.time()
 
-    # calculate the ms2 frame rate - assume they alternate 
-    df = pd.read_sql_query("select value from convert_info where item=\'{}\'".format("raw_frame_period_in_msec"), conv_db_conn)
-    raw_frame_period_in_msec = float(df.loc[0].value)
-    raw_frame_ids_per_second = 1.0 / (raw_frame_period_in_msec * 10**-3)
-
     print("Loading the MS1 base peaks for the feature range")
     feature_list_df = pd.read_sql_query("select * from feature_list where feature_id >= {} and feature_id <= {} order by feature_id ASC;".format(args.feature_id_lower, args.feature_id_upper), source_conn)
 

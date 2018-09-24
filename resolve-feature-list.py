@@ -241,6 +241,12 @@ for feature_id in range(args.feature_id_lower, args.feature_id_upper+1):
                 raw_point_list = "({})".format(raw_point_list[0])
             db_conn = sqlite3.connect(args.features_database)
             raw_points_df = pd.read_sql_query("select frame_id,point_id,mz,scan,intensity from frames where frame_id in {} and point_id in {}".format(raw_frame_list,raw_point_list), db_conn)
+
+            # calculate the ms2 frame rate - assume they alternate 
+            df = pd.read_sql_query("select value from convert_info where item=\'{}\'".format("raw_frame_period_in_msec"), db_conn)
+            raw_frame_period_in_msec = float(df.loc[0].value)
+            raw_frame_ids_per_second = 1.0 / (raw_frame_period_in_msec * 10**-3)
+
             db_conn.close()
             raw_points_df['retention_time_secs'] = raw_points_df.frame_id / raw_frame_ids_per_second
 
