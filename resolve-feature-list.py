@@ -109,7 +109,7 @@ def peak_ratio(monoisotopic_mass, peak_number, number_of_sulphur):
 feature_list = []
 feature_list_columns = ['feature_id', 'charge_state', 'monoisotopic_mass', 'base_peak_centroid_scan', 'base_peak_centroid_rt', 'base_peak_id', 'isotope_count', 'cluster_mz_centroid', 'cluster_summed_intensity', 'start_frame', 'end_frame', 'scan_lower', 'scan_upper', 'minimum_error', 'minimum_error_sulphur']
 
-feature_isotopes_columns = ['feature_id', 'peak_id', 'mz_centroid', 'summed_intensity', 'mz_mod']
+feature_isotopes_columns = ['feature_id', 'peak_id', 'mz_centroid', 'scan_centroid', 'summed_intensity', 'mz_mod']
 feature_cluster_df = pd.DataFrame([], columns=feature_isotopes_columns)
 
 for feature_id in range(args.feature_id_lower, args.feature_id_upper+1):
@@ -129,8 +129,9 @@ for feature_id in range(args.feature_id_lower, args.feature_id_upper+1):
     if len(peaks_df)>0:
         mzs = peaks_df.groupby('peak_id').apply(wavg, "mz", "intensity").reset_index(name='mz_centroid')
         intensities = peaks_df.groupby('peak_id').intensity.sum().reset_index(name='summed_intensity')
+        scans = peaks_df.groupby('peak_id').apply(wavg, "scan", "intensity").reset_index(name='scan_centroid')
 
-        cluster_df = pd.concat([mzs, intensities.summed_intensity], axis=1)
+        cluster_df = pd.concat([mzs, scans.scan_centroid, intensities.summed_intensity], axis=1)
         cluster_df.sort_values(by='mz_centroid', inplace=True)
 
         cluster_df.reset_index(drop=True, inplace=True)
