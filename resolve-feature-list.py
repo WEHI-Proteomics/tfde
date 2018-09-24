@@ -188,7 +188,12 @@ for feature_id in range(args.feature_id_lower, args.feature_id_upper+1):
             else:
                 error_as_string = "None"
 
-            cluster_df['mz_mod'] = cluster_df.mz_centroid - ((cluster_df.peak_id-1)*expected_spacing)
+            # update the cluster according to the mono index
+            cluster_df = cluster_df.loc[minimum_error_mono_index:].copy()
+            cluster_df.reset_index(drop=True, inplace=True)
+
+            # find the cluster's centroid by folding-in the mz centroid of each peak
+            cluster_df['mz_mod'] = cluster_df.mz_centroid - (cluster_df.index * expected_spacing)
             cluster_df['feature_id'] = feature_id
 
             # add to the feature clusters
