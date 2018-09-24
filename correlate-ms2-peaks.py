@@ -76,8 +76,8 @@ def main():
 
         feature_id = base_peak_ids_df.loc[feature_ids_idx].feature_id.astype(int)
         base_peak_id = base_peak_ids_df.loc[feature_ids_idx].base_peak_id.astype(int)
-        ms1_centroid_scan = base_peak_ids_df.loc[feature_ids_idx].centroid_scan
-        ms1_centroid_rt = base_peak_ids_df.loc[feature_ids_idx].centroid_rt
+        ms1_centroid_scan = base_peak_ids_df.loc[feature_ids_idx].base_peak_centroid_scan
+        ms1_centroid_rt = base_peak_ids_df.loc[feature_ids_idx].base_peak_centroid_rt
 
         print("processing feature {} ({}% complete)".format(feature_id, round(float(feature_id-args.feature_id_lower)/(args.feature_id_upper-args.feature_id_lower+1)*100,1)))
 

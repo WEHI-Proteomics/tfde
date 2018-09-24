@@ -67,7 +67,7 @@ if len(feature_list_df) > 0:
         charge_state = feature_list_df.loc[feature_list_idx].charge_state.astype(int)
         cluster_mz_centroid = feature_list_df.loc[feature_list_idx].cluster_mz_centroid
         cluster_summed_intensity = feature_list_df.loc[feature_list_idx].cluster_summed_intensity.astype(int)
-        retention_time_secs = feature_list_df.loc[feature_list_idx].retention_time_secs
+        retention_time_secs = feature_list_df.loc[feature_list_idx].base_peak_centroid_rt
         base_frame_number = int(retention_time_secs * args.frames_per_second)
 
         print("Generating Hardklor file for feature {} ({}% complete)".format(feature_id, round(float(feature_id-feature_id_lower)/(feature_id_upper-feature_id_lower+1)*100,1)))

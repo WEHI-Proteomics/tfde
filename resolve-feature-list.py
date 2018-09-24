@@ -107,7 +107,7 @@ def peak_ratio(monoisotopic_mass, peak_number, number_of_sulphur):
     return ratio
 
 feature_list = []
-feature_list_columns = ['feature_id', 'charge_state', 'monoisotopic_mass', 'centroid_scan', 'centroid_rt', 'base_peak_id', 'isotope_count', 'cluster_mz_centroid', 'cluster_summed_intensity', 'start_frame', 'end_frame', 'scan_lower', 'scan_upper', 'minimum_error', 'minimum_error_sulphur']
+feature_list_columns = ['feature_id', 'charge_state', 'monoisotopic_mass', 'base_peak_centroid_scan', 'base_peak_centroid_rt', 'base_peak_id', 'isotope_count', 'cluster_mz_centroid', 'cluster_summed_intensity', 'start_frame', 'end_frame', 'scan_lower', 'scan_upper', 'minimum_error', 'minimum_error_sulphur']
 
 feature_isotopes_columns = ['feature_id', 'peak_id', 'mz_centroid', 'summed_intensity', 'mz_mod']
 feature_cluster_df = pd.DataFrame([], columns=feature_isotopes_columns)
@@ -228,7 +228,7 @@ for feature_id in range(args.feature_id_lower, args.feature_id_upper+1):
 
             # get the summed to raw point mapping
             db_conn = sqlite3.connect(args.features_database)
-            raw_point_ids_df = pd.read_sql_query("select * from raw_summed_join where summed_frame_id in {} and summed_point_id in {}".format(frames_list,frame_point_list), conv_db_conn)
+            raw_point_ids_df = pd.read_sql_query("select * from raw_summed_join where summed_frame_id in {} and summed_point_id in {}".format(frames_list,frame_point_list), db_conn)
             db_conn.close()
             raw_point_ids_df['summed_frame_point'] = raw_point_ids_df['summed_frame_id'].map(str) + '|' + raw_point_ids_df['summed_point_id'].map(str)
             raw_point_ids = raw_point_ids_df.loc[raw_point_ids_df.summed_frame_point.isin(frame_points.frame_point)]
@@ -240,7 +240,7 @@ for feature_id in range(args.feature_id_lower, args.feature_id_upper+1):
             if len(raw_point_list) == 1:
                 raw_point_list = "({})".format(raw_point_list[0])
             db_conn = sqlite3.connect(args.features_database)
-            raw_points_df = pd.read_sql_query("select frame_id,point_id,mz,scan,intensity from frames where frame_id in {} and point_id in {}".format(raw_frame_list,raw_point_list), conv_db_conn)
+            raw_points_df = pd.read_sql_query("select frame_id,point_id,mz,scan,intensity from frames where frame_id in {} and point_id in {}".format(raw_frame_list,raw_point_list), db_conn)
             db_conn.close()
             raw_points_df['retention_time_secs'] = raw_points_df.frame_id / raw_frame_ids_per_second
 
