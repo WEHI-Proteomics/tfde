@@ -9,7 +9,6 @@ import os.path
 import argparse
 import os
 import json
-import peakutils
 
 DELTA_MZ = 1.003355     # Mass difference between Carbon-12 and Carbon-13 isotopes, in Da. For calculating the spacing between isotopic peaks.
 PROTON_MASS = 1.007276  # Mass of a proton in unified atomic mass units, or Da. For calculating the monoisotopic mass.
@@ -140,8 +139,6 @@ for feature_id in range(args.feature_id_lower, args.feature_id_upper+1):
         cluster_df.reset_index(drop=True, inplace=True)
         base_peak_index = cluster_df.summed_intensity.idxmax()
 
-        print("cluster_df {}".format(cluster_df.head()))
-
         base_peak_mz = cluster_df.iloc[base_peak_index].mz_centroid
         std_dev = standard_deviation(base_peak_mz)
 
@@ -200,9 +197,7 @@ for feature_id in range(args.feature_id_lower, args.feature_id_upper+1):
             feature_cluster_df = feature_cluster_df.append(cluster_df[feature_isotopes_columns], ignore_index=True)
 
             # calculate the centroid of the feature's cluster
-            cluster_mz_centroid = peakutils.centroid(cluster_df.mz_mod.astype(float), cluster_df.summed_intensity)
-            cluster_scan_centroid = peakutils.centroid(cluster_df.scan.astype(float), cluster_df.summed_intensity)
-            cluster_rt_centroid = peakutils.centroid(cluster_df.retention_time_secs.astype(float), cluster_df.summed_intensity)
+            cluster_mz_centroid = wavg(cluster_df, "mz_mod", "summed_intensity")
             cluster_summed_intensity = cluster_df.summed_intensity.sum()
 
             # calculate the monoisotopic mass
