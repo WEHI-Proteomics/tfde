@@ -117,10 +117,6 @@ def find_feature(base_index):
     df.sort_values('frame_id', ascending=True, inplace=True)
     feature_indices = df.feature_index.values
 
-    print("frame\tintensity (pre-trim)")
-    for i in feature_indices:
-        print("{}\t{}".format(clusters_v[i, CLUSTER_FRAME_ID_IDX].astype(int), clusters_v[i, CLUSTER_INTENSITY_SUM_IDX].astype(int)))
-
     # trim the ends to make sure we only get one feature
     if len(feature_indices) > 20:
         # snip each end where it falls below the intensity threshold
@@ -162,10 +158,6 @@ def find_feature(base_index):
     # score the feature quality
     feature_start_frame = int(clusters_v[feature_indices[0],CLUSTER_FRAME_ID_IDX])
     feature_end_frame = int(clusters_v[feature_indices[len(feature_indices)-1],CLUSTER_FRAME_ID_IDX])
-
-    print("frame\tintensity (final)")
-    for i in feature_indices:
-        print("{}\t{}".format(clusters_v[i, CLUSTER_FRAME_ID_IDX].astype(int), clusters_v[i, CLUSTER_INTENSITY_SUM_IDX].astype(int)))
 
     passed_minimum_length_test = (feature_end_frame-feature_start_frame) >= args.minimum_number_of_frames
     if args.maximum_gap_between_points is not None:
