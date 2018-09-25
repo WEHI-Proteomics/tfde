@@ -554,7 +554,7 @@ if process_this_step(this_step=step_name, first_step=args.operation):
         feature_upper = feature_batch_df.iloc[idx].upper
         feature_region_ms2_sum_peak_processes.append("python -u ./otf-peak-detect/feature-region-ms2-combined-sum-peak-detect.py -cdb '{}' -ddb '{}' -ms1ce {} -fl {} -fu {} -bs 20 -fts {} -fso {} -mzsf {}".format(converted_database_name, destination_db_name, args.ms1_collision_energy, feature_lower, feature_upper, args.frames_to_sum, args.frame_summing_offset, args.ms2_mz_scaling_factor))
 
-    run_process("python -u ./otf-peak-detect/feature-region-ms2-combined-sum-peak-detect-prep.py -cdb '{}' -fdbr '{}'".format(converted_database_name, feature_database_root))
+    run_process("python -u ./otf-peak-detect/feature-region-ms2-combined-sum-peak-detect-prep.py -cdb '{}'".format(converted_database_name))
     print("detecting ms2 peaks in the feature region...")
     pool.map(run_process, feature_region_ms2_sum_peak_processes)
     step_stop_time = time.time()
