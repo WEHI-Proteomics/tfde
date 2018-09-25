@@ -105,6 +105,7 @@ def find_feature(base_index):
         (abs(clusters_v[:, CLUSTER_BASE_MAX_POINT_SCAN_IDX] - base_max_point_scan) <= base_scan_std_dev_offset))[0]
 
     # make sure we don't have more than one cluster from each frame - take the most intense one if there is more than one
+    print("feature_indices before de-duping {}".format(feature_indices))
     frame_ids_list = clusters_v[feature_indices, CLUSTER_FRAME_ID_IDX].astype(int).tolist()
     intensities_list = clusters_v[feature_indices, CLUSTER_INTENSITY_SUM_IDX].astype(int).tolist()
     feature_indices_list = feature_indices.tolist()
@@ -114,7 +115,7 @@ def find_feature(base_index):
     df['feature_index'] = feature_indices_list
     df = df.sort_values('intensity', ascending=False).drop_duplicates(['frame_id'])
     feature_indices = df.feature_index.values
-    print("feature_indices before trimming {}".format(feature_indices))
+    print("feature_indices after de-duping {}".format(feature_indices))
 
     # trim the ends to make sure we only get one feature
     if len(feature_indices) > 20:
