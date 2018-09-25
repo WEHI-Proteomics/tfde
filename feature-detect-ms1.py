@@ -113,7 +113,8 @@ def find_feature(base_index):
     df['frame_id'] = frame_ids_list
     df['intensity'] = intensities_list
     df['feature_index'] = feature_indices_list
-    feature_indices = df.sort_values('intensity', ascending=False).drop_duplicates(['frame_id']).feature_index.values
+    deduped_df = df.sort_values('intensity_sum', ascending=False).drop_duplicates(['frame_id']).sort_values('frame_id', ascending=True)
+    feature_indices = deduped_df.feature_index.values
     print("feature_indices after de-duping {}".format(feature_indices))
 
     # trim the ends to make sure we only get one feature
@@ -154,7 +155,7 @@ def find_feature(base_index):
             indices_to_delete = np.concatenate((indices_to_delete,np.arange(high_snip_index+1,len(filtered))))
         feature_indices = np.delete(feature_indices, indices_to_delete, 0)
 
-    print("feature_indices after trimming {}".format(feature_indices))
+    # print("feature_indices after trimming {}".format(feature_indices))
 
     # score the feature quality
     feature_start_frame = int(clusters_v[feature_indices[0],CLUSTER_FRAME_ID_IDX])
