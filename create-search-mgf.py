@@ -66,12 +66,12 @@ try:
             hk_results_df = pd.read_table(hk_filename, skiprows=1, header=None, names=['monoisotopic_mass','charge','intensity','base_isotope_peak','analysis_window','deprecated','modifications','correlation'])
             if len(hk_results_df) > 0:
                 # rename the HK columns to be clearer
-                hk_results_df.rename(columns={'monoisotopic_mass': 'hk_monoisotopic_mass','charge': 'hk_charge','intensity': 'hk_intensity','base_isotope_peak': 'hk_base_isotope_peak'}, inplace=True)
+                hk_results_df.rename(columns={'monoisotopic_mass':'hk_monoisotopic_mass', 'charge':'hk_charge', 'intensity':'hk_intensity', 'base_isotope_peak':'hk_base_isotope_peak'}, inplace=True)
                 # the monoisotopic_mass from Hardklor is the zero charge M, so we add the proton mass to get M+H
                 hk_results_df.hk_monoisotopic_mass += PROTON_MASS
                 # get the ms2 peaks for this feature within the extraction window
                 db_conn = sqlite3.connect(args.features_database)
-                ms2_peaks_df = pd.read_sql_query("select feature_id,peak_id,centroid_mz,intensity from ms2_peaks_within_window where feature_id={}".format(feature_id), db_conn)
+                ms2_peaks_df = pd.read_sql_query("select feature_id,peak_id,centroid_mz,cofi_scan,cofi_rt,intensity from ms2_peaks_within_window where feature_id={}".format(feature_id), db_conn)
                 db_conn.close()
                 # write out the ions
                 if len(ms2_peaks_df) > 0:
@@ -83,7 +83,8 @@ try:
                     # drop the columns we don't need
                     hk_results_df.drop(['base_isotope_peak_round','centroid_mz_round','analysis_window','deprecated','modifications'], inplace=True, axis=1)
                     # rearrange the column order to be a bit nicer
-                    hk_results_df = hk_results_df[['feature_id','peak_id','centroid_mz','intensity','hk_monoisotopic_mass','hk_charge','hk_intensity','hk_base_isotope_peak']]
+                    hk_results_df = hk_results_df[['feature_id','peak_id','centroid_mz','cofi_scan','cofi_rt','intensity','hk_monoisotopic_mass','hk_charge','hk_intensity','hk_base_isotope_peak']]
+                    hk_results_df.rename(columns={'cofi_scan':'centroid_scan', 'cofi_rt':'centroid_rt'}, inplace=True)
                     # write out the deconvolved and de-isotoped peaks reported by HK
                     db_conn = sqlite3.connect(args.features_database)
                     hk_results_df.to_sql(name='deconvoluted_ions', con=db_conn, if_exists='append', index=False)
