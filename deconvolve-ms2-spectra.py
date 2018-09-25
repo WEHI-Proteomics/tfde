@@ -80,7 +80,7 @@ if len(feature_list_df) > 0:
             # a bit of a hack to avoid the single-element tuple with trailing comma upsetting the SQL query
             if len(peak_correlation_df) == 1:
                 peak_correlation_df = peak_correlation_df.append(peak_correlation_df)
-            ms2_peaks_df = pd.read_sql_query("select feature_id,peak_id,centroid_mz,intensity from ms2_peaks where feature_id || '-' || peak_id in {}".format(tuple(peak_correlation_df["feature_id-ms2_peak_id"])), db_conn)
+            ms2_peaks_df = pd.read_sql_query("select * from ms2_peaks where feature_id || '-' || peak_id in {}".format(tuple(peak_correlation_df["feature_id-ms2_peak_id"])), db_conn)
             if len(ms2_peaks_df) > 0:
                 # write out the ms2 peaks we are about to deconvolve and deisotope, for later matching with MSCypher output
                 ms2_peaks_df.to_sql(name='ms2_peaks_within_window', con=db_conn, if_exists='append', index=False)
