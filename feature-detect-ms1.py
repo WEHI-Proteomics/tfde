@@ -113,8 +113,7 @@ def find_feature(base_index):
     df['frame_id'] = frame_ids_list
     df['intensity'] = intensities_list
     df['feature_index'] = feature_indices_list
-    df = df.sort_values('intensity', ascending=False).drop_duplicates(['frame_id'])
-    feature_indices = df.feature_index.values
+    feature_indices = df.sort_values('intensity', ascending=False).drop_duplicates(['frame_id']).feature_index.values
     print("feature_indices after de-duping {}".format(feature_indices))
 
     # trim the ends to make sure we only get one feature
