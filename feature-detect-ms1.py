@@ -112,9 +112,9 @@ def find_feature(base_index):
     df['frame_id'] = frame_ids_list
     df['intensity'] = intensities_list
     df['feature_index'] = feature_indices_list
-    print("clusters within window: {}".format(df.to_string))
-    feature_indices = df.sort_values('intensity', ascending=False).drop_duplicates(['frame_id']).feature_index.values
-    print("feature_indices after de-duping: {}".format(feature_indices))
+    df = df.sort_values('intensity', ascending=False).drop_duplicates(['frame_id'])
+    feature_indices = df.feature_index.values
+    print("feature_indices before trimming {}".format(feature_indices))
 
     # trim the ends to make sure we only get one feature
     if len(feature_indices) > 20:
@@ -154,6 +154,8 @@ def find_feature(base_index):
             indices_to_delete = np.concatenate((indices_to_delete,np.arange(high_snip_index+1,len(filtered))))
         feature_indices = np.delete(feature_indices, indices_to_delete, 0)
 
+    print("feature_indices after trimming {}".format(feature_indices))
+
     # score the feature quality
     feature_start_frame = int(clusters_v[feature_indices[0],CLUSTER_FRAME_ID_IDX])
     feature_end_frame = int(clusters_v[feature_indices[len(feature_indices)-1],CLUSTER_FRAME_ID_IDX])
@@ -164,6 +166,9 @@ def find_feature(base_index):
     else:
         passed_maximum_gap_test = True
 
+    print("passed length test {}, passed gap test {}".format(passed_minimum_length_test, passed_maximum_gap_test))
+
+    # estimate the base noise level
     if (passed_minimum_length_test and passed_maximum_gap_test):
         quality = 1.0
 
@@ -209,7 +214,6 @@ def find_feature(base_index):
                         noise_level_readings.append(noise_level_2)
 
     else:
-        print("length test {}, gap test {}".format(passed_minimum_length_test,passed_maximum_gap_test))
         quality = 0.0
         feature_start_frame = None
         feature_end_frame = None
