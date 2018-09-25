@@ -104,10 +104,6 @@ def find_feature(base_index):
         ) &
         (abs(clusters_v[:, CLUSTER_BASE_MAX_POINT_SCAN_IDX] - base_max_point_scan) <= base_scan_std_dev_offset))[0]
 
-    print("frame\tintensity (before)")
-    for i in feature_indices:
-        print("{}\t{}".format(clusters_v[i, CLUSTER_FRAME_ID_IDX].astype(int), clusters_v[i, CLUSTER_INTENSITY_SUM_IDX].astype(int)))
-
     # make sure we don't have more than one cluster from each frame - take the most intense one if there is more than one
     frame_ids_list = clusters_v[feature_indices, CLUSTER_FRAME_ID_IDX].astype(int).tolist()
     intensities_list = clusters_v[feature_indices, CLUSTER_INTENSITY_SUM_IDX].astype(int).tolist()
@@ -120,10 +116,6 @@ def find_feature(base_index):
     df.drop_duplicates(subset=['frame_id'], keep='first', inplace=True)
     df.sort_values('frame_id', ascending=True, inplace=True)
     feature_indices = df.feature_index.values
-
-    print("frame\tintensity (after)")
-    for i in feature_indices:
-        print("{}\t{}".format(clusters_v[i, CLUSTER_FRAME_ID_IDX].astype(int), clusters_v[i, CLUSTER_INTENSITY_SUM_IDX].astype(int)))
 
     # trim the ends to make sure we only get one feature
     if len(feature_indices) > 20:
@@ -168,6 +160,10 @@ def find_feature(base_index):
     # score the feature quality
     feature_start_frame = int(clusters_v[feature_indices[0],CLUSTER_FRAME_ID_IDX])
     feature_end_frame = int(clusters_v[feature_indices[len(feature_indices)-1],CLUSTER_FRAME_ID_IDX])
+
+    print("frame\tintensity (final)")
+    for i in feature_indices:
+        print("{}\t{}".format(clusters_v[i, CLUSTER_FRAME_ID_IDX].astype(int), clusters_v[i, CLUSTER_INTENSITY_SUM_IDX].astype(int)))
 
     passed_minimum_length_test = (feature_end_frame-feature_start_frame) >= args.minimum_number_of_frames
     if args.maximum_gap_between_points is not None:
