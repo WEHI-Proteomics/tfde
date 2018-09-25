@@ -226,6 +226,10 @@ for feature_id in range(args.feature_id_lower, args.feature_id_upper+1):
             ms1_feature_frame_join_df['frame_point'] = ms1_feature_frame_join_df['frame_id'].map(str) + '|' + ms1_feature_frame_join_df['frame_point_id'].map(str)
             frame_points = ms1_feature_frame_join_df.loc[ms1_feature_frame_join_df.feature_point.isin(ms1_base_peak_points_df.feature_point)]
             frames_list = tuple(frame_points.frame_id.astype(int))
+
+            start_summed_frame = min(frames_list)
+            end_summed_frame = max(frames_list)
+
             if len(frames_list) == 1:
                 frames_list = "({})".format(frames_list[0])
             frame_point_list = tuple(frame_points.frame_point_id.astype(int))
@@ -255,9 +259,6 @@ for feature_id in range(args.feature_id_lower, args.feature_id_upper+1):
 
             db_conn.close()
             raw_points_df['retention_time_secs'] = raw_points_df.frame_id / raw_frame_ids_per_second
-
-            start_summed_frame = min(frames_list)
-            end_summed_frame = max(frames_list)
 
             scan_lower = raw_points_df.scan.min()
             scan_upper = raw_points_df.scan.max()
