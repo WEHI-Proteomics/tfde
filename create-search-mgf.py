@@ -115,6 +115,12 @@ try:
                         # close off the feature
                         for item in header_content[len(header_content)-1:]:
                             file_handler.write("{}".format(item))
+                else:
+                    print("Found no ions within the tolerance window for feature {}".format(feature_id))
+            else:
+                print("Hardklor gave no results for feature {}".format(feature_id))
+        else:
+            print("Could not find the file {} for feature {}".format(hk_filename, feature_id))
 
     stop_run = time.time()
 
