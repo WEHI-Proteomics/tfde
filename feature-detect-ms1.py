@@ -117,6 +117,10 @@ def find_feature(base_index):
     df.sort_values('frame_id', ascending=True, inplace=True)
     feature_indices = df.feature_index.values
 
+    print("frame\tintensity (pre-trim)")
+    for i in feature_indices:
+        print("{}\t{}".format(clusters_v[i, CLUSTER_FRAME_ID_IDX].astype(int), clusters_v[i, CLUSTER_INTENSITY_SUM_IDX].astype(int)))
+
     # trim the ends to make sure we only get one feature
     if len(feature_indices) > 20:
         # snip each end where it falls below the intensity threshold
@@ -154,8 +158,6 @@ def find_feature(base_index):
         if high_snip_index is not None:
             indices_to_delete = np.concatenate((indices_to_delete,np.arange(high_snip_index+1,len(filtered))))
         feature_indices = np.delete(feature_indices, indices_to_delete, 0)
-
-    # print("feature_indices after trimming {}".format(feature_indices))
 
     # score the feature quality
     feature_start_frame = int(clusters_v[feature_indices[0],CLUSTER_FRAME_ID_IDX])
