@@ -158,6 +158,8 @@ if len(elution_profile) > 0:
 print("writing out the raw-to-summed mapping")
 raw_summed_join_columns = ['summed_frame_id', 'summed_point_id', 'raw_frame_id', 'raw_point_id']
 raw_summed_join_df = pd.DataFrame(raw_summed_join, columns=raw_summed_join_columns)
+raw_summed_join_df['summed_frame_point'] = raw_summed_join_df['summed_frame_id'].map(str) + '|' + raw_summed_join_df['summed_point_id'].map(str)
+raw_summed_join_df['raw_frame_point'] = raw_summed_join_df['raw_frame_id'].map(str) + '|' + raw_summed_join_df['raw_point_id'].map(str)
 raw_summed_join_df.to_sql(name='raw_summed_join', con=dest_conn, if_exists='replace', index=False)
 
 stop_run = time.time()

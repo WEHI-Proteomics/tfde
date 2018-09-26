@@ -121,6 +121,8 @@ dest_c.executemany("INSERT INTO summed_ms1_regions VALUES (?, ?, ?, ?, ?, ?, ?)"
 
 # write the composite points out to the database
 composite_points_df = pd.DataFrame(composite_points, columns=['feature_id','feature_point_id','frame_id','frame_point_id'])
+composite_points_df['feature_point'] = composite_points_df['feature_id'].map(str) + '|' + composite_points_df['feature_point_id'].map(str)
+composite_points_df['summed_frame_point'] = composite_points_df['frame_id'].map(str) + '|' + composite_points_df['frame_point_id'].map(str)
 composite_points_df.to_sql(name='ms1_feature_frame_join', con=dest_conn, if_exists='append', index=False, chunksize=None)
 
 stop_run = time.time()
