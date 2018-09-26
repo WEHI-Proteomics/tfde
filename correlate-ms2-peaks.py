@@ -66,13 +66,13 @@ def main():
     peak_correlation = []
 
     print("Finding peak correlations for features {}-{}".format(args.feature_id_lower, args.feature_id_upper))
-    for feature_ids_idx in range(0,len(base_peak_ids_df)):
+    for feature_ids_idx in range(0,len(feature_list_df)):
         feature_start_time = time.time()
 
-        feature_id = base_peak_ids_df.loc[feature_ids_idx].feature_id.astype(int)
-        base_peak_id = base_peak_ids_df.loc[feature_ids_idx].base_peak_id.astype(int)
-        ms1_centroid_scan = base_peak_ids_df.loc[feature_ids_idx].base_peak_centroid_scan
-        ms1_centroid_rt = base_peak_ids_df.loc[feature_ids_idx].base_peak_centroid_rt
+        feature_id = feature_list_df.loc[feature_ids_idx].feature_id.astype(int)
+        base_peak_id = feature_list_df.loc[feature_ids_idx].base_peak_id.astype(int)
+        ms1_centroid_scan = feature_list_df.loc[feature_ids_idx].base_peak_centroid_scan
+        ms1_centroid_rt = feature_list_df.loc[feature_ids_idx].base_peak_centroid_rt
 
         print("processing feature {} ({}% complete)".format(feature_id, round(float(feature_id-args.feature_id_lower)/(args.feature_id_upper-args.feature_id_lower+1)*100,1)))
 
