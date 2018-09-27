@@ -7,6 +7,7 @@ import operator
 import os.path
 import argparse
 import json
+import traceback
 
 PROTON_MASS = 1.0073  # Mass of a proton in unified atomic mass units, or Da. For calculating the monoisotopic mass.
 
@@ -139,4 +140,4 @@ try:
     db_conn.close()
 
 except Exception as e:
-    print("Exception {} caught in {} for {}".format(str(e), parser.prog, info))
+    print("Exception {} caught in {} for {}".format(traceback.format_exc(), parser.prog, info))
