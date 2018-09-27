@@ -64,7 +64,7 @@ print("Setting up tables and indexes")
 dest_c.execute("DROP TABLE IF EXISTS summed_ms1_regions")
 dest_c.execute("DROP TABLE IF EXISTS summed_ms1_regions_info")
 dest_c.execute("DROP TABLE IF EXISTS ms1_feature_frame_join")
-dest_c.execute("CREATE TABLE summed_ms1_regions (feature_id INTEGER, point_id INTEGER, mz REAL, scan INTEGER, intensity INTEGER, number_frames INTEGER, peak_id INTEGER)")  # number_frames = number of source frames the point was found in
+dest_c.execute("CREATE TABLE summed_ms1_regions (feature_id INTEGER, point_id INTEGER, mz REAL, scan INTEGER, intensity INTEGER, number_frames INTEGER, peak_id INTEGER, feature_point TEXT)")  # number_frames = number of source frames the point was found in
 dest_c.execute("CREATE TABLE summed_ms1_regions_info (item TEXT, value TEXT)")
 
 start_run = time.time()
@@ -112,12 +112,12 @@ for feature in features_v:
             # find the total intensity and centroid m/z
             centroid_intensity = nearby_points[:,FRAME_INTENSITY_IDX].sum()
             centroid_mz = peakutils.centroid(nearby_points[:,FRAME_MZ_IDX], nearby_points[:,FRAME_INTENSITY_IDX])
-            points.append((feature_id, pointId, float(centroid_mz), scan, int(round(centroid_intensity)), len(unique_frames), 0))
+            points.append((feature_id, pointId, float(centroid_mz), scan, int(round(centroid_intensity)), len(unique_frames), 0, "{}|{}".format(feature_id, pointId)))
             pointId += 1
             # remove the points we've processed
             points_v = np.delete(points_v, nearby_point_indices, 0)
 
-dest_c.executemany("INSERT INTO summed_ms1_regions VALUES (?, ?, ?, ?, ?, ?, ?)", points)
+dest_c.executemany("INSERT INTO summed_ms1_regions VALUES (?, ?, ?, ?, ?, ?, ?, ?)", points)
 
 # write the composite points out to the database
 composite_points_df = pd.DataFrame(composite_points, columns=['feature_id','feature_point_id','frame_id','frame_point_id'])
