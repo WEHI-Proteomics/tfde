@@ -145,6 +145,7 @@ for frame in frames_v:
 # Write what we have left
 if len(points) > 0:
     dest_c.executemany("INSERT INTO frames VALUES (?, ?, ?, ?, ?, ?, ?)", points)
+    dest_conn.commit()
     print("{} frames converted...".format(frame_count))
     del points[:]
 
@@ -155,6 +156,7 @@ for collision_energy in collision_energies_v:
 
 print("Writing frame properties")
 dest_c.executemany("INSERT INTO frame_properties VALUES (?, ?)", frame_properties)
+dest_conn.commit()
 
 stop_run = time.time()
 
