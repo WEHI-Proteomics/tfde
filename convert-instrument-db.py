@@ -37,10 +37,6 @@ info = []
 for arg in vars(args):
     info.append((arg, getattr(args, arg)))
 
-if args.destination_database_name is None:
-    print("No destination was given, so there is nothing to do.")
-    sys.exit()
-
 analysis_dir = args.source_database_name
 if sys.version_info.major == 2:
     analysis_dir = unicode(analysis_dir)
@@ -132,7 +128,7 @@ for frame in frames_v:
             intensity_values = scan[1]
             for i in range(0, len(intensity_values)):   # step through the intensity readings (i.e. points) on this scan line
                 pointId += 1
-                points.append((int(frame_id), int(pointId), float(mz_values[i]), int(scan_line), int(intensity_values[i]), int(peak_id), "{}|{}".format(frame_id, pointId)))
+                points.append((int(frame_id), int(pointId), float(mz_values[i]), int(scan_line), int(intensity_values[i]), int(peak_id), "{}|{}".format(int(frame_id), int(pointId))))
 
     frame_count += 1
 
@@ -151,8 +147,6 @@ if len(points) > 0:
     dest_c.executemany("INSERT INTO frames VALUES (?, ?, ?, ?, ?, ?, ?)", points)
     print("{} frames converted...".format(frame_count))
     del points[:]
-
-dest_conn.commit()
 
 for collision_energy in collision_energies_v:
     frame_properties.append((int(collision_energy[FRAME_ID_IDX]), float(collision_energy[FRAME_COLLISION_ENERGY_IDX])))
