@@ -71,9 +71,10 @@ def find_feature(base_index):
     frame_id = int(cluster[CLUSTER_FRAME_ID_IDX])
     cluster_id = int(cluster[CLUSTER_ID_IDX])
     charge_state = int(cluster[CLUSTER_CHARGE_STATE_IDX])
+    retention_time_secs = cluster[CLUSTER_RT_IDX]
 
-    search_start_frame = max(frame_id-NUMBER_OF_FRAMES_TO_LOOK, int(frame_lower))    # make sure they are valid frame_ids
-    search_end_frame = min(frame_id+NUMBER_OF_FRAMES_TO_LOOK, int(frame_upper))
+    search_start_rt = retention_time_secs - args.number_of_seconds_each_side
+    search_end_rt = retention_time_secs + args.number_of_seconds_each_side
 
     # Seed the search bounds by the properties of the base peaks
     base_max_point_mz = cluster[CLUSTER_BASE_MAX_POINT_MZ_IDX]
@@ -87,8 +88,8 @@ def find_feature(base_index):
     # look for other clusters that belong to this feature
     feature_indices = np.where(
         (clusters_v[:, CLUSTER_INTENSITY_SUM_IDX] > 0) &
-        (clusters_v[:, CLUSTER_FRAME_ID_IDX] >= search_start_frame) &
-        (clusters_v[:, CLUSTER_FRAME_ID_IDX] <= search_end_frame) &
+        (clusters_v[:, CLUSTER_RT_IDX] >= search_start_rt) &
+        (clusters_v[:, CLUSTER_RT_IDX] <= search_end_rt) &
         (clusters_v[:, CLUSTER_CHARGE_STATE_IDX] == charge_state) &
         (
             # look at the isotope we expect but also one up and one down, in case we missed the correct isotope
@@ -247,8 +248,6 @@ parser.add_argument('-mfe','--magnitude_for_feature_endpoints', type=float, defa
 parser.add_argument('-nbf','--number_of_features', type=int, help='The number of features to find.', required=False)
 parser.add_argument('-bs','--batch_size', type=int, default=10000, help='The number of features to be written to the database.', required=False)
 args = parser.parse_args()
-
-NUMBER_OF_FRAMES_TO_LOOK = int(args.number_of_seconds_each_side * args.frames_per_second)
 
 # Store the arguments as metadata in the database for later reference
 info = []
