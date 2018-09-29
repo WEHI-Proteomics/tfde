@@ -43,6 +43,10 @@ if args.elution_end_sec is None:
     args.elution_end_sec = int(frames_df.Time.max())
 frames_df = frames_df[(frames_df.Time >= args.elution_start_sec) & (frames_df.Time <= args.elution_end_sec)]
 
+# determine the frame_id range
+frame_lower = int(frames_df.Id.min())
+frame_upper = int(frames_df.Id.max())
+
 # Store the arguments as metadata in the database for later reference
 info = []
 for arg in vars(args):
@@ -96,7 +100,6 @@ points = []
 start_run = time.time()
 peak_id = 0 # set the peak ID to be zero for now
 max_scans = 0
-frame_count = 0
 
 print("Converting...")
 for idx in range(len(frames_df)):
@@ -117,20 +120,18 @@ for idx in range(len(frames_df)):
                 pointId += 1
                 points.append((int(frame_id), int(pointId), float(mz_values[i]), int(scan_line), int(intensity_values[i]), int(peak_id), "{}|{}".format(int(frame_id), int(pointId)), retention_time_secs))
 
-    frame_count += 1
-
     # Check whether we've done a chunk to write out to the database
-    if (frame_id % args.batch_size) == 0:
+    if (idx % args.batch_size) == 0:
         dest_c.executemany("INSERT INTO frames VALUES (?, ?, ?, ?, ?, ?, ?, ?)", points)
         dest_conn.commit()
-        print("{} frames converted...".format(frame_count))
+        print("{} frames converted...".format(idx))
         del points[:]
 
 # Write what we have left
 if len(points) > 0:
     dest_c.executemany("INSERT INTO frames VALUES (?, ?, ?, ?, ?, ?, ?, ?)", points)
     dest_conn.commit()
-    print("{} frames converted...".format(frame_count))
+    print("{} frames converted...".format(idx))
     del points[:]
 
 print("Writing frame properties")
@@ -141,11 +142,10 @@ dest_conn.commit()
 
 stop_run = time.time()
 
-info.append(("source_frame_lower", int(min_frame_id)))
-info.append(("source_frame_upper", int(frame_count)))
-info.append(("source_frame_count", int(frame_count)))
+info.append(("source_frame_lower", frame_lower))
+info.append(("source_frame_upper", frame_upper))
+info.append(("source_frame_count", len(frames_df)))
 info.append(("num_scans", int(max_scans)))
-info.append(("raw_frame_period_in_msec", float(raw_frame_period_in_msec)))
 info.append(("mz_lower", float(mz_lower)))
 info.append(("mz_upper", float(mz_upper)))
 info.append(("ms1_collision_energy", float(ms1_collision_energy)))
