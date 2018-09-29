@@ -50,9 +50,11 @@ def standard_deviation(mz):
 
 # find the corresponding indices in clusters_v for a given RT range
 def find_frame_indices(start_frame_rt, end_frame_rt):
+    print("find_frame_indices: rt {}..{}".format(start_frame_rt, end_frame_rt))
     frame_indices = np.where((clusters_v[:,CLUSTER_RT_IDX] >= start_frame_rt) & (clusters_v[:,CLUSTER_RT_IDX] <= end_frame_rt))
     start_frame_index = np.min(frame_indices)
     end_frame_index = np.max(frame_indices)
+    print("find_frame_indices: indices {}..{}".format(start_frame_index, end_frame_index))
     return (start_frame_index, end_frame_index)
 
 # returns True if the gap between points is within acceptable limit
@@ -353,7 +355,7 @@ while True:
 
     # check whether we have finished
     if (cluster_intensity < estimated_noise_level):
-        print("Reached base noise level")
+        print("Cluster intensity ({}) is less than estimated base noise level ({})".format(cluster_intensity,estimated_noise_level))
         break
     if (poor_quality_rate > MAX_PROPORTION_POOR_QUALITY):
         print("Exceeded max proportion of poor quality features")
