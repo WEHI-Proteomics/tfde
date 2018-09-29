@@ -18,6 +18,7 @@ REGION_POINT_ID_IDX = 0
 REGION_POINT_MZ_IDX = 1
 REGION_POINT_SCAN_IDX = 2
 REGION_POINT_INTENSITY_IDX = 3
+REGION_POINT_RT_IDX = 4
 
 # feature array indices
 FEATURE_ID_IDX = 0
@@ -89,7 +90,7 @@ print("Setting up tables and indexes")
 dest_c.execute("DROP TABLE IF EXISTS ms1_feature_region_peaks")
 dest_c.execute("DROP TABLE IF EXISTS ms1_feature_region_peak_detect_info")
 
-dest_c.execute("CREATE TABLE ms1_feature_region_peaks (feature_id INTEGER, peak_id INTEGER, centroid_mz REAL, centroid_scan REAL, intensity_sum INTEGER, scan_upper INTEGER, scan_lower INTEGER, std_dev_mz REAL, std_dev_scan REAL, rationale TEXT, intensity_max INTEGER, peak_max_mz REAL, peak_max_scan INTEGER, feature_peak TEXT, PRIMARY KEY (feature_id, peak_id))")
+dest_c.execute("CREATE TABLE ms1_feature_region_peaks (feature_id INTEGER, peak_id INTEGER, centroid_mz REAL, centroid_scan REAL, retention_time_secs REAL, intensity_sum INTEGER, scan_upper INTEGER, scan_lower INTEGER, std_dev_mz REAL, std_dev_scan REAL, rationale TEXT, intensity_max INTEGER, peak_max_mz REAL, peak_max_scan INTEGER, feature_peak TEXT, PRIMARY KEY (feature_id, peak_id))")
 dest_c.execute("CREATE TABLE ms1_feature_region_peak_detect_info (item TEXT, value TEXT)")
 
 dest_c.execute("CREATE INDEX IF NOT EXISTS idx_ms1_region_peaks_1 ON summed_ms1_regions (feature_id)")
@@ -115,7 +116,7 @@ for feature in features_v:
     feature_id = int(feature[FEATURE_ID_IDX])
 
     peak_id = 1
-    ms1_feature_df = pd.read_sql_query("select point_id,mz,scan,intensity from summed_ms1_regions where feature_id={} order by mz, scan asc;".format(feature_id), dest_conn)
+    ms1_feature_df = pd.read_sql_query("select point_id,mz,scan,intensity,retention_time_secs from summed_ms1_regions where feature_id={} order by mz, scan asc;".format(feature_id), dest_conn)
     ms1_feature_v = ms1_feature_df.values
     if len(ms1_feature_v) > 0:
         start_feature = time.time()
@@ -191,7 +192,8 @@ for feature in features_v:
                 peak_max_index = np.argmax(peak_points[:,REGION_POINT_INTENSITY_IDX])
                 peak_max_mz = float(peak_points[peak_max_index][REGION_POINT_MZ_IDX])
                 peak_max_scan = int(peak_points[peak_max_index][REGION_POINT_SCAN_IDX])
-                mono_peaks.append((feature_id, peak_id, peak_mz_centroid, peak_scan_centroid, peak_intensity_sum, peak_scan_upper, peak_scan_lower, peak_std_dev_mz, peak_std_dev_scan, json.dumps(rationale), peak_intensity_max, peak_max_mz, peak_max_scan, "{}|{}".format(feature_id, peak_id)))
+                peak_retention_time_secs = peakutils.centroid(peak_points[:,REGION_POINT_RT_IDX], peak_points[:,REGION_POINT_INTENSITY_IDX])
+                mono_peaks.append((feature_id, peak_id, peak_mz_centroid, peak_scan_centroid, peak_retention_time_secs, peak_intensity_sum, peak_scan_upper, peak_scan_lower, peak_std_dev_mz, peak_std_dev_scan, json.dumps(rationale), peak_intensity_max, peak_max_mz, peak_max_scan, "{}|{}".format(feature_id, peak_id)))
 
                 peak_id += 1
 
@@ -204,7 +206,7 @@ for feature in features_v:
             base_peaks.append((feature_id, base_peak_id))
 
             # Write out the peaks for this feature
-            dest_c.executemany("INSERT INTO ms1_feature_region_peaks VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", mono_peaks)
+            dest_c.executemany("INSERT INTO ms1_feature_region_peaks VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", mono_peaks)
             mono_peaks = []
 
         # Update the points in the summed_ms1_regions table

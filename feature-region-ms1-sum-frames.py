@@ -12,8 +12,8 @@ import os.path
 
 # feature array indices
 FEATURE_ID_IDX = 0
-FEATURE_START_FRAME_IDX = 1
-FEATURE_END_FRAME_IDX = 2
+FEATURE_START_RT_IDX = 1
+FEATURE_END_RT_IDX = 2
 FEATURE_SCAN_LOWER_IDX = 3
 FEATURE_SCAN_UPPER_IDX = 4
 FEATURE_MZ_LOWER_IDX = 5
@@ -25,6 +25,7 @@ FRAME_MZ_IDX = 1
 FRAME_SCAN_IDX = 2
 FRAME_INTENSITY_IDX = 3
 FRAME_POINT_ID_IDX = 4
+FRAME_RT_IDX = 5
 
 def standard_deviation(mz):
     instrument_resolution = 40000.0
@@ -64,7 +65,7 @@ print("Setting up tables and indexes")
 dest_c.execute("DROP TABLE IF EXISTS summed_ms1_regions")
 dest_c.execute("DROP TABLE IF EXISTS summed_ms1_regions_info")
 dest_c.execute("DROP TABLE IF EXISTS ms1_feature_frame_join")
-dest_c.execute("CREATE TABLE summed_ms1_regions (feature_id INTEGER, point_id INTEGER, mz REAL, scan INTEGER, intensity INTEGER, number_frames INTEGER, peak_id INTEGER, feature_point TEXT)")  # number_frames = number of source frames the point was found in
+dest_c.execute("CREATE TABLE summed_ms1_regions (feature_id INTEGER, point_id INTEGER, mz REAL, retention_time_secs REAL, scan INTEGER, intensity INTEGER, number_frames INTEGER, peak_id INTEGER, feature_point TEXT)")  # number_frames = number of source frames the point was found in
 dest_c.execute("CREATE TABLE summed_ms1_regions_info (item TEXT, value TEXT)")
 
 start_run = time.time()
@@ -72,7 +73,7 @@ start_run = time.time()
 # Take the ms1 features within the m/z band of interest, and sum the ms1 frames within the feature's mz/ and scan range
 
 print("Loading the MS1 features")
-features_df = pd.read_sql_query("""select feature_id,start_frame,end_frame,scan_lower,scan_upper,mz_lower,mz_upper from features where feature_id >= {} and 
+features_df = pd.read_sql_query("""select feature_id,start_rt,end_rt,scan_lower,scan_upper,mz_lower,mz_upper from features where feature_id >= {} and 
     feature_id <= {} and charge_state >= {} order by feature_id ASC;""".format(args.feature_id_lower, args.feature_id_upper, args.minimum_charge_state), src_conn)
 features_v = features_df.values
 
@@ -81,15 +82,15 @@ points = []
 composite_points = []
 for feature in features_v:
     feature_id = int(feature[FEATURE_ID_IDX])
-    feature_start_frame = int(feature[FEATURE_START_FRAME_IDX])
-    feature_end_frame = int(feature[FEATURE_END_FRAME_IDX])
+    feature_start_rt = int(feature[FEATURE_START_RT_IDX])
+    feature_end_rt = int(feature[FEATURE_END_RT_IDX])
     feature_scan_lower = int(feature[FEATURE_SCAN_LOWER_IDX])
     feature_scan_upper = int(feature[FEATURE_SCAN_UPPER_IDX])
     feature_mz_lower = feature[FEATURE_MZ_LOWER_IDX]
     feature_mz_upper = feature[FEATURE_MZ_UPPER_IDX]
 
     # Load the MS1 frame (summed) points for the feature's peaks
-    frame_df = pd.read_sql_query("""select frame_id,mz,scan,intensity,point_id from summed_frames where (frame_id,peak_id) in (select frame_id,peak_id from peaks where (frame_id,cluster_id) in 
+    frame_df = pd.read_sql_query("""select frame_id,mz,scan,intensity,point_id,retention_time_secs from summed_frames where (frame_id,peak_id) in (select frame_id,peak_id from peaks where (frame_id,cluster_id) in 
         (select frame_id,cluster_id from clusters where feature_id={}));""".format(feature_id), src_conn)
     frame_v = frame_df.values
 
@@ -112,12 +113,13 @@ for feature in features_v:
             # find the total intensity and centroid m/z
             centroid_intensity = nearby_points[:,FRAME_INTENSITY_IDX].sum()
             centroid_mz = peakutils.centroid(nearby_points[:,FRAME_MZ_IDX], nearby_points[:,FRAME_INTENSITY_IDX])
-            points.append((feature_id, pointId, float(centroid_mz), scan, int(round(centroid_intensity)), len(unique_frames), 0, "{}|{}".format(feature_id, pointId)))
+            centroid_rt = peakutils.centroid(nearby_points[:,FRAME_RT_IDX], nearby_points[:,FRAME_INTENSITY_IDX])
+            points.append((feature_id, pointId, float(centroid_mz), float(centroid_rt), scan, int(round(centroid_intensity)), len(unique_frames), 0, "{}|{}".format(feature_id, pointId)))
             pointId += 1
             # remove the points we've processed
             points_v = np.delete(points_v, nearby_point_indices, 0)
 
-dest_c.executemany("INSERT INTO summed_ms1_regions VALUES (?, ?, ?, ?, ?, ?, ?, ?)", points)
+dest_c.executemany("INSERT INTO summed_ms1_regions VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)", points)
 
 # write the composite points out to the database
 composite_points_df = pd.DataFrame(composite_points, columns=['feature_id','feature_point_id','frame_id','frame_point_id'])
