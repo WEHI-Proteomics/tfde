@@ -253,8 +253,6 @@ parser.add_argument('-mfe','--magnitude_for_feature_endpoints', type=float, defa
 parser.add_argument('-fps','--frames_per_second', type=float, help='Effective frame rate for the summed frames.', required=True)
 parser.add_argument('-nbf','--number_of_features', type=int, help='The number of features to find.', required=False)
 parser.add_argument('-bs','--batch_size', type=int, default=10000, help='The number of features to be written to the database.', required=False)
-parser.add_argument('-es','--elution_start_sec', type=int, help='Only process frames from this time in sec.', required=False)
-parser.add_argument('-ee','--elution_end_sec', type=int, help='Only process frames up to this time in sec.', required=False)
 args = parser.parse_args()
 
 NUMBER_OF_FRAMES_TO_LOOK = int(args.number_of_seconds_each_side * args.frames_per_second)

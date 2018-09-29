@@ -240,10 +240,7 @@ if process_this_step(this_step=step_name, first_step=args.operation):
         print("Error - the instrument database directory does not exist. Exiting.")
         cleanup(info, processing_times, args.shutdown_on_completion)
 
-    if args.number_of_frames is not None:
-        run_process("python -u ./otf-peak-detect/convert-instrument-db.py -sdb '{}' -ddb '{}' -nf {} -bs {}".format(args.instrument_database_name, converted_database_name, args.number_of_frames, args.conversion_batch_size))
-    else:
-        run_process("python -u ./otf-peak-detect/convert-instrument-db.py -sdb '{}' -ddb '{}' -bs {}".format(args.instrument_database_name, converted_database_name, args.conversion_batch_size))
+    run_process("python -u ./otf-peak-detect/convert-instrument-db.py -sdb '{}' -ddb '{}' -es {} -ee {} -bs {}".format(args.instrument_database_name, converted_database_name, args.elution_start_sec, args.elution_end_sec, args.conversion_batch_size))
 
     # gather statistics
     source_conn = sqlite3.connect(converted_database_name)
@@ -423,7 +420,7 @@ if process_this_step(this_step=step_name, first_step=args.operation):
     step_start_time = time.time()
 
     print("detecting features...")
-    run_process("python -u ./otf-peak-detect/feature-detect-ms1.py -db '{}' -fps {} -mnf {} -es {} -ee {}".format(feature_database_name, frames_per_second, args.minimum_number_of_frames, args.elution_start_sec, args.elution_end_sec))
+    run_process("python -u ./otf-peak-detect/feature-detect-ms1.py -db '{}' -fps {} -mnf {}".format(feature_database_name, frames_per_second, args.minimum_number_of_frames))
 
     step_stop_time = time.time()
     processing_times.append((step_name, round(step_stop_time-step_start_time,1)))

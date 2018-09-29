@@ -17,25 +17,13 @@ FRAME_RATE_PROPERTY_NAME = "Digitizer_AcquisitionTime_Set"
 TARGET_MASS_START_PROPERTY_NAME = "Mode_TargetMassStart"
 TARGET_MASS_END_PROPERTY_NAME = "Mode_TargetMassEnd"
 
-# frame array indices
-FRAME_ID_IDX = 0
-FRAME_NUMSCAN_IDX = 1
-
-# frame collision energy indices
-FRAME_ID_IDX = 0
-FRAME_COLLISION_ENERGY_IDX = 1
-
 parser = argparse.ArgumentParser(description='Convert the Bruker database to a detection database.')
 parser.add_argument('-sdb','--source_database_name', type=str, help='The name of the source database.', required=True)
 parser.add_argument('-ddb','--destination_database_name', type=str, help='The name of the destination database.', required=True)
+parser.add_argument('-es','--elution_start_sec', type=int, help='Only process frames from this time in sec.', required=False)
+parser.add_argument('-ee','--elution_end_sec', type=int, help='Only process frames up to this time in sec.', required=False)
 parser.add_argument('-bs','--batch_size', type=int, default=10000, help='The size of the frames to be written to the database.', required=False)
-parser.add_argument('-nf','--number_of_frames', type=int, help='The number of frames to convert.', required=False)
 args = parser.parse_args()
-
-# Store the arguments as metadata in the database for later reference
-info = []
-for arg in vars(args):
-    info.append((arg, getattr(args, arg)))
 
 analysis_dir = args.source_database_name
 if sys.version_info.major == 2:
@@ -46,43 +34,45 @@ source_conn = td.conn
 
 # Get the frame information
 print("Loading the frames information")
-frames_df = pd.read_sql_query("select Id,NumScans from Frames order by Id ASC;", source_conn)
-frames_v = frames_df.values
+frames_df = pd.read_sql_query("select Id,NumScans,Time from Frames order by Id ASC;", source_conn)
 
-frame_count = len(frames_v)
-max_frame_id = np.max(frames_v[:,FRAME_ID_IDX])
-min_frame_id = np.min(frames_v[:,FRAME_ID_IDX])
-print("Analysis has {} frames. Frame IDs {}-{}".format(frame_count, min_frame_id, max_frame_id))
+# determine the elution time range, and trim the frames to suit
+if args.elution_start_sec is None:
+    args.elution_start_sec = int(frames_df.Time.min())
+if args.elution_end_sec is None:
+    args.elution_end_sec = int(frames_df.Time.max())
+frames_df = frames_df[(frames_df.Time >= args.elution_start_sec) & (frames_df.Time <= args.elution_end_sec)]
 
-# Get the raw frame period
-df = pd.read_sql_query("SELECT Id FROM PropertyDefinitions WHERE PermanentName=\"{}\"".format(FRAME_RATE_PROPERTY_NAME), source_conn)
-property_id = df.loc[0].Id
-df = pd.read_sql_query("SELECT Value FROM FrameProperties WHERE Property={}".format(property_id), source_conn)
-raw_frame_period_in_msec = df.loc[0].Value
+# Store the arguments as metadata in the database for later reference
+info = []
+for arg in vars(args):
+    info.append((arg, getattr(args, arg)))
 
-# Get the mass range
+# Get the mz range to analyse
 df = pd.read_sql_query("SELECT Id FROM PropertyDefinitions WHERE PermanentName=\"{}\"".format(TARGET_MASS_START_PROPERTY_NAME), source_conn)
-property_id = df.loc[0].Id
+property_id = df.iloc[0].Id
 df = pd.read_sql_query("SELECT Value FROM GroupProperties WHERE Property={}".format(property_id), source_conn)
-mz_lower = df.loc[0].Value
+mz_lower = df.iloc[0].Value
 
 df = pd.read_sql_query("SELECT Id FROM PropertyDefinitions WHERE PermanentName=\"{}\"".format(TARGET_MASS_END_PROPERTY_NAME), source_conn)
-property_id = df.loc[0].Id
+property_id = df.iloc[0].Id
 df = pd.read_sql_query("SELECT Value FROM GroupProperties WHERE Property={}".format(property_id), source_conn)
-mz_upper = df.loc[0].Value
+mz_upper = df.iloc[0].Value
 
+# Get the collision energy used for ms1, to help distinguish ms1 and ms2 frames
 df = pd.read_sql_query("SELECT Id FROM PropertyDefinitions WHERE PermanentName=\"{}\"".format(COLLISION_ENERGY_MS1_SET_PROPERTY_NAME), source_conn)
-property_id = df.loc[0].Id
+property_id = df.iloc[0].Id
 df = pd.read_sql_query("SELECT Value FROM GroupProperties WHERE Property={}".format(property_id), source_conn)
-ms1_collision_energy = df.loc[0].Value
+ms1_collision_energy = df.iloc[0].Value
 
 # Get the collision energy property values
 q = source_conn.execute("SELECT Id FROM PropertyDefinitions WHERE PermanentName=\"{}\"".format(COLLISION_ENERGY_PROPERTY_NAME))
 collision_energy_property_id = q.fetchone()[0]
 
-print("Loading the collision energy property values")
+print("Loading the collision energy property values for each frame")
 collision_energies_df = pd.read_sql_query("SELECT Frame,Value FROM FrameProperties WHERE Property={}".format(collision_energy_property_id), source_conn)
-collision_energies_v = collision_energies_df.values
+frames_df.rename(columns={"Value":"collision_energy"}, inplace=True)
+frames_df = pd.merge(frames_df, collision_energies_df, how='left', left_on=['Id'], right_on=['Frame'])
 
 # remove the destination database if it remains from a previous run - it's faster to recreate it
 if os.path.isfile(args.destination_database_name):
@@ -96,26 +86,23 @@ dest_c = dest_conn.cursor()
 print("Setting up tables and indexes")
 
 dest_c.execute("DROP TABLE IF EXISTS frames")
-dest_c.execute("DROP TABLE IF EXISTS frame_properties")
 dest_c.execute("DROP TABLE IF EXISTS convert_info")
 
-dest_c.execute("CREATE TABLE frames (frame_id INTEGER, point_id INTEGER, mz REAL, scan INTEGER, intensity INTEGER, peak_id INTEGER, raw_frame_point TEXT)")
-dest_c.execute("CREATE TABLE frame_properties (frame_id INTEGER, collision_energy REAL)")
+dest_c.execute("CREATE TABLE frames (frame_id INTEGER, point_id INTEGER, mz REAL, scan INTEGER, intensity INTEGER, peak_id INTEGER, raw_frame_point TEXT, retention_time_secs REAL)")
 dest_c.execute("CREATE TABLE convert_info (item TEXT, value TEXT)")
 
 points = []
-frame_properties = []
 
 start_run = time.time()
 peak_id = 0 # set the peak ID to be zero for now
 max_scans = 0
-
 frame_count = 0
 
 print("Converting...")
-for frame in frames_v:
-    frame_id = frame[FRAME_ID_IDX]
-    num_scans = frame[FRAME_NUMSCAN_IDX]
+for idx in range(len(frames_df)):
+    frame_id = frames_df.iloc[idx].Id
+    num_scans = frames_df.iloc[idx].NumScans
+    retention_time_secs = frames_df.iloc[idx].Time
     pointId = 0
 
     if num_scans > max_scans:
@@ -128,34 +115,28 @@ for frame in frames_v:
             intensity_values = scan[1]
             for i in range(0, len(intensity_values)):   # step through the intensity readings (i.e. points) on this scan line
                 pointId += 1
-                points.append((int(frame_id), int(pointId), float(mz_values[i]), int(scan_line), int(intensity_values[i]), int(peak_id), "{}|{}".format(int(frame_id), int(pointId))))
+                points.append((int(frame_id), int(pointId), float(mz_values[i]), int(scan_line), int(intensity_values[i]), int(peak_id), "{}|{}".format(int(frame_id), int(pointId)), retention_time_secs))
 
     frame_count += 1
 
     # Check whether we've done a chunk to write out to the database
     if (frame_id % args.batch_size) == 0:
-        dest_c.executemany("INSERT INTO frames VALUES (?, ?, ?, ?, ?, ?, ?)", points)
+        dest_c.executemany("INSERT INTO frames VALUES (?, ?, ?, ?, ?, ?, ?, ?)", points)
         dest_conn.commit()
         print("{} frames converted...".format(frame_count))
         del points[:]
 
-    if (args.number_of_frames is not None) and (frame_count >= args.number_of_frames):
-        break
-
 # Write what we have left
 if len(points) > 0:
-    dest_c.executemany("INSERT INTO frames VALUES (?, ?, ?, ?, ?, ?, ?)", points)
+    dest_c.executemany("INSERT INTO frames VALUES (?, ?, ?, ?, ?, ?, ?, ?)", points)
     dest_conn.commit()
     print("{} frames converted...".format(frame_count))
     del points[:]
 
-for collision_energy in collision_energies_v:
-    frame_properties.append((int(collision_energy[FRAME_ID_IDX]), float(collision_energy[FRAME_COLLISION_ENERGY_IDX])))
-    if (args.number_of_frames is not None) and (len(frame_properties) == args.number_of_frames):
-        break
-
 print("Writing frame properties")
-dest_c.executemany("INSERT INTO frame_properties VALUES (?, ?)", frame_properties)
+frames_df.rename(columns={"Id":"frame_id", "Time":"retention_time_secs"}, inplace=True)
+frames_df['frame_id','collision_energy','retention_time_secs'].to_sql(name='frame_properties', con=dest_conn, if_exists='replace', index=False)
+
 dest_conn.commit()
 
 stop_run = time.time()
