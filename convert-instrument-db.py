@@ -136,7 +136,7 @@ if len(points) > 0:
 
 print("Writing frame properties")
 frames_df.rename(columns={"Id":"frame_id", "Time":"retention_time_secs"}, inplace=True)
-frames_df['frame_id','collision_energy','retention_time_secs'].to_sql(name='frame_properties', con=dest_conn, if_exists='replace', index=False)
+frames_df[['frame_id','collision_energy','retention_time_secs']].to_sql(name='frame_properties', con=dest_conn, if_exists='replace', index=False)
 
 dest_conn.commit()
 
