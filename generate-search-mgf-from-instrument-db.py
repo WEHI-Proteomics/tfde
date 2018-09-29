@@ -160,7 +160,7 @@ parser.add_argument('-sl','--scan_lower', type=int, help='Lower scan to process.
 parser.add_argument('-su','--scan_upper', type=int, help='Upper scan to process.', required=False)
 parser.add_argument('-fl','--frame_lower', type=int, help='The lower summed frame number to process.', required=False)
 parser.add_argument('-fu','--frame_upper', type=int, help='The upper summed frame number to process.', required=False)
-parser.add_argument('-mnf','--minimum_number_of_frames', type=int, default=3, help='Minimum number of frames for a feature to be valid.', required=False)
+parser.add_argument('-mfl','--minimum_feature_length_secs', type=int, default=1, help='Minimum feature length in seconds for it to be valid.', required=False)
 parser.add_argument('-mzsf','--ms2_mz_scaling_factor', type=float, default=1000.0, help='Scaling factor to convert m/z range to integers in ms2.', required=False)
 parser.add_argument('-frts','--frame_tasks_per_worker', type=int, default=5, help='Number of frame tasks assigned to each worker in the pool.', required=False)
 parser.add_argument('-fets','--feature_tasks_per_worker', type=int, default=5, help='Number of feature tasks assigned to each worker in the pool.', required=False)
@@ -416,7 +416,7 @@ if process_this_step(this_step=step_name, first_step=args.operation):
     step_start_time = time.time()
 
     print("detecting features...")
-    run_process("python -u ./otf-peak-detect/feature-detect-ms1.py -db '{}' -fps {} -mnf {}".format(feature_database_name, frames_per_second, args.minimum_number_of_frames))
+    run_process("python -u ./otf-peak-detect/feature-detect-ms1.py -db '{}' -mnf {}".format(feature_database_name, args.minimum_feature_length_secs))
 
     step_stop_time = time.time()
     processing_times.append((step_name, round(step_stop_time-step_start_time,1)))
