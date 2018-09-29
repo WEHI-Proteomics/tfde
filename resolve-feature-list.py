@@ -131,7 +131,7 @@ for feature_id in range(args.feature_id_lower, args.feature_id_upper+1):
     summed_ms1_region_df = pd.read_sql_query("select * from summed_ms1_regions where feature_id = {} order by peak_id".format(feature_id), db_conn)
     db_conn.close()
 
-    if len(peaks_df)>0:
+    if len(summed_ms1_region_df)>0:
         # determine which of the candidate peaks for the feature are true isotopic peaks
         mzs = summed_ms1_region_df.groupby('peak_id').apply(wavg, "mz", "intensity").reset_index(name='mz_centroid')
         intensities = summed_ms1_region_df.groupby('peak_id').intensity.sum().reset_index(name='summed_intensity')
