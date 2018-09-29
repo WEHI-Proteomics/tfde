@@ -110,6 +110,7 @@ src_c.execute("""CREATE TABLE clusters (frame_id INTEGER,
                                                 scan_upper INTEGER, 
                                                 mz_lower REAL, 
                                                 mz_upper REAL, 
+                                                retention_time_secs REAL, 
                                                 PRIMARY KEY(cluster_id,frame_id))""")
 src_c.execute("CREATE TABLE cluster_detect_info (item TEXT, value TEXT)")
 
@@ -139,7 +140,7 @@ PEAK_SCAN_LOWER_IDX = 5
 PEAK_STD_DEV_MZ_IDX = 6
 PEAK_STD_DEV_SCAN_IDX = 7
 PEAK_INTENSITY_MAX_IDX = 8
-
+PEAK_RT_IDX = 9
 
 clusters = []
 peak_updates = []
@@ -151,8 +152,8 @@ for frame_id in range(args.frame_lower, args.frame_upper+1):
     start_frame = time.time()
     cluster_id = 1
     # Get all the peaks for this frame
-    #                                       0        1           2               3           4          5          6          7            8
-    peaks_df = pd.read_sql_query("select peak_id,centroid_mz,centroid_scan,intensity_sum,scan_upper,scan_lower,std_dev_mz,std_dev_scan,intensity_max from peaks where frame_id={} order by peak_id asc;".format(frame_id), source_conn)
+    #                                       0        1           2               3           4          5          6          7            8                9
+    peaks_df = pd.read_sql_query("select peak_id,centroid_mz,centroid_scan,intensity_sum,scan_upper,scan_lower,std_dev_mz,std_dev_scan,intensity_max,retention_time_secs from peaks where frame_id={} order by peak_id asc;".format(frame_id), source_conn)
     peaks_v = peaks_df.values
 
     while len(peaks_v) > 0:
@@ -333,6 +334,7 @@ for frame_id in range(args.frame_lower, args.frame_upper+1):
                 cluster_scan_upper = max(cluster_peaks[:,PEAK_SCAN_UPPER_IDX])
                 cluster_mz_lower = min(cluster_peaks[:,PEAK_CENTROID_MZ_IDX])
                 cluster_mz_upper = max(cluster_peaks[:,PEAK_CENTROID_MZ_IDX])
+                cluster_retention_time_secs = peakutils.centroid(cluster_peaks[:,PEAK_RT_IDX], cluster_peaks[:,PEAK_INTENSITY_SUM_IDX])
 
                 #                                            0            1             2          3           4            5
                 base_peak_df = pd.read_sql_query("select centroid_mz,centroid_scan,std_dev_mz,std_dev_scan,peak_max_mz,peak_max_scan from peaks where frame_id={} and peak_id={};".format(frame_id, base_peak_id), source_conn)
@@ -365,7 +367,9 @@ for frame_id in range(args.frame_lower, args.frame_upper+1):
                                     int(cluster_scan_lower),
                                     int(cluster_scan_upper),
                                     float(cluster_mz_lower),
-                                    float(cluster_mz_upper)))
+                                    float(cluster_mz_upper),
+                                    cluster_retention_time_secs
+                                    ))
                 cluster_id += 1
 
         # remove the peaks we've processed from the frame
@@ -377,7 +381,7 @@ for frame_id in range(args.frame_lower, args.frame_upper+1):
     frame_count += 1
 
 # Write out all the clusters to the database
-src_c.executemany("INSERT INTO clusters VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", clusters)
+src_c.executemany("INSERT INTO clusters VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", clusters)
 
 # Update the peaks with their cluster IDs
 src_c.executemany("UPDATE peaks SET cluster_id=? WHERE frame_id=? AND peak_id=?", peak_updates)

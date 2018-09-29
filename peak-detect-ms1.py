@@ -13,7 +13,6 @@ import os
 
 MIN_POINTS_IN_PEAK_TO_CHECK_FOR_TROUGHS = 10
 
-
 def standard_deviation(mz):
     instrument_resolution = 40000.0
     return (mz / instrument_resolution) / 2.35482
@@ -60,7 +59,7 @@ print("Setting up tables...")
 src_c.execute("DROP TABLE IF EXISTS peaks")
 src_c.execute("DROP TABLE IF EXISTS peak_detect_info")
 
-src_c.execute("CREATE TABLE peaks (frame_id INTEGER, peak_id INTEGER, centroid_mz REAL, centroid_scan REAL, intensity_sum INTEGER, scan_upper INTEGER, scan_lower INTEGER, std_dev_mz REAL, std_dev_scan REAL, rationale TEXT, intensity_max INTEGER, peak_max_mz REAL, peak_max_scan INTEGER, cluster_id INTEGER, PRIMARY KEY (frame_id, peak_id))")
+src_c.execute("CREATE TABLE peaks (frame_id INTEGER, peak_id INTEGER, centroid_mz REAL, centroid_scan REAL, intensity_sum INTEGER, scan_upper INTEGER, scan_lower INTEGER, std_dev_mz REAL, std_dev_scan REAL, rationale TEXT, intensity_max INTEGER, peak_max_mz REAL, peak_max_scan INTEGER, retention_time_secs REAL, cluster_id INTEGER, PRIMARY KEY (frame_id, peak_id))")
 src_c.execute("CREATE TABLE peak_detect_info (item TEXT, value TEXT)")
 
 print("Setting up indexes...")
@@ -81,7 +80,7 @@ FRAME_MZ_IDX = 0
 FRAME_SCAN_IDX = 1
 FRAME_INTENSITY_IDX = 2
 FRAME_POINT_ID_IDX = 3
-
+FRAME_RT_IDX = 4
 
 mono_peaks = []
 point_updates = []
@@ -89,7 +88,7 @@ start_run = time.time()
 frame_count = 0
 for frame_id in range(args.frame_lower, args.frame_upper+1):
     peak_id = 1
-    frame_df = pd.read_sql_query("select mz,scan,intensity,point_id from summed_frames where frame_id={} order by intensity desc;".format(frame_id), source_conn)
+    frame_df = pd.read_sql_query("select mz,scan,intensity,point_id,retention_time_secs from summed_frames where frame_id={} order by intensity desc;".format(frame_id), source_conn)
     if len(frame_df) > 0:
         print("Detecting peaks in ms1 frame {} ({}% complete)".format(frame_id, round(float(frame_id-args.frame_lower)/(args.frame_upper-args.frame_lower+1)*100,1)))
         start_frame = time.time()
@@ -219,9 +218,10 @@ for frame_id in range(args.frame_lower, args.frame_upper+1):
                 peak_max_index = peak_points[:,FRAME_INTENSITY_IDX].argmax()
                 peak_max_mz = peak_points[peak_max_index][FRAME_MZ_IDX]
                 peak_max_scan = peak_points[peak_max_index][FRAME_SCAN_IDX].astype(int)
+                peak_centroid_rt = peakutils.centroid(peak_points[:,FRAME_RT_IDX], peak_points[:,FRAME_INTENSITY_IDX])
                 cluster_id = 0
                 mono_peaks.append((int(frame_id), int(peak_id), float(peak_mz_centroid), float(peak_scan_centroid), int(peak_intensity_sum), int(peak_scan_upper), int(peak_scan_lower), float(peak_std_dev_mz), 
-                    float(peak_std_dev_scan), json.dumps(rationale), int(peak_intensity_max), float(peak_max_mz), int(peak_max_scan), int(cluster_id)))
+                    float(peak_std_dev_scan), json.dumps(rationale), int(peak_intensity_max), float(peak_max_mz), int(peak_max_scan), peak_centroid_rt, int(cluster_id)))
 
                 peak_id += 1
 
@@ -249,7 +249,7 @@ for frame_id in range(args.frame_lower, args.frame_upper+1):
 
 if len(mono_peaks) > 0:
     # Write out the remaining peaks
-    src_c.executemany("INSERT INTO peaks VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", mono_peaks)
+    src_c.executemany("INSERT INTO peaks VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", mono_peaks)
     del mono_peaks[:]
 
 if len(point_updates) > 0:
