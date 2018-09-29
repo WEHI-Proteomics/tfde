@@ -50,11 +50,9 @@ def standard_deviation(mz):
 
 # find the corresponding indices in clusters_v for a given RT range
 def find_frame_indices(start_frame_rt, end_frame_rt):
-    print("find_frame_indices: rt {}..{}".format(start_frame_rt, end_frame_rt))
     frame_indices = np.where((clusters_v[:,CLUSTER_RT_IDX] >= start_frame_rt) & (clusters_v[:,CLUSTER_RT_IDX] <= end_frame_rt))
     start_frame_index = np.min(frame_indices)
     end_frame_index = np.max(frame_indices)
-    print("find_frame_indices: indices {}..{}".format(start_frame_index, end_frame_index))
     return (start_frame_index, end_frame_index)
 
 # returns True if the gap between points is within acceptable limit
@@ -188,6 +186,7 @@ def find_feature(base_index):
             # update the noise estimate from the lower window
             lower_noise_eval_rt_1 = feature_start_rt - (NOISE_ASSESSMENT_OFFSET_SECS+NOISE_ASSESSMENT_WIDTH_SECS)
             upper_noise_eval_rt_1 = feature_start_rt - NOISE_ASSESSMENT_OFFSET_SECS
+            print("feature start rt {}, lower window rt {}-{}".format(feature_start_rt, lower_noise_eval_rt_1, upper_noise_eval_rt_1))
             if (lower_noise_eval_rt_1 >= int(np.min(clusters_v[:,CLUSTER_RT_IDX]))):
                 # assess the noise level in this window
                 (lower_noise_frame_1_index, upper_noise_frame_1_index) = find_frame_indices(lower_noise_eval_rt_1, upper_noise_eval_rt_1)
@@ -200,6 +199,7 @@ def find_feature(base_index):
             # update the noise estimate from the upper window
             lower_noise_eval_rt_2 = feature_end_rt + NOISE_ASSESSMENT_OFFSET_SECS
             upper_noise_eval_rt_2 = feature_end_rt + (NOISE_ASSESSMENT_OFFSET_SECS+NOISE_ASSESSMENT_WIDTH_SECS)
+            print("feature end rt {}, lower window rt {}-{}".format(feature_end_rt, lower_noise_eval_rt_2, upper_noise_eval_rt_2))
             if (upper_noise_eval_rt_2 <= int(np.max(clusters_v[:,CLUSTER_RT_IDX]))):
                 # assess the noise level in this window
                 (lower_noise_frame_2_index, upper_noise_frame_2_index) = find_frame_indices(lower_noise_eval_rt_2, upper_noise_eval_rt_2)
@@ -242,7 +242,7 @@ parser = argparse.ArgumentParser(description='A method for tracking features thr
 parser.add_argument('-db','--database_name', type=str, help='The name of the source database.', required=True)
 parser.add_argument('-md','--mz_std_dev', type=int, default=4, help='Number of standard deviations to look either side of the base peak, in the m/z dimension.', required=False)
 parser.add_argument('-sd','--scan_std_dev', type=int, default=4, help='Number of standard deviations to look either side of the base peak, in the scan dimension.', required=False)
-parser.add_argument('-ns','--number_of_seconds_each_side', type=int, default=20, help='Number of seconds to look either side of the maximum cluster.', required=False)
+parser.add_argument('-ns','--number_of_seconds_each_side', type=int, default=5, help='Number of seconds to look for related clusters either side of the maximum cluster.', required=False)
 parser.add_argument('-mfl','--minimum_feature_length_secs', type=int, default=1, help='Minimum feature length in seconds for it to be valid.', required=False)
 parser.add_argument('-gbp','--maximum_gap_between_points', type=float, help='Maximum number of seconds between points. Gap is ignored if this parameter is not set.', required=False)
 parser.add_argument('-mcs','--minimum_charge_state', type=int, default=2, help='Minimum charge state to process.', required=False)
