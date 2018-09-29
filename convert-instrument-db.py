@@ -75,7 +75,7 @@ collision_energy_property_id = q.fetchone()[0]
 
 print("Loading the collision energy property values for each frame")
 collision_energies_df = pd.read_sql_query("SELECT Frame,Value FROM FrameProperties WHERE Property={}".format(collision_energy_property_id), source_conn)
-frames_df.rename(columns={"Value":"collision_energy"}, inplace=True)
+collision_energies_df.rename(columns={"Value":"collision_energy"}, inplace=True)
 frames_df = pd.merge(frames_df, collision_energies_df, how='left', left_on=['Id'], right_on=['Frame'])
 
 # remove the destination database if it remains from a previous run - it's faster to recreate it
