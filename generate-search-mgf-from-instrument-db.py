@@ -400,17 +400,6 @@ if process_this_step(this_step=step_name, first_step=args.operation):
         print("Not continuing to the next step - exiting.")
         cleanup(info, processing_times, args.shutdown_on_completion)
 
-# retrieve the summed frame rate
-source_conn = sqlite3.connect(frame_database_name)
-df = pd.read_sql_query("select value from summing_info limit 1", source_conn)
-source_conn.close()
-if len(df) > 0:
-    frames_per_second = float(dict(json.loads(df.iloc[0].value))['frames_per_second'])
-    print("Summed frames per second is {}".format(frames_per_second))
-else:
-    print("Error - could not find the frame rate from the summing_info table and it's needed in sebsequent steps. Exiting.")
-    cleanup(info, processing_times, args.shutdown_on_completion)
-
 ###############################
 # OPERATION: feature_detect_ms1
 ###############################

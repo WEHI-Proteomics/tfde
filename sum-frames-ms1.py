@@ -14,6 +14,7 @@ FRAME_MZ_IDX = 1
 FRAME_SCAN_IDX = 2
 FRAME_INTENSITY_IDX = 3
 FRAME_POINT_ID_IDX = 4
+FRAME_RT_IDX = 5
 
 def standard_deviation(mz):
     instrument_resolution = 40000.0
@@ -51,22 +52,14 @@ dest_c.execute("DROP TABLE IF EXISTS summed_frames")
 dest_c.execute("DROP TABLE IF EXISTS summing_info")
 dest_c.execute("DROP TABLE IF EXISTS elution_profile")
 
-dest_c.execute("CREATE TABLE summed_frames (frame_id INTEGER, point_id INTEGER, mz REAL, scan INTEGER, intensity INTEGER, peak_id INTEGER)")
+dest_c.execute("CREATE TABLE summed_frames (frame_id INTEGER, point_id INTEGER, mz REAL, scan INTEGER, intensity INTEGER, retention_time_secs REAL, peak_id INTEGER)")
 dest_c.execute("CREATE TABLE summing_info (item TEXT, value TEXT)")
-dest_c.execute("CREATE TABLE elution_profile (frame_id INTEGER, intensity INTEGER)")
+dest_c.execute("CREATE TABLE elution_profile (retention_time_secs REAL, intensity INTEGER)")
 
 # Store the arguments as metadata in the database for later reference
 info = []
 for arg in vars(args):
     info.append((arg, getattr(args, arg)))
-
-# calculate the summed frame rate
-df = pd.read_sql_query("select value from convert_info where item=\'{}\'".format("raw_frame_period_in_msec"), source_conn)
-raw_frame_period_in_msec = float(df.loc[0].value)
-df = pd.read_sql_query("select frame_id from frame_properties where collision_energy={}".format(args.collision_energy), source_conn)
-ms1_frame_distance = int(df.frame_id.diff().mode())  # ms1 and ms2 frames mostly alternate, except for the first couple
-ms1_raw_frame_period_in_msec = raw_frame_period_in_msec * ms1_frame_distance
-summed_frames_per_second = 1.0 / (args.frame_summing_offset * ms1_raw_frame_period_in_msec * 10**-3)
 
 # Find the complete set of frame ids to be processed
 frame_ids_df = pd.read_sql_query("select frame_id from frame_properties where collision_energy={} order by frame_id ASC;".format(args.collision_energy), source_conn)
@@ -96,7 +89,7 @@ for summedFrameId in range(args.frame_lower,args.frame_upper+1):
     if numberOfFramesToSum == 1:
         frameIdsToSum = "({})".format(frameIdsToSum[0])
     print("Processing {} frames ({}) to create summed frame {}".format(numberOfFramesToSum, frameIdsToSum, summedFrameId))
-    frame_df = pd.read_sql_query("select frame_id,mz,scan,intensity,point_id from frames where frame_id in {} order by frame_id, mz, scan asc;".format(frameIdsToSum), source_conn)
+    frame_df = pd.read_sql_query("select frame_id,mz,scan,intensity,point_id,retention_time_secs from frames where frame_id in {} order by frame_id, mz, scan asc;".format(frameIdsToSum), source_conn)
     frame_v = frame_df.values
 
     frame_start = time.time()
@@ -118,7 +111,8 @@ for summedFrameId in range(args.frame_lower,args.frame_upper+1):
                 # find the total intensity and centroid m/z
                 centroid_intensity = nearby_points[:,FRAME_INTENSITY_IDX].sum()
                 centroid_mz = peakutils.centroid(nearby_points[:,FRAME_MZ_IDX], nearby_points[:,FRAME_INTENSITY_IDX])
-                frame_points.append((int(summedFrameId), int(pointId), float(centroid_mz), int(scan), int(round(centroid_intensity)), 0))
+                centroid_rt = peakutils.centroid(nearby_points[:,FRAME_RT_IDX], nearby_points[:,FRAME_INTENSITY_IDX])
+                frame_points.append((int(summedFrameId), int(pointId), float(centroid_mz), int(scan), int(round(centroid_intensity)), centroid_rt, 0))
                 for p in nearby_points:
                     raw_summed_join.append((int(summedFrameId), int(pointId), int(p[FRAME_ID_IDX]), int(p[FRAME_POINT_ID_IDX])))
                 pointId += 1
@@ -126,10 +120,11 @@ for summedFrameId in range(args.frame_lower,args.frame_upper+1):
             # remove the points we've processed
             points_v = np.delete(points_v, nearby_point_indices, 0)
 
+    summed_frame_rt = peakutils.centroid(frame_df.retention_time_secs, frame_df.intensity)
     if len(frame_points) > 0:
-        elution_profile.append((summedFrameId, sum(zip(*frame_points)[4])))
+        elution_profile.append((summed_frame_rt, sum(zip(*frame_points)[4])))
     else:
-        elution_profile.append((summedFrameId, 0))
+        elution_profile.append((summed_frame_rt, 0))
 
     # add the frame's points to the set
     points += frame_points
@@ -142,14 +137,14 @@ for summedFrameId in range(args.frame_lower,args.frame_upper+1):
     # check if we've processed a batch number of frames - store in database if so
     if (frame_count % args.batch_size == 0):
         print("frame count {} - writing summed frames to the database...".format(frame_count))
-        dest_c.executemany("INSERT INTO summed_frames VALUES (?, ?, ?, ?, ?, ?)", points)
+        dest_c.executemany("INSERT INTO summed_frames VALUES (?, ?, ?, ?, ?, ?, ?)", points)
         dest_c.executemany("INSERT INTO elution_profile VALUES (?, ?)", elution_profile)
         dest_conn.commit()
         del points[:]
         del elution_profile[:]
 
 if len(points) > 0:
-    dest_c.executemany("INSERT INTO summed_frames VALUES (?, ?, ?, ?, ?, ?)", points)
+    dest_c.executemany("INSERT INTO summed_frames VALUES (?, ?, ?, ?, ?, ?, ?)", points)
 
 if len(elution_profile) > 0:
     dest_c.executemany("INSERT INTO elution_profile VALUES (?, ?)", elution_profile)
@@ -166,7 +161,6 @@ stop_run = time.time()
 
 info.append(("scan_lower", args.scan_lower))
 info.append(("scan_upper", args.scan_upper))
-info.append(("frames_per_second", summed_frames_per_second))
 info.append(("run processing time (sec)", stop_run-start_run))
 info.append(("processed", time.ctime()))
 info.append(("processor", parser.prog))
