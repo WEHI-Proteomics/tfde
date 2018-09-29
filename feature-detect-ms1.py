@@ -280,14 +280,6 @@ frame_upper = int(row[0])
 
 print("frame range of clusters detected: {} to {}".format(frame_lower, frame_upper))
 
-# adjust the frame range if an elution period-of-interest was specified
-if args.elution_start_sec is not None:
-    frame_lower = int(args.elution_start_sec * args.frames_per_second)
-if args.elution_end_sec is not None:
-    frame_upper = int(args.elution_end_sec * args.frames_per_second)
-
-print("frame range of clusters adjusted by elution time: {} to {}".format(frame_lower, frame_upper))
-
 print("Setting up tables...")
 
 c.execute("DROP TABLE IF EXISTS features")
