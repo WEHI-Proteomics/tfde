@@ -416,7 +416,7 @@ if process_this_step(this_step=step_name, first_step=args.operation):
     step_start_time = time.time()
 
     print("detecting features...")
-    run_process("python -u ./otf-peak-detect/feature-detect-ms1.py -db '{}' -mnf {}".format(feature_database_name, args.minimum_feature_length_secs))
+    run_process("python -u ./otf-peak-detect/feature-detect-ms1.py -db '{}' -mfl {}".format(feature_database_name, args.minimum_feature_length_secs))
 
     step_stop_time = time.time()
     processing_times.append((step_name, round(step_stop_time-step_start_time,1)))
