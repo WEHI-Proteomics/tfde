@@ -9,6 +9,7 @@ import time
 import numpy as np
 import sys
 import json
+import glob
 
 def run_process(process):
     print("Executing: {}".format(process))
@@ -349,6 +350,12 @@ if process_this_step(this_step=step_name, first_step=args.operation):
     print("Starting the \'{}\' step".format(step_name))
     step_start_time = time.time()
 
+    # clean up from previous runs
+    for f in glob.glob("{}*".format(frame_database_root)):
+        os.remove(f)
+    for f in glob.glob("{}*".format(feature_database_root)):
+        os.remove(f)
+
     # build the process lists
     sum_frame_ms1_processes = []
     peak_detect_ms1_processes = []
@@ -459,6 +466,10 @@ step_name = 'feature_region_ms1_peak_detect'
 if process_this_step(this_step=step_name, first_step=args.operation):
     print("Starting the \'{}\' step".format(step_name))
     step_start_time = time.time()
+
+    # clean up from previous runs
+    for f in glob.glob("{}*".format(feature_database_root)):
+        os.remove(f)
 
     # build the process lists
     feature_region_ms1_sum_processes = []
