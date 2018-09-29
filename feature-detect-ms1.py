@@ -151,8 +151,8 @@ def find_feature(base_index):
         feature_indices = np.delete(feature_indices, indices_to_delete, 0)
 
     # score the feature quality
-    feature_start_rt = int(clusters_v[feature_indices[0],CLUSTER_RT_IDX])
-    feature_end_rt = int(clusters_v[feature_indices[len(feature_indices)-1],CLUSTER_RT_IDX])
+    feature_start_rt = clusters_v[feature_indices[0],CLUSTER_RT_IDX]
+    feature_end_rt = clusters_v[feature_indices[len(feature_indices)-1],CLUSTER_RT_IDX]
 
     passed_minimum_length_test = (feature_end_rt-feature_start_rt) >= args.minimum_feature_length_secs
     if args.maximum_gap_between_points is not None:
