@@ -8,6 +8,7 @@ import argparse
 import os.path
 import collections
 import json
+import peakutils
 
 NUMBER_OF_SULPHUR_ATOMS = 3
 MAX_NUMBER_OF_PREDICTED_RATIOS = 6
