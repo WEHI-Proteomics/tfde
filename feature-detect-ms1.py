@@ -333,7 +333,7 @@ while True:
             cluster_updates.append(values)
 
         # Add the feature's details to the collection
-        values = (int(feature_id), int(base_cluster_frame_id), int(base_cluster_id), int(charge_state), feature_rt_range[0], feature_rt_range[1], float(quality), int(summed_intensity), int(scan_range[0]), int(scan_range[1]), float(mz_range[0]), float(mz_range[1]))
+        values = (int(feature_id), int(base_cluster_frame_id), int(base_cluster_id), int(charge_state), float(feature_rt_range[0]), float(feature_rt_range[1]), float(quality), int(summed_intensity), int(scan_range[0]), int(scan_range[1]), float(mz_range[0]), float(mz_range[1]))
         feature_updates.append(values)
 
         feature_id += 1
