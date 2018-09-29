@@ -100,9 +100,9 @@ frame_count = 0
 
 print("Converting...")
 for idx in range(len(frames_df)):
-    frame_id = frames_df.iloc[idx].Id
-    num_scans = frames_df.iloc[idx].NumScans
-    retention_time_secs = frames_df.iloc[idx].Time
+    frame_id = int(frames_df.iloc[idx].Id)
+    num_scans = int(frames_df.iloc[idx].NumScans)
+    retention_time_secs = float(frames_df.iloc[idx].Time)
     pointId = 0
 
     if num_scans > max_scans:
