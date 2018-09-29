@@ -161,6 +161,7 @@ parser.add_argument('-su','--scan_upper', type=int, help='Upper scan to process.
 parser.add_argument('-fl','--frame_lower', type=int, help='The lower summed frame number to process.', required=False)
 parser.add_argument('-fu','--frame_upper', type=int, help='The upper summed frame number to process.', required=False)
 parser.add_argument('-mfl','--minimum_feature_length_secs', type=int, default=1, help='Minimum feature length in seconds for it to be valid.', required=False)
+parser.add_argument('-ns','--number_of_seconds_each_side', type=int, default=5, help='Number of seconds to look for related clusters either side of the maximum cluster.', required=False)
 parser.add_argument('-mzsf','--ms2_mz_scaling_factor', type=float, default=1000.0, help='Scaling factor to convert m/z range to integers in ms2.', required=False)
 parser.add_argument('-frts','--frame_tasks_per_worker', type=int, default=5, help='Number of frame tasks assigned to each worker in the pool.', required=False)
 parser.add_argument('-fets','--feature_tasks_per_worker', type=int, default=5, help='Number of feature tasks assigned to each worker in the pool.', required=False)
@@ -416,7 +417,7 @@ if process_this_step(this_step=step_name, first_step=args.operation):
     step_start_time = time.time()
 
     print("detecting features...")
-    run_process("python -u ./otf-peak-detect/feature-detect-ms1.py -db '{}' -mfl {}".format(feature_database_name, args.minimum_feature_length_secs))
+    run_process("python -u ./otf-peak-detect/feature-detect-ms1.py -db '{}' -mfl {} -ns {}".format(feature_database_name, args.minimum_feature_length_secs, args.number_of_seconds_each_side))
 
     step_stop_time = time.time()
     processing_times.append((step_name, round(step_stop_time-step_start_time,1)))
@@ -508,7 +509,7 @@ if process_this_step(this_step=step_name, first_step=args.operation):
         destination_db_name = feature_batch_df.iloc[idx].db
         feature_lower = feature_batch_df.iloc[idx].lower
         feature_upper = feature_batch_df.iloc[idx].upper
-        resolve_feature_list_processes.append("python -u ./otf-peak-detect/resolve-feature-list.py -fdb '{}' -frdb '{}' -fl {} -fu {} -fps {}".format(feature_database_name, destination_db_name, feature_lower, feature_upper, frames_per_second))
+        resolve_feature_list_processes.append("python -u ./otf-peak-detect/resolve-feature-list.py -fdb '{}' -frdb '{}' -fl {} -fu {}".format(feature_database_name, destination_db_name, feature_lower, feature_upper))
 
     print("resolving the feature list...")
     pool.map(run_process, resolve_feature_list_processes)
