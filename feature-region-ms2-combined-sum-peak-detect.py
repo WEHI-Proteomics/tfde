@@ -19,8 +19,8 @@ import traceback
 
 # feature array indices
 FEATURE_ID_IDX = 0
-FEATURE_START_FRAME_IDX = 1
-FEATURE_END_FRAME_IDX = 2
+FEATURE_START_RT_IDX = 1
+FEATURE_END_RT_IDX = 2
 FEATURE_SCAN_LOWER_IDX = 3
 FEATURE_SCAN_UPPER_IDX = 4
 
@@ -110,19 +110,13 @@ def main():
         ms2_frame_ids_v = ms2_frame_ids_df.values
         print("{} MS2 frames loaded".format(len(ms2_frame_ids_v)))
 
-        # calculate the ms2 frame rate - assume they alternate 
-        df = pd.read_sql_query("select value from convert_info where item=\'{}\'".format("raw_frame_period_in_msec"), conv_conn)
-        raw_frame_period_in_msec = float(df.loc[0].value)
-        raw_frame_ids_per_second = 1.0 / (raw_frame_period_in_msec * 10**-3)
-        print("ms2 raw frames per second: {}".format(raw_frame_ids_per_second))
-
         if len(ms2_frame_ids_v) > 0:
 
             # Take the ms1 features and sum the ms2 frames over the whole m/z range (as we don't know where the fragments will be in ms2)
 
             print("Number of source frames that were summed {}, with offset {}".format(args.frames_to_sum, args.frame_summing_offset))
             print("Loading the MS1 features")
-            features_df = pd.read_sql_query("""select feature_id,start_frame,end_frame,scan_lower,scan_upper 
+            features_df = pd.read_sql_query("""select feature_id,start_rt,end_rt,scan_lower,scan_upper 
                 from feature_list where feature_id >= {} and feature_id <= {} and 
                 charge_state >= {} order by feature_id ASC;""".format(args.feature_id_lower, args.feature_id_upper, args.minimum_charge_state), dest_conn)
             features_v = features_df.values
@@ -134,8 +128,8 @@ def main():
                 feature_start_time = time.time()
 
                 feature_id = int(feature[FEATURE_ID_IDX])
-                feature_start_frame = int(feature[FEATURE_START_FRAME_IDX])
-                feature_end_frame = int(feature[FEATURE_END_FRAME_IDX])
+                feature_start_rt = int(feature[FEATURE_START_RT_IDX])
+                feature_end_rt = int(feature[FEATURE_END_RT_IDX])
                 feature_scan_lower = int(feature[FEATURE_SCAN_LOWER_IDX]) - args.feature_region_scan_offset
                 feature_scan_upper = int(feature[FEATURE_SCAN_UPPER_IDX]) + args.feature_region_scan_offset
 
@@ -144,12 +138,8 @@ def main():
                 peak_count = 0
 
                 # Load the MS2 frame points for the feature's region
-                ms2_frame_ids = ()
-                for frame_id in range(feature_start_frame, feature_end_frame+1):
-                    ms2_frame_ids += ms2_frame_ids_from_ms1_frame_id(frame_id, args.frames_to_sum, args.frame_summing_offset)
-                ms2_frame_ids = tuple(set(ms2_frame_ids))   # remove duplicates
-                print("feature ID {} ({}% complete), MS1 frame IDs {}-{}, {} MS2 frames, scans {}-{}".format(feature_id, round(float(feature_id-args.feature_id_lower)/(args.feature_id_upper-args.feature_id_lower+1)*100,1), feature_start_frame, feature_end_frame, len(ms2_frame_ids), feature_scan_lower, feature_scan_upper))
-                frame_df = pd.read_sql_query("select frame_id,mz,scan,intensity,point_id from frames where frame_id in {} and scan <= {} and scan >= {} order by scan,mz;".format(ms2_frame_ids, feature_scan_upper, feature_scan_lower), conv_conn)
+                ms2_frame_ids_df = pd.read_sql_query("select frame_id from frame_properties where retention_time_secs >= {} and retention_time_secs <= {} and collision_energy == {} order by frame_id".format(feature_start_rt, feature_end_rt, args.ms1_collision_energy), conv_conn)
+                frame_df = pd.read_sql_query("select frame_id,mz,scan,intensity,point_id from frames where frame_id in {} and scan <= {} and scan >= {} order by scan,mz;".format(tuple(ms2_frame_ids_df.frame_id), feature_scan_upper, feature_scan_lower), conv_conn)
                 if len(frame_df) > 0:
                     # scale the m/z values and make them integers
                     frame_df['scaled_mz'] = frame_df.mz * args.mz_scaling_factor
@@ -218,7 +208,6 @@ def main():
 
                                 # calculate the peak's centre of intensity
                                 peak_points = ms2_feature_region_points_df.loc[peak_composite_mzs_min:peak_composite_mzs_max]
-                                peak_points['retention_time_secs'] = peak_points.frame_id / raw_frame_ids_per_second
                                 centre_of_intensity_scan = peakutils.centroid(peak_points.scan.astype(float), peak_points.intensity)
                                 centre_of_intensity_rt = peakutils.centroid(peak_points.retention_time_secs.astype(float), peak_points.intensity)
 
