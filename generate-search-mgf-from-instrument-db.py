@@ -578,7 +578,7 @@ if process_this_step(this_step=step_name, first_step=args.operation):
         destination_db_name = feature_batch_df.iloc[idx].db
         feature_lower = feature_batch_df.iloc[idx].lower
         feature_upper = feature_batch_df.iloc[idx].upper
-        match_precursor_ms2_peaks_processes.append("python -u ./otf-peak-detect/match-precursor-ms2-peaks.py -ddb '{}' -sdb '{}' -fl {} -fu {} -fps {}".format(destination_db_name, feature_database_name, feature_lower, feature_upper, frames_per_second))
+        match_precursor_ms2_peaks_processes.append("python -u ./otf-peak-detect/match-precursor-ms2-peaks.py -ddb '{}' -sdb '{}' -fl {} -fu {}".format(destination_db_name, feature_database_name, feature_lower, feature_upper))
 
     print("matching precursor ms2 peaks...")
     pool.map(run_process, match_precursor_ms2_peaks_processes)
