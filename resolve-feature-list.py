@@ -112,7 +112,7 @@ db_conn = sqlite3.connect(args.feature_region_database)
 db_conn.cursor().execute("DROP TABLE IF EXISTS feature_isotopes")
 db_conn.cursor().execute("CREATE TABLE feature_isotopes (feature_id INTEGER, feature_region_peak_id INTEGER, centroid_scan REAL, centroid_rt REAL, centroid_mz REAL, peak_summed_intensity INTEGER, PRIMARY KEY(feature_id, feature_region_peak_id))")
 db_conn.cursor().execute("DROP TABLE IF EXISTS feature_list")
-db_conn.cursor().execute("CREATE TABLE feature_list (feature_id INTEGER, charge_state INTEGER, monoisotopic_mass REAL, centroid_scan REAL, centroid_rt REAL, centroid_mz REAL, start_rt, end_rt, scan_lower, scan_upper, summed_intensity INTEGER, isotope_count INTEGER, PRIMARY KEY(feature_id))")
+db_conn.cursor().execute("CREATE TABLE feature_list (feature_id INTEGER, charge_state INTEGER, monoisotopic_mass REAL, centroid_scan REAL, centroid_rt REAL, centroid_mz REAL, base_peak_centroid_mz REAL, start_rt, end_rt, scan_lower, scan_upper, summed_intensity INTEGER, isotope_count INTEGER, PRIMARY KEY(feature_id))")
 db_conn.close()
 
 for feature_id in range(args.feature_id_lower, args.feature_id_upper+1):
@@ -275,7 +275,7 @@ for feature_id in range(args.feature_id_lower, args.feature_id_upper+1):
             isotope_count = len(cluster_df)
 
             # add the feature to the list
-            feature_list.append((feature_id, charge_state, monoisotopic_mass, feature_centroid_scan, feature_centroid_rt, feature_centroid_mz, start_rt, end_rt, scan_lower, scan_upper, feature_summed_intensity, isotope_count))
+            feature_list.append((feature_id, charge_state, monoisotopic_mass, feature_centroid_scan, feature_centroid_rt, feature_centroid_mz, base_peak_centroid_mz, start_rt, end_rt, scan_lower, scan_upper, feature_summed_intensity, isotope_count))
         else:
             print("feature {}: there are no ms1 peaks remaining, so we're not including this feature.".format(feature_id))
     else:
@@ -289,7 +289,7 @@ db_conn.cursor().executemany("INSERT INTO feature_isotopes VALUES (?, ?, ?, ?, ?
 
 # ... and the feature list
 print("writing out the feature list...")
-db_conn.cursor().executemany("INSERT INTO feature_list VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", feature_list)
+db_conn.cursor().executemany("INSERT INTO feature_list VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", feature_list)
 
 db_conn.commit()
 db_conn.close()
