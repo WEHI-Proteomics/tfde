@@ -15,7 +15,6 @@ parser.add_argument('-ddb','--destination_database_name', type=str, help='The na
 parser.add_argument('-fl','--feature_id_lower', type=int, help='Lower feature ID to process.', required=True)
 parser.add_argument('-fu','--feature_id_upper', type=int, help='Upper feature ID to process.', required=True)
 parser.add_argument('-ppm','--mz_tolerance_ppm', type=int, default=2, help='m/z matching tolerance in PPM.', required=False)
-parser.add_argument('-fps','--frames_per_second', type=float, help='Effective frame rate for the summed frames.', required=True)
 args = parser.parse_args()
 
 ddb_conn = sqlite3.connect(args.destination_database_name)
@@ -39,7 +38,7 @@ for arg in vars(args):
 print("Setting up tables and indexes")
 ddb_c.execute("DROP TABLE IF EXISTS precursor_ms2_peak_matches")
 ddb_c.execute("DROP TABLE IF EXISTS precursor_ms2_peak_matches_info")
-ddb_c.execute("CREATE TABLE precursor_ms2_peak_matches (feature_id INTEGER, base_peak_id INTEGER, ms2_peak_id INTEGER, mz_delta REAL, scan_delta REAL, PRIMARY KEY (feature_id, base_peak_id))")
+ddb_c.execute("CREATE TABLE precursor_ms2_peak_matches (feature_id INTEGER, ms2_peak_id INTEGER, mz_delta REAL, scan_delta REAL, PRIMARY KEY (feature_id, base_peak_id))")
 ddb_c.execute("CREATE TABLE precursor_ms2_peak_matches_info (item TEXT, value TEXT)")
 
 start_run = time.time()
@@ -51,36 +50,33 @@ print("found features {}-{}".format(np.min(features_df.feature_id), np.max(featu
 peak_matches = []
 
 print("Finding precursor base peaks in ms2")
-for feature_ids_idx in range(0,len(features_df)):
-    feature_id = features_df.loc[feature_ids_idx].feature_id.astype(int)
-    base_peak_id = features_df.loc[feature_ids_idx].base_peak_id.astype(int)
-    print("Matching the base peak for feature {}".format(feature_id))
+for feature_idx in range(0,len(features_df)):
+    feature_id = features_df.iloc[feature_idx].feature_id.astype(int)
+    ms1_centroid_mz = features_df.iloc[feature_idx].centroid_mz.astype(float)
+    ms1_centroid_scan = features_df.iloc[feature_idx].centroid_scan.astype(float)
 
-    # get the info about the base peak
-    ms1_peak_df = pd.read_sql_query("select * from ms1_feature_region_peaks where feature_id={} and peak_id={}".format(feature_id,base_peak_id), ddb_conn)
-    base_centroid_mz = ms1_peak_df.loc[0].centroid_mz.astype(float)
-    base_centroid_scan = ms1_peak_df.loc[0].centroid_scan.astype(float)
+    print("Matching the base peak for feature {}".format(feature_id))
 
     # read all the ms2 peaks for this feature
     ms2_peaks_df = pd.read_sql_query("select * from ms2_peaks where feature_id={}".format(feature_id), ddb_conn)
 
     if len(ms2_peaks_df) > 0:
         # find the matching ms2 peaks within tolerance
-        ms2_peaks_df['mz_delta'] = abs(ms2_peaks_df.centroid_mz - base_centroid_mz)
-        indexes_to_drop = ms2_peaks_df.mz_delta > (args.mz_tolerance_ppm * 10**-6 * base_centroid_mz)
+        ms2_peaks_df['mz_delta'] = abs(ms2_peaks_df.centroid_mz - ms1_centroid_mz)
+        indexes_to_drop = ms2_peaks_df.mz_delta > (args.mz_tolerance_ppm * 10**-6 * ms1_centroid_mz)
         ms2_peaks_df.drop(ms2_peaks_df.index[indexes_to_drop], inplace=True)
         ms2_peaks_df.sort_values(by='mz_delta', ascending=True, inplace=True)
         ms2_peaks_df.reset_index(drop=True, inplace=True)
 
         if len(ms2_peaks_df) > 0:
-            ms2_peaks_df['scan_delta'] = ms2_peaks_df.centroid_scan - base_centroid_scan
+            ms2_peaks_df['scan_delta'] = ms2_peaks_df.centroid_scan - ms1_centroid_scan
             ms2_peak_id = ms2_peaks_df.peak_id.loc[0]
             mz_delta = ms2_peaks_df.mz_delta.loc[0]
             scan_delta = ms2_peaks_df.scan_delta.loc[0]
-            peak_matches.append((feature_id, base_peak_id, ms2_peak_id, mz_delta, scan_delta))
+            peak_matches.append((feature_id, ms2_peak_id, mz_delta, scan_delta))
 
 print("Writing out the peak matches")
-ddb_c.executemany("INSERT INTO precursor_ms2_peak_matches VALUES (?, ?, ?, ?, ?)", peak_matches)
+ddb_c.executemany("INSERT INTO precursor_ms2_peak_matches VALUES (?, ?, ?, ?)", peak_matches)
 
 stop_run = time.time()
 print("{:.2f} seconds to match peaks for features {} to {}".format(stop_run-start_run, args.feature_id_lower, args.feature_id_upper))
