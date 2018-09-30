@@ -260,7 +260,7 @@ for feature_id in range(args.feature_id_lower, args.feature_id_upper+1):
                 feature_isotopes_list.append((feature_id, peak_id, centroid_scan, centroid_rt, centroid_mz, peak_summed_intensity))
 
             # get the base peak attributes
-            base_peak_centroid_mz = cluster_df.iloc[cluster_df.summed_intensity.idxmax()].mz
+            base_peak_centroid_mz = cluster_df.iloc[cluster_df.summed_intensity.idxmax()].mz_centroid
 
             # Collect the feature's attributes. Centroids are calculated using the raw points.
             feature_points_df = summed_ms1_region_df.loc[summed_ms1_region_df.feature_id==feature_id]
