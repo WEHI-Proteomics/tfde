@@ -50,17 +50,17 @@ print("found features {}-{}".format(np.min(features_df.feature_id), np.max(featu
 peak_matches = []
 
 print("Finding precursor base peaks in ms2")
-for feature_idx in range(0,len(features_df)):
+for feature_idx in range(len(features_df)):
     feature_id = features_df.iloc[feature_idx].feature_id.astype(int)
     ms1_centroid_mz = features_df.iloc[feature_idx].centroid_mz.astype(float)
     ms1_centroid_scan = features_df.iloc[feature_idx].centroid_scan.astype(float)
 
-    print("Matching the precursor for feature {}".format(feature_id))
+    print("Matching the precursor for feature {} (mz {}, scan {})".format(feature_id, ms1_centroid_mz, ms1_centroid_scan))
 
     # read all the ms2 peaks for this feature
     ms2_peaks_df = pd.read_sql_query("select * from ms2_peaks where feature_id={}".format(feature_id), ddb_conn)
     print("loaded {} ms2 peaks for feature {}".format(len(ms2_peaks_df), feature_id))
-    
+
     if len(ms2_peaks_df) > 0:
         # find the matching ms2 peaks within tolerance
         ms2_peaks_df['mz_delta'] = abs(ms2_peaks_df.centroid_mz - ms1_centroid_mz)
