@@ -48,14 +48,11 @@ def main():
     print("Setting up tables")
     src_c.execute("DROP TABLE IF EXISTS peak_correlation")
     src_c.execute("DROP TABLE IF EXISTS peak_correlation_info")
-    src_c.execute("CREATE TABLE peak_correlation (feature_id INTEGER, base_peak_id INTEGER, ms1_scan_centroid REAL, ms1_rt_centroid REAL, ms2_peak_id INTEGER, ms2_scan_centroid REAL, ms2_rt_centroid REAL, scan_delta REAL, rt_delta REAL, correlation REAL, PRIMARY KEY (feature_id, base_peak_id, ms2_peak_id))")
+    src_c.execute("CREATE TABLE peak_correlation (feature_id INTEGER, ms1_scan_centroid REAL, ms1_rt_centroid REAL, ms2_peak_id INTEGER, ms2_scan_centroid REAL, ms2_rt_centroid REAL, scan_delta REAL, rt_delta REAL, correlation REAL, PRIMARY KEY (feature_id, base_peak_id, ms2_peak_id))")
     src_c.execute("CREATE TABLE peak_correlation_info (item TEXT, value TEXT)")
 
     print("Setting up indexes")
     src_c.execute("CREATE INDEX IF NOT EXISTS idx_feature_list_1 ON feature_list (feature_id)")
-    src_c.execute("CREATE INDEX IF NOT EXISTS idx_summed_ms1_regions_3 ON summed_ms1_regions (feature_id, peak_id)")
-    src_c.execute("CREATE INDEX IF NOT EXISTS idx_ms1_feature_frame_join_1 ON ms1_feature_frame_join (feature_id)")
-
     src_c.execute("CREATE INDEX IF NOT EXISTS idx_ms2_peaks_1 ON ms2_peaks (feature_id)")
 
     start_run = time.time()
@@ -70,7 +67,6 @@ def main():
         feature_start_time = time.time()
 
         feature_id = feature_list_df.loc[feature_ids_idx].feature_id.astype(int)
-        base_peak_id = feature_list_df.loc[feature_ids_idx].base_peak_id.astype(int)
         ms1_centroid_scan = feature_list_df.loc[feature_ids_idx].base_peak_centroid_scan
         ms1_centroid_rt = feature_list_df.loc[feature_ids_idx].base_peak_centroid_rt
 
@@ -99,7 +95,7 @@ def main():
                 scan_delta = ms2_peaks_df.loc[ms2_peak_idx].scan_delta
                 rt_delta = ms2_peaks_df.loc[ms2_peak_idx].rt_delta
                 correlation = ms2_peaks_df.loc[ms2_peak_idx].correlation
-                peak_correlation.append((feature_id, base_peak_id, ms1_centroid_scan, ms1_centroid_rt, ms2_peak_id, ms2_centroid_scan, ms2_centroid_rt, scan_delta, rt_delta, correlation))
+                peak_correlation.append((feature_id, ms1_centroid_scan, ms1_centroid_rt, ms2_peak_id, ms2_centroid_scan, ms2_centroid_rt, scan_delta, rt_delta, correlation))
 
         feature_stop_time = time.time()
         print("processed feature {} in {} seconds".format(feature_id, feature_stop_time-feature_start_time))
