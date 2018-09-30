@@ -259,7 +259,7 @@ for feature_id in range(args.feature_id_lower, args.feature_id_upper+1):
                 centroid_mz = peakutils.centroid(peak_points_df.mz.astype(float), peak_points_df.intensity)
                 feature_isotopes_list.append((feature_id, peak_id, centroid_scan, centroid_rt, centroid_mz, peak_summed_intensity))
 
-            # collect the feature's attributes
+            # Collect the feature's attributes. Centroids are calculated using the raw points.
             feature_points_df = summed_ms1_region_df.loc[summed_ms1_region_df.feature_id==feature_id]
             feature_centroid_scan = peakutils.centroid(feature_points_df.scan.astype(float), feature_points_df.intensity)
             feature_centroid_rt = peakutils.centroid(feature_points_df.retention_time_secs.astype(float), feature_points_df.intensity)
@@ -289,8 +289,7 @@ db_conn.close()
 
 stop_run = time.time()
 
-info.append(("features resolved", len(feature_list_df)))
-
+info.append(("features resolved", len(feature_list)))
 info.append(("run processing time (sec)", stop_run-start_run))
 info.append(("processed", time.ctime()))
 info.append(("processor", parser.prog))
