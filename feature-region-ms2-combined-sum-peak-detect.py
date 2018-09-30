@@ -29,6 +29,7 @@ FRAME_ID_IDX = 0
 FRAME_MZ_IDX = 1
 FRAME_SCAN_IDX = 2
 FRAME_INTENSITY_IDX = 3
+FRAME_RT_IDX = 4
 
 # to avoid warnings about assigning to a dataframe view not being reflected in the original
 pd.options.mode.chained_assignment = None
@@ -139,7 +140,7 @@ def main():
 
                 # Load the MS2 frame points for the feature's region
                 ms2_frame_ids_df = pd.read_sql_query("select frame_id from frame_properties where retention_time_secs >= {} and retention_time_secs <= {} and collision_energy == {} order by frame_id".format(feature_start_rt, feature_end_rt, args.ms1_collision_energy), conv_conn)
-                frame_df = pd.read_sql_query("select frame_id,mz,scan,intensity,point_id from frames where frame_id in {} and scan <= {} and scan >= {} order by scan,mz;".format(tuple(ms2_frame_ids_df.frame_id), feature_scan_upper, feature_scan_lower), conv_conn)
+                frame_df = pd.read_sql_query("select frame_id,mz,scan,intensity,point_id,retention_time_secs from frames where frame_id in {} and scan <= {} and scan >= {} order by scan,mz;".format(tuple(ms2_frame_ids_df.frame_id), feature_scan_upper, feature_scan_lower), conv_conn)
                 if len(frame_df) > 0:
                     # scale the m/z values and make them integers
                     frame_df['scaled_mz'] = frame_df.mz * args.mz_scaling_factor
