@@ -245,9 +245,12 @@ for feature_id in range(args.feature_id_lower, args.feature_id_upper+1):
 
             summed_ms1_region_df = pd.merge(summed_ms1_region_df, raw_frames_df, how='left', left_on=['raw_frame_point'], right_on=['raw_frame_point'])
             summed_ms1_region_df.drop(['peak_id','frame_id','raw_frame_point','point_id'], axis=1, inplace=True)
+            print("summed region points {}".format(len(summed_ms1_region_df)))
 
-            print("summed_ms1_region_df {}".format(summed_ms1_region_df.info()))
-            print("cluster_df {}".format(cluster_df.info()))
+            # summed_ms1_region_df.info()
+            # cluster_df.info()
+
+            print("cluster peaks {}".format(len(cluster_df)))
 
             # for each feature peak, use the raw points to find the RT and drift intensity-weighted centroids
             for peak_idx in range(len(cluster_df)):
@@ -285,6 +288,7 @@ db_conn.cursor().executemany("INSERT INTO feature_isotopes VALUES (?, ?, ?, ?, ?
 print("writing out the feature list...")
 db_conn.cursor().executemany("INSERT INTO feature_list VALUES (?, ?, ?, ?, ?, ?, ?, ?)", feature_list)
 
+db_conn.commit()
 db_conn.close()
 
 stop_run = time.time()
