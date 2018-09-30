@@ -44,18 +44,9 @@ except AttributeError:
     def profile(func): return func
     __builtin__.profile = profile
 
-
 def standard_deviation(mz):
     instrument_resolution = 40000.0
     return int((mz / instrument_resolution) / 2.35482)
-
-# Find the source MS2 frame IDs corresponding to the specified summed MS1 frame ID
-def ms2_frame_ids_from_ms1_frame_id(ms1_frame_id, frames_to_sum, frame_summing_offset):
-
-    # find the set of frames summed to make this MS1 frame
-    lower_source_frame_index = (ms1_frame_id-1) * frame_summing_offset
-    upper_source_frame_index = lower_source_frame_index + frames_to_sum
-    return tuple(ms2_frame_ids_v[lower_source_frame_index:upper_source_frame_index,0])
 
 @profile
 def main():
