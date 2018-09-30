@@ -55,11 +55,12 @@ for feature_idx in range(0,len(features_df)):
     ms1_centroid_mz = features_df.iloc[feature_idx].centroid_mz.astype(float)
     ms1_centroid_scan = features_df.iloc[feature_idx].centroid_scan.astype(float)
 
-    print("Matching the base peak for feature {}".format(feature_id))
+    print("Matching the precursor for feature {}".format(feature_id))
 
     # read all the ms2 peaks for this feature
     ms2_peaks_df = pd.read_sql_query("select * from ms2_peaks where feature_id={}".format(feature_id), ddb_conn)
-
+    print("loaded {} ms2 peaks for feature {}".format(len(ms2_peaks_df), feature_id))
+    
     if len(ms2_peaks_df) > 0:
         # find the matching ms2 peaks within tolerance
         ms2_peaks_df['mz_delta'] = abs(ms2_peaks_df.centroid_mz - ms1_centroid_mz)
@@ -70,10 +71,12 @@ for feature_idx in range(0,len(features_df)):
 
         if len(ms2_peaks_df) > 0:
             ms2_peaks_df['scan_delta'] = ms2_peaks_df.centroid_scan - ms1_centroid_scan
-            ms2_peak_id = ms2_peaks_df.peak_id.loc[0]
-            mz_delta = ms2_peaks_df.mz_delta.loc[0]
-            scan_delta = ms2_peaks_df.scan_delta.loc[0]
+            ms2_peak_id = ms2_peaks_df.iloc[0].peak_id
+            mz_delta = ms2_peaks_df.iloc[0].mz_delta
+            scan_delta = ms2_peaks_df.iloc[0].scan_delta
             peak_matches.append((feature_id, ms2_peak_id, mz_delta, scan_delta))
+        else:
+            print("found no ms2 peaks within tolerance for feature {}".format(feature_id))
 
 print("Writing out the peak matches")
 ddb_c.executemany("INSERT INTO precursor_ms2_peak_matches VALUES (?, ?, ?, ?)", peak_matches)
