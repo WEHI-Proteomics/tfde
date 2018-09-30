@@ -106,8 +106,6 @@ def peak_ratio(monoisotopic_mass, peak_number, number_of_sulphur):
     return ratio
 
 feature_list = []
-feature_list_columns = ['feature_id', 'charge_state', 'monoisotopic_mass', 'base_peak_centroid_scan', 'base_peak_centroid_rt', 'base_peak_id', 'isotope_count', 'cluster_mz_centroid', 'cluster_summed_intensity', 'start_frame', 'end_frame', 'scan_lower', 'scan_upper', 'minimum_error', 'minimum_error_sulphur']
-
 feature_isotopes_list = []
 
 db_conn = sqlite3.connect(args.feature_region_database)
