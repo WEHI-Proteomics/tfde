@@ -38,7 +38,7 @@ for arg in vars(args):
 print("Setting up tables and indexes")
 ddb_c.execute("DROP TABLE IF EXISTS precursor_ms2_peak_matches")
 ddb_c.execute("DROP TABLE IF EXISTS precursor_ms2_peak_matches_info")
-ddb_c.execute("CREATE TABLE precursor_ms2_peak_matches (feature_id INTEGER, ms2_peak_id INTEGER, mz_delta REAL, scan_delta REAL, PRIMARY KEY (feature_id, base_peak_id))")
+ddb_c.execute("CREATE TABLE precursor_ms2_peak_matches (feature_id INTEGER, ms2_peak_id INTEGER, mz_delta REAL, scan_delta REAL, PRIMARY KEY (feature_id))")
 ddb_c.execute("CREATE TABLE precursor_ms2_peak_matches_info (item TEXT, value TEXT)")
 
 start_run = time.time()
