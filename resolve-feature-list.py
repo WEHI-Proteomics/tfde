@@ -246,10 +246,13 @@ for feature_id in range(args.feature_id_lower, args.feature_id_upper+1):
             summed_ms1_region_df = pd.merge(summed_ms1_region_df, raw_frames_df, how='left', left_on=['raw_frame_point'], right_on=['raw_frame_point'])
             summed_ms1_region_df.drop(['peak_id','frame_id','raw_frame_point','point_id'], axis=1, inplace=True)
 
+            print("summed_ms1_region_df {}".format(summed_ms1_region_df.info()))
+            print("cluster_df {}".format(cluster_df.info()))
+
             # for each feature peak, use the raw points to find the RT and drift intensity-weighted centroids
             for peak_idx in range(len(cluster_df)):
                 peak_id = cluster_df.iloc[peak_idx].peak_id
-                peak_summed_intensity = cluster_df.iloc[peak_idx].intensity
+                peak_summed_intensity = cluster_df.iloc[peak_idx].summed_intensity
                 peak_points_df = summed_ms1_region_df.loc[summed_ms1_region_df.feature_peak_id==peak_id]
                 centroid_scan = peakutils.centroid(peak_points_df.scan.astype(float), peak_points_df.intensity)
                 centroid_rt = peakutils.centroid(peak_points_df.retention_time_secs.astype(float), peak_points_df.intensity)
