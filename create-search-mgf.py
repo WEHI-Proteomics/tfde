@@ -17,6 +17,7 @@ parser = argparse.ArgumentParser(description='A tree descent method for MS2 peak
 parser.add_argument('-fdb','--features_database', type=str, help='The name of the features database.', required=True)
 parser.add_argument('-bfn','--base_mgf_filename', type=str, help='The base name of the MGF.', required=True)
 parser.add_argument('-dbd','--data_directory', type=str, help='The directory for the processing data.', required=True)
+parser.add_argument('-od','--output_directory', type=str, help='The directory for the output.', required=True)
 parser.add_argument('-mpc','--minimum_peak_correlation', type=float, default=0.6, help='Process ms2 peaks with at least this much correlation with the feature''s ms1 base peak.', required=False)
 args = parser.parse_args()
 
@@ -27,21 +28,15 @@ for arg in vars(args):
 
 start_run = time.time()
 
-mgf_directory = "{}/mgf".format(args.data_directory)
 hk_directory = "{}/hk".format(args.data_directory)
 search_headers_directory = "{}/search-headers".format(args.data_directory)
-output_directory = "{}/search".format(mgf_directory)
+output_directory = args.output_directory
 
-info.append(("mgf_directory", mgf_directory))
 info.append(("hk_directory", hk_directory))
 info.append(("search_headers_directory", search_headers_directory))
 info.append(("output_directory", output_directory))
 
 try:
-    # make sure the output directory exists
-    if not os.path.exists(output_directory):
-        os.makedirs(output_directory)    
-
     db_conn = sqlite3.connect(args.features_database)
     feature_ids_df = pd.read_sql_query("select feature_id from feature_list", db_conn)
     db_conn.cursor().execute("DROP TABLE IF EXISTS deconvoluted_ions")

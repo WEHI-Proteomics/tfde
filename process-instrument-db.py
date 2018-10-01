@@ -654,10 +654,16 @@ if process_this_step(this_step=step_name, first_step=args.operation):
         feature_lower = feature_batch_df.iloc[idx].lower
         feature_upper = feature_batch_df.iloc[idx].upper
         base_mgf_name = "features-{}-{}".format(feature_lower, feature_upper)
-        create_search_mgf_processes.append("python -u ./otf-peak-detect/create-search-mgf.py -fdb '{}' -bfn {} -dbd {}".format(destination_db_name, base_mgf_name, args.data_directory))
+        output_directory = "{}/mgf/search".format(args.data_directory)
+        create_search_mgf_processes.append("python -u ./otf-peak-detect/create-search-mgf.py -fdb '{}' -bfn {} -dbd {} -od {}".format(destination_db_name, base_mgf_name, args.data_directory, output_directory))
 
     # create search MGF
     step_start_time = time.time()
+
+    # make sure the output directory exists
+    if not os.path.exists(output_directory):
+        os.makedirs(output_directory)    
+
     print("creating the search MGF...")
     pool.map(run_process, create_search_mgf_processes)
     # now join them all together
