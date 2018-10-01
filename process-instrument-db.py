@@ -513,6 +513,7 @@ if process_this_step(this_step=step_name, first_step=args.operation):
         resolve_feature_list_processes.append("python -u ./otf-peak-detect/resolve-feature-list.py -fdb '{}' -frdb '{}' -fl {} -fu {}".format(feature_database_name, destination_db_name, feature_lower, feature_upper))
 
     print("resolving the feature list...")
+    run_process("python -u ./otf-peak-detect/resolve-feature-list-prep.py -cdb '{}'".format(converted_database_name))
     pool.map(run_process, resolve_feature_list_processes)
 
     # write out the feature lists as a global CSV
@@ -621,7 +622,6 @@ if process_this_step(this_step=step_name, first_step=args.operation):
         peak_correlation_processes.append("python -u ./otf-peak-detect/correlate-ms2-peaks.py -db '{}' -cdb '{}' -fl {} -fu {}".format(destination_db_name, converted_database_name, feature_lower, feature_upper))
     
     print("correlating peaks...")
-    run_process("python -u ./otf-peak-detect/correlate-ms2-peaks-prep.py -cdb '{}'".format(converted_database_name))
     pool.map(run_process, peak_correlation_processes)
     step_stop_time = time.time()
     processing_times.append((step_name, round(step_stop_time-step_start_time,1)))

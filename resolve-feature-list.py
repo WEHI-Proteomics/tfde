@@ -109,6 +109,9 @@ feature_list = []
 feature_isotopes_list = []
 
 db_conn = sqlite3.connect(args.feature_region_database)
+db_conn.cursor().execute("DROP INDEX IF EXISTS idx_ms1_feature_frame_join_1")
+db_conn.cursor().execute("CREATE INDEX idx_ms1_feature_frame_join_1 ON ms1_feature_frame_join (feature_id)")
+
 db_conn.cursor().execute("DROP TABLE IF EXISTS feature_isotopes")
 db_conn.cursor().execute("CREATE TABLE feature_isotopes (feature_id INTEGER, feature_region_peak_id INTEGER, centroid_scan REAL, centroid_rt REAL, centroid_mz REAL, peak_summed_intensity INTEGER, PRIMARY KEY(feature_id, feature_region_peak_id))")
 db_conn.cursor().execute("DROP TABLE IF EXISTS feature_list")
