@@ -64,7 +64,7 @@ for feature_idx in range(len(features_df)):
 
     if len(ms2_peaks_df) > 0:
         # find the matching ms2 peaks within tolerance
-        ms2_peaks_df['mz_delta'] = abs(ms2_peaks_df.centroid_mz - ms1_centroid_mz)
+        ms2_peaks_df['mz_delta'] = abs(ms2_peaks_df.centroid_mz - base_peak_centroid_mz)
         indexes_to_drop = ms2_peaks_df.mz_delta > (args.mz_tolerance_ppm * 10**-6 * base_peak_centroid_mz)
         ms2_peaks_df.drop(ms2_peaks_df.index[indexes_to_drop], inplace=True)
         ms2_peaks_df.sort_values(by='mz_delta', ascending=True, inplace=True)
