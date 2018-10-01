@@ -48,7 +48,7 @@ def main():
     print("Setting up tables")
     src_c.execute("DROP TABLE IF EXISTS peak_correlation")
     src_c.execute("DROP TABLE IF EXISTS peak_correlation_info")
-    src_c.execute("CREATE TABLE peak_correlation (feature_id INTEGER, ms1_scan_centroid REAL, ms1_rt_centroid REAL, ms2_peak_id INTEGER, ms2_scan_centroid REAL, ms2_rt_centroid REAL, scan_delta REAL, rt_delta REAL, correlation REAL, PRIMARY KEY (feature_id, base_peak_id, ms2_peak_id))")
+    src_c.execute("CREATE TABLE peak_correlation (feature_id INTEGER, ms1_scan_centroid REAL, ms1_rt_centroid REAL, ms2_peak_id INTEGER, ms2_scan_centroid REAL, ms2_rt_centroid REAL, scan_delta REAL, rt_delta REAL, correlation REAL, PRIMARY KEY (feature_id, ms2_peak_id))")
     src_c.execute("CREATE TABLE peak_correlation_info (item TEXT, value TEXT)")
 
     print("Setting up indexes")
