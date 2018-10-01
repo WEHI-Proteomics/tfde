@@ -54,6 +54,7 @@ for feature_idx in range(len(features_df)):
     feature_id = features_df.iloc[feature_idx].feature_id.astype(int)
     ms1_centroid_mz = features_df.iloc[feature_idx].centroid_mz.astype(float)
     ms1_centroid_scan = features_df.iloc[feature_idx].centroid_scan.astype(float)
+    # Note: we get more matches when we use the base peak cf the feature centroid
     base_peak_centroid_mz = features_df.iloc[feature_idx].base_peak_centroid_mz.astype(float)
 
     print("Matching the precursor for feature {} (mz {}, scan {})".format(feature_id, base_peak_centroid_mz, ms1_centroid_scan))
