@@ -526,6 +526,19 @@ if process_this_step(this_step=step_name, first_step=args.operation):
             df.to_csv(csv_file_name, mode='a', sep=',', index=False, header=False)
         db_conn.close()
 
+    # write out the feature isotopes as a global CSV
+    csv_file_name = "{}/{}-feature-isotopes.csv".format(args.data_directory, args.database_base_name)
+    for idx in range(len(feature_batch_df)):
+        destination_db_name = feature_batch_df.iloc[idx].db
+        db_conn = sqlite3.connect(destination_db_name)
+        print("writing feature isotopes from {} to {}".format(destination_db_name, csv_file_name))
+        df = pd.read_sql_query("select * from feature_isotopes", db_conn)
+        if idx == 0:
+            df.to_csv(csv_file_name, mode='w', sep=',', index=False, header=True)
+        else:
+            df.to_csv(csv_file_name, mode='a', sep=',', index=False, header=False)
+        db_conn.close()
+
     step_stop_time = time.time()
     processing_times.append((step_name, round(step_stop_time-step_start_time,1)))
 
@@ -649,12 +662,12 @@ step_name = 'create_search_mgf'
 if process_this_step(this_step=step_name, first_step=args.operation):
     print("Starting the \'{}\' step".format(step_name))
     create_search_mgf_processes = []
+    output_directory = "{}/mgf/search".format(args.data_directory)
     for idx in range(len(feature_batch_df)):
         destination_db_name = feature_batch_df.iloc[idx].db
         feature_lower = feature_batch_df.iloc[idx].lower
         feature_upper = feature_batch_df.iloc[idx].upper
         base_mgf_name = "features-{}-{}".format(feature_lower, feature_upper)
-        output_directory = "{}/mgf/search".format(args.data_directory)
         create_search_mgf_processes.append("python -u ./otf-peak-detect/create-search-mgf.py -fdb '{}' -bfn {} -dbd {} -od {}".format(destination_db_name, base_mgf_name, args.data_directory, output_directory))
 
     # create search MGF
