@@ -10,6 +10,7 @@ import numpy as np
 import sys
 import json
 import glob
+import shutil
 
 def run_process(process):
     print("Executing: {}".format(process))
@@ -204,9 +205,10 @@ if (args.operation is None):
 if (args.final_operation is None):
     args.final_operation = steps[-1]
 
-# make sure the processing directories exist
-if not os.path.exists(args.data_directory):
-    os.makedirs(args.data_directory)
+# clean up the data directory from any previous runs
+if os.path.exists(args.data_directory):
+    shutil.rmtree(args.data_directory)
+os.makedirs(args.data_directory)
 
 converted_database_name = "{}/{}.sqlite".format(args.data_directory, args.database_base_name)
 frame_database_root = "{}/{}-frames".format(args.data_directory, args.database_base_name)  # used to split the data into frame-based sections
