@@ -21,7 +21,6 @@ parser.add_argument('-fdb','--features_database', type=str, help='The name of th
 parser.add_argument('-frdb','--feature_region_database', type=str, help='The name of the feature region database.', required=True)
 parser.add_argument('-dbd','--data_directory', type=str, help='The directory for the processing data.', required=True)
 parser.add_argument('-mpc','--minimum_peak_correlation', type=float, default=0.6, help='Process ms2 peaks with at least this much correlation with the feature''s ms1 base peak.', required=False)
-parser.add_argument('-fps','--frames_per_second', type=float, help='Effective frame rate.', required=True)
 parser.add_argument('-nrtd','--negative_rt_delta_tolerance', type=float, default=-0.25, help='The negative RT delta tolerance.', required=False)
 parser.add_argument('-prtd','--positive_rt_delta_tolerance', type=float, default=0.25, help='The positive RT delta tolerance.', required=False)
 parser.add_argument('-nsd','--negative_scan_delta_tolerance', type=float, default=-4.0, help='The negative scan delta tolerance.', required=False)
@@ -65,10 +64,9 @@ if len(feature_list_df) > 0:
     for feature_list_idx in range(0,len(feature_list_df)):
         feature_id = feature_list_df.loc[feature_list_idx].feature_id.astype(int)
         charge_state = feature_list_df.loc[feature_list_idx].charge_state.astype(int)
-        cluster_mz_centroid = feature_list_df.loc[feature_list_idx].cluster_mz_centroid
-        cluster_summed_intensity = feature_list_df.loc[feature_list_idx].cluster_summed_intensity.astype(int)
-        retention_time_secs = feature_list_df.loc[feature_list_idx].base_peak_centroid_rt
-        base_frame_number = int(retention_time_secs * args.frames_per_second)
+        cluster_mz_centroid = feature_list_df.loc[feature_list_idx].centroid_mz
+        cluster_summed_intensity = feature_list_df.loc[feature_list_idx].summed_intensity.astype(int)
+        retention_time_secs = feature_list_df.loc[feature_list_idx].centroid_rt
 
         print("Generating Hardklor file for feature {} ({}% complete)".format(feature_id, round(float(feature_id-feature_id_lower)/(feature_id_upper-feature_id_lower+1)*100,1)))
 
@@ -98,7 +96,7 @@ if len(feature_list_df) > 0:
                 params["PEPMASS"] = "{} {}".format(round(cluster_mz_centroid,6), cluster_summed_intensity)
                 params["CHARGE"] = "{}+".format(charge_state)
                 params["RTINSECONDS"] = "{}".format(retention_time_secs)
-                params["SCANS"] = "{}".format(base_frame_number)
+                params["SCANS"] = "{}".format(int(retention_time_secs))
                 spectrum["params"] = params
                 spectra.append(spectrum)
 
