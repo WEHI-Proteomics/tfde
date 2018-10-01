@@ -627,7 +627,7 @@ if process_this_step(this_step=step_name, first_step=args.operation):
     deconvolve_ms2_spectra_processes = []
     for idx in range(len(feature_batch_df)):
         destination_db_name = feature_batch_df.iloc[idx].db
-        deconvolve_ms2_spectra_processes.append("python -u ./otf-peak-detect/deconvolve-ms2-spectra.py -fdb '{}' -frdb '{}' -dbd {} -fps {} -mnp {} -nrtd {} -prtd {} -nsd {} -psd {}".format(feature_database_name, destination_db_name, args.data_directory, frames_per_second, args.maximum_number_of_peaks_per_feature, args.negative_rt_delta_tolerance, args.positive_rt_delta_tolerance, args.negative_scan_delta_tolerance, args.positive_scan_delta_tolerance))
+        deconvolve_ms2_spectra_processes.append("python -u ./otf-peak-detect/deconvolve-ms2-spectra.py -fdb '{}' -frdb '{}' -dbd {} -mnp {} -nrtd {} -prtd {} -nsd {} -psd {}".format(feature_database_name, destination_db_name, args.data_directory, args.maximum_number_of_peaks_per_feature, args.negative_rt_delta_tolerance, args.positive_rt_delta_tolerance, args.negative_scan_delta_tolerance, args.positive_scan_delta_tolerance))
 
     # deconvolve the ms2 spectra with Hardklor
     step_start_time = time.time()
