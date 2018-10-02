@@ -205,11 +205,6 @@ if (args.operation is None):
 if (args.final_operation is None):
     args.final_operation = steps[-1]
 
-# clean up the data directory from any previous runs
-if os.path.exists(args.data_directory):
-    shutil.rmtree(args.data_directory)
-os.makedirs(args.data_directory)
-
 converted_database_name = "{}/{}.sqlite".format(args.data_directory, args.database_base_name)
 frame_database_root = "{}/{}-frames".format(args.data_directory, args.database_base_name)  # used to split the data into frame-based sections
 frame_database_name = converted_database_name  # combined the frame-based sections back into the converted database
@@ -238,7 +233,12 @@ if process_this_step(this_step=step_name, first_step=args.operation):
     print("Starting the \'{}\' step".format(step_name))
     step_start_time = time.time()
 
-    # make sure the processing directories exist
+    # clean up the data directory from any previous runs
+    if os.path.exists(args.data_directory):
+        shutil.rmtree(args.data_directory)
+    os.makedirs(args.data_directory)
+
+    # make sure the instrument database exists
     if not os.path.exists(args.instrument_database_name):
         print("Error - the instrument database directory does not exist. Exiting.")
         cleanup(info, processing_times, args.shutdown_on_completion)
