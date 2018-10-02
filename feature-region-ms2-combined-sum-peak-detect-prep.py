@@ -14,10 +14,13 @@ conv_c = conv_conn.cursor()
 
 # Set up the tables if they don't exist already
 print("Setting up indexes")
-conv_c.execute("CREATE INDEX IF NOT EXISTS idx_frame_properties_2 ON frame_properties (collision_energy, frame_id)")
-conv_c.execute("CREATE INDEX IF NOT EXISTS idx_frames_2 ON frames (frame_id,scan)")
+conv_c.execute("DROP INDEX IF EXISTS idx_frame_properties_2")
+conv_c.execute("DROP INDEX IF EXISTS idx_frames_2")
+conv_c.execute("DROP INDEX IF EXISTS idx_features_1")
 
-conv_c.execute("CREATE INDEX IF NOT EXISTS idx_features_1 ON features (feature_id,charge_state,mz_lower,mz_upper)")
+conv_c.execute("CREATE INDEX idx_frame_properties_2 ON frame_properties (retention_time_secs, collision_energy)")
+conv_c.execute("CREATE INDEX idx_frames_2 ON frames (frame_id,scan)")
+conv_c.execute("CREATE INDEX idx_features_1 ON features (feature_id,charge_state,mz_lower,mz_upper)")
 
 conv_conn.commit()
 conv_conn.close()

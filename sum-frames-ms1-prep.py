@@ -10,8 +10,11 @@ source_conn = sqlite3.connect(args.source_database_name)
 src_c = source_conn.cursor()
 
 print("Setting up indexes...")
-src_c.execute("CREATE INDEX IF NOT EXISTS idx_frame_properties ON frame_properties (collision_energy, frame_id)")
-src_c.execute("CREATE INDEX IF NOT EXISTS idx_frames ON frames (frame_id, mz, scan)")
+src_c.execute("DROP INDEX IF EXISTS idx_frame_properties")
+src_c.execute("DROP INDEX IF EXISTS idx_frames")
+
+src_c.execute("CREATE INDEX idx_frame_properties ON frame_properties (collision_energy, frame_id)")
+src_c.execute("CREATE INDEX idx_frames ON frames (frame_id, mz, scan)")
 
 source_conn.commit()
 source_conn.close()
