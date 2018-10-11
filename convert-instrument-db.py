@@ -68,6 +68,7 @@ df = pd.read_sql_query("SELECT Id FROM PropertyDefinitions WHERE PermanentName=\
 property_id = df.iloc[0].Id
 df = pd.read_sql_query("SELECT Value FROM GroupProperties WHERE Property={}".format(property_id), source_conn)
 ms1_collision_energy = df.iloc[0].Value
+print("ms1 collision energy: {}".format(ms1_collision_energy))
 
 # Get the collision energy property values
 q = source_conn.execute("SELECT Id FROM PropertyDefinitions WHERE PermanentName=\"{}\"".format(COLLISION_ENERGY_PROPERTY_NAME))
