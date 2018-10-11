@@ -37,9 +37,9 @@ print("Loading the frames information")
 frames_df = pd.read_sql_query("select Id,NumScans,Time from Frames order by Id ASC;", source_conn)
 
 # determine the elution time range, and trim the frames to suit
-if args.elution_start_sec is None:
+if (args.elution_start_sec is None) or (args.elution_start_sec == -1):
     args.elution_start_sec = int(frames_df.Time.min())
-if args.elution_end_sec is None:
+if (args.elution_end_sec is None) or (args.elution_end_sec == -1):
     args.elution_end_sec = int(frames_df.Time.max())
 frames_df = frames_df[(frames_df.Time >= args.elution_start_sec) & (frames_df.Time <= args.elution_end_sec)]
 

@@ -243,6 +243,12 @@ if process_this_step(this_step=step_name, first_step=args.operation):
         print("Error - the instrument database directory does not exist. Exiting.")
         cleanup(info, processing_times, args.shutdown_on_completion)
 
+    # check whether an elution period was specified
+    if args.elution_start_sec is None:
+        args.elution_start_sec = -1
+    if args.elution_end_sec is None:
+        args.elution_end_sec = -1
+
     run_process("python -u ./otf-peak-detect/convert-instrument-db.py -sdb '{}' -ddb '{}' -es {} -ee {} -bs {}".format(args.instrument_database_name, converted_database_name, args.elution_start_sec, args.elution_end_sec, args.conversion_batch_size))
 
     # gather statistics
