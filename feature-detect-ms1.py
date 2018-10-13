@@ -29,9 +29,6 @@ CLUSTER_RT_IDX = 11
 
 DELTA_MZ = 1.003355     # mass difference between Carbon-12 and Carbon-13 isotopes, in Da
 
-NOISE_ASSESSMENT_WIDTH_SECS = 1      # length of time in seconds to average the noise level
-NOISE_ASSESSMENT_OFFSET_SECS = 1     # offset in seconds from the end of the feature frames
-
 FEATURE_DISCOVERY_HISTORY_LENGTH = 100
 MAX_PROPORTION_POOR_QUALITY = 0.8   # stop looking if the proportion of poor quality features exceeds this level
 
@@ -51,8 +48,13 @@ def standard_deviation(mz):
 # find the corresponding indices in clusters_v for a given RT range
 def find_frame_indices(start_frame_rt, end_frame_rt):
     frame_indices = np.where((clusters_v[:,CLUSTER_RT_IDX] >= start_frame_rt) & (clusters_v[:,CLUSTER_RT_IDX] <= end_frame_rt))
-    start_frame_index = np.min(frame_indices)
-    end_frame_index = np.max(frame_indices)
+    if len(frame_indices) > 0:
+        start_frame_index = np.min(frame_indices)
+        end_frame_index = np.max(frame_indices)
+    else:
+        print("The noise evaluation window is too narrow for this data. Found no frames to use.")
+        start_frame_index = None
+        end_frame_index = None
     return (start_frame_index, end_frame_index)
 
 # returns True if the gap between points is within acceptable limit
@@ -184,8 +186,8 @@ def find_feature(base_index):
             print("evaluating noise level...")
 
             # update the noise estimate from the lower window
-            lower_noise_eval_rt_1 = feature_start_rt - (NOISE_ASSESSMENT_OFFSET_SECS+NOISE_ASSESSMENT_WIDTH_SECS)
-            upper_noise_eval_rt_1 = feature_start_rt - NOISE_ASSESSMENT_OFFSET_SECS
+            lower_noise_eval_rt_1 = feature_start_rt - (args.noise_assessment_offset_secs + args.noise_assessment_width_secs)
+            upper_noise_eval_rt_1 = feature_start_rt - args.noise_assessment_offset_secs
             print("feature start rt {}, lower window rt {}-{}".format(feature_start_rt, lower_noise_eval_rt_1, upper_noise_eval_rt_1))
             if (lower_noise_eval_rt_1 >= int(np.min(clusters_v[:,CLUSTER_RT_IDX]))):
                 # assess the noise level in this window
@@ -197,9 +199,9 @@ def find_feature(base_index):
                         noise_level_readings.append(noise_level_1)
 
             # update the noise estimate from the upper window
-            lower_noise_eval_rt_2 = feature_end_rt + NOISE_ASSESSMENT_OFFSET_SECS
-            upper_noise_eval_rt_2 = feature_end_rt + (NOISE_ASSESSMENT_OFFSET_SECS+NOISE_ASSESSMENT_WIDTH_SECS)
-            print("feature end rt {}, lower window rt {}-{}".format(feature_end_rt, lower_noise_eval_rt_2, upper_noise_eval_rt_2))
+            lower_noise_eval_rt_2 = feature_end_rt + args.noise_assessment_offset_secs
+            upper_noise_eval_rt_2 = feature_end_rt + (args.noise_assessment_offset_secs + args.noise_assessment_width_secs)
+            print("feature end rt {}, upper window rt {}-{}".format(feature_end_rt, lower_noise_eval_rt_2, upper_noise_eval_rt_2))
             if (upper_noise_eval_rt_2 <= int(np.max(clusters_v[:,CLUSTER_RT_IDX]))):
                 # assess the noise level in this window
                 (lower_noise_frame_2_index, upper_noise_frame_2_index) = find_frame_indices(lower_noise_eval_rt_2, upper_noise_eval_rt_2)
@@ -249,6 +251,8 @@ parser.add_argument('-mcs','--minimum_charge_state', type=int, default=2, help='
 parser.add_argument('-mfe','--magnitude_for_feature_endpoints', type=float, default=0.8, help='Proportion of a feature\'s magnitude to take for its endpoints', required=False)
 parser.add_argument('-nbf','--number_of_features', type=int, help='The number of features to find.', required=False)
 parser.add_argument('-bs','--batch_size', type=int, default=10000, help='The number of features to be written to the database.', required=False)
+parser.add_argument('-naw','--noise_assessment_width_secs', type=float, default=1.0, help='Length of time in seconds to average the noise level.', required=False)
+parser.add_argument('-nao','--noise_assessment_offset_secs', type=float, default=1.0, help='Offset in seconds from the end of the feature frames.', required=False)
 args = parser.parse_args()
 
 # Store the arguments as metadata in the database for later reference

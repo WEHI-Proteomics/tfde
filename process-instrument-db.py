@@ -173,6 +173,8 @@ parser.add_argument('-nrtd','--negative_rt_delta_tolerance', type=float, default
 parser.add_argument('-prtd','--positive_rt_delta_tolerance', type=float, default=0.25, help='The positive RT delta tolerance.', required=False)
 parser.add_argument('-nsd','--negative_scan_delta_tolerance', type=float, default=-4.0, help='The negative scan delta tolerance.', required=False)
 parser.add_argument('-psd','--positive_scan_delta_tolerance', type=float, default=4.0, help='The positive scan delta tolerance.', required=False)
+parser.add_argument('-naw','--noise_assessment_width_secs', type=float, default=1.0, help='Length of time in seconds to average the noise level for feature detection.', required=False)
+parser.add_argument('-nao','--noise_assessment_offset_secs', type=float, default=1.0, help='Offset in seconds from the end of the feature frames for feature detection.', required=False)
 args = parser.parse_args()
 
 processing_times = []
@@ -424,7 +426,7 @@ if process_this_step(this_step=step_name, first_step=args.operation):
     step_start_time = time.time()
 
     print("detecting features...")
-    run_process("python -u ./otf-peak-detect/feature-detect-ms1.py -db '{}' -mfl {} -ns {}".format(feature_database_name, args.minimum_feature_length_secs, args.number_of_seconds_each_side))
+    run_process("python -u ./otf-peak-detect/feature-detect-ms1.py -db '{}' -mfl {} -ns {} -naw {} -nao {}".format(feature_database_name, args.minimum_feature_length_secs, args.number_of_seconds_each_side, args.noise_assessment_width_secs, args.noise_assessment_offset_secs))
 
     step_stop_time = time.time()
     processing_times.append((step_name, round(step_stop_time-step_start_time,1)))
