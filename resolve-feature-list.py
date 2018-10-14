@@ -199,92 +199,97 @@ for feature_id in range(args.feature_id_lower, args.feature_id_upper+1):
             cluster_df = cluster_df.loc[minimum_error_mono_index:].copy()
             cluster_df.reset_index(drop=True, inplace=True)
 
-            # de-isotope the cluster's peaks by folding-in the mz centroid of each peak
-            cluster_df['mz_mod'] = cluster_df.mz_centroid - (cluster_df.index * expected_spacing)
-            cluster_df['feature_id'] = feature_id
+            # at this point if there's only one peak remaining, it's not a feature
+            if len(cluster_df) >= 2:
 
-            # calculate the intensity-weighted centroid of the feature's folded-in peak
-            deisotoped_mz_centroid = wavg(cluster_df, "mz_mod", "summed_intensity")
-            isotopes_summed_intensity = cluster_df.summed_intensity.sum()
+                # de-isotope the cluster's peaks by folding-in the mz centroid of each peak
+                cluster_df['mz_mod'] = cluster_df.mz_centroid - (cluster_df.index * expected_spacing)
+                cluster_df['feature_id'] = feature_id
 
-            # calculate the monoisotopic mass
-            monoisotopic_mass = (deisotoped_mz_centroid - PROTON_MASS) * charge_state
+                # calculate the intensity-weighted centroid of the feature's folded-in peak
+                deisotoped_mz_centroid = wavg(cluster_df, "mz_mod", "summed_intensity")
+                isotopes_summed_intensity = cluster_df.summed_intensity.sum()
 
-            # trim the summed ms1 region to include only those peaks in the resolved cluster
-            cluster_peaks_df = cluster_df[['feature_id','peak_id']].copy()
-            cluster_peaks_df['feature_peak'] = cluster_peaks_df['feature_id'].map(str) + '|' + cluster_peaks_df['peak_id'].map(str)
-            summed_ms1_region_df['feature_peak'] = summed_ms1_region_df['feature_id'].map(str) + '|' + summed_ms1_region_df['peak_id'].map(str)
-            summed_ms1_region_df = summed_ms1_region_df[summed_ms1_region_df.feature_peak.isin(cluster_peaks_df.feature_peak)]
+                # calculate the monoisotopic mass
+                monoisotopic_mass = (deisotoped_mz_centroid - PROTON_MASS) * charge_state
 
-            # make the column names a bit more meaningful
-            summed_ms1_region_df.rename(columns={"peak_id":"feature_peak_id","point_id":"feature_point_id"}, inplace=True)
-            summed_ms1_region_df.drop(['mz', 'scan', 'intensity', 'number_frames', 'feature_peak'], axis=1, inplace=True)
+                # trim the summed ms1 region to include only those peaks in the resolved cluster
+                cluster_peaks_df = cluster_df[['feature_id','peak_id']].copy()
+                cluster_peaks_df['feature_peak'] = cluster_peaks_df['feature_id'].map(str) + '|' + cluster_peaks_df['peak_id'].map(str)
+                summed_ms1_region_df['feature_peak'] = summed_ms1_region_df['feature_id'].map(str) + '|' + summed_ms1_region_df['peak_id'].map(str)
+                summed_ms1_region_df = summed_ms1_region_df[summed_ms1_region_df.feature_peak.isin(cluster_peaks_df.feature_peak)]
 
-            # add the summed_frame_point that contributed to each feature region point
-            db_conn = sqlite3.connect(args.feature_region_database)
-            ms1_feature_frame_join_df = pd.read_sql_query("select * from ms1_feature_frame_join where feature_id={}".format(feature_id), db_conn)
-            ms1_feature_frame_join_df.rename(columns={"frame_id":"summed_frame_id"}, inplace=True)
-            ms1_feature_frame_join_df.drop(['feature_id', 'feature_point_id', 'frame_point_id'], axis=1, inplace=True)
-            db_conn.close()
+                # make the column names a bit more meaningful
+                summed_ms1_region_df.rename(columns={"peak_id":"feature_peak_id","point_id":"feature_point_id"}, inplace=True)
+                summed_ms1_region_df.drop(['mz', 'scan', 'intensity', 'number_frames', 'feature_peak'], axis=1, inplace=True)
 
-            summed_ms1_region_df = pd.merge(summed_ms1_region_df, ms1_feature_frame_join_df, how='left', left_on=['feature_point'], right_on=['feature_point'])
-            summed_ms1_region_df.drop(['feature_point'], axis=1, inplace=True)
+                # add the summed_frame_point that contributed to each feature region point
+                db_conn = sqlite3.connect(args.feature_region_database)
+                ms1_feature_frame_join_df = pd.read_sql_query("select * from ms1_feature_frame_join where feature_id={}".format(feature_id), db_conn)
+                ms1_feature_frame_join_df.rename(columns={"frame_id":"summed_frame_id"}, inplace=True)
+                ms1_feature_frame_join_df.drop(['feature_id', 'feature_point_id', 'frame_point_id'], axis=1, inplace=True)
+                db_conn.close()
 
-            # add the raw_frame_point that contributed to each summed frame point
-            db_conn = sqlite3.connect(args.features_database)
-            t = tuple(summed_ms1_region_df.summed_frame_point.astype(str))
-            if len(t) == 1:
-                t = "({})".format(t[0])
-            raw_summed_join_df = pd.read_sql_query("select * from raw_summed_join where summed_frame_point in {}".format(t), db_conn)
-            raw_summed_join_df.drop(['summed_frame_id','summed_point_id'], axis=1, inplace=True)
-            db_conn.close()
+                summed_ms1_region_df = pd.merge(summed_ms1_region_df, ms1_feature_frame_join_df, how='left', left_on=['feature_point'], right_on=['feature_point'])
+                summed_ms1_region_df.drop(['feature_point'], axis=1, inplace=True)
 
-            summed_ms1_region_df = pd.merge(summed_ms1_region_df, raw_summed_join_df, how='left', left_on=['summed_frame_point'], right_on=['summed_frame_point'])
-            summed_ms1_region_df.drop(['summed_frame_id','summed_frame_point','retention_time_secs'], axis=1, inplace=True)
+                # add the raw_frame_point that contributed to each summed frame point
+                db_conn = sqlite3.connect(args.features_database)
+                t = tuple(summed_ms1_region_df.summed_frame_point.astype(str))
+                if len(t) == 1:
+                    t = "({})".format(t[0])
+                raw_summed_join_df = pd.read_sql_query("select * from raw_summed_join where summed_frame_point in {}".format(t), db_conn)
+                raw_summed_join_df.drop(['summed_frame_id','summed_point_id'], axis=1, inplace=True)
+                db_conn.close()
 
-            # get the raw frame point's intensity
-            db_conn = sqlite3.connect(args.features_database)
-            t = tuple(summed_ms1_region_df.raw_frame_point.astype(str))
-            if len(t) == 1:
-                t = "({})".format(t[0])
-            raw_frames_df = pd.read_sql_query("select * from frames where raw_frame_point in {}".format(t), db_conn)
-            db_conn.close()
+                summed_ms1_region_df = pd.merge(summed_ms1_region_df, raw_summed_join_df, how='left', left_on=['summed_frame_point'], right_on=['summed_frame_point'])
+                summed_ms1_region_df.drop(['summed_frame_id','summed_frame_point','retention_time_secs'], axis=1, inplace=True)
 
-            summed_ms1_region_df = pd.merge(summed_ms1_region_df, raw_frames_df, how='left', left_on=['raw_frame_point'], right_on=['raw_frame_point'])
-            summed_ms1_region_df.drop(['peak_id','frame_id','raw_frame_point','point_id'], axis=1, inplace=True)
+                # get the raw frame point's intensity
+                db_conn = sqlite3.connect(args.features_database)
+                t = tuple(summed_ms1_region_df.raw_frame_point.astype(str))
+                if len(t) == 1:
+                    t = "({})".format(t[0])
+                raw_frames_df = pd.read_sql_query("select * from frames where raw_frame_point in {}".format(t), db_conn)
+                db_conn.close()
 
-            # summed_ms1_region_df.info()
-            # cluster_df.info()
+                summed_ms1_region_df = pd.merge(summed_ms1_region_df, raw_frames_df, how='left', left_on=['raw_frame_point'], right_on=['raw_frame_point'])
+                summed_ms1_region_df.drop(['peak_id','frame_id','raw_frame_point','point_id'], axis=1, inplace=True)
 
-            print("feature {}, cluster peaks {}, summed region points {}".format(feature_id, len(cluster_df), len(summed_ms1_region_df)))
+                # summed_ms1_region_df.info()
+                # cluster_df.info()
 
-            # for each feature peak, use the raw points to find the RT and drift intensity-weighted centroids
-            for peak_idx in range(len(cluster_df)):
-                peak_id = cluster_df.iloc[peak_idx].peak_id
-                peak_summed_intensity = cluster_df.iloc[peak_idx].summed_intensity
-                peak_points_df = summed_ms1_region_df.loc[summed_ms1_region_df.feature_peak_id==peak_id]
-                centroid_scan = peakutils.centroid(peak_points_df.scan.astype(float), peak_points_df.intensity)
-                centroid_rt = peakutils.centroid(peak_points_df.retention_time_secs.astype(float), peak_points_df.intensity)
-                centroid_mz = peakutils.centroid(peak_points_df.mz.astype(float), peak_points_df.intensity)
-                feature_isotopes_list.append((feature_id, peak_id, centroid_scan, centroid_rt, centroid_mz, peak_summed_intensity))
+                print("feature {}, cluster peaks {}, summed region points {}".format(feature_id, len(cluster_df), len(summed_ms1_region_df)))
 
-            # get the base peak attributes
-            base_peak_centroid_mz = cluster_df.iloc[cluster_df.summed_intensity.idxmax()].mz_centroid
+                # for each feature peak, use the raw points to find the RT and drift intensity-weighted centroids
+                for peak_idx in range(len(cluster_df)):
+                    peak_id = cluster_df.iloc[peak_idx].peak_id
+                    peak_summed_intensity = cluster_df.iloc[peak_idx].summed_intensity
+                    peak_points_df = summed_ms1_region_df.loc[summed_ms1_region_df.feature_peak_id==peak_id]
+                    centroid_scan = peakutils.centroid(peak_points_df.scan.astype(float), peak_points_df.intensity)
+                    centroid_rt = peakutils.centroid(peak_points_df.retention_time_secs.astype(float), peak_points_df.intensity)
+                    centroid_mz = peakutils.centroid(peak_points_df.mz.astype(float), peak_points_df.intensity)
+                    feature_isotopes_list.append((feature_id, peak_id, centroid_scan, centroid_rt, centroid_mz, peak_summed_intensity))
 
-            # Collect the feature's attributes. Centroids are calculated using the raw points.
-            feature_points_df = summed_ms1_region_df.loc[summed_ms1_region_df.feature_id==feature_id]
-            feature_centroid_scan = peakutils.centroid(feature_points_df.scan.astype(float), feature_points_df.intensity)
-            feature_centroid_rt = peakutils.centroid(feature_points_df.retention_time_secs.astype(float), feature_points_df.intensity)
-            feature_centroid_mz = peakutils.centroid(feature_points_df.mz.astype(float), feature_points_df.intensity)
-            start_rt = feature_points_df.retention_time_secs.min()
-            end_rt = feature_points_df.retention_time_secs.max()
-            scan_lower = feature_points_df.scan.min()
-            scan_upper = feature_points_df.scan.max()
-            feature_summed_intensity = feature_points_df.intensity.sum()
-            isotope_count = len(cluster_df)
+                # get the base peak attributes
+                base_peak_centroid_mz = cluster_df.iloc[cluster_df.summed_intensity.idxmax()].mz_centroid
 
-            # add the feature to the list
-            feature_list.append((feature_id, charge_state, monoisotopic_mass, feature_centroid_scan, feature_centroid_rt, feature_centroid_mz, base_peak_centroid_mz, start_rt, end_rt, scan_lower, scan_upper, feature_summed_intensity, isotope_count))
+                # Collect the feature's attributes. Centroids are calculated using the raw points.
+                feature_points_df = summed_ms1_region_df.loc[summed_ms1_region_df.feature_id==feature_id]
+                feature_centroid_scan = peakutils.centroid(feature_points_df.scan.astype(float), feature_points_df.intensity)
+                feature_centroid_rt = peakutils.centroid(feature_points_df.retention_time_secs.astype(float), feature_points_df.intensity)
+                feature_centroid_mz = peakutils.centroid(feature_points_df.mz.astype(float), feature_points_df.intensity)
+                start_rt = feature_points_df.retention_time_secs.min()
+                end_rt = feature_points_df.retention_time_secs.max()
+                scan_lower = feature_points_df.scan.min()
+                scan_upper = feature_points_df.scan.max()
+                feature_summed_intensity = feature_points_df.intensity.sum()
+                isotope_count = len(cluster_df)
+
+                # add the feature to the list
+                feature_list.append((feature_id, charge_state, monoisotopic_mass, feature_centroid_scan, feature_centroid_rt, feature_centroid_mz, base_peak_centroid_mz, start_rt, end_rt, scan_lower, scan_upper, feature_summed_intensity, isotope_count))
+            else:
+                print("feature {}: there must be at least two ms1 peaks remaining, so we're not including this feature.".format(feature_id))
         else:
             print("feature {}: there are no ms1 peaks remaining, so we're not including this feature.".format(feature_id))
     else:
