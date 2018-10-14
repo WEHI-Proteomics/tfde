@@ -232,7 +232,10 @@ for feature_id in range(args.feature_id_lower, args.feature_id_upper+1):
 
             # add the raw_frame_point that contributed to each summed frame point
             db_conn = sqlite3.connect(args.features_database)
-            raw_summed_join_df = pd.read_sql_query("select * from raw_summed_join where summed_frame_point in {}".format(tuple(summed_ms1_region_df.summed_frame_point.astype(str))), db_conn)
+            t = tuple(summed_ms1_region_df.summed_frame_point.astype(str))
+            if len(t) == 1:
+                t = "({})".format(t[0])
+            raw_summed_join_df = pd.read_sql_query("select * from raw_summed_join where summed_frame_point in {}".format(t), db_conn)
             raw_summed_join_df.drop(['summed_frame_id','summed_point_id'], axis=1, inplace=True)
             db_conn.close()
 
@@ -241,7 +244,10 @@ for feature_id in range(args.feature_id_lower, args.feature_id_upper+1):
 
             # get the raw frame point's intensity
             db_conn = sqlite3.connect(args.features_database)
-            raw_frames_df = pd.read_sql_query("select * from frames where raw_frame_point in {}".format(tuple(summed_ms1_region_df.raw_frame_point.astype(str))), db_conn)
+            t = tuple(summed_ms1_region_df.raw_frame_point.astype(str))
+            if len(t) == 1:
+                t = "({})".format(t[0])
+            raw_frames_df = pd.read_sql_query("select * from frames where raw_frame_point in {}".format(t), db_conn)
             db_conn.close()
 
             summed_ms1_region_df = pd.merge(summed_ms1_region_df, raw_frames_df, how='left', left_on=['raw_frame_point'], right_on=['raw_frame_point'])
