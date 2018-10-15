@@ -279,11 +279,12 @@ for feature_id in range(args.feature_id_lower, args.feature_id_upper+1):
                 feature_centroid_scan = peakutils.centroid(feature_points_df.scan.astype(float), feature_points_df.intensity)
                 feature_centroid_rt = peakutils.centroid(feature_points_df.retention_time_secs.astype(float), feature_points_df.intensity)
                 feature_centroid_mz = peakutils.centroid(feature_points_df.mz.astype(float), feature_points_df.intensity)
-                start_rt = feature_points_df.retention_time_secs.min()
-                end_rt = feature_points_df.retention_time_secs.max()
-                scan_lower = feature_points_df.scan.min()
-                scan_upper = feature_points_df.scan.max()
+                feature_start_rt = feature_points_df.retention_time_secs.min()
+                feature_end_rt = feature_points_df.retention_time_secs.max()
+                feature_scan_lower = feature_points_df.scan.min()
+                feature_scan_upper = feature_points_df.scan.max()
                 feature_summed_intensity = feature_points_df.intensity.sum()
+
                 isotope_count = len(cluster_df)
 
                 # add the feature to the list
