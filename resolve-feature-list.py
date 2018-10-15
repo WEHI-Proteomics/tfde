@@ -115,7 +115,7 @@ db_conn.cursor().execute("CREATE INDEX idx_ms1_feature_frame_join_1 ON ms1_featu
 db_conn.cursor().execute("DROP TABLE IF EXISTS feature_isotopes")
 db_conn.cursor().execute("CREATE TABLE feature_isotopes (feature_id INTEGER, feature_region_peak_id INTEGER, centroid_scan REAL, centroid_rt REAL, centroid_mz REAL, peak_summed_intensity INTEGER, PRIMARY KEY(feature_id, feature_region_peak_id))")
 db_conn.cursor().execute("DROP TABLE IF EXISTS feature_list")
-db_conn.cursor().execute("CREATE TABLE feature_list (feature_id INTEGER, charge_state INTEGER, monoisotopic_mass REAL, feature_centroid_scan REAL, feature_centroid_rt REAL, feature_centroid_mz REAL, feature_start_rt REAL, feature_end_rt REAL, feature_scan_lower INTEGER, feature_scan_upper INTEGER, feature_summed_intensity INTEGER, isotope_count INTEGER, mono_peak_id INTEGER, mono_centroid_scan REAL, mono_peak_scan_lower INTEGER, mono_peak_scan_upper INTEGER, mono_centroid_rt REAL, mono_peak_rt_lower REAL, mono_peak_rt_upper REAL, mono_centroid_mz REAL, mono_peak_mz_lower REAL, mono_peak_mz_upper REAL, base_peak_id INTEGER, base_centroid_scan REAL, base_peak_scan_lower INTEGER, base_peak_scan_upper INTEGER, base_centroid_rt REAL, base_peak_rt_lower REAL, base_peak_rt_upper REAL, base_centroid_mz REAL, base_peak_mz_lower REAL, base_peak_mz_upper REAL, PRIMARY KEY(feature_id))")
+db_conn.cursor().execute("CREATE TABLE feature_list (feature_id INTEGER, charge_state INTEGER, monoisotopic_mass REAL, centroid_scan REAL, centroid_rt REAL, centroid_mz REAL, base_peak_centroid_mz REAL, start_rt, end_rt, scan_lower, scan_upper, summed_intensity INTEGER, isotope_count INTEGER, PRIMARY KEY(feature_id))")
 db_conn.close()
 
 for feature_id in range(args.feature_id_lower, args.feature_id_upper+1):
@@ -304,7 +304,7 @@ db_conn.cursor().executemany("INSERT INTO feature_isotopes VALUES (?, ?, ?, ?, ?
 
 # ... and the feature list
 print("writing out the feature list...")
-db_conn.cursor().executemany("INSERT INTO feature_list VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", feature_list)
+db_conn.cursor().executemany("INSERT INTO feature_list VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", feature_list)
 
 db_conn.commit()
 db_conn.close()
