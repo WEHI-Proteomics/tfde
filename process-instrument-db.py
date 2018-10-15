@@ -115,7 +115,7 @@ def store_info(info, processing_times):
     processing_stop_time = time.time()
     info.append(("total processing", round(processing_stop_time-processing_start_time,1)))
     info.append(("processing times", json.dumps(processing_times)))
-    print("{} info: {}".format(parser.prog, info))
+    print("step processing times: {}".format(json.dumps(processing_times)))
     # store it in the database
     info_entry_df = pd.DataFrame(info, columns=['item', 'value'])
     db_conn = sqlite3.connect(converted_database_name)
