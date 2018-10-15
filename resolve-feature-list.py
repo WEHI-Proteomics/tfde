@@ -287,7 +287,7 @@ for feature_id in range(args.feature_id_lower, args.feature_id_upper+1):
                 isotope_count = len(cluster_df)
 
                 # add the feature to the list
-                feature_list.append((feature_id, charge_state, monoisotopic_mass, feature_centroid_scan, feature_centroid_rt, feature_centroid_mz, base_peak_centroid_mz, start_rt, end_rt, scan_lower, scan_upper, feature_summed_intensity, isotope_count))
+                feature_list.append((feature_id, charge_state, monoisotopic_mass, feature_centroid_scan, feature_centroid_rt, feature_centroid_mz, feature_start_rt, feature_end_rt, feature_scan_lower, feature_scan_upper, feature_summed_intensity, isotope_count, mono_peak_id, mono_centroid_scan, mono_peak_scan_lower, mono_peak_scan_upper, mono_centroid_rt, mono_peak_rt_lower, mono_peak_rt_upper, mono_centroid_mz, mono_peak_mz_lower, mono_peak_mz_upper, base_peak_id, base_centroid_scan, base_peak_scan_lower, base_peak_scan_upper, base_centroid_rt, base_peak_rt_lower, base_peak_rt_upper, base_centroid_mz, base_peak_mz_lower, base_peak_mz_upper))
             else:
                 print("feature {}: there must be at least two ms1 peaks remaining, so we're not including this feature.".format(feature_id))
         else:
