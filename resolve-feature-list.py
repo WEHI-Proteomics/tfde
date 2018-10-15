@@ -253,28 +253,54 @@ for feature_id in range(args.feature_id_lower, args.feature_id_upper+1):
                 raw_frames_df = pd.read_sql_query("select * from frames where raw_frame_point in {}".format(t), db_conn)
                 db_conn.close()
 
-                summed_ms1_region_df = pd.merge(summed_ms1_region_df, raw_frames_df, how='left', left_on=['raw_frame_point'], right_on=['raw_frame_point'])
-                summed_ms1_region_df.drop(['peak_id','frame_id','raw_frame_point','point_id'], axis=1, inplace=True)
+                raw_ms1_region_df = pd.merge(summed_ms1_region_df, raw_frames_df, how='left', left_on=['raw_frame_point'], right_on=['raw_frame_point'])
+                raw_ms1_region_df.drop(['peak_id','frame_id','raw_frame_point','point_id'], axis=1, inplace=True)
 
-                # summed_ms1_region_df.info()
-                # cluster_df.info()
-
-                print("feature {}, cluster peaks {}, summed region points {}".format(feature_id, len(cluster_df), len(summed_ms1_region_df)))
+                print("feature {}, cluster peaks {}, number of raw points in the region {}".format(feature_id, len(cluster_df), len(raw_ms1_region_df)))
 
                 # for each feature peak, use the raw points to find the RT and drift intensity-weighted centroids
                 for peak_idx in range(len(cluster_df)):
                     peak_id = cluster_df.iloc[peak_idx].peak_id
                     peak_summed_intensity = cluster_df.iloc[peak_idx].summed_intensity
-                    peak_points_df = summed_ms1_region_df.loc[summed_ms1_region_df.feature_peak_id==peak_id]
-                    centroid_scan = peakutils.centroid(peak_points_df.scan.astype(float), peak_points_df.intensity)
-                    centroid_rt = peakutils.centroid(peak_points_df.retention_time_secs.astype(float), peak_points_df.intensity)
-                    centroid_mz = peakutils.centroid(peak_points_df.mz.astype(float), peak_points_df.intensity)
+                    peak_raw_points_df = raw_ms1_region_df.loc[raw_ms1_region_df.feature_peak_id==peak_id]
+                    centroid_scan = peakutils.centroid(peak_raw_points_df.scan.astype(float), peak_raw_points_df.intensity)
+                    centroid_rt = peakutils.centroid(peak_raw_points_df.retention_time_secs.astype(float), peak_raw_points_df.intensity)
+                    centroid_mz = peakutils.centroid(peak_raw_points_df.mz.astype(float), peak_raw_points_df.intensity)
                     feature_isotopes_list.append((feature_id, peak_id, centroid_scan, centroid_rt, centroid_mz, peak_summed_intensity))
 
-                # get the base peak attributes
-                base_peak_centroid_mz = cluster_df.iloc[cluster_df.summed_intensity.idxmax()].mz_centroid
+                # get the base peak attributes using its summed points
+                base_peak_id = cluster_df.iloc[cluster_df.summed_intensity.idxmax()].peak_id  # peak in the cluster with the largest summed intensity
+                base_peak_points_df = raw_ms1_region_df.loc[raw_ms1_region_df.feature_peak_id==base_peak_id]
 
-                # Collect the feature's attributes. Centroids are calculated using the raw points.
+                base_centroid_scan = peakutils.centroid(base_peak_points_df.scan.astype(float), base_peak_points_df.intensity)
+                base_peak_scan_lower = base_peak_points_df.scan.min()
+                base_peak_scan_upper = base_peak_points_df.scan.max()
+
+                base_centroid_rt = peakutils.centroid(base_peak_points_df.retention_time_secs.astype(float), base_peak_points_df.intensity)
+                base_peak_rt_lower = base_peak_points_df.retention_time_secs.min()
+                base_peak_rt_upper = base_peak_points_df.retention_time_secs.max()
+
+                base_centroid_mz = peakutils.centroid(base_peak_points_df.mz.astype(float), base_peak_points_df.intensity)
+                base_peak_mz_lower = base_peak_points_df.mz.min()
+                base_peak_mz_upper = base_peak_points_df.mz.max()
+
+                # get the monoisotopic peak attributes using its summed points
+                mono_peak_id = cluster_df.iloc[cluster_df.mz_centroid.idxmin()].peak_id  # peak in the cluster with the lowest mz centroid
+                mono_peak_points_df = raw_ms1_region_df.loc[raw_ms1_region_df.feature_peak_id==mono_peak_id]
+
+                mono_centroid_scan = peakutils.centroid(mono_peak_points_df.scan.astype(float), mono_peak_points_df.intensity)
+                mono_peak_scan_lower = mono_peak_points_df.scan.min()
+                mono_peak_scan_upper = mono_peak_points_df.scan.max()
+
+                mono_centroid_rt = peakutils.centroid(mono_peak_points_df.retention_time_secs.astype(float), mono_peak_points_df.intensity)
+                mono_peak_rt_lower = mono_peak_points_df.retention_time_secs.min()
+                mono_peak_rt_upper = mono_peak_points_df.retention_time_secs.max()
+
+                mono_centroid_mz = peakutils.centroid(mono_peak_points_df.mz.astype(float), mono_peak_points_df.intensity)
+                mono_peak_mz_lower = mono_peak_points_df.mz.min()
+                mono_peak_mz_upper = mono_peak_points_df.mz.max()
+
+                # Collect the feature's attributes.
                 feature_points_df = summed_ms1_region_df.loc[summed_ms1_region_df.feature_id==feature_id]
                 feature_centroid_scan = peakutils.centroid(feature_points_df.scan.astype(float), feature_points_df.intensity)
                 feature_centroid_rt = peakutils.centroid(feature_points_df.retention_time_secs.astype(float), feature_points_df.intensity)
