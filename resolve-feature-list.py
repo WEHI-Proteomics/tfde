@@ -273,21 +273,21 @@ for feature_id in range(args.feature_id_lower, args.feature_id_upper+1):
                 base_peak_id = cluster_df.iloc[cluster_df.summed_intensity.idxmax()].peak_id  # peak in the cluster with the largest summed intensity
                 base_peak_points_df = raw_ms1_region_df.loc[raw_ms1_region_df.feature_peak_id==base_peak_id]
 
-                weighted_stats = DescrStatsW(base_peak_points_df.scan.astype(float), weights=base_peak_points_df.intensity, ddof=0)
-                base_peak_centroid_scan = weighted_stats.mean
-                base_peak_std_dev_scan = weighted_stats.std
+                scan_weighted_stats = DescrStatsW(base_peak_points_df.scan.astype(float), weights=base_peak_points_df.intensity, ddof=0)
+                base_peak_centroid_scan = scan_weighted_stats.mean
+                base_peak_std_dev_scan = scan_weighted_stats.std
                 base_peak_scan_lower = base_peak_points_df.scan.min()
                 base_peak_scan_upper = base_peak_points_df.scan.max()
 
-                weighted_stats = DescrStatsW(base_peak_points_df.retention_time_secs.astype(float), weights=base_peak_points_df.intensity, ddof=0)
-                base_peak_centroid_rt = weighted_stats.mean
-                base_peak_std_dev_rt = weighted_stats.std
+                rt_weighted_stats = DescrStatsW(base_peak_points_df.retention_time_secs.astype(float), weights=base_peak_points_df.intensity, ddof=0)
+                base_peak_centroid_rt = rt_weighted_stats.mean
+                base_peak_std_dev_rt = rt_weighted_stats.std
                 base_peak_rt_lower = base_peak_points_df.retention_time_secs.min()
                 base_peak_rt_upper = base_peak_points_df.retention_time_secs.max()
 
-                weighted_stats = DescrStatsW(base_peak_points_df.mz.astype(float), weights=base_peak_points_df.intensity, ddof=0)
-                base_peak_centroid_mz = weighted_stats.mean
-                base_peak_std_dev_mz = weighted_stats.std
+                mz_weighted_stats = DescrStatsW(base_peak_points_df.mz.astype(float), weights=base_peak_points_df.intensity, ddof=0)
+                base_peak_centroid_mz = mz_weighted_stats.mean
+                base_peak_std_dev_mz = mz_weighted_stats.std
                 base_peak_mz_lower = base_peak_points_df.mz.min()
                 base_peak_mz_upper = base_peak_points_df.mz.max()
 
@@ -295,21 +295,21 @@ for feature_id in range(args.feature_id_lower, args.feature_id_upper+1):
                 mono_peak_id = cluster_df.iloc[cluster_df.mz_centroid.idxmin()].peak_id  # peak in the cluster with the lowest mz centroid
                 mono_peak_points_df = raw_ms1_region_df.loc[raw_ms1_region_df.feature_peak_id==mono_peak_id]
 
-                weighted_stats = DescrStatsW(mono_peak_points_df.scan.astype(float), weights=mono_peak_points_df.intensity, ddof=0)
-                mono_peak_centroid_scan = weighted_stats.mean
-                mono_peak_std_dev_mz = weighted_stats.std
+                scan_weighted_stats = DescrStatsW(mono_peak_points_df.scan.astype(float), weights=mono_peak_points_df.intensity, ddof=0)
+                mono_peak_centroid_scan = scan_weighted_stats.mean
+                mono_peak_std_dev_scan = scan_weighted_stats.std
                 mono_peak_scan_lower = mono_peak_points_df.scan.min()
                 mono_peak_scan_upper = mono_peak_points_df.scan.max()
 
-                weighted_stats = DescrStatsW(mono_peak_points_df.retention_time_secs.astype(float), weights=mono_peak_points_df.intensity, ddof=0)
-                mono_peak_centroid_rt = weighted_stats.mean
-                mono_peak_std_dev_rt = weighted_stats.std
+                rt_weighted_stats = DescrStatsW(mono_peak_points_df.retention_time_secs.astype(float), weights=mono_peak_points_df.intensity, ddof=0)
+                mono_peak_centroid_rt = rt_weighted_stats.mean
+                mono_peak_std_dev_rt = rt_weighted_stats.std
                 mono_peak_rt_lower = mono_peak_points_df.retention_time_secs.min()
                 mono_peak_rt_upper = mono_peak_points_df.retention_time_secs.max()
 
-                weighted_stats = DescrStatsW(mono_peak_points_df.mz.astype(float), weights=mono_peak_points_df.intensity, ddof=0)
-                mono_peak_centroid_mz = weighted_stats.mean
-                mono_peak_std_dev_mz = weighted_stats.std
+                mz_weighted_stats = DescrStatsW(mono_peak_points_df.mz.astype(float), weights=mono_peak_points_df.intensity, ddof=0)
+                mono_peak_centroid_mz = mz_weighted_stats.mean
+                mono_peak_std_dev_mz = mz_weighted_stats.std
                 mono_peak_mz_lower = mono_peak_points_df.mz.min()
                 mono_peak_mz_upper = mono_peak_points_df.mz.max()
 
