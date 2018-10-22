@@ -169,7 +169,7 @@ def main():
                 isolation_scan_upper = match_df.ScanNumEnd
 
                 # Load the MS2 frame points for the isolation window's region
-                frame_df = pd.read_sql_query("select frame_id,mz,scan,intensity,point_id,retention_time_secs from frames where frame_id == {} and scan <= {} and scan >= {} order by scan,mz;".format(ms2_frame_id), isolation_scan_upper, isolation_scan_lower), conv_conn)
+                frame_df = pd.read_sql_query("select frame_id,mz,scan,intensity,point_id,retention_time_secs from frames where frame_id == {} and scan <= {} and scan >= {} order by scan,mz;".format(ms2_frame_id, isolation_scan_upper, isolation_scan_lower), conv_conn)
                 if len(frame_df) > 0:
                     # scale the m/z values and make them integers
                     frame_df['scaled_mz'] = frame_df.mz * args.mz_scaling_factor
