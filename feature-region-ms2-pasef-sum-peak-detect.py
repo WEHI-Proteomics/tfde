@@ -162,6 +162,8 @@ def main():
                                 )
             ]
 
+            print("feature {} matched with {} isolation windows".format(feature_id, len(matches_df)))
+
             point_id = 1
             peak_id = 1
             peak_count = 0
