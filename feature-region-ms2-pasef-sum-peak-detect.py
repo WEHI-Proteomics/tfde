@@ -82,8 +82,10 @@ def main():
         print("Setting up tables")
         dest_c.execute("DROP TABLE IF EXISTS summed_ms2_regions")
         dest_c.execute("DROP TABLE IF EXISTS summed_ms2_regions_info")
+        dest_c.execute("DROP TABLE IF EXISTS feature_isolation_matches")
         dest_c.execute("CREATE TABLE summed_ms2_regions (feature_id INTEGER, peak_id INTEGER, point_id INTEGER, mz REAL, scan INTEGER, intensity INTEGER, PRIMARY KEY (feature_id, peak_id, point_id))")
         dest_c.execute("CREATE TABLE summed_ms2_regions_info (item TEXT, value TEXT)")
+        dest_c.execute("CREATE TABLE feature_isolation_matches (feature_id INTEGER, frame_id INTEGER, precursor_id INTEGER)")
 
         dest_c.execute("DROP TABLE IF EXISTS ms2_peaks")
         dest_c.execute("CREATE TABLE ms2_peaks (feature_id INTEGER, peak_id INTEGER, centroid_mz REAL, composite_mzs_min INTEGER, composite_mzs_max INTEGER, centroid_scan INTEGER, intensity INTEGER, cofi_scan REAL, cofi_rt REAL, PRIMARY KEY (feature_id, peak_id))")
@@ -161,6 +163,12 @@ def main():
                                     (isolation_window_df.retention_time_secs <= rt_upper)
                                 )
             ]
+
+            # keep the feature matches
+            for match_idx in range(len(matches_df)):
+                frame = matches_df.iloc[match_idx].Frame
+                precursor = matches_df.iloc[match_idx].Precursor
+                features_with_isolation_matches.append((feature_id, int(frame), int(precursor)))
 
             print("feature {} matched with {} isolation windows".format(feature_id, len(matches_df)))
 
@@ -284,6 +292,10 @@ def main():
         if len(peaks) > 0:
             #                                          feature_id INTEGER, peak_id INTEGER, centroid_mz REAL, composite_mzs_min INTEGER, composite_mzs_max INTEGER, centroid_scan INTEGER, intensity INTEGER, centre_of_intensity_scan REAL, centre_of_intensity_rt REAL
             dest_c.executemany("INSERT INTO ms2_peaks (feature_id, peak_id, centroid_mz, composite_mzs_min, composite_mzs_max, centroid_scan, intensity, cofi_scan, cofi_rt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)", peaks)
+
+        # store the matches between features and isolation windows
+        if len(features_with_isolation_matches) > 0:
+            dest_c.executemany("INSERT INTO feature_isolation_matches (feature_id, frame_id, precursor_id) VALUES (?, ?, ?)", features_with_isolation_matches)
 
         stop_run = time.time()
 
