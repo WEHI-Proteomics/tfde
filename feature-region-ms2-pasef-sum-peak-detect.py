@@ -123,6 +123,9 @@ def main():
         # for each feature, find all the matching isolation windows
         isolation_window_df['feature_id'] = 0
         features_with_isolation_matches = []
+        points = []
+        peaks = []
+
         for idx in range(len(feature_list_df)):
             feature_df = feature_list_df.iloc[idx]
             feature_id = int(feature_df.feature_id)
@@ -269,28 +272,28 @@ def main():
                     dest_conn.commit()
                     del peaks[:]
 
-            # Store any remaining points in the database
-            if len(points) > 0:
-                dest_c.executemany("INSERT INTO summed_ms2_regions (feature_id, peak_id, point_id, mz, scan, intensity) VALUES (?, ?, ?, ?, ?, ?)", points)
+        # Store any remaining points in the database
+        if len(points) > 0:
+            dest_c.executemany("INSERT INTO summed_ms2_regions (feature_id, peak_id, point_id, mz, scan, intensity) VALUES (?, ?, ?, ?, ?, ?)", points)
 
-            # Store any remaining peaks in the database
-            if len(peaks) > 0:
-                #                                          feature_id INTEGER, peak_id INTEGER, centroid_mz REAL, composite_mzs_min INTEGER, composite_mzs_max INTEGER, centroid_scan INTEGER, intensity INTEGER, centre_of_intensity_scan REAL, centre_of_intensity_rt REAL
-                dest_c.executemany("INSERT INTO ms2_peaks (feature_id, peak_id, centroid_mz, composite_mzs_min, composite_mzs_max, centroid_scan, intensity, cofi_scan, cofi_rt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)", peaks)
+        # Store any remaining peaks in the database
+        if len(peaks) > 0:
+            #                                          feature_id INTEGER, peak_id INTEGER, centroid_mz REAL, composite_mzs_min INTEGER, composite_mzs_max INTEGER, centroid_scan INTEGER, intensity INTEGER, centre_of_intensity_scan REAL, centre_of_intensity_rt REAL
+            dest_c.executemany("INSERT INTO ms2_peaks (feature_id, peak_id, centroid_mz, composite_mzs_min, composite_mzs_max, centroid_scan, intensity, cofi_scan, cofi_rt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)", peaks)
 
-            stop_run = time.time()
+        stop_run = time.time()
 
-            info.append(("run processing time (sec)", stop_run-start_run))
-            info.append(("processed", time.ctime()))
-            info.append(("processor", parser.prog))
+        info.append(("run processing time (sec)", stop_run-start_run))
+        info.append(("processed", time.ctime()))
+        info.append(("processor", parser.prog))
 
-            print("{} info: {}".format(parser.prog, info))
+        print("{} info: {}".format(parser.prog, info))
 
-            info_entry = []
-            info_entry.append(("features {}-{}".format(args.feature_id_lower, args.feature_id_upper), json.dumps(info)))
+        info_entry = []
+        info_entry.append(("features {}-{}".format(args.feature_id_lower, args.feature_id_upper), json.dumps(info)))
 
-            dest_c.executemany("INSERT INTO summed_ms2_regions_info VALUES (?, ?)", info_entry)
-            dest_conn.commit()
+        dest_c.executemany("INSERT INTO summed_ms2_regions_info VALUES (?, ?)", info_entry)
+        dest_conn.commit()
 
         dest_conn.close()
         conv_conn.close()
