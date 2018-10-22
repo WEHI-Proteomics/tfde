@@ -127,6 +127,8 @@ def main():
         peaks = []
 
         for idx in range(len(feature_list_df)):
+            feature_start_time = time.time()
+
             feature_df = feature_list_df.iloc[idx]
             feature_id = int(feature_df.feature_id)
             mono_peak_centroid_mz = feature_df.mono_peak_centroid_mz
@@ -255,22 +257,22 @@ def main():
                 else:
                     print("found no points in ms2 for feature {}".format(feature_id))
 
-                feature_stop_time = time.time()
-                feature_count += 1
-                print("{} sec to find {} peaks for feature {} ({} features completed)".format(feature_stop_time-feature_start_time, peak_count, feature_id, feature_count))
-                print("")
+            feature_stop_time = time.time()
+            feature_count += 1
+            print("{} sec to find {} peaks for feature {} ({} features completed)".format(feature_stop_time-feature_start_time, peak_count, feature_id, feature_count))
+            print("")
 
-                if (feature_count % args.batch_size) == 0:
-                    print("feature count {} - writing summed regions to the database...".format(feature_count))
-                    print("")
-                    # Store the points in the database
-                    dest_c.executemany("INSERT INTO summed_ms2_regions (feature_id, peak_id, point_id, mz, scan, intensity) VALUES (?, ?, ?, ?, ?, ?)", points)
-                    dest_conn.commit()
-                    del points[:]
-                    #                                          feature_id INTEGER, peak_id INTEGER, centroid_mz REAL, composite_mzs_min INTEGER, composite_mzs_max INTEGER, centroid_scan INTEGER, intensity INTEGER, centre_of_intensity_scan REAL, centre_of_intensity_rt REAL
-                    dest_c.executemany("INSERT INTO ms2_peaks (feature_id, peak_id, centroid_mz, composite_mzs_min, composite_mzs_max, centroid_scan, intensity, cofi_scan, cofi_rt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)", peaks)
-                    dest_conn.commit()
-                    del peaks[:]
+            if (feature_count % args.batch_size) == 0:
+                print("feature count {} - writing summed regions to the database...".format(feature_count))
+                print("")
+                # Store the points in the database
+                dest_c.executemany("INSERT INTO summed_ms2_regions (feature_id, peak_id, point_id, mz, scan, intensity) VALUES (?, ?, ?, ?, ?, ?)", points)
+                dest_conn.commit()
+                del points[:]
+                #                                          feature_id INTEGER, peak_id INTEGER, centroid_mz REAL, composite_mzs_min INTEGER, composite_mzs_max INTEGER, centroid_scan INTEGER, intensity INTEGER, centre_of_intensity_scan REAL, centre_of_intensity_rt REAL
+                dest_c.executemany("INSERT INTO ms2_peaks (feature_id, peak_id, centroid_mz, composite_mzs_min, composite_mzs_max, centroid_scan, intensity, cofi_scan, cofi_rt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)", peaks)
+                dest_conn.commit()
+                del peaks[:]
 
         # Store any remaining points in the database
         if len(points) > 0:
