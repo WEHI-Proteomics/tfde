@@ -583,6 +583,20 @@ if process_this_step(this_step=step_name, first_step=args.operation):
     run_process("python -u ./otf-peak-detect/feature-region-ms2-combined-sum-peak-detect-prep.py -cdb '{}'".format(converted_database_name))
     print("detecting ms2 peaks in the feature region...")
     pool.map(run_process, feature_region_ms2_sum_peak_processes)
+
+    # write out the feature matches with isolation windows as a global CSV
+    csv_file_name = "{}/{}-feature-isolation-matches.csv".format(args.data_directory, args.database_base_name)
+    for idx in range(len(feature_batch_df)):
+        destination_db_name = feature_batch_df.iloc[idx].db
+        db_conn = sqlite3.connect(destination_db_name)
+        print("writing feature isolation matches from {} to {}".format(destination_db_name, csv_file_name))
+        df = pd.read_sql_query("select * from feature_isolation_matches", db_conn)
+        if idx == 0:
+            df.to_csv(csv_file_name, mode='w', sep=',', index=False, header=True)
+        else:
+            df.to_csv(csv_file_name, mode='a', sep=',', index=False, header=False)
+        db_conn.close()
+
     step_stop_time = time.time()
     processing_times.append((step_name, round(step_stop_time-step_start_time,1)))
 
