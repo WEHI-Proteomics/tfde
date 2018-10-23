@@ -64,9 +64,9 @@ if len(feature_list_df) > 0:
     for feature_list_idx in range(0,len(feature_list_df)):
         feature_id = feature_list_df.loc[feature_list_idx].feature_id.astype(int)
         charge_state = feature_list_df.loc[feature_list_idx].charge_state.astype(int)
-        cluster_mz_centroid = feature_list_df.loc[feature_list_idx].centroid_mz
-        cluster_summed_intensity = feature_list_df.loc[feature_list_idx].summed_intensity.astype(int)
-        retention_time_secs = feature_list_df.loc[feature_list_idx].centroid_rt
+        cluster_mz_centroid = feature_list_df.loc[feature_list_idx].feature_centroid_mz
+        cluster_summed_intensity = feature_list_df.loc[feature_list_idx].feature_summed_intensity.astype(int)
+        retention_time_secs = feature_list_df.loc[feature_list_idx].feature_centroid_rt
 
         print("Generating Hardklor file for feature {} ({}% complete)".format(feature_id, round(float(feature_id-feature_id_lower)/(feature_id_upper-feature_id_lower+1)*100,1)))
 
