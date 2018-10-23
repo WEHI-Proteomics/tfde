@@ -53,7 +53,7 @@ print("Finding precursor base peaks in ms2")
 for feature_idx in range(len(features_df)):
     feature_id = features_df.iloc[feature_idx].feature_id.astype(int)
     ms1_centroid_scan = features_df.iloc[feature_idx].base_peak_centroid_scan.astype(float)
-    base_peak_centroid_mz = features_df.iloc[feature_idx].base_peak_centroid_mz.astype(float)
+    ms1_centroid_mz = features_df.iloc[feature_idx].base_peak_centroid_mz.astype(float)
 
     print("Matching the precursor for feature {} (mz {}, scan {})".format(feature_id, base_peak_centroid_mz, ms1_centroid_scan))
 
@@ -63,8 +63,8 @@ for feature_idx in range(len(features_df)):
 
     if len(ms2_peaks_df) > 0:
         # find the matching ms2 peaks within tolerance
-        ms2_peaks_df['mz_delta'] = abs(ms2_peaks_df.centroid_mz - base_peak_centroid_mz)
-        indexes_to_drop = ms2_peaks_df.mz_delta > (args.mz_tolerance_ppm * 10**-6 * base_peak_centroid_mz)
+        ms2_peaks_df['mz_delta'] = abs(ms2_peaks_df.centroid_mz - ms1_centroid_mz)
+        indexes_to_drop = ms2_peaks_df.mz_delta > (args.mz_tolerance_ppm * 10**-6 * ms1_centroid_mz)
         ms2_peaks_df.drop(ms2_peaks_df.index[indexes_to_drop], inplace=True)
         ms2_peaks_df.sort_values(by='mz_delta', ascending=True, inplace=True)
         ms2_peaks_df.reset_index(drop=True, inplace=True)
