@@ -55,7 +55,7 @@ for feature_idx in range(len(features_df)):
     ms1_centroid_scan = features_df.iloc[feature_idx].base_peak_centroid_scan.astype(float)
     ms1_centroid_mz = features_df.iloc[feature_idx].base_peak_centroid_mz.astype(float)
 
-    print("Matching the precursor for feature {} (mz {}, scan {})".format(feature_id, base_peak_centroid_mz, ms1_centroid_scan))
+    print("Matching the precursor for feature {} (mz {}, scan {})".format(feature_id, ms1_centroid_mz, ms1_centroid_scan))
 
     # read all the ms2 peaks for this feature
     ms2_peaks_df = pd.read_sql_query("select * from ms2_peaks where feature_id={}".format(feature_id), ddb_conn)
