@@ -75,8 +75,7 @@ for feature_idx in range(len(features_df)):
             mz_delta = ms2_peaks_df.iloc[0].mz_delta
             scan_delta = ms2_peaks_df.iloc[0].scan_delta
             peak_matches.append((feature_id, ms2_peak_id, mz_delta, scan_delta))
-        else:
-            print("found no ms2 peaks within tolerance for feature {}".format(feature_id))
+        print("found {} ms2 peaks within tolerance for feature {}".format(len(ms2_peaks_df), feature_id))
 
 print("Writing out the peak matches")
 ddb_c.executemany("INSERT INTO precursor_ms2_peak_matches VALUES (?, ?, ?, ?)", peak_matches)
