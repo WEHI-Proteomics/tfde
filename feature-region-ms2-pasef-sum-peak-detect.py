@@ -176,15 +176,23 @@ def main():
             peak_id = 1
             peak_count = 0
 
-            # for each matching isolation window, retrieve the raw points from the ms2 frame
-            for match_idx in range(len(matches_df)):
-                match_df = matches_df.iloc[match_idx]
-                ms2_frame_id = match_df.Frame
-                isolation_scan_lower = match_df.ScanNumBegin
-                isolation_scan_upper = match_df.ScanNumEnd
+            # for each matching precursor group, sum the raw points from the ms2 frames
+            precursor_groups = matches_df.groupby('Precursor')
+            for precursor, match_group_df in precursor_groups:
+                for match_idx in range(len(match_group_df)):
+                    match_df = match_group_df.iloc[match_idx]
+                    ms2_frame_id = match_df.Frame
+                    isolation_scan_lower = match_df.ScanNumBegin
+                    isolation_scan_upper = match_df.ScanNumEnd
+                    # load the MS2 frame points for the isolation window's region
+                    df = pd.read_sql_query("select frame_id,mz,scan,intensity,point_id,retention_time_secs from frames where frame_id == {} and scan <= {} and scan >= {} order by scan,mz;".format(ms2_frame_id, isolation_scan_upper, isolation_scan_lower), conv_conn)
+                    if match_idx == 0:
+                        frame_df = df.copy()
+                    else:
+                        frame_df.append(df)
+                    print("feature {}: added {} rows to the frame for precursor {}, total {} rows".format(feature_id, len(df), precursor, len(frame_df)))
 
-                # Load the MS2 frame points for the isolation window's region
-                frame_df = pd.read_sql_query("select frame_id,mz,scan,intensity,point_id,retention_time_secs from frames where frame_id == {} and scan <= {} and scan >= {} order by scan,mz;".format(ms2_frame_id, isolation_scan_upper, isolation_scan_lower), conv_conn)
+                print("processing the raw ms2 points for feature {}".format(feature_id))
                 if len(frame_df) > 0:
                     # scale the m/z values and make them integers
                     frame_df['scaled_mz'] = frame_df.mz * args.mz_scaling_factor
