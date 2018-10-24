@@ -609,55 +609,57 @@ if process_this_step(this_step=step_name, first_step=args.operation):
 ######################################
 # OPERATION: match_precursor_ms2_peaks
 ######################################
-step_name = 'match_precursor_ms2_peaks'
-if process_this_step(this_step=step_name, first_step=args.operation):
-    print("Starting the \'{}\' step".format(step_name))
-    step_start_time = time.time()
+if not args.pasef_mode:  # not needed in PASEF mode
+    step_name = 'match_precursor_ms2_peaks'
+    if process_this_step(this_step=step_name, first_step=args.operation):
+        print("Starting the \'{}\' step".format(step_name))
+        step_start_time = time.time()
 
-    # determine the drift offset between ms1 and ms2
-    match_precursor_ms2_peaks_processes = []
-    for idx in range(len(feature_batch_df)):
-        destination_db_name = feature_batch_df.iloc[idx].db
-        feature_lower = feature_batch_df.iloc[idx].lower
-        feature_upper = feature_batch_df.iloc[idx].upper
-        match_precursor_ms2_peaks_processes.append("python -u ./otf-peak-detect/match-precursor-ms2-peaks.py -ddb '{}' -sdb '{}' -fl {} -fu {}".format(destination_db_name, feature_database_name, feature_lower, feature_upper))
+        # determine the drift offset between ms1 and ms2
+        match_precursor_ms2_peaks_processes = []
+        for idx in range(len(feature_batch_df)):
+            destination_db_name = feature_batch_df.iloc[idx].db
+            feature_lower = feature_batch_df.iloc[idx].lower
+            feature_upper = feature_batch_df.iloc[idx].upper
+            match_precursor_ms2_peaks_processes.append("python -u ./otf-peak-detect/match-precursor-ms2-peaks.py -ddb '{}' -sdb '{}' -fl {} -fu {}".format(destination_db_name, feature_database_name, feature_lower, feature_upper))
 
-    print("matching precursor ms2 peaks...")
-    pool.map(run_process, match_precursor_ms2_peaks_processes)
-    step_stop_time = time.time()
-    processing_times.append((step_name, round(step_stop_time-step_start_time,1)))
+        print("matching precursor ms2 peaks...")
+        pool.map(run_process, match_precursor_ms2_peaks_processes)
+        step_stop_time = time.time()
+        processing_times.append((step_name, round(step_stop_time-step_start_time,1)))
 
-    if continue_processing(this_step=step_name, final_step=args.final_operation, databases=feature_batch_df.db.tolist(), tables=['precursor_ms2_peak_matches_info']):
-        print("Completed {}. Continuing to the next step.".format(step_name))
-    else:
-        print("Not continuing to the next step - exiting.")
-        cleanup(info, processing_times, args.shutdown_on_completion)
+        if continue_processing(this_step=step_name, final_step=args.final_operation, databases=feature_batch_df.db.tolist(), tables=['precursor_ms2_peak_matches_info']):
+            print("Completed {}. Continuing to the next step.".format(step_name))
+        else:
+            print("Not continuing to the next step - exiting.")
+            cleanup(info, processing_times, args.shutdown_on_completion)
 
 ############################
 # OPERATION: correlate_peaks
 ############################
-step_name = 'correlate_peaks'
-if process_this_step(this_step=step_name, first_step=args.operation):
-    print("Starting the \'{}\' step".format(step_name))
-    step_start_time = time.time()
+if not args.pasef_mode:  # not needed in PASEF mode
+    step_name = 'correlate_peaks'
+    if process_this_step(this_step=step_name, first_step=args.operation):
+        print("Starting the \'{}\' step".format(step_name))
+        step_start_time = time.time()
 
-    peak_correlation_processes = []
-    for idx in range(len(feature_batch_df)):
-        destination_db_name = feature_batch_df.iloc[idx].db
-        feature_lower = feature_batch_df.iloc[idx].lower
-        feature_upper = feature_batch_df.iloc[idx].upper
-        peak_correlation_processes.append("python -u ./otf-peak-detect/correlate-ms2-peaks.py -db '{}' -cdb '{}' -fl {} -fu {}".format(destination_db_name, converted_database_name, feature_lower, feature_upper))
-    
-    print("correlating peaks...")
-    pool.map(run_process, peak_correlation_processes)
-    step_stop_time = time.time()
-    processing_times.append((step_name, round(step_stop_time-step_start_time,1)))
+        peak_correlation_processes = []
+        for idx in range(len(feature_batch_df)):
+            destination_db_name = feature_batch_df.iloc[idx].db
+            feature_lower = feature_batch_df.iloc[idx].lower
+            feature_upper = feature_batch_df.iloc[idx].upper
+            peak_correlation_processes.append("python -u ./otf-peak-detect/correlate-ms2-peaks.py -db '{}' -cdb '{}' -fl {} -fu {}".format(destination_db_name, converted_database_name, feature_lower, feature_upper))
+        
+        print("correlating peaks...")
+        pool.map(run_process, peak_correlation_processes)
+        step_stop_time = time.time()
+        processing_times.append((step_name, round(step_stop_time-step_start_time,1)))
 
-    if continue_processing(this_step=step_name, final_step=args.final_operation, databases=feature_batch_df.db.tolist(), tables=['peak_correlation_info']):
-        print("Completed {}. Continuing to the next step.".format(step_name))
-    else:
-        print("Not continuing to the next step - exiting.")
-        cleanup(info, processing_times, args.shutdown_on_completion)
+        if continue_processing(this_step=step_name, final_step=args.final_operation, databases=feature_batch_df.db.tolist(), tables=['peak_correlation_info']):
+            print("Completed {}. Continuing to the next step.".format(step_name))
+        else:
+            print("Not continuing to the next step - exiting.")
+            cleanup(info, processing_times, args.shutdown_on_completion)
 
 ###################################
 # OPERATION: deconvolve_ms2_spectra
