@@ -64,7 +64,7 @@ if len(feature_list_df) > 0:
     for feature_list_idx in range(0,len(feature_list_df)):
         feature_id = feature_list_df.loc[feature_list_idx].feature_id.astype(int)
         charge_state = feature_list_df.loc[feature_list_idx].charge_state.astype(int)
-        cluster_mz_centroid = feature_list_df.loc[feature_list_idx].feature_centroid_mz
+        monoisotopic_mass = feature_list_df.loc[feature_list_idx].monoisotopic_mass
         cluster_summed_intensity = feature_list_df.loc[feature_list_idx].feature_summed_intensity.astype(int)
         retention_time_secs = feature_list_df.loc[feature_list_idx].feature_centroid_rt
 
@@ -93,7 +93,7 @@ if len(feature_list_df) > 0:
                 params = {}
                 params["TITLE"] = "RawFile: {} Index: 1318 precursor: 1 Charge: {} FeatureIntensity: {} Feature#: {} RtApex: {}".format(os.path.basename(args.features_database).split('.')[0], charge_state, cluster_summed_intensity, feature_id, retention_time_secs)
                 params["INSTRUMENT"] = "ESI-QUAD-TOF"
-                params["PEPMASS"] = "{} {}".format(round(cluster_mz_centroid,6), cluster_summed_intensity)
+                params["PEPMASS"] = "{} {}".format(round(monoisotopic_mass,6), cluster_summed_intensity)
                 params["CHARGE"] = "{}+".format(charge_state)
                 params["RTINSECONDS"] = "{}".format(retention_time_secs)
                 params["SCANS"] = "{}".format(int(retention_time_secs))
