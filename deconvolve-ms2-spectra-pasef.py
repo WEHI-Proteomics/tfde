@@ -20,6 +20,7 @@ parser = argparse.ArgumentParser(description='Use Hardklor to deconvolve and dei
 parser.add_argument('-fdb','--features_database', type=str, help='The name of the features database.', required=True)
 parser.add_argument('-frdb','--feature_region_database', type=str, help='The name of the feature region database.', required=True)
 parser.add_argument('-dbd','--data_directory', type=str, help='The directory for the processing data.', required=True)
+parser.add_argument('-mpc','--minimum_peak_correlation', type=float, default=0.6, help='Process ms2 peaks with at least this much correlation with the feature''s ms1 base peak.', required=False)
 args = parser.parse_args()
 
 # Store the arguments as metadata in the database for later reference
