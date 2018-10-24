@@ -67,8 +67,8 @@ def main():
         feature_start_time = time.time()
 
         feature_id = feature_list_df.loc[feature_ids_idx].feature_id.astype(int)
-        ms1_centroid_scan = feature_list_df.loc[feature_ids_idx].feature_centroid_scan
-        ms1_centroid_rt = feature_list_df.loc[feature_ids_idx].feature_centroid_rt
+        ms1_centroid_scan = feature_list_df.loc[feature_ids_idx].base_peak_centroid_scan
+        ms1_centroid_rt = feature_list_df.loc[feature_ids_idx].base_peak_centroid_rt
 
         print("processing feature {} ({}% complete)".format(feature_id, round(float(feature_id-args.feature_id_lower)/(args.feature_id_upper-args.feature_id_lower+1)*100,1)))
 
