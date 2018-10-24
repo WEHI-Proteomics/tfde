@@ -174,11 +174,12 @@ def main():
 
             point_id = 1
             peak_id = 1
-            peak_count = 0
+            feature_peak_count = 0
 
             # for each matching precursor group, sum the raw points from the ms2 frames
             precursor_groups = matches_df.groupby('Precursor')
             for precursor, match_group_df in precursor_groups:
+                precursor_peak_count = 0
                 for match_idx in range(len(match_group_df)):
                     match_df = match_group_df.iloc[match_idx]
                     ms2_frame_id = match_df.Frame
@@ -268,16 +269,18 @@ def main():
                                 # feature_id INTEGER, peak_id INTEGER, centroid_mz REAL, composite_mzs_min INTEGER, composite_mzs_max INTEGER, centroid_scan INTEGER, intensity INTEGER, centre_of_intensity_scan REAL, centre_of_intensity_rt REAL
                                 peaks.append((feature_id, peak_id, centroid_mz_descaled, peak_composite_mzs_min, peak_composite_mzs_max, min_scan+centroid_scan, total_peak_intensity, centre_of_intensity_scan, centre_of_intensity_rt))
                                 peak_id += 1
-                                peak_count += 1
+                                feature_peak_count += 1
+                                precursor_peak_count += 1
 
                             # flag all the mz points we've processed in this peak
                             summed_intensities_by_mz[mzs] = 0
                 else:
                     print("found no points in ms2 for feature {}".format(feature_id))
+                print("feature {}: found {} peaks for precursor {}".format(feature_id, precursor_peak_count, precursor))
 
             feature_stop_time = time.time()
             feature_count += 1
-            print("{} sec to find {} peaks for feature {} ({} features completed)".format(feature_stop_time-feature_start_time, peak_count, feature_id, feature_count))
+            print("{} sec to find {} peaks for feature {} ({} features completed)".format(feature_stop_time-feature_start_time, feature_peak_count, feature_id, feature_count))
             print("")
 
             if (feature_count % args.batch_size) == 0:
