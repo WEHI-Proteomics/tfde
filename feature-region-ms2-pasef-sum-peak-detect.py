@@ -189,7 +189,7 @@ def main():
                     if match_idx == 0:
                         frame_df = df.copy()
                     else:
-                        frame_df.append(df)
+                        frame_df = frame_df.append(df)
                     print("feature {}: added {} rows to the frame for precursor {}, total {} rows".format(feature_id, len(df), precursor, len(frame_df)))
 
                 print("processing the raw ms2 points for feature {}".format(feature_id))
