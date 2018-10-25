@@ -67,7 +67,7 @@ if len(feature_list_df) > 0:
 
         db_conn = sqlite3.connect(args.feature_region_database)
         # get all the ms2 peaks for this feature
-        ms2_peaks_df = pd.read_sql_query("select * from ms2_peaks where feature_id={} order by peak_id ASC".format(feature_id), source_conn)
+        ms2_peaks_df = pd.read_sql_query("select * from ms2_peaks where feature_id={} order by peak_id ASC".format(feature_id), db_conn)
         if len(ms2_peaks_df) > 0:
             # write out the ms2 peaks we are about to deconvolve and deisotope, for later matching with MSCypher output
             ms2_peaks_df.to_sql(name='ms2_peaks_within_window', con=db_conn, if_exists='append', index=False)
