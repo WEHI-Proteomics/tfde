@@ -88,7 +88,7 @@ def main():
         dest_c.execute("CREATE TABLE feature_isolation_matches (feature_id INTEGER, frame_id INTEGER, precursor_id INTEGER)")
 
         dest_c.execute("DROP TABLE IF EXISTS ms2_peaks")
-        dest_c.execute("CREATE TABLE ms2_peaks (feature_id INTEGER, peak_id INTEGER, centroid_mz REAL, composite_mzs_min INTEGER, composite_mzs_max INTEGER, centroid_scan INTEGER, intensity INTEGER, cofi_scan REAL, cofi_rt REAL, PRIMARY KEY (feature_id, peak_id))")
+        dest_c.execute("CREATE TABLE ms2_peaks (feature_id INTEGER, peak_id INTEGER, centroid_mz REAL, composite_mzs_min INTEGER, composite_mzs_max INTEGER, centroid_scan INTEGER, intensity INTEGER, cofi_scan REAL, cofi_rt REAL, precursor INTEGER, PRIMARY KEY (feature_id, peak_id))")
 
         dest_c.execute("DROP TABLE IF EXISTS ms2_feature_region_points")
 
@@ -180,12 +180,12 @@ def main():
             precursor_groups = matches_df.groupby('Precursor')
             for precursor, match_group_df in precursor_groups:
                 precursor_peak_count = 0
+                # build the 'frame' of raw points for a precursor by loading the ms2 frame points for the isolation window's region
                 for match_idx in range(len(match_group_df)):
                     match_df = match_group_df.iloc[match_idx]
                     ms2_frame_id = match_df.Frame
                     isolation_scan_lower = match_df.ScanNumBegin
                     isolation_scan_upper = match_df.ScanNumEnd
-                    # load the MS2 frame points for the isolation window's region
                     df = pd.read_sql_query("select frame_id,mz,scan,intensity,point_id,retention_time_secs from frames where frame_id == {} and scan <= {} and scan >= {} order by scan,mz;".format(ms2_frame_id, isolation_scan_upper, isolation_scan_lower), conv_conn)
                     if match_idx == 0:
                         frame_df = df.copy()
@@ -266,8 +266,7 @@ def main():
                                 centre_of_intensity_rt = peakutils.centroid(peak_points.retention_time_secs.astype(float), peak_points.intensity)
 
                                 # add the peak to the list
-                                # feature_id INTEGER, peak_id INTEGER, centroid_mz REAL, composite_mzs_min INTEGER, composite_mzs_max INTEGER, centroid_scan INTEGER, intensity INTEGER, centre_of_intensity_scan REAL, centre_of_intensity_rt REAL
-                                peaks.append((feature_id, peak_id, centroid_mz_descaled, peak_composite_mzs_min, peak_composite_mzs_max, min_scan+centroid_scan, total_peak_intensity, centre_of_intensity_scan, centre_of_intensity_rt))
+                                peaks.append((feature_id, peak_id, centroid_mz_descaled, peak_composite_mzs_min, peak_composite_mzs_max, min_scan+centroid_scan, total_peak_intensity, centre_of_intensity_scan, centre_of_intensity_rt, int(precursor)))
                                 peak_id += 1
                                 feature_peak_count += 1
                                 precursor_peak_count += 1
@@ -290,8 +289,7 @@ def main():
                 dest_c.executemany("INSERT INTO summed_ms2_regions (feature_id, peak_id, point_id, mz, scan, intensity) VALUES (?, ?, ?, ?, ?, ?)", points)
                 dest_conn.commit()
                 del points[:]
-                #                                          feature_id INTEGER, peak_id INTEGER, centroid_mz REAL, composite_mzs_min INTEGER, composite_mzs_max INTEGER, centroid_scan INTEGER, intensity INTEGER, centre_of_intensity_scan REAL, centre_of_intensity_rt REAL
-                dest_c.executemany("INSERT INTO ms2_peaks (feature_id, peak_id, centroid_mz, composite_mzs_min, composite_mzs_max, centroid_scan, intensity, cofi_scan, cofi_rt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)", peaks)
+                dest_c.executemany("INSERT INTO ms2_peaks (feature_id, peak_id, centroid_mz, composite_mzs_min, composite_mzs_max, centroid_scan, intensity, cofi_scan, cofi_rt, precursor) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", peaks)
                 dest_conn.commit()
                 del peaks[:]
 
@@ -301,8 +299,7 @@ def main():
 
         # Store any remaining peaks in the database
         if len(peaks) > 0:
-            #                                          feature_id INTEGER, peak_id INTEGER, centroid_mz REAL, composite_mzs_min INTEGER, composite_mzs_max INTEGER, centroid_scan INTEGER, intensity INTEGER, centre_of_intensity_scan REAL, centre_of_intensity_rt REAL
-            dest_c.executemany("INSERT INTO ms2_peaks (feature_id, peak_id, centroid_mz, composite_mzs_min, composite_mzs_max, centroid_scan, intensity, cofi_scan, cofi_rt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)", peaks)
+            dest_c.executemany("INSERT INTO ms2_peaks (feature_id, peak_id, centroid_mz, composite_mzs_min, composite_mzs_max, centroid_scan, intensity, cofi_scan, cofi_rt, precursor) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", peaks)
 
         # store the matches between features and isolation windows
         if len(features_with_isolation_matches) > 0:
