@@ -74,7 +74,10 @@ if len(feature_list_df) > 0:
             precursor_id = precursors_df.loc[precursor_idx].precursor_id.astype(int)
 
             # get all the ms2 peaks for this feature
+            db_conn = sqlite3.connect(args.feature_region_database)
             ms2_peaks_df = pd.read_sql_query("select * from ms2_peaks where feature_id={} and precursor={} order by peak_id ASC".format(feature_id, precursor_id), db_conn)
+            db_conn.close()
+
             if len(ms2_peaks_df) > 0:
                 pairs_df = ms2_peaks_df[['centroid_mz', 'intensity']].copy().sort_values(by=['intensity'], ascending=False)
 
