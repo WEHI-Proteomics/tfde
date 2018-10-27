@@ -67,7 +67,7 @@ if len(feature_list_df) > 0:
 
         # get all the precursors for this feature
         db_conn = sqlite3.connect(args.feature_region_database)
-        precursors_df = pd.read_sql_query("select unique(precursor_id) from feature_isolation_matches where feature_id={}".format(feature_id), db_conn)
+        precursors_df = pd.read_sql_query("select distinct(precursor_id) from feature_isolation_matches where feature_id={}".format(feature_id), db_conn)
         db_conn.close()
 
         for precursor_idx in range(len(precursors_df)):
