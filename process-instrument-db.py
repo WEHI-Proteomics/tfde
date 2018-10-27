@@ -452,7 +452,6 @@ feature_ranges = []
 for s in batch_splits:
     if len(s) > 0:
         feature_ranges.append((s[0],s[len(s)-1]))
-print("Feature ranges: {}".format(feature_ranges))
 
 # define the feature database filenames
 feature_databases = []
