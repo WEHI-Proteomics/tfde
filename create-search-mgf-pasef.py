@@ -99,7 +99,7 @@ try:
                     fragments = []
                     for row in fragments_df.iterrows():
                         index, data = row
-                        fragments.append("{} {}\n".format(round(data.hk_monoisotopic_mass,4), data.hk_intensity_peak_id))
+                        fragments.append("{} {}\n".format(round(data.hk_monoisotopic_mass,4), data.hk_intensity))
 
                     with open(mgf_filename, 'a') as file_handler:
                         # write the header
