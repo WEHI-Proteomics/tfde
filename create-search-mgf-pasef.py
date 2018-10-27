@@ -52,7 +52,7 @@ try:
         print("Processing feature {}".format(feature_id))
 
         # get all the precursors for this feature
-        db_conn = sqlite3.connect(args.feature_region_database)
+        db_conn = sqlite3.connect(args.features_database)
         precursors_df = pd.read_sql_query("select * from feature_isolation_matches where feature_id={}".format(feature_id), db_conn)
         db_conn.close()
 
