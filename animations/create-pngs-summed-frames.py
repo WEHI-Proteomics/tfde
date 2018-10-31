@@ -33,6 +33,9 @@ ax.elev = 20.0
 ax.azim = 250.0
 ax.dist = 10.0
 
+ax.set_xlim(left=200, right=1800)
+ax.set_ylim(bottom=900, top=0)
+
 plt.gca().invert_yaxis()
 plt.xlabel('m/z')
 plt.ylabel('scan')
