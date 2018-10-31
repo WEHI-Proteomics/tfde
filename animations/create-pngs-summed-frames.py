@@ -11,8 +11,11 @@ import os
 CONVERTED_DATABASE_NAME = '/home/ubuntu/HeLa_20KInt/HeLa_20KInt.sqlite'
 
 db_conn = sqlite3.connect(CONVERTED_DATABASE_NAME)
-frames_df = pd.read_sql_query("select * from summed_frames where retention_time_secs <= 600 and intensity > 100 order by retention_time_secs", db_conn)
+frames_df = pd.read_sql_query("select * from summed_frames where retention_time_secs <= 1000 order by retention_time_secs", db_conn)
 db_conn.close()
+
+frame_lower = int(frames_df.frame_id.min())
+frame_upper = int(frames_df.frame_id.max())
 
 # set a filename, run the logistic model, and create the plot
 gif_filename = 'HeLa_20KInt'
@@ -27,7 +30,7 @@ plt.gca().invert_yaxis()
 plt.xlabel('m/z')
 plt.ylabel('scan')
 
-for frame_id in range(1,250):
+for frame_id in range(frame_lower,frame_upper):
     print("rendering frame {}".format(frame_id))
     frame_df = frames_df[frames_df.frame_id==frame_id]
     ax.scatter(frame_df.mz, frame_df.scan, frame_df.intensity, c=np.log(frame_df.intensity), cmap='cool')
