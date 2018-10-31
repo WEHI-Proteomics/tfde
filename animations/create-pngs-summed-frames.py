@@ -35,6 +35,7 @@ ax.dist = 10.0
 
 ax.set_xlim(left=200, right=1800)
 ax.set_ylim(bottom=900, top=0)
+ax.set_zlim(bottom=0, top=120000)
 
 plt.gca().invert_yaxis()
 plt.xlabel('m/z')
