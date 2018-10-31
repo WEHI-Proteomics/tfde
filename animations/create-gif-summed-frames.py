@@ -1,18 +1,11 @@
-
-# coding: utf-8
-
-# In[9]:
-
-
+import matplotlib
+matplotlib.use("Agg")
+from mpl_toolkits.mplot3d import Axes3D
+import matplotlib.pyplot as plt
 import sqlite3
 import pandas as pd
-import matplotlib
-import matplotlib.pyplot as plt
 import numpy as np
-from mpl_toolkits.mplot3d import Axes3D
 import os
-
-matplotlib.use("Agg")
 
 
 CONVERTED_DATABASE_NAME = '/home/ubuntu/HeLa_20KInt/HeLa_20KInt.sqlite'
