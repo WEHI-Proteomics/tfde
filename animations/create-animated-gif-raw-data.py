@@ -7,9 +7,7 @@
 import matplotlib.pyplot as plt
 import os
 from PIL import Image
-import IPython.display as IPdisplay
 import glob
-get_ipython().run_line_magic('matplotlib', 'inline')
 
 
 # In[ ]:
@@ -31,17 +29,3 @@ images[0].save(gif_filepath,
                append_images=images[1:],
                duration=100,
                loop=0)
-IPdisplay.Image(url=gif_filepath)
-
-
-# In[ ]:
-
-
-gif_filepath
-
-
-# In[ ]:
-
-
-len(images)
-
