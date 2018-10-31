@@ -40,7 +40,7 @@ for frame_id in range(frame_lower,frame_upper):
     ax.set_ylim(bottom=900, top=0)
     ax.set_zlim(bottom=0, top=120000)
 
-    plt.gca().invert_yaxis()
+    # plt.gca().invert_yaxis()
     plt.xlabel('m/z')
     plt.ylabel('scan')
 
