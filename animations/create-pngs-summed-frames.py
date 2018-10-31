@@ -47,5 +47,6 @@ for frame_id in range(frame_lower,frame_upper):
     ax.scatter(frame_df.mz, frame_df.scan, frame_df.intensity, c=np.log(frame_df.intensity), cmap='cool')
     fig.suptitle('Frame {}'.format(frame_id), fontsize=16, x=0.5, y=0.85)
     plt.savefig('{}/img{:03d}.png'.format(working_folder, frame_id), bbox_inches='tight')
+    fig.clf()
 
 plt.close()
