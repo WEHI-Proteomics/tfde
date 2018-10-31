@@ -11,7 +11,7 @@ import os
 CONVERTED_DATABASE_NAME = '/home/ubuntu/HeLa_20KInt/HeLa_20KInt.sqlite'
 
 db_conn = sqlite3.connect(CONVERTED_DATABASE_NAME)
-frames_df = pd.read_sql_query("select * from summed_frames where retention_time_secs <= 1000 order by retention_time_secs", db_conn)
+frames_df = pd.read_sql_query("select * from summed_frames where retention_time_secs >= 1000 and retention_time_secs <= 1120 order by scan ASC", db_conn)
 db_conn.close()
 
 frame_lower = int(frames_df.frame_id.min())
@@ -25,7 +25,14 @@ if not os.path.exists(working_folder):
     os.makedirs(working_folder)
 
 fig = plt.figure()
+fig.set_figheight(10)
+fig.set_figwidth(15)
+
 ax = Axes3D(fig)
+ax.elev = 20.0
+ax.azim = 250.0
+ax.dist = 10.0
+
 plt.gca().invert_yaxis()
 plt.xlabel('m/z')
 plt.ylabel('scan')
