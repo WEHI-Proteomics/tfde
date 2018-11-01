@@ -11,7 +11,7 @@ import os
 CONVERTED_DATABASE_NAME = '/home/ubuntu/HeLa_20KInt/HeLa_20KInt.sqlite'
 
 db_conn = sqlite3.connect(CONVERTED_DATABASE_NAME)
-frames_df = pd.read_sql_query("select * from summed_frames where retention_time_secs >= 1000 and retention_time_secs <= 1120 order by scan ASC", db_conn)
+frames_df = pd.read_sql_query("select * from summed_frames where retention_time_secs >= 1000 and retention_time_secs <= 3000 order by frame_id, scan ASC", db_conn)
 db_conn.close()
 
 frame_lower = int(frames_df.frame_id.min())
