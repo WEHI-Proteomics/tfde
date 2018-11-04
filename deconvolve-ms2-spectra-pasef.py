@@ -124,7 +124,7 @@ if len(feature_list_df) > 0:
                 mgf.write(output=header_filename, spectra=spectra)
 
                 # append the Hardklor command to process it
-                hk_processes.append("./hardklor/hardklor -cmd -instrument TOF -resolution 40000 -centroided 1 -ms_level 2 -algorithm Version2 -charge_algorithm Senko -charge_min 1 -charge_max {} -correlation {} -mz_window 5.25 -sensitivity 2 -depth 2 -max_features 12 -distribution_area 1 -xml 0 {} {}".format(charge_state, args.minimum_peak_correlation, mgf_filename, hk_filename))
+                hk_processes.append("./hardklor/hardklor -cmd -instrument TOF -resolution 40000 -centroided 1 -ms_level 2 -algorithm Version2 -charge_algorithm FFT -charge_min 1 -charge_max {} -correlation {} -mz_window 5.25 -sensitivity 2 -depth 2 -max_features 12 -distribution_area 1 -xml 0 {} {}".format(charge_state, args.minimum_peak_correlation, mgf_filename, hk_filename))
             else:
                 print("There were no ms2 peaks in the ms2_peaks table for feature {} and precursor {}.".format(feature_id, precursor_id))
 
