@@ -28,6 +28,7 @@ for arg in vars(args):
 
 start_run = time.time()
 
+mgf_directory = "{}/mgf".format(args.data_directory)
 search_headers_directory = "{}/search-headers".format(args.data_directory)
 output_directory = args.output_directory
 
