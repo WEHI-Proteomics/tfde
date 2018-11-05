@@ -37,7 +37,7 @@ info.append(("output_directory", output_directory))
 
 try:
     db_conn = sqlite3.connect(args.features_database)
-    feature_ids_df = pd.read_sql_query("select feature_id from feature_list", db_conn)
+    feature_ids_df = pd.read_sql_query("select feature_id,charge_state from feature_list", db_conn)
     db_conn.cursor().execute("DROP TABLE IF EXISTS deconvoluted_ions")
     db_conn.close()
 
@@ -49,6 +49,7 @@ try:
 
     for feature_ids_idx in range(0,len(feature_ids_df)):
         feature_id = feature_ids_df.loc[feature_ids_idx].feature_id.astype(int)
+        feature_charge_state = feature_ids_df.loc[feature_ids_idx].charge_state.astype(int)
         print("Processing feature {}".format(feature_id))
 
         # get all the precursors for this feature
