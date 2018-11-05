@@ -9,7 +9,6 @@ import argparse
 import json
 import traceback
 import ms_deisotope
-from ms_deisotope.scoring import MSDeconVFitter
 
 PROTON_MASS = 1.0073  # Mass of a proton in unified atomic mass units, or Da. For calculating the monoisotopic mass.
 
