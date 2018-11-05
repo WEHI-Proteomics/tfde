@@ -8,6 +8,8 @@ import os.path
 import argparse
 import json
 import traceback
+import ms_deisotope
+from ms_deisotope.scoring import MSDeconVFitter
 
 PROTON_MASS = 1.0073  # Mass of a proton in unified atomic mass units, or Da. For calculating the monoisotopic mass.
 
@@ -27,11 +29,9 @@ for arg in vars(args):
 
 start_run = time.time()
 
-hk_directory = "{}/hk".format(args.data_directory)
 search_headers_directory = "{}/search-headers".format(args.data_directory)
 output_directory = args.output_directory
 
-info.append(("hk_directory", hk_directory))
 info.append(("search_headers_directory", search_headers_directory))
 info.append(("output_directory", output_directory))
 
@@ -42,10 +42,10 @@ try:
     db_conn.close()
 
     # delete the MGF if it already exists
-    mgf_filename = "{}/{}-search.mgf".format(output_directory, args.base_mgf_filename)
-    if os.path.isfile(mgf_filename):
-        os.remove(mgf_filename)
-    info.append(("mgf_filename", mgf_filename))
+    search_mgf_filename = "{}/{}-search.mgf".format(output_directory, args.base_mgf_filename)
+    if os.path.isfile(search_mgf_filename):
+        os.remove(search_mgf_filename)
+    info.append(("search_mgf_filename", search_mgf_filename))
 
     for feature_ids_idx in range(0,len(feature_ids_df)):
         feature_id = feature_ids_df.loc[feature_ids_idx].feature_id.astype(int)
@@ -59,62 +59,49 @@ try:
         for precursor_idx in range(len(precursors_df)):
             precursor_id = precursors_df.loc[precursor_idx].precursor_id.astype(int)
 
-            hk_filename = "{}/feature-{}-precursor-{}.hk".format(hk_directory, feature_id, precursor_id)
             header_filename = "{}/feature-{}-precursor-{}.txt".format(search_headers_directory, feature_id, precursor_id)
+            mgf_filename = "{}/feature-{}-precursor-{}.mgf".format(mgf_directory, feature_id, precursor_id)
 
-            # parse the Hardklor output to create the search MGF
-            # see https://proteome.gs.washington.edu/software/hardklor/docs/hardklorresults.html
-            if os.path.isfile(hk_filename):
-                hk_results_df = pd.read_table(hk_filename, skiprows=1, header=None, names=['monoisotopic_mass','charge','intensity','base_isotope_peak','analysis_window','deprecated','modifications','correlation'])
-                if len(hk_results_df) > 0:
-                    # rename the HK columns to be clearer
-                    hk_results_df.rename(columns={'monoisotopic_mass':'hk_monoisotopic_mass', 'charge':'hk_charge', 'intensity':'hk_intensity', 'base_isotope_peak':'hk_base_isotope_peak'}, inplace=True)
+            reader = ms_deisotope.MSFileLoader(mgf_filename)
+            scan = next(reader)
+            scan.pick_peaks().deconvolute(scorer=ms_deisotope.MSDeconVFitter(10), 
+                                        averagine=ms_deisotope.peptide,
+                                        charge_range=(1,feature_charge_state),
+                                        truncate_after=0.8)
 
-                    # the monoisotopic_mass from Hardklor is the zero charge M, so we add the proton mass to get M+H
-                    hk_results_df.hk_monoisotopic_mass += PROTON_MASS
+            deconvoluted_peaks = []
+            for peak in scan.deconvoluted_peak_set:
+                deconvoluted_peaks.append((peak.neutral_mass, peak.intensity))
+            deconvoluted_peaks_df = pd.DataFrame(deconvoluted_peaks, columns=['neutral_mass','intensity'])
 
-                    # drop the columns we don't need
-                    hk_results_df.drop(['analysis_window','deprecated','modifications'], inplace=True, axis=1)
+            # write out the deconvolved and de-isotoped peaks reported by ms_deisotope
+            db_conn = sqlite3.connect(args.features_database)
+            deconvoluted_peaks_df.to_sql(name='deconvoluted_ions', con=db_conn, if_exists='append', index=False)
+            db_conn.close()
 
-                    # add the feature and precursor so we can match them up later if needed
-                    hk_results_df['feature_id'] = feature_id
-                    hk_results_df['precursor_id'] = precursor_id
+            fragments_df = deconvoluted_peaks_df.copy().sort_values(by=['neutral_mass'], ascending=True)
 
-                    # rearrange the column order to be a bit nicer
-                    hk_results_df = hk_results_df[['feature_id','precursor_id','hk_monoisotopic_mass','hk_charge','hk_intensity','hk_base_isotope_peak']]
+            # read the header for this feature
+            with open(header_filename) as f:
+                header_content = f.readlines()
+            header_content = [x for x in header_content if not x == '\n']  # remove the empty lines
 
-                    # write out the deconvolved and de-isotoped peaks reported by HK
-                    db_conn = sqlite3.connect(args.features_database)
-                    hk_results_df.to_sql(name='deconvoluted_ions', con=db_conn, if_exists='append', index=False)
-                    db_conn.close()
+            # compile the fragments from the ms_deisotope deconvolution
+            fragments = []
+            for row in fragments_df.iterrows():
+                index, data = row
+                fragments.append("{} {}\n".format(round(data.neutral_mass,4), data.intensity))
 
-                    fragments_df = hk_results_df[['hk_monoisotopic_mass', 'hk_intensity']].copy().sort_values(by=['hk_monoisotopic_mass'], ascending=True)
-
-                    # read the header for this feature
-                    with open(header_filename) as f:
-                        header_content = f.readlines()
-                    header_content = [x for x in header_content if not x == '\n']  # remove the empty lines
-
-                    # compile the fragments from the Hardklor deconvolution
-                    fragments = []
-                    for row in fragments_df.iterrows():
-                        index, data = row
-                        fragments.append("{} {}\n".format(round(data.hk_monoisotopic_mass,4), data.hk_intensity))
-
-                    with open(mgf_filename, 'a') as file_handler:
-                        # write the header
-                        for item in header_content[:len(header_content)-1]:
-                            file_handler.write("{}".format(item))
-                        # write the fragments
-                        for item in fragments:
-                            file_handler.write("{}".format(item))
-                        # close off the feature
-                        for item in header_content[len(header_content)-1:]:
-                            file_handler.write("{}".format(item))
-                else:
-                    print("Hardklor gave no results for feature {}".format(feature_id))
-            else:
-                print("Could not find the file {} for feature {}".format(hk_filename, feature_id))
+            with open(mgf_filename, 'a') as file_handler:
+                # write the header
+                for item in header_content[:len(header_content)-1]:
+                    file_handler.write("{}".format(item))
+                # write the fragments
+                for item in fragments:
+                    file_handler.write("{}".format(item))
+                # close off the feature
+                for item in header_content[len(header_content)-1:]:
+                    file_handler.write("{}".format(item))
 
     stop_run = time.time()
 
