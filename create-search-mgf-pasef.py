@@ -94,7 +94,7 @@ try:
             fragments = []
             for row in fragments_df.iterrows():
                 index, data = row
-                fragments.append("{} {}\n".format(round(data.neutral_mass,4), data.intensity))
+                fragments.append("{} {}\n".format(round(data.neutral_mass,4), int(data.intensity)))
 
             print("adding {} fragments to {}".format(len(fragments), search_mgf_filename))
             with open(search_mgf_filename, 'a') as file_handler:
