@@ -44,11 +44,6 @@ try:
     db_conn.cursor().execute("DROP TABLE IF EXISTS deconvoluted_ions")
     db_conn.close()
 
-    # delete the search MGF if it already exists
-    search_mgf_filename = "{}/{}-search.mgf".format(search_mgf_directory, args.base_mgf_filename)
-    if os.path.isfile(search_mgf_filename):
-        os.remove(search_mgf_filename)
-
     for feature_ids_idx in range(0,len(feature_ids_df)):
         feature_id = feature_ids_df.loc[feature_ids_idx].feature_id.astype(int)
         feature_charge_state = feature_ids_df.loc[feature_ids_idx].charge_state.astype(int)
@@ -62,9 +57,10 @@ try:
         for precursor_idx in range(len(precursors_df)):
             precursor_id = precursors_df.loc[precursor_idx].precursor_id.astype(int)
 
-            header_filename = "{}/feature-{}-precursor-{}.txt".format(search_headers_directory, feature_id, precursor_id)
             raw_mgf_filename = "{}/feature-{}-precursor-{}.mgf".format(raw_mgf_directory, feature_id, precursor_id)
+            deconvolved_mgf_filename = "{}/feature-{}-precursor-{}.mgf".format(deconvolved_mgf_directory, feature_id, precursor_id)
             search_mgf_filename = "{}/feature-{}-precursor-{}.mgf".format(search_mgf_directory, feature_id, precursor_id)
+            header_filename = "{}/feature-{}-precursor-{}.txt".format(search_headers_directory, feature_id, precursor_id)
 
             reader = ms_deisotope.MSFileLoader(raw_mgf_filename)
             scan = next(reader)
@@ -96,6 +92,7 @@ try:
                 index, data = row
                 fragments.append("{} {}\n".format(round(data.neutral_mass,4), int(data.intensity)))
 
+            # write out the individual search MGFs
             print("adding {} fragments to {}".format(len(fragments), search_mgf_filename))
             with open(search_mgf_filename, 'a') as file_handler:
                 # write the header

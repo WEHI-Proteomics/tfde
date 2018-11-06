@@ -716,20 +716,19 @@ if process_this_step(this_step=step_name, first_step=args.operation):
     print("creating the search MGF...")
     pool.map(run_process, create_search_mgf_processes)
     # now join them all together
-    mgf_directory = "{}/mgf".format(args.data_directory)
-    hk_directory = "{}/hk".format(args.data_directory)
-    search_headers_directory = "{}/search-headers".format(args.data_directory)
-    output_directory = "{}/search".format(mgf_directory)
-    combined_mgf_filename = "{}/{}-search.mgf".format(output_directory, args.database_base_name)
+    deconvolved_mgf_directory = "{}/deconvolved-mgf".format(args.data_directory)
+    search_mgf_directory = "{}/search-mgf".format(args.data_directory)
+    combined_search_mgf_filename = "{}/{}-search.mgf".format(search_mgf_directory, args.database_base_name)
+
     # delete the search MGF if it already exists
-    if os.path.exists(combined_mgf_filename):
-        os.remove(combined_mgf_filename)
+    if os.path.exists(combined_search_mgf_filename):
+        os.remove(combined_search_mgf_filename)
     for idx in range(len(feature_batch_df)):
         feature_lower = feature_batch_df.iloc[idx].lower
         feature_upper = feature_batch_df.iloc[idx].upper
         base_mgf_name = "features-{}-{}".format(feature_lower, feature_upper)
-        mgf_filename = "{}/{}-search.mgf".format(output_directory, base_mgf_name)
-        run_process("cat {} >> {}".format(mgf_filename, combined_mgf_filename))
+        mgf_filename = "{}/{}-search.mgf".format(search_mgf_directory, base_mgf_name)
+        run_process("cat {} >> {}".format(mgf_filename, combined_search_mgf_filename))
 
     # write out the deconvoluted_ions table as a global CSV
     csv_file_name = "{}/{}-deconvoluted-ions.csv".format(args.data_directory, args.database_base_name)
