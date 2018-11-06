@@ -702,7 +702,7 @@ if process_this_step(this_step=step_name, first_step=args.operation):
         feature_upper = feature_batch_df.iloc[idx].upper
         base_mgf_name = "features-{}-{}".format(feature_lower, feature_upper)
         if args.pasef_mode:
-            create_search_mgf_processes.append("python -u ./otf-peak-detect/create-search-mgf-pasef.py -fdb '{}' -bfn {} -dbd {} -od {}".format(destination_db_name, base_mgf_name, args.data_directory, output_directory))
+            create_search_mgf_processes.append("python -u ./otf-peak-detect/create-search-mgf-pasef.py -fdb '{}' -bfn {} -dbd {}".format(destination_db_name, base_mgf_name, args.data_directory))
         else:
             create_search_mgf_processes.append("python -u ./otf-peak-detect/create-search-mgf.py -fdb '{}' -bfn {} -dbd {} -od {}".format(destination_db_name, base_mgf_name, args.data_directory, output_directory))
 
