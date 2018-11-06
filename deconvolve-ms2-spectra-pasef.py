@@ -24,7 +24,10 @@ for arg in vars(args):
 
 start_run = time.time()
 
-mgf_directory = "{}/raw-mgf".format(args.data_directory)
+# set up the directories for processing
+raw_mgf_directory = "{}/raw-mgf".format(args.data_directory)
+deconvolved_mgf_directory = "{}/deconvolved-mgf".format(args.data_directory)
+search_mgf_directory = "{}/search-mgf".format(args.data_directory)
 search_headers_directory = "{}/search-headers".format(args.data_directory)
 
 info.append(("mgf directory", mgf_directory))
