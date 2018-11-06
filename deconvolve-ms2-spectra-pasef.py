@@ -85,21 +85,21 @@ if len(feature_list_df) > 0:
                 spectrum["params"] = params
                 spectra.append(spectrum)
 
-                mgf_filename = "{}/feature-{}-precursor-{}.mgf".format(mgf_directory, feature_id, precursor_id)
+                raw_mgf_filename = "{}/feature-{}-precursor-{}.mgf".format(raw_mgf_directory, feature_id, precursor_id)
                 header_filename = "{}/feature-{}-precursor-{}.txt".format(search_headers_directory, feature_id, precursor_id)
 
                 # write out the MGF file
-                if os.path.isfile(mgf_filename):
-                    os.remove(mgf_filename)
+                if os.path.isfile(raw_mgf_filename):
+                    os.remove(raw_mgf_filename)
                 if os.path.isfile(header_filename):
                     os.remove(header_filename)
-                mgf.write(output=mgf_filename, spectra=spectra)
+                mgf.write(output=raw_mgf_filename, spectra=spectra)
 
                 # remove blank lines from the MGF file
-                with open(mgf_filename, 'r') as file_handler:
+                with open(raw_mgf_filename, 'r') as file_handler:
                     file_content = file_handler.readlines()
                 file_content = [x for x in file_content if not x == '\n']
-                with open(mgf_filename, 'w') as file_handler:
+                with open(raw_mgf_filename, 'w') as file_handler:
                     file_handler.writelines(file_content)
 
                 # write out the header with no fragment ions (with which to build the search MGF)
