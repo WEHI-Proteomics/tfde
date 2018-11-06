@@ -93,6 +93,7 @@ try:
                 index, data = row
                 fragments.append("{} {}\n".format(round(data.neutral_mass,4), data.intensity))
 
+            print("adding {} fragments to {}".format(len(fragments), mgf_filename))
             with open(mgf_filename, 'a') as file_handler:
                 # write the header
                 for item in header_content[:len(header_content)-1]:
