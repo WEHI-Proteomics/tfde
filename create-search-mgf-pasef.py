@@ -18,7 +18,6 @@ parser = argparse.ArgumentParser(description='A tree descent method for MS2 peak
 parser.add_argument('-fdb','--features_database', type=str, help='The name of the features database.', required=True)
 parser.add_argument('-bfn','--base_mgf_filename', type=str, help='The base name of the MGF.', required=True)
 parser.add_argument('-dbd','--data_directory', type=str, help='The directory for the processing data.', required=True)
-parser.add_argument('-od','--output_directory', type=str, help='The directory for the output.', required=True)
 args = parser.parse_args()
 
 # Store the arguments as metadata in the database for later reference
@@ -28,12 +27,16 @@ for arg in vars(args):
 
 start_run = time.time()
 
-mgf_directory = "{}/mgf".format(args.data_directory)
+# set up the directories for processing
+raw_mgf_directory = "{}/raw-mgf".format(args.data_directory)
+deconvolved_mgf_directory = "{}/deconvolved-mgf".format(args.data_directory)
+search_mgf_directory = "{}/search-mgf".format(args.data_directory)
 search_headers_directory = "{}/search-headers".format(args.data_directory)
-output_directory = args.output_directory
 
+info.append(("raw_mgf_directory", raw_mgf_directory))
+info.append(("deconvolved_mgf_directory", deconvolved_mgf_directory))
+info.append(("search_mgf_directory", search_mgf_directory))
 info.append(("search_headers_directory", search_headers_directory))
-info.append(("output_directory", output_directory))
 
 try:
     db_conn = sqlite3.connect(args.features_database)
@@ -41,11 +44,10 @@ try:
     db_conn.cursor().execute("DROP TABLE IF EXISTS deconvoluted_ions")
     db_conn.close()
 
-    # delete the MGF if it already exists
-    search_mgf_filename = "{}/{}-search.mgf".format(output_directory, args.base_mgf_filename)
+    # delete the search MGF if it already exists
+    search_mgf_filename = "{}/{}-search.mgf".format(search_mgf_directory, args.base_mgf_filename)
     if os.path.isfile(search_mgf_filename):
         os.remove(search_mgf_filename)
-    info.append(("search_mgf_filename", search_mgf_filename))
 
     for feature_ids_idx in range(0,len(feature_ids_df)):
         feature_id = feature_ids_df.loc[feature_ids_idx].feature_id.astype(int)
@@ -61,9 +63,10 @@ try:
             precursor_id = precursors_df.loc[precursor_idx].precursor_id.astype(int)
 
             header_filename = "{}/feature-{}-precursor-{}.txt".format(search_headers_directory, feature_id, precursor_id)
-            mgf_filename = "{}/feature-{}-precursor-{}.mgf".format(mgf_directory, feature_id, precursor_id)
+            raw_mgf_filename = "{}/feature-{}-precursor-{}.mgf".format(raw_mgf_directory, feature_id, precursor_id)
+            search_mgf_filename = "{}/feature-{}-precursor-{}.mgf".format(search_mgf_directory, feature_id, precursor_id)
 
-            reader = ms_deisotope.MSFileLoader(mgf_filename)
+            reader = ms_deisotope.MSFileLoader(raw_mgf_filename)
             scan = next(reader)
             scan.pick_peaks().deconvolute(scorer=ms_deisotope.MSDeconVFitter(10), 
                                         averagine=ms_deisotope.peptide,
@@ -93,8 +96,8 @@ try:
                 index, data = row
                 fragments.append("{} {}\n".format(round(data.neutral_mass,4), data.intensity))
 
-            print("adding {} fragments to {}".format(len(fragments), mgf_filename))
-            with open(mgf_filename, 'a') as file_handler:
+            print("adding {} fragments to {}".format(len(fragments), search_mgf_filename))
+            with open(search_mgf_filename, 'a') as file_handler:
                 # write the header
                 for item in header_content[:len(header_content)-1]:
                     file_handler.write("{}".format(item))
