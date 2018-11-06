@@ -716,9 +716,8 @@ if process_this_step(this_step=step_name, first_step=args.operation):
     print("creating the search MGF...")
     pool.map(run_process, create_search_mgf_processes)
     # now join them all together
-    deconvolved_mgf_directory = "{}/deconvolved-mgf".format(args.data_directory)
     search_mgf_directory = "{}/search-mgf".format(args.data_directory)
-    combined_search_mgf_filename = "{}/{}-search.mgf".format(search_mgf_directory, args.database_base_name)
+    combined_search_mgf_filename = "{}/{}-search.mgf".format(args.data_directory, args.database_base_name)
 
     # delete the search MGF if it already exists
     if os.path.exists(combined_search_mgf_filename):

@@ -29,12 +29,10 @@ start_run = time.time()
 
 # set up the directories for processing
 raw_mgf_directory = "{}/raw-mgf".format(args.data_directory)
-deconvolved_mgf_directory = "{}/deconvolved-mgf".format(args.data_directory)
 search_mgf_directory = "{}/search-mgf".format(args.data_directory)
 search_headers_directory = "{}/search-headers".format(args.data_directory)
 
 info.append(("raw_mgf_directory", raw_mgf_directory))
-info.append(("deconvolved_mgf_directory", deconvolved_mgf_directory))
 info.append(("search_mgf_directory", search_mgf_directory))
 info.append(("search_headers_directory", search_headers_directory))
 
@@ -58,7 +56,6 @@ try:
             precursor_id = precursors_df.loc[precursor_idx].precursor_id.astype(int)
 
             raw_mgf_filename = "{}/feature-{}-precursor-{}.mgf".format(raw_mgf_directory, feature_id, precursor_id)
-            deconvolved_mgf_filename = "{}/feature-{}-precursor-{}.mgf".format(deconvolved_mgf_directory, feature_id, precursor_id)
             search_mgf_filename = "{}/feature-{}-precursor-{}.mgf".format(search_mgf_directory, feature_id, precursor_id)
             header_filename = "{}/feature-{}-precursor-{}.txt".format(search_headers_directory, feature_id, precursor_id)
 
