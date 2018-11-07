@@ -59,48 +59,52 @@ try:
             search_mgf_filename = "{}/feature-{}-precursor-{}.mgf".format(search_mgf_directory, feature_id, precursor_id)
             header_filename = "{}/feature-{}-precursor-{}.txt".format(search_headers_directory, feature_id, precursor_id)
 
-            reader = ms_deisotope.MSFileLoader(raw_mgf_filename)
-            scan = next(reader)
-            scan.pick_peaks().deconvolute(scorer=ms_deisotope.MSDeconVFitter(10), 
-                                        averagine=ms_deisotope.peptide,
-                                        charge_range=(1,feature_charge_state),
-                                        truncate_after=0.8)
+            if os.path.isfile(raw_mgf_filename):  # it may not exist if there were no ms2_peaks for this isolation window
+                reader = ms_deisotope.MSFileLoader(raw_mgf_filename)
+                scan = next(reader)
+                scan.pick_peaks().deconvolute(scorer=ms_deisotope.MSDeconVFitter(10), 
+                                            averagine=ms_deisotope.peptide,
+                                            charge_range=(1,feature_charge_state),
+                                            truncate_after=0.8)
 
-            deconvoluted_peaks = []
-            for peak in scan.deconvoluted_peak_set:
-                deconvoluted_peaks.append((peak.neutral_mass, peak.intensity))
-            deconvoluted_peaks_df = pd.DataFrame(deconvoluted_peaks, columns=['neutral_mass','intensity'])
+                deconvoluted_peaks = []
+                for peak in scan.deconvoluted_peak_set:
+                    deconvoluted_peaks.append((peak.neutral_mass, peak.intensity))
+                deconvoluted_peaks_df = pd.DataFrame(deconvoluted_peaks, columns=['neutral_mass','intensity'])
 
-            # write out the deconvolved and de-isotoped peaks reported by ms_deisotope
-            db_conn = sqlite3.connect(args.features_database)
-            deconvoluted_peaks_df.to_sql(name='deconvoluted_ions', con=db_conn, if_exists='append', index=False)
-            db_conn.close()
+                # write out the deconvolved and de-isotoped peaks reported by ms_deisotope
+                db_conn = sqlite3.connect(args.features_database)
+                deconvoluted_peaks_df.to_sql(name='deconvoluted_ions', con=db_conn, if_exists='append', index=False)
+                db_conn.close()
 
-            fragments_df = deconvoluted_peaks_df.copy().sort_values(by=['neutral_mass'], ascending=True)
+                fragments_df = deconvoluted_peaks_df.copy().sort_values(by=['neutral_mass'], ascending=True)
 
-            # read the header for this feature
-            with open(header_filename) as f:
-                header_content = f.readlines()
-            header_content = [x for x in header_content if not x == '\n']  # remove the empty lines
+                # read the header for this feature
+                with open(header_filename) as f:
+                    header_content = f.readlines()
+                header_content = [x for x in header_content if not x == '\n']  # remove the empty lines
 
-            # compile the fragments from the ms_deisotope deconvolution
-            fragments = []
-            for row in fragments_df.iterrows():
-                index, data = row
-                fragments.append("{} {}\n".format(round(data.neutral_mass,4), int(data.intensity)))
+                # compile the fragments from the ms_deisotope deconvolution
+                fragments = []
+                for row in fragments_df.iterrows():
+                    index, data = row
+                    fragments.append("{} {}\n".format(round(data.neutral_mass,4), int(data.intensity)))
 
-            # write out the individual search MGFs
-            print("adding {} fragments to {}".format(len(fragments), search_mgf_filename))
-            with open(search_mgf_filename, 'a') as file_handler:
-                # write the header
-                for item in header_content[:len(header_content)-1]:
-                    file_handler.write("{}".format(item))
-                # write the fragments
-                for item in fragments:
-                    file_handler.write("{}".format(item))
-                # close off the feature
-                for item in header_content[len(header_content)-1:]:
-                    file_handler.write("{}".format(item))
+                # write out the individual search MGFs
+                print("adding {} fragments to {}".format(len(fragments), search_mgf_filename))
+                with open(search_mgf_filename, 'a') as file_handler:
+                    # write the header
+                    for item in header_content[:len(header_content)-1]:
+                        file_handler.write("{}".format(item))
+                    # write the fragments
+                    for item in fragments:
+                        file_handler.write("{}".format(item))
+                    # close off the feature
+                    for item in header_content[len(header_content)-1:]:
+                        file_handler.write("{}".format(item))
+            else:
+                # doesn't mean an error - there may have been no peaks found in the isolation window
+                print("Did not find the raw MGF for feature {} precursor {}".format(feature_id, precursor_id))
 
     stop_run = time.time()
 
