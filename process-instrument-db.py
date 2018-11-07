@@ -715,22 +715,18 @@ if process_this_step(this_step=step_name, first_step=args.operation):
 
     print("creating the search MGF...")
     pool.map(run_process, create_search_mgf_processes)
+
     # now join them all together
     search_mgf_directory = "{}/search-mgf".format(args.data_directory)
     combined_search_mgf_filename = "{}/{}-search.mgf".format(args.data_directory, args.database_base_name)
 
+    # write out the deconvoluted_ions table as a global CSV
+    csv_file_name = "{}/{}-deconvoluted-ions.csv".format(args.data_directory, args.database_base_name)
+
     # delete the search MGF if it already exists
     if os.path.exists(combined_search_mgf_filename):
         os.remove(combined_search_mgf_filename)
-    for idx in range(len(feature_batch_df)):
-        feature_lower = feature_batch_df.iloc[idx].lower
-        feature_upper = feature_batch_df.iloc[idx].upper
-        base_mgf_name = "features-{}-{}".format(feature_lower, feature_upper)
-        mgf_filename = "{}/{}-search.mgf".format(search_mgf_directory, base_mgf_name)
-        run_process("cat {} >> {}".format(mgf_filename, combined_search_mgf_filename))
 
-    # write out the deconvoluted_ions table as a global CSV
-    csv_file_name = "{}/{}-deconvoluted-ions.csv".format(args.data_directory, args.database_base_name)
     for idx in range(len(feature_batch_df)):
         destination_db_name = feature_batch_df.iloc[idx].db
         db_conn = sqlite3.connect(destination_db_name)
@@ -738,10 +734,18 @@ if process_this_step(this_step=step_name, first_step=args.operation):
         if len(df) > 0:
             print("writing deconvoluted ions from {} to {}".format(destination_db_name, csv_file_name))
             df = pd.read_sql_query("select * from deconvoluted_ions", db_conn)
+            # write to the CSV
             if idx == 0:
                 df.to_csv(csv_file_name, mode='w', sep=',', index=False, header=True)
             else:
                 df.to_csv(csv_file_name, mode='a', sep=',', index=False, header=False)
+            # add the search MGF to the consolidated search MGF
+            for feature_id in df.feature_id.unique():
+                for precursor_id in df[df.feature_id == feature_id].precursor_id.unique():
+                    search_mgf_filename = "{}/feature-{}-precursor-{}.mgf".format(search_mgf_directory, feature_id, precursor_id)
+                    if os.path.exists(search_mgf_filename):
+                        run_process("cat {} >> {}".format(search_mgf_filename, combined_search_mgf_filename))
+
         db_conn.close()
 
     step_stop_time = time.time()
