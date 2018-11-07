@@ -59,6 +59,10 @@ try:
             search_mgf_filename = "{}/feature-{}-precursor-{}.mgf".format(search_mgf_directory, feature_id, precursor_id)
             header_filename = "{}/feature-{}-precursor-{}.txt".format(search_headers_directory, feature_id, precursor_id)
 
+            # delete the search MGF if it already exists
+            if os.path.exists(search_mgf_filename):
+                os.remove(search_mgf_filename)
+
             if os.path.isfile(raw_mgf_filename):  # it may not exist if there were no ms2_peaks for this isolation window
                 reader = ms_deisotope.MSFileLoader(raw_mgf_filename)
                 scan = next(reader)
