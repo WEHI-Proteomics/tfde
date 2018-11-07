@@ -224,7 +224,7 @@ def main():
                     summed_intensities_by_mz_df = pd.DataFrame(summed_intensities_by_mz, columns=['intensity'])
                     summed_intensities_by_mz_df['scaled_mz'] = summed_intensities_by_mz_df.index + min_mz
                     summed_intensities_by_mz_df['mz'] = summed_intensities_by_mz_df.scaled_mz / args.mz_scaling_factor
-                    summed_intensities_by_mz_df.to_csv('/home/ubuntu/ms2-region-feature-{}.csv'.format(feature_id), mode='w', sep=',', index=False, header=True)
+                    summed_intensities_by_mz_df.to_csv('/home/ubuntu/ms2-region-feature-{}-precursor-{}.csv'.format(feature_id,precursor), mode='w', sep=',', index=False, header=True)
                     # sort by decreasing intensity
                     sorted_mzs = np.argsort(summed_intensities_by_mz)[::-1]  # need to add min_mz to get back to true mz
                     # check where we should stop
