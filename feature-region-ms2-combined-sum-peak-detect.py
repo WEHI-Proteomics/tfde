@@ -159,17 +159,11 @@ def main():
 
                     # sum the feature region intensities by mz (i.e. column)
                     summed_intensities_by_mz = subset_frame_a.sum(axis=0)
-                    # write out the array for visualisation purposes
-                    summed_intensities_by_mz_df = pd.DataFrame(summed_intensities_by_mz, columns=['intensity'])
-                    summed_intensities_by_mz_df['scaled_mz'] = summed_intensities_by_mz_df.index + min_mz
-                    summed_intensities_by_mz_df['mz'] = summed_intensities_by_mz_df.scaled_mz / args.mz_scaling_factor
-                    summed_intensities_by_mz_df.to_csv('/home/ubuntu/ms2-region-feature-{}.csv'.format(feature_id), mode='w', sep=',', index=True, header=True)
-                    # sort by decreasing intensity
                     sorted_mzs = np.argsort(summed_intensities_by_mz)[::-1]  # need to add min_mz to get back to true mz
                     # check where we should stop
                     zero_indices = np.where(summed_intensities_by_mz[sorted_mzs] == 0)[0]
                     if len(zero_indices) > 0:
-                        first_zero_index = zero_indices[0]  # index into summed_intensities_by_mz
+                        first_zero_index = zero_indices[0]
                     else:
                         first_zero_index = len(sorted_mzs)-1
 
