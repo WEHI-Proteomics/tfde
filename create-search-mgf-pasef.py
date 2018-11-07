@@ -69,8 +69,8 @@ try:
 
                 deconvoluted_peaks = []
                 for peak in scan.deconvoluted_peak_set:
-                    deconvoluted_peaks.append((peak.neutral_mass, peak.intensity))
-                deconvoluted_peaks_df = pd.DataFrame(deconvoluted_peaks, columns=['neutral_mass','intensity'])
+                    deconvoluted_peaks.append((feature_id, precursor_id, peak.neutral_mass, peak.intensity))
+                deconvoluted_peaks_df = pd.DataFrame(deconvoluted_peaks, columns=['feature_id','precursor_id','neutral_mass','intensity'])
 
                 # write out the deconvolved and de-isotoped peaks reported by ms_deisotope
                 db_conn = sqlite3.connect(args.features_database)
