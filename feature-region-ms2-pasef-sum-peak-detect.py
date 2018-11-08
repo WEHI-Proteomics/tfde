@@ -207,8 +207,8 @@ def main():
                         centroid_scan = peakutils.centroid(peak_points_df.scan, peak_points_df.intensity)
                         centroid_rt = peakutils.centroid(peak_points_df.retention_time_secs, peak_points_df.intensity)
                         # sum the intensity for the peak's points on the same scan - from https://stackoverflow.com/questions/29583312/pandas-sum-of-duplicate-attributes
-                        peak_scans = peak_points_df.groupby(['scan'])['intensity'].transform('sum')
-                        peak_scans.drop_duplicates(subset=['scan'], keep='first', inplace=True)
+                        peak_scans = peak_points_df.groupby(['scan'])['intensity'].sum()
+                        peak_scans.drop_duplicates('scan', keep='first', inplace=True)
                         number_of_peak_points = len(peak_scans)
                         # if the peak is of sufficient quality, add it to the peak list
                         if number_of_peak_points >= args.minimum_summed_points_per_peak:
