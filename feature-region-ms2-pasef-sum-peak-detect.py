@@ -101,7 +101,7 @@ def main():
         feature_list_df = pd.read_sql_query("select * from feature_list where feature_id >= {} and feature_id <= {} and charge_state >= {} order by feature_id ASC".format(args.feature_id_lower, args.feature_id_upper, args.minimum_charge_state), dest_conn)
 
         # load the isolation windows from the instrument database
-        db_conn = sqlite3.connect(args.instrument_database_name)
+        db_conn = sqlite3.connect("{}/analysis.tdf".format(args.instrument_database_name))
         isolation_window_df = pd.read_sql_query("select * from PasefFrameMsMsInfo", db_conn)
         db_conn.close()
 
@@ -186,6 +186,7 @@ def main():
                     else:
                         frame_df = frame_df.append(df)
                     print("feature {}: added {} rows to the frame for precursor {}, total {} rows".format(feature_id, len(df), precursor, len(frame_df)))
+                frame_df.to_csv('/home/ubuntu/ms2-region-feature-{}-precursor-{}.csv'.format(feature_id,precursor), mode='w', sep=',', index=False, header=True)
 
                 print("processing the raw ms2 points for feature {} precursor {}".format(feature_id, precursor))
                 if len(frame_df) > 0:
