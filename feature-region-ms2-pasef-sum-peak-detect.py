@@ -53,6 +53,7 @@ def main():
     parser = argparse.ArgumentParser(description='Sum MS2 frames in the region of the MS1 feature\'s drift and retention time.')
     parser.add_argument('-cdb','--converted_database_name', type=str, help='The name of the converted database.', required=True)
     parser.add_argument('-ddb','--destination_database_name', type=str, help='The name of the destination database.', required=True)
+    parser.add_argument('-idb','--instrument_database_name', type=str, help='The name of the instrument database.', required=True)
     parser.add_argument('-fl','--feature_id_lower', type=int, help='Lower feature ID to process.', required=False)
     parser.add_argument('-fu','--feature_id_upper', type=int, help='Upper feature ID to process.', required=False)
     parser.add_argument('-mcs','--minimum_charge_state', type=int, default=2, help='Minimum charge state to process.', required=False)
@@ -100,16 +101,12 @@ def main():
         feature_list_df = pd.read_sql_query("select * from feature_list where feature_id >= {} and feature_id <= {} and charge_state >= {} order by feature_id ASC".format(args.feature_id_lower, args.feature_id_upper, args.minimum_charge_state), dest_conn)
 
         # load the isolation windows from the instrument database
-        instrument_db_name = '/home/ubuntu/HeLa_20KInt_2KIT_Slot1-46_01_1179.d/analysis.tdf'
-        db_conn = sqlite3.connect(instrument_db_name)
+        db_conn = sqlite3.connect(args.instrument_database_name)
         isolation_window_df = pd.read_sql_query("select * from PasefFrameMsMsInfo", db_conn)
         db_conn.close()
 
         # load the frame properties to get the retention time
-        converted_db_name = '/home/ubuntu/HeLa_20KInt/HeLa_20KInt.sqlite'
-        db_conn = sqlite3.connect(converted_db_name)
-        frame_properties_df = pd.read_sql_query("select frame_id,retention_time_secs from frame_properties", db_conn)
-        db_conn.close()
+        frame_properties_df = pd.read_sql_query("select frame_id,retention_time_secs from frame_properties", conv_conn)
 
         # augment the isolation windows with their retention time
         isolation_window_df = pd.merge(isolation_window_df, frame_properties_df, how='left', left_on=['Frame'], right_on=['frame_id'])
@@ -200,7 +197,6 @@ def main():
                         # form a peak from points in the most intense point's mz window
                         max_intensity = frame_df.intensity.max()
                         max_point = frame_df[frame_df.intensity == max_intensity].iloc[0]
-                        print("max point mz {}, min {}, max {}".format(max_point.mz, min_mz, max_mz))
                         std_dev = standard_deviation(max_point.mz)
                         lower_mz = max(max_point.mz - (4*std_dev), min_mz)
                         upper_mz = min(max_point.mz + (4*std_dev), max_mz)
@@ -252,7 +248,7 @@ def main():
                 dest_c.executemany("INSERT INTO summed_ms2_regions (feature_id, peak_id, point_id, mz, scan, intensity) VALUES (?, ?, ?, ?, ?, ?)", points)
                 dest_conn.commit()
                 del points[:]
-                dest_c.executemany("INSERT INTO ms2_peaks (feature_id, peak_id, centroid_mz, composite_mzs_min, composite_mzs_max, centroid_scan, intensity, cofi_scan, cofi_rt, precursor) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", peaks)
+                dest_c.executemany("INSERT INTO ms2_peaks (feature_id, peak_id, centroid_mz, centroid_scan, intensity, cofi_scan, cofi_rt, precursor) VALUES (?, ?, ?, ?, ?, ?, ?, ?)", peaks)
                 dest_conn.commit()
                 del peaks[:]
 
@@ -262,7 +258,7 @@ def main():
 
         # Store any remaining peaks in the database
         if len(peaks) > 0:
-            dest_c.executemany("INSERT INTO ms2_peaks (feature_id, peak_id, centroid_mz, composite_mzs_min, composite_mzs_max, centroid_scan, intensity, cofi_scan, cofi_rt, precursor) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", peaks)
+            dest_c.executemany("INSERT INTO ms2_peaks (feature_id, peak_id, centroid_mz, centroid_scan, intensity, cofi_scan, cofi_rt, precursor) VALUES (?, ?, ?, ?, ?, ?, ?, ?)", peaks)
 
         # store the matches between features and isolation windows
         if len(features_with_isolation_matches) > 0:
