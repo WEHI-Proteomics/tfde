@@ -198,6 +198,7 @@ def main():
                     while len(frame_df[frame_df.intensity > 0]) > 0:
                         # form a peak from points in the most intense point's mz window
                         max_point = frame_df.loc[frame_df['intensity'].idxmax()]
+                        print("max point mz {}, min {}, max {}".format(max_point.mz, min_mz, max_mz))
                         std_dev = standard_deviation(max_point.mz)
                         lower_mz = max(max_point.mz - (4*std_dev), min_mz)
                         upper_mz = min(max_point.mz + (4*std_dev), max_mz)
