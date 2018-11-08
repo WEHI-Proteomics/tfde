@@ -38,9 +38,6 @@ db_conn.close()
 if len(feature_list_df) > 0:
     print("Setting up indexes")
     db_conn = sqlite3.connect(args.feature_region_database)
-    db_conn.cursor().execute("CREATE INDEX IF NOT EXISTS idx_peak_correlation_1 ON peak_correlation (feature_id)")
-    db_conn.cursor().execute("CREATE INDEX IF NOT EXISTS idx_peak_correlation_2 ON peak_correlation (feature_id, rt_delta, scan_delta)")
-
     db_conn.cursor().execute("DROP TABLE IF EXISTS ms2_peaks_within_window")
     db_conn.close()
 
