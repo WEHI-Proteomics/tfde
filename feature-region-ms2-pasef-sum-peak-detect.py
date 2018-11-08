@@ -31,9 +31,6 @@ FRAME_SCAN_IDX = 2
 FRAME_INTENSITY_IDX = 3
 FRAME_RT_IDX = 4
 
-# to avoid warnings about assigning to a dataframe view not being reflected in the original
-pd.options.mode.chained_assignment = None
-
 # so we can use profiling without removing @profile
 import __builtin__
 
@@ -46,7 +43,7 @@ except AttributeError:
 
 def standard_deviation(mz):
     instrument_resolution = 40000.0
-    return int((mz / instrument_resolution) / 2.35482)
+    return (mz / instrument_resolution) / 2.35482
 
 @profile
 def main():
@@ -88,7 +85,7 @@ def main():
         dest_c.execute("CREATE TABLE feature_isolation_matches (feature_id INTEGER, frame_id INTEGER, precursor_id INTEGER)")
 
         dest_c.execute("DROP TABLE IF EXISTS ms2_peaks")
-        dest_c.execute("CREATE TABLE ms2_peaks (feature_id INTEGER, peak_id INTEGER, centroid_mz REAL, composite_mzs_min INTEGER, composite_mzs_max INTEGER, centroid_scan INTEGER, intensity INTEGER, cofi_scan REAL, cofi_rt REAL, precursor INTEGER, PRIMARY KEY (feature_id, peak_id))")
+        dest_c.execute("CREATE TABLE ms2_peaks (feature_id INTEGER, peak_id INTEGER, centroid_mz REAL, centroid_scan INTEGER, intensity INTEGER, cofi_scan REAL, cofi_rt REAL, precursor INTEGER, PRIMARY KEY (feature_id, peak_id))")
 
         dest_c.execute("DROP TABLE IF EXISTS ms2_feature_region_points")
 
@@ -195,89 +192,44 @@ def main():
 
                 print("processing the raw ms2 points for feature {}".format(feature_id))
                 if len(frame_df) > 0:
-                    # scale the m/z values and make them integers
-                    frame_df['scaled_mz'] = frame_df.mz * args.mz_scaling_factor
-                    frame_df = frame_df.astype(np.int32)
-                    frame_df['feature_id'] = feature_id
-                    # take a copy for determining quality of candidate peaks
-                    ms2_feature_region_points_df = frame_df.copy()
-                    ms2_feature_region_points_df.sort_values('scaled_mz', inplace=True, ascending = True)
-                    ms2_feature_region_points_df.set_index('scaled_mz', inplace=True)
-                    # sum the intensity for duplicate rows (scan, mz) - from https://stackoverflow.com/questions/29583312/pandas-sum-of-duplicate-attributes
-                    frame_df['intensity_combined'] = frame_df.groupby(['scan', 'scaled_mz'])['intensity'].transform('sum')
-                    # drop the duplicate rows
-                    frame_df.drop_duplicates(subset=('scan','scaled_mz'), inplace=True)
-                    # create the frame array
-                    frame_a = np.zeros(shape=(int(frame_df.scan.max()+1),int(frame_df.scaled_mz.max()+1)), dtype=np.int32)
-
-                    # use scaled_mz as an index
-                    frame_a[frame_df.scan, frame_df.scaled_mz] = frame_df.intensity_combined
-                    min_scan = frame_df.scan.min()
-                    max_scan = frame_df.scan.max()
-                    min_mz = frame_df.scaled_mz.min()
-                    max_mz = frame_df.scaled_mz.max()
-                    subset_frame_a = frame_a[min_scan:max_scan+1,min_mz:max_mz+1]
-
-                    # sum the feature region intensities by mz (i.e. column)
-                    summed_intensities_by_mz = subset_frame_a.sum(axis=0)
-                    # write out the array for visualisation purposes
-                    summed_intensities_by_mz_df = pd.DataFrame(summed_intensities_by_mz, columns=['intensity'])
-                    summed_intensities_by_mz_df['scaled_mz'] = summed_intensities_by_mz_df.index + min_mz
-                    summed_intensities_by_mz_df['mz'] = summed_intensities_by_mz_df.scaled_mz / args.mz_scaling_factor
-                    summed_intensities_by_mz_df.to_csv('/home/ubuntu/ms2-region-feature-{}-precursor-{}.csv'.format(feature_id,precursor), mode='w', sep=',', index=False, header=True)
-                    # sort by decreasing intensity
-                    sorted_mzs = np.argsort(summed_intensities_by_mz)[::-1]  # need to add min_mz to get back to true mz
-                    # check where we should stop
-                    zero_indices = np.where(summed_intensities_by_mz[sorted_mzs] == 0)[0]
-                    if len(zero_indices) > 0:
-                        first_zero_index = zero_indices[0]
-                    else:
-                        first_zero_index = len(sorted_mzs)-1
-
-                    for mz in sorted_mzs[:first_zero_index]:
-                        if (summed_intensities_by_mz[mz] > 0):  # check if we've processed this mz already
-                            # calculate the indices for this point's std dev window
-                            four_std_dev = standard_deviation(min_mz + mz) * 4
-                            lower_index = max(mz - four_std_dev, 0)
-                            upper_index = min(mz + four_std_dev, len(summed_intensities_by_mz)-1)
-
-                            # find the centroid m/z
-                            mzs = np.arange(lower_index, upper_index+1)
-
-                            # calculate the peak attributes
-                            peak_composite_mzs_min = lower_index + min_mz
-                            peak_composite_mzs_max = upper_index + min_mz
-                            scans = range(0,subset_frame_a.shape[0])
-                            peak_summed_intensities_by_mz = subset_frame_a[:,mzs].sum(axis=0)
-                            peak_summed_intensities_by_scan = subset_frame_a[:,mzs].sum(axis=1)
-                            total_peak_intensity = peak_summed_intensities_by_mz.sum()  # total intensity of the peak
-                            centroid_mz = peakutils.centroid(mzs, peak_summed_intensities_by_mz)
-                            centroid_scan = peakutils.centroid(scans, peak_summed_intensities_by_scan)
-                            centroid_mz_descaled = float(min_mz + centroid_mz) / args.mz_scaling_factor
-
-                            point_count_for_this_peak = np.count_nonzero(peak_summed_intensities_by_scan)
-                            if point_count_for_this_peak >= args.minimum_summed_points_per_peak:
-                                # for each summed point in the region, add an entry to the list
-                                # write out the non-zero points for this peak
-                                for scan in scans:
-                                    point_intensity = peak_summed_intensities_by_scan[scan]
-                                    if point_intensity > 0:
-                                        points.append((feature_id, peak_id, point_id, centroid_mz_descaled, min_scan+scan, point_intensity))
-                                        point_id += 1
-
-                                # calculate the peak's centre of intensity
-                                peak_points = ms2_feature_region_points_df.loc[peak_composite_mzs_min:peak_composite_mzs_max]
-                                centre_of_intensity_scan = peakutils.centroid(peak_points.scan.astype(float), peak_points.intensity)
-                                centre_of_intensity_rt = peakutils.centroid(peak_points.retention_time_secs.astype(float), peak_points.intensity)
-
-                                # add the peak to the list
-                                peaks.append((feature_id, peak_id, centroid_mz_descaled, peak_composite_mzs_min, peak_composite_mzs_max, min_scan+centroid_scan, total_peak_intensity, centre_of_intensity_scan, centre_of_intensity_rt, int(precursor)))
-                                peak_id += 1
-                                feature_peak_count += 1
-                                precursor_peak_count += 1
-
-                            # flag all the mz points we've processed in this peak
-                            summed_intensities_by_mz[mzs] = 0
+                    # process all the non-zero points
+                    while len(frame_df[frame_df.intensity > 0]) > 0:
+                        # form a peak from points in the most intense point's mz window
+                        max_point = frame_df.loc[frame_df['intensity'].idxmax()]
+                        std_dev = standard_deviation(max_point.mz)
+                        lower_mz = max_point.mz - (4*std_dev)
+                        upper_mz = max_point.mz + (4*std_dev)
+                        peak_points_indexes_df = (frame_df.intensity > 0) & (frame_df.mz >= lower_mz) & (frame_df.mz <= upper_mz)
+                        peak_points_df = frame_df[peak_points_indexes_df].copy()
+                        # calculate the peak's attributes
+                        total_peak_intensity = peak_points_df.intensity.sum()
+                        centroid_mz = peakutils.centroid(peak_points_df.mz, peak_points_df.intensity)
+                        centroid_scan = peakutils.centroid(peak_points_df.scan, peak_points_df.intensity)
+                        centroid_rt = peakutils.centroid(peak_points_df.retention_time_secs, peak_points_df.intensity)
+                        # sum the intensity for the peak's points on the same scan - from https://stackoverflow.com/questions/29583312/pandas-sum-of-duplicate-attributes
+                        peak_scans = peak_points_df.groupby(['scan'])['intensity'].transform('sum')
+                        peak_scans.drop_duplicates(subset=('scan'), inplace=True)
+                        number_of_peak_points = len(peak_scans)
+                        # if the peak is of sufficient quality, add it to the peak list
+                        if number_of_peak_points >= args.minimum_summed_points_per_peak:
+                            # add each of the peak's summed points to the points list
+                            for scan_idx in len(peak_scans):
+                                peak_scan = peak_scans.iloc[scan_idx]
+                                point_intensity = int(peak_scan.intensity)
+                                scan = int(peak_scan.scan)
+                                if point_intensity > 0:
+                                    points.append((feature_id, peak_id, point_id, centroid_mz, scan, point_intensity))
+                                    point_id += 1
+                            # add the peak to the list
+                            centre_of_intensity_scan = centroid_scan
+                            centre_of_intensity_rt = centroid_rt
+                            peaks.append((feature_id, peak_id, centroid_mz, centroid_scan, total_peak_intensity, centre_of_intensity_scan, centre_of_intensity_rt, int(precursor)))
+                            # update counts
+                            peak_id += 1
+                            feature_peak_count += 1
+                            precursor_peak_count += 1
+                        # set the intensity of these points to zero so we don't process them again
+                        frame_df.loc[peak_points_indexes_df, 'intensity'] = 0
                 else:
                     print("found no points in ms2 for feature {}".format(feature_id))
                 print("feature {}: found {} peaks for precursor {}".format(feature_id, precursor_peak_count, precursor))
