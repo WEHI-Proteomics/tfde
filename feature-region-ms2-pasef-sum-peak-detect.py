@@ -192,13 +192,15 @@ def main():
 
                 print("processing the raw ms2 points for feature {} precursor {}".format(feature_id, precursor))
                 if len(frame_df) > 0:
+                    min_mz = frame_df.mz.min()
+                    max_mz = frame_df.mz.max()
                     # process all the non-zero points
                     while len(frame_df[frame_df.intensity > 0]) > 0:
                         # form a peak from points in the most intense point's mz window
                         max_point = frame_df.loc[frame_df['intensity'].idxmax()]
                         std_dev = standard_deviation(max_point.mz)
-                        lower_mz = max_point.mz - (4*std_dev)
-                        upper_mz = max_point.mz + (4*std_dev)
+                        lower_mz = max(max_point.mz - (4*std_dev), min_mz)
+                        upper_mz = min(max_point.mz + (4*std_dev), max_mz)
                         peak_points_indexes_df = (frame_df.intensity > 0) & (frame_df.mz >= lower_mz) & (frame_df.mz <= upper_mz)
                         peak_points_df = frame_df[peak_points_indexes_df].copy()
                         # calculate the peak's attributes
