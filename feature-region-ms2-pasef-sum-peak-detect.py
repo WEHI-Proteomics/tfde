@@ -214,7 +214,7 @@ def main():
                         # if the peak is of sufficient quality, add it to the peak list
                         if number_of_peak_points >= args.minimum_summed_points_per_peak:
                             # add each of the peak's summed points to the points list
-                            for scan_idx in len(peak_scans):
+                            for scan_idx in range(len(peak_scans)):
                                 peak_scan = peak_scans.iloc[scan_idx]
                                 point_intensity = int(peak_scan.intensity)
                                 scan = int(peak_scan.scan)
