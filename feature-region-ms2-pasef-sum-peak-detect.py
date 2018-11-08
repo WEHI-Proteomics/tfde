@@ -190,7 +190,7 @@ def main():
                         frame_df = frame_df.append(df)
                     print("feature {}: added {} rows to the frame for precursor {}, total {} rows".format(feature_id, len(df), precursor, len(frame_df)))
 
-                print("processing the raw ms2 points for feature {}".format(feature_id))
+                print("processing the raw ms2 points for feature {} precursor {}".format(feature_id, precursor))
                 if len(frame_df) > 0:
                     # process all the non-zero points
                     while len(frame_df[frame_df.intensity > 0]) > 0:
@@ -208,7 +208,7 @@ def main():
                         centroid_rt = peakutils.centroid(peak_points_df.retention_time_secs, peak_points_df.intensity)
                         # sum the intensity for the peak's points on the same scan - from https://stackoverflow.com/questions/29583312/pandas-sum-of-duplicate-attributes
                         peak_scans = peak_points_df.groupby(['scan'])['intensity'].transform('sum')
-                        peak_scans.drop_duplicates(subset=('scan'), inplace=True)
+                        peak_scans.drop_duplicates(subset=['scan'], keep='first', inplace=True)
                         number_of_peak_points = len(peak_scans)
                         # if the peak is of sufficient quality, add it to the peak list
                         if number_of_peak_points >= args.minimum_summed_points_per_peak:
