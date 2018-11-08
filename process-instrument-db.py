@@ -575,7 +575,7 @@ if process_this_step(this_step=step_name, first_step=args.operation):
         feature_lower = feature_batch_df.iloc[idx].lower
         feature_upper = feature_batch_df.iloc[idx].upper
         if args.pasef_mode:
-            feature_region_ms2_sum_peak_processes.append("python -u ./otf-peak-detect/feature-region-ms2-pasef-sum-peak-detect.py -cdb '{}' -ddb '{}' -idb '{}' -ms1ce {} -fl {} -fu {} -bs 20 -fts {} -fso {} -mzsf {}".format(converted_database_name, destination_db_name, args.instrument_database_name, args.ms1_collision_energy, feature_lower, feature_upper, args.frames_to_sum, args.frame_summing_offset, args.ms2_mz_scaling_factor))
+            feature_region_ms2_sum_peak_processes.append("python -u ./otf-peak-detect/feature-region-ms2-pasef-sum-peak-detect.py -cdb '{}' -ddb '{}' -idb '{}' -ms1ce {} -fl {} -fu {} -bs 20 -fts {} -fso {}".format(converted_database_name, destination_db_name, args.instrument_database_name, args.ms1_collision_energy, feature_lower, feature_upper, args.frames_to_sum, args.frame_summing_offset))
         else:
             feature_region_ms2_sum_peak_processes.append("python -u ./otf-peak-detect/feature-region-ms2-combined-sum-peak-detect.py -cdb '{}' -ddb '{}' -ms1ce {} -fl {} -fu {} -bs 20 -fts {} -fso {} -mzsf {}".format(converted_database_name, destination_db_name, args.ms1_collision_energy, feature_lower, feature_upper, args.frames_to_sum, args.frame_summing_offset, args.ms2_mz_scaling_factor))
 
