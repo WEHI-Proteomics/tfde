@@ -186,7 +186,7 @@ def main():
                     else:
                         frame_df = frame_df.append(df)
                     print("feature {}: added {} rows to the frame for precursor {}, total {} rows".format(feature_id, len(df), precursor, len(frame_df)))
-                frame_df.to_csv('/home/ubuntu/ms2-region-feature-{}-precursor-{}.csv'.format(feature_id,precursor), mode='w', sep=',', index=False, header=True)
+                # frame_df.to_csv('/home/ubuntu/ms2-region-feature-{}-precursor-{}.csv'.format(feature_id,precursor), mode='w', sep=',', index=False, header=True)
 
                 print("processing the raw ms2 points for feature {} precursor {}".format(feature_id, precursor))
                 if len(frame_df) > 0:
