@@ -217,7 +217,7 @@ def main():
                             # add each of the peak's summed points to the points list
                             for scan_idx in range(len(peak_scans)):
                                 peak_scan = peak_scans.iloc[scan_idx]
-                                point_intensity = int(peak_scan.intensity)
+                                point_intensity = int(peak_scan.intensity_combined)
                                 scan = int(peak_scan.scan)
                                 if point_intensity > 0:
                                     points.append((feature_id, peak_id, point_id, centroid_mz, scan, point_intensity))
