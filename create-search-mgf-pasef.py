@@ -66,6 +66,7 @@ try:
             if os.path.isfile(raw_mgf_filename):  # it may not exist if there were no ms2_peaks for this isolation window
                 reader = ms_deisotope.MSFileLoader(raw_mgf_filename)
                 scan = next(reader)
+                # returns a https://github.com/mobiusklein/ms_deisotope/blob/master/ms_deisotope/peak_set.py
                 scan.pick_peaks().deconvolute(scorer=ms_deisotope.MSDeconVFitter(10), 
                                             averagine=ms_deisotope.peptide,
                                             charge_range=(1,feature_charge_state),
