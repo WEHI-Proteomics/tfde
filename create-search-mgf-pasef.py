@@ -76,13 +76,15 @@ try:
                 for peak in scan.deconvoluted_peak_set:
                     deconvoluted_peaks.append((feature_id, precursor_id, peak.neutral_mass, peak.intensity))
                 deconvoluted_peaks_df = pd.DataFrame(deconvoluted_peaks, columns=['feature_id','precursor_id','neutral_mass','intensity'])
+                # 'neutral mass' is the zero charge M, so we add the proton mass to get M+H (the monoisotopic mass)
+                deconvoluted_peaks_df['m_plus_h'] = deconvoluted_peaks_df.neutral_mass + PROTON_MASS
 
                 # write out the deconvolved and de-isotoped peaks reported by ms_deisotope
                 db_conn = sqlite3.connect(args.features_database)
                 deconvoluted_peaks_df.to_sql(name='deconvoluted_ions', con=db_conn, if_exists='append', index=False)
                 db_conn.close()
 
-                fragments_df = deconvoluted_peaks_df.copy().sort_values(by=['neutral_mass'], ascending=True)
+                fragments_df = deconvoluted_peaks_df.copy().sort_values(by=['m_plus_h'], ascending=True)
 
                 # read the header for this feature
                 with open(header_filename) as f:
@@ -93,7 +95,7 @@ try:
                 fragments = []
                 for row in fragments_df.iterrows():
                     index, data = row
-                    fragments.append("{} {}\n".format(round(data.neutral_mass,4), int(data.intensity)))
+                    fragments.append("{} {}\n".format(round(data.m_plus_h,4), int(data.intensity)))
 
                 # write out the individual search MGFs
                 print("adding {} fragments to {}".format(len(fragments), search_mgf_filename))
