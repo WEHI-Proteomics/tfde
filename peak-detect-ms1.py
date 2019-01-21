@@ -12,10 +12,12 @@ import json
 import os
 
 MIN_POINTS_IN_PEAK_TO_CHECK_FOR_TROUGHS = 10
+INSTRUMENT_RESOLUTION = 40000.0
 
+# The FWHM is the m/z / instrument resolution. Std dev is FWHM / 2.35482. See https://en.wikipedia.org/wiki/Full_width_at_half_maximum
 def standard_deviation(mz):
-    instrument_resolution = 40000.0
-    return (mz / instrument_resolution) / 2.35482
+    FWHM = mz / INSTRUMENT_RESOLUTION
+    return FWHM / 2.35482
 
 # Source: https://stackoverflow.com/questions/2413522/weighted-standard-deviation-in-numpy/2415343
 def weighted_avg_and_std(values, weights):
