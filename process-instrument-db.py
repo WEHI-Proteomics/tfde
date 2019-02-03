@@ -177,6 +177,7 @@ parser.add_argument('-psd','--positive_scan_delta_tolerance', type=float, defaul
 parser.add_argument('-naw','--noise_assessment_width_secs', type=float, default=1.0, help='Length of time in seconds to average the noise level for feature detection.', required=False)
 parser.add_argument('-nao','--noise_assessment_offset_secs', type=float, default=1.0, help='Offset in seconds from the end of the feature frames for feature detection.', required=False)
 parser.add_argument('-pasef','--pasef_mode', action='store_true', help='Analyse matches between features and isolation windows for a PASEF acquisition.')
+parser.add_argument('-pdes','--peak_detect_empty_scans', type=int, default=2, help='Peak detection: maximum number of empty scans to tolerate.', required=False)
 args = parser.parse_args()
 
 processing_times = []
@@ -377,7 +378,7 @@ if process_this_step(this_step=step_name, first_step=args.operation):
         frame_lower = frame_batch_df.iloc[idx].lower
         frame_upper = frame_batch_df.iloc[idx].upper
         sum_frame_ms1_processes.append("python -u ./otf-peak-detect/sum-frames-ms1.py -sdb '{}' -ddb '{}' -ce {} -fl {} -fu {} -fts {} -fso {} -sl {} -su {}".format(converted_database_name, destination_db_name, args.ms1_collision_energy, frame_lower, frame_upper, args.frames_to_sum, args.frame_summing_offset, args.scan_lower, args.scan_upper))
-        peak_detect_ms1_processes.append("python -u ./otf-peak-detect/peak-detect-ms1.py -db '{}' -fl {} -fu {} -sl {} -su {}".format(destination_db_name, frame_lower, frame_upper, args.scan_lower, args.scan_upper))
+        peak_detect_ms1_processes.append("python -u ./otf-peak-detect/peak-detect-ms1.py -db '{}' -fl {} -fu {} -sl {} -su {} -es".format(destination_db_name, frame_lower, frame_upper, args.scan_lower, args.scan_upper, args.peak_detect_empty_scans))
         cluster_detect_ms1_processes.append("python -u ./otf-peak-detect/cluster-detect-ms1.py -db '{}' -fl {} -fu {}".format(destination_db_name, frame_lower, frame_upper))
 
     run_process("python -u ./otf-peak-detect/sum-frames-ms1-prep.py -sdb '{}'".format(converted_database_name))
