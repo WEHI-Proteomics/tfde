@@ -378,7 +378,7 @@ if process_this_step(this_step=step_name, first_step=args.operation):
         frame_lower = frame_batch_df.iloc[idx].lower
         frame_upper = frame_batch_df.iloc[idx].upper
         sum_frame_ms1_processes.append("python -u ./otf-peak-detect/sum-frames-ms1.py -sdb '{}' -ddb '{}' -ce {} -fl {} -fu {} -fts {} -fso {} -sl {} -su {}".format(converted_database_name, destination_db_name, args.ms1_collision_energy, frame_lower, frame_upper, args.frames_to_sum, args.frame_summing_offset, args.scan_lower, args.scan_upper))
-        peak_detect_ms1_processes.append("python -u ./otf-peak-detect/peak-detect-ms1.py -db '{}' -fl {} -fu {} -sl {} -su {} -es".format(destination_db_name, frame_lower, frame_upper, args.scan_lower, args.scan_upper, args.peak_detect_empty_scans))
+        peak_detect_ms1_processes.append("python -u ./otf-peak-detect/peak-detect-ms1.py -db '{}' -fl {} -fu {} -sl {} -su {} -es {}".format(destination_db_name, frame_lower, frame_upper, args.scan_lower, args.scan_upper, args.peak_detect_empty_scans))
         cluster_detect_ms1_processes.append("python -u ./otf-peak-detect/cluster-detect-ms1.py -db '{}' -fl {} -fu {}".format(destination_db_name, frame_lower, frame_upper))
 
     run_process("python -u ./otf-peak-detect/sum-frames-ms1-prep.py -sdb '{}'".format(converted_database_name))
