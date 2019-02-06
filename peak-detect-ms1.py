@@ -121,7 +121,7 @@ for frame_id in range(args.frame_lower, args.frame_upper+1):
             # Look in the 'up' direction
             scan_offset = 1
             missed_scans = 0
-            while (missed_scans <= args.empty_scans) and (scan-scan_offset >= args.scan_lower):
+            while (missed_scans < args.empty_scans) and (scan-scan_offset >= args.scan_lower):
                 nearby_indices_up = np.where((frame_v[:,FRAME_SCAN_IDX] == scan-scan_offset) & (frame_v[:,FRAME_MZ_IDX] >= mz - std_dev_window) & (frame_v[:,FRAME_MZ_IDX] <= mz + std_dev_window))[0]
                 nearby_points_up = frame_v[nearby_indices_up]
                 if len(nearby_indices_up) == 0:
@@ -143,7 +143,7 @@ for frame_id in range(args.frame_lower, args.frame_upper+1):
             missed_scans = 0
             mz = frame_v[max_intensity_index][FRAME_MZ_IDX]
             std_dev_window = standard_deviation(mz) * args.standard_deviations
-            while (missed_scans <= args.empty_scans) and (scan+scan_offset <= args.scan_upper):
+            while (missed_scans < args.empty_scans) and (scan+scan_offset <= args.scan_upper):
                 nearby_indices_down = np.where((frame_v[:,FRAME_SCAN_IDX] == scan+scan_offset) & (frame_v[:,FRAME_MZ_IDX] >= mz - std_dev_window) & (frame_v[:,FRAME_MZ_IDX] <= mz + std_dev_window))[0]
                 nearby_points_down = frame_v[nearby_indices_down]
                 if len(nearby_indices_down) == 0:
