@@ -114,6 +114,7 @@ db_conn.cursor().execute("DROP INDEX IF EXISTS idx_ms1_feature_frame_join_1")
 db_conn.cursor().execute("CREATE INDEX idx_ms1_feature_frame_join_1 ON ms1_feature_frame_join (feature_id)")
 
 db_conn.cursor().execute("DROP TABLE IF EXISTS feature_isotopes")
+db_conn.cursor().execute("DROP TABLE IF EXISTS feature_raw_points")
 db_conn.cursor().execute("CREATE TABLE feature_isotopes (feature_id INTEGER, feature_region_peak_id INTEGER, centroid_scan REAL, centroid_rt REAL, centroid_mz REAL, peak_summed_intensity INTEGER, PRIMARY KEY(feature_id, feature_region_peak_id))")
 db_conn.cursor().execute("DROP TABLE IF EXISTS feature_list")
 db_conn.cursor().execute("CREATE TABLE feature_list (feature_id INTEGER, charge_state INTEGER, monoisotopic_mass REAL, feature_centroid_scan REAL, feature_centroid_rt REAL, feature_centroid_mz REAL, feature_start_rt REAL, feature_end_rt REAL, feature_scan_lower INTEGER, feature_scan_upper INTEGER, feature_summed_intensity INTEGER, isotope_count INTEGER, mono_peak_id INTEGER, mono_peak_centroid_scan REAL, mono_peak_std_dev_scan REAL, mono_peak_scan_lower INTEGER, mono_peak_scan_upper INTEGER, mono_peak_centroid_rt REAL, mono_peak_std_dev_rt REAL, mono_peak_rt_lower REAL, mono_peak_rt_upper REAL, mono_peak_centroid_mz REAL, mono_peak_std_dev_mz REAL, mono_peak_mz_lower REAL, mono_peak_mz_upper REAL, base_peak_id INTEGER, base_peak_centroid_scan REAL, base_peak_std_dev_scan REAL, base_peak_scan_lower INTEGER, base_peak_scan_upper INTEGER, base_peak_centroid_rt REAL, base_peak_std_dev_rt REAL, base_peak_rt_lower REAL, base_peak_rt_upper REAL, base_peak_centroid_mz REAL, base_peak_std_dev_mz REAL, base_peak_mz_lower REAL, base_peak_mz_upper REAL, PRIMARY KEY(feature_id))")
@@ -325,6 +326,11 @@ for feature_id in range(args.feature_id_lower, args.feature_id_upper+1):
                 feature_summed_intensity = feature_points_df.intensity.sum()
 
                 isotope_count = len(cluster_df)
+
+                # store the raw points for this feature
+                db_conn = sqlite3.connect(args.feature_region_database)
+                feature_points_df.to_sql(name='feature_raw_points', con=db_conn, if_exists='append', index=False)
+                db_conn.close()
 
                 # add the feature to the list
                 feature_list.append((feature_id, charge_state, monoisotopic_mass, feature_centroid_scan, feature_centroid_rt, feature_centroid_mz, feature_start_rt, feature_end_rt, feature_scan_lower, feature_scan_upper, feature_summed_intensity, isotope_count, mono_peak_id, mono_peak_centroid_scan, mono_peak_std_dev_scan, mono_peak_scan_lower, mono_peak_scan_upper, mono_peak_centroid_rt, mono_peak_std_dev_rt, mono_peak_rt_lower, mono_peak_rt_upper, mono_peak_centroid_mz, mono_peak_std_dev_mz, mono_peak_mz_lower, mono_peak_mz_upper, base_peak_id, base_peak_centroid_scan, base_peak_std_dev_scan, base_peak_scan_lower, base_peak_scan_upper, base_peak_centroid_rt, base_peak_std_dev_rt, base_peak_rt_lower, base_peak_rt_upper, base_peak_centroid_mz, base_peak_std_dev_mz, base_peak_mz_lower, base_peak_mz_upper))
