@@ -327,10 +327,10 @@ for feature_id in range(args.feature_id_lower, args.feature_id_upper+1):
 
                 isotope_count = len(cluster_df)
 
-                # store the raw points for this feature
-                db_conn = sqlite3.connect(args.feature_region_database)
-                feature_points_df.to_sql(name='feature_raw_points', con=db_conn, if_exists='append', index=False)
-                db_conn.close()
+                # # store the raw points for this feature
+                # db_conn = sqlite3.connect(args.feature_region_database)
+                # feature_points_df.to_sql(name='feature_raw_points', con=db_conn, if_exists='append', index=False)
+                # db_conn.close()
 
                 # add the feature to the list
                 feature_list.append((feature_id, charge_state, monoisotopic_mass, feature_centroid_scan, feature_centroid_rt, feature_centroid_mz, feature_start_rt, feature_end_rt, feature_scan_lower, feature_scan_upper, feature_summed_intensity, isotope_count, mono_peak_id, mono_peak_centroid_scan, mono_peak_std_dev_scan, mono_peak_scan_lower, mono_peak_scan_upper, mono_peak_centroid_rt, mono_peak_std_dev_rt, mono_peak_rt_lower, mono_peak_rt_upper, mono_peak_centroid_mz, mono_peak_std_dev_mz, mono_peak_mz_lower, mono_peak_mz_upper, base_peak_id, base_peak_centroid_scan, base_peak_std_dev_scan, base_peak_scan_lower, base_peak_scan_upper, base_peak_centroid_rt, base_peak_std_dev_rt, base_peak_rt_lower, base_peak_rt_upper, base_peak_centroid_mz, base_peak_std_dev_mz, base_peak_mz_lower, base_peak_mz_upper))
