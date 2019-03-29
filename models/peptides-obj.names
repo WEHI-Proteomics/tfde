@@ -1,4 +1,5 @@
-charge-1
-charge-2
-charge-3
-charge-4
+classes= 4
+train  = data/peptides/data-files/train-list.txt
+valid  = data/peptides/data-files/validation-list.txt
+names = data/peptides/peptides-obj.names
+backup = backup/
