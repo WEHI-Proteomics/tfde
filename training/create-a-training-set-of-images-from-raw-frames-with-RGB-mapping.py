@@ -19,8 +19,8 @@ from matplotlib import colors, cm, pyplot as plt
 # In[50]:
 
 
-RT_LIMIT_LOWER = 4340
-RT_LIMIT_UPPER = 4580
+RT_LIMIT_LOWER = 3000
+RT_LIMIT_UPPER = 3600
 
 
 # In[51]:
@@ -445,7 +445,25 @@ fn_df.head()
 
 # In[ ]:
 
+# allocate the test set from the last of the tiles in RT, randomly allocated the remainder into training, validation
+def train_validate_test_split_v2(df, train_percent=0.9, validate_percent=0.05, seed=None):
+    test_percent = 1.0 - (train_percent + validate_percent)
+    # take the last test_precent of the frames for the test set
+    test_set_frame_ids = list(ms1_frame_properties_df.tail(int(len(ms1_frame_properties_df) * test_percent)).frame_id)
+    terms = ['frame-' + str(s) for s in test_set_frame_ids]
+    test_df = df[df['name'].str.contains('|'.join(terms))].copy()
+    # remove the test set from the train/valid set
+    train_valid_df = df[~df.name.isin(test_df.name)]
+    # randomly assign tiles to the train and valid sets
+    np.random.seed(seed)
+    perm = np.random.permutation(train_valid_df.index)
+    m = len(df.index)
+    train_end = int(train_percent * m)
+    train_df = train_valid_df.loc[perm[:train_end]].copy()
+    validate_df = train_valid_df.loc[perm[train_end:]].copy()
+    return train_df, validate_df, test_df
 
+# randomly assign each tile to a set
 def train_validate_test_split(df, train_percent=.9, validate_percent=.05, seed=None):
     np.random.seed(seed)
     perm = np.random.permutation(df.index)
@@ -461,13 +479,13 @@ def train_validate_test_split(df, train_percent=.9, validate_percent=.05, seed=N
 # In[ ]:
 
 
-train_df,validate_df,test_df = train_validate_test_split(fn_df)
+train_df,validate_df,test_df = train_validate_test_split_v2(fn_df)
 
 
 # In[ ]:
 
 
-print(len(train_df),len(validate_df),len(test_df))
+print("train set: {}, validation set: {}, test set {}".format(len(train_df),len(validate_df),len(test_df)))
 
 
 # In[ ]:
