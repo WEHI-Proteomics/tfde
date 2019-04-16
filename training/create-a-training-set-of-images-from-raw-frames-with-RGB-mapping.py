@@ -228,32 +228,10 @@ MZ_BINS_PER_TILE = int(TILE_WIDTH / PIXELS_PER_MZ_BIN)
 TILES_PER_FRAME = int(MZ_BIN_COUNT / MZ_BINS_PER_TILE)
 RESIZE_FACTOR_X = TILE_WIDTH / MZ_BINS_PER_TILE
 
-
-# In[71]:
-
-
-RESIZE_FACTOR_X
-
-
-# In[72]:
-
-
-MZ_BINS_PER_TILE
-
-
-# In[73]:
-
-
-TILES_PER_FRAME
-
-
 # ### Generate tiles for all frames
 
-# In[74]:
-
-
 # TILE_BASE = '/Users/darylwilding-mcbride/Downloads/yolo-train'
-TILE_BASE = '/home/daryl/yolo-train'
+TILE_BASE = '/home/daryl/yolo-test-rt-3000-3600'
 PRE_ASSIGNED_FILES_DIR = '{}/pre-assigned'.format(TILE_BASE)
 OVERLAY_FILES_DIR = '{}/overlay'.format(TILE_BASE)
 
