@@ -6,24 +6,28 @@ import shutil
 import sqlite3
 import pandas as pd
 import numpy as np
+import argparse
 
-RT_LIMIT_LOWER = 4340
-RT_LIMIT_UPPER = 4580
 MS1_CE = 10
 
-BASE_NAME = "/home/daryl/HeLa_20KInt-rt-{}-{}".format(RT_LIMIT_LOWER,RT_LIMIT_UPPER)
-# BASE_NAME = "/Users/darylwilding-mcbride/Downloads/HeLa_20KInt-rt-{}-{}".format(RT_LIMIT_LOWER,RT_LIMIT_UPPER)
+parser = argparse.ArgumentParser(description='Convert the Bruker database to a detection database.')
+parser.add_argument('-rtl','--rt_lower', type=int, help='Lower bound of the RT range.', required=True)
+parser.add_argument('-rtu','--rt_upper', type=int, help='Upper bound of the RT range.', required=True)
+args = parser.parse_args()
+
+BASE_NAME = "/home/daryl/HeLa_20KInt-rt-{}-{}".format(args.rt_lower, args.rt_upper)
+# BASE_NAME = "/Users/darylwilding-mcbride/Downloads/HeLa_20KInt-rt-{}-{}".format(args.rt_lower, args.rt_upper)
 CONVERTED_DATABASE_NAME = '{}/HeLa_20KInt.sqlite'.format(BASE_NAME)
 
 # TILE_BASE = '/Users/darylwilding-mcbride/Downloads/yolo-train'
-TILE_BASE = '/home/daryl/yolo-train-rt-{}-{}'.format(RT_LIMIT_LOWER, RT_LIMIT_UPPER)
+TILE_BASE = '/home/daryl/yolo-train-rt-{}-{}'.format(args.rt_lower, args.rt_upper)
 PRE_ASSIGNED_FILES_DIR = '{}/pre-assigned'.format(TILE_BASE)
 OVERLAY_FILES_DIR = '{}/overlay'.format(TILE_BASE)
 
 NUMBER_OF_CLASSES = 4
 
 db_conn = sqlite3.connect(CONVERTED_DATABASE_NAME)
-ms1_frame_properties_df = pd.read_sql_query("select frame_id,retention_time_secs from frame_properties where retention_time_secs >= {} and retention_time_secs <= {} and collision_energy == {}".format(RT_LIMIT_LOWER,RT_LIMIT_UPPER,MS1_CE), db_conn)
+ms1_frame_properties_df = pd.read_sql_query("select frame_id,retention_time_secs from frame_properties where retention_time_secs >= {} and retention_time_secs <= {} and collision_energy == {}".format(args.rt_lower, args.rt_upper, MS1_CE), db_conn)
 db_conn.close()
 
 filenames = []
