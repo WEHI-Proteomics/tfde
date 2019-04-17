@@ -1,36 +1,13 @@
-
-# coding: utf-8
-
-# In[48]:
-
-
 import sqlite3
 import pandas as pd
 import numpy as np
 import sys
-
-
-# In[49]:
-
-
 from matplotlib import colors, cm, pyplot as plt
-
-
-# In[50]:
-
 
 RT_LIMIT_LOWER = 3000
 RT_LIMIT_UPPER = 3600
 
-
-# In[51]:
-
-
 MS1_CE = 10
-
-
-# In[52]:
-
 
 BASE_NAME = "/home/daryl/HeLa_20KInt-rt-{}-{}".format(RT_LIMIT_LOWER,RT_LIMIT_UPPER)
 # BASE_NAME = "/Users/darylwilding-mcbride/Downloads/HeLa_20KInt-rt-{}-{}".format(RT_LIMIT_LOWER,RT_LIMIT_UPPER)
@@ -38,42 +15,11 @@ CONVERTED_DATABASE_NAME = '{}/HeLa_20KInt.sqlite'.format(BASE_NAME)
 ALLPEPTIDES_FILENAME = '/home/daryl/maxquant_results/txt/allPeptides.txt'
 # ALLPEPTIDES_FILENAME = '/Users/darylwilding-mcbride/Downloads/maxquant_results/txt/allPeptides.txt'
 
-
-# In[53]:
-
-
-CONVERTED_DATABASE_NAME
-
-
-# In[54]:
-
-
 db_conn = sqlite3.connect(CONVERTED_DATABASE_NAME)
 ms1_frame_properties_df = pd.read_sql_query("select frame_id,retention_time_secs from frame_properties where retention_time_secs >= {} and retention_time_secs <= {} and collision_energy == {}".format(RT_LIMIT_LOWER,RT_LIMIT_UPPER,MS1_CE), db_conn)
 db_conn.close()
 
-
-# In[55]:
-
-
-ms1_frame_properties_df.head()
-
-
-# In[56]:
-
-
 frame_delay = ms1_frame_properties_df.iloc[1].retention_time_secs - ms1_frame_properties_df.iloc[0].retention_time_secs
-frame_delay
-
-
-# In[57]:
-
-
-len(ms1_frame_properties_df)
-
-
-# In[58]:
-
 
 MZ_MIN = 100.0
 MZ_MAX = 1700.0
@@ -81,44 +27,12 @@ MZ_BIN_WIDTH = 0.1
 SCAN_MIN = 1
 SCAN_MAX = 910
 
-
-# In[59]:
-
-
 mz_bins = np.arange(start=MZ_MIN, stop=MZ_MAX+MZ_BIN_WIDTH, step=MZ_BIN_WIDTH)  # go slightly wider to accomodate the maximum value
 
-
-# In[60]:
-
-
-mz_bins
-
-
-# In[61]:
-
-
 MZ_BIN_COUNT = len(mz_bins)
-MZ_BIN_COUNT
-
-
-# In[62]:
-
-
 DELTA_MZ = 1.003355     # Mass difference between Carbon-12 and Carbon-13 isotopes, in Da. For calculating the spacing between isotopic peaks.
-
-
-# In[63]:
-
-
 MZ_TOLERANCE_PPM = 5
 MZ_TOLERANCE_PERCENT = MZ_TOLERANCE_PPM * 10**-4
-
-
-# Process the allpeptides file to get the MQ features
-
-# In[64]:
-
-
 MIN_ISOTOPE_CORRELATION = 0.9
 RT_EACH_SIDE = 0.8
 
@@ -135,23 +49,10 @@ allpeptides_df["rt_upper"] = allpeptides_df.rt + (allpeptides_df.rt_delta * RT_E
 allpeptides_df.sort_values(by=['intensity'], ascending=False, inplace=True)
 allpeptides_df["mq_feature_id"] = np.arange(start=1, stop=len(allpeptides_df)+1)
 
-
-# In[65]:
-
-
 print("charge states: {} to {}".format(allpeptides_df.charge_state.min(), allpeptides_df.charge_state.max()))
 
 
 # ### Calculate the binned rectangle coordinates for all the MQ features
-
-# In[66]:
-
-
-len(allpeptides_df)
-
-
-# In[67]:
-
 
 mz_ppm_tolerance_l = []
 binned_mz_lower_l = []
@@ -203,24 +104,12 @@ allpeptides_df['binned_rect_mz_idx_upper'] = binned_mz_idx_upper_l
 allpeptides_df['scan_lower'] = scan_lower_l
 allpeptides_df['scan_upper'] = scan_upper_l
 
-
-# In[68]:
-
-
 PIXELS_PER_MZ_BIN = 5
 PIXELS_PER_SCAN = 1
-
-
-# In[69]:
-
 
 # will stretch the image to these dimensions
 TILE_HEIGHT = SCAN_MAX
 TILE_WIDTH = TILE_HEIGHT
-
-
-# In[70]:
-
 
 PIXELS_X = MZ_BIN_COUNT * PIXELS_PER_MZ_BIN
 PIXELS_Y = SCAN_MAX * PIXELS_PER_SCAN
@@ -234,10 +123,6 @@ RESIZE_FACTOR_X = TILE_WIDTH / MZ_BINS_PER_TILE
 TILE_BASE = '/home/daryl/yolo-test-rt-3000-3600'
 PRE_ASSIGNED_FILES_DIR = '{}/pre-assigned'.format(TILE_BASE)
 OVERLAY_FILES_DIR = '{}/overlay'.format(TILE_BASE)
-
-
-# In[75]:
-
 
 import os, shutil
 
@@ -254,10 +139,6 @@ if os.path.exists(OVERLAY_FILES_DIR):
     shutil.rmtree(OVERLAY_FILES_DIR)
 os.makedirs(OVERLAY_FILES_DIR)
 
-
-# In[76]:
-
-
 # calculate the colour to represent the intensity
 a = np.arange(start=0, stop=200, step=2, dtype=np.int)  # use up the darker colours for the low intensity points
 b = np.arange(start=200, stop=13000, step=200, dtype=np.int)
@@ -265,31 +146,20 @@ bounds = np.concatenate([a,b])
 colour_map = cm.get_cmap(name='magma', lut=len(bounds))
 norm = colors.BoundaryNorm(boundaries=bounds, ncolors=colour_map.N, clip=True)
 
-
-# In[80]:
-
-
 from PIL import ImageFont
 
 # load the font to use for labelling the overlays
 # feature_label = ImageFont.truetype('/Library/Fonts/Arial.ttf', 10)
 feature_label = ImageFont.truetype('/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf', 10)
 
-
-# In[81]:
-
-
 MAX_CHARGE_STATE = int(allpeptides_df.charge_state.max())
-
-
-# In[ ]:
-
 
 from PIL import Image, ImageFont, ImageDraw, ImageEnhance
 
 # count the instances by class
 instances_df = pd.DataFrame([(x,0) for x in range(1,MAX_CHARGE_STATE+1)], columns=['charge','instances'])
 
+print("processing the frames")
 for frame_r in zip(ms1_frame_properties_df.frame_id, ms1_frame_properties_df.retention_time_secs):
 # for frame_r in zip(ms1_frame_properties_df.iloc[:1].frame_id, ms1_frame_properties_df.iloc[:1].retention_time_secs):
     frame_id = int(frame_r[0])
@@ -398,9 +268,6 @@ print("total number of labelled instances: {}".format(instances_df.instances.sum
 
 # ### Split the tiles into training, test, validation sets
 
-# In[ ]:
-
-
 # load the file names into a dataframe
 import glob, os
 
@@ -408,20 +275,28 @@ filenames = []
 for file in glob.glob("{}/*.png".format(PRE_ASSIGNED_FILES_DIR)):
     filenames.append((os.path.basename(os.path.splitext(file)[0])))
 
-
-# In[ ]:
-
-
 fn_df = pd.DataFrame(filenames, columns=['name'])
 
+# allocate the training, validation, and test sets from separate periods of RT, as frames are a time series
+def train_validate_test_split_v3(df, train_percent=0.8, validate_percent=0.1, seed=None):
+    test_percent = 1.0 - (train_percent + validate_percent)
 
-# In[ ]:
+    # split the ms1 frame ids into three sections according to their proportions
+    train_ids_df, valid_ids_df, test_ids_df = np.split(ms1_frame_properties_df, [int(train_percent*len(ms1_frame_properties_df)), int((train_percent+validate_percent)*len(ms1_frame_properties_df))])
+    print("training set: {:.1f} to {:.1f} secs ({} frames)".format(train_ids_df.retention_time_secs.min(), train_ids_df.retention_time_secs.max(), len(train_ids_df)))
+    print("validation set: {:.1f} to {:.1f} secs ({} frames)".format(valid_ids_df.retention_time_secs.min(), valid_ids_df.retention_time_secs.max(), len(valid_ids_df)))
+    print("test set: {:.1f} to {:.1f} secs ({} frames)".format(test_ids_df.retention_time_secs.min(), test_ids_df.retention_time_secs.max(), len(test_ids_df)))
+    
+    train_terms = ['frame-' + str(s) for s in train_ids_df.frame_id]
+    train_df = df[df['name'].str.contains('|'.join(train_terms))].copy()
 
+    valid_terms = ['frame-' + str(s) for s in valid_ids_df.frame_id]
+    valid_df = df[df['name'].str.contains('|'.join(valid_terms))].copy()
 
-fn_df.head()
+    test_terms = ['frame-' + str(s) for s in test_ids_df.frame_id]
+    test_df = df[df['name'].str.contains('|'.join(test_terms))].copy()
 
-
-# In[ ]:
+    return train_df, valid_df, test_df
 
 # allocate the test set from the last of the tiles in RT, randomly allocated the remainder into training, validation
 def train_validate_test_split_v2(df, train_percent=0.9, validate_percent=0.05, seed=None):
@@ -453,48 +328,24 @@ def train_validate_test_split(df, train_percent=.9, validate_percent=.05, seed=N
     test = df.loc[perm[validate_end:]]
     return train, validate, test
 
+train_df,validate_df,test_df = train_validate_test_split_v3(fn_df)
 
-# In[ ]:
-
-
-train_df,validate_df,test_df = train_validate_test_split_v2(fn_df)
-
-
-# In[ ]:
-
-
-print("train set: {}, validation set: {}, test set {}".format(len(train_df),len(validate_df),len(test_df)))
-
-
-# In[ ]:
-
+print("number of images in train set: {}, validation set: {}, test set {}".format(len(train_df),len(validate_df),len(test_df)))
 
 import shutil
 
 data_dirs = ['train', 'validation', 'test']
 data_dfs = [train_df, validate_df, test_df]
 
-
-# In[ ]:
-
-
 DESTINATION_DATASET_BASE = 'data/peptides'
 LOCAL_DATA_FILES_DIR = '{}/data-files'.format(TILE_BASE)
 DESTINATION_DATA_FILES_DIR = '{}/data-files'.format(DESTINATION_DATASET_BASE)
 FILE_LIST_SUFFIX = 'list'
 
-
-# In[ ]:
-
-
 # initialise the directories required for the data set organisation
 if os.path.exists(LOCAL_DATA_FILES_DIR):
     shutil.rmtree(LOCAL_DATA_FILES_DIR)
 os.makedirs(LOCAL_DATA_FILES_DIR)
-
-
-# In[ ]:
-
 
 for idx,dd in enumerate(data_dirs):
     print("processing {}".format(dd))
@@ -516,10 +367,6 @@ for idx,dd in enumerate(data_dirs):
     # generate the text files for each set
     data_dfs[idx].text_entry.to_csv("{}/{}-{}.txt".format(LOCAL_DATA_FILES_DIR, dd, FILE_LIST_SUFFIX), index=False, header=False)
 
-
-# In[ ]:
-
-
 # create the names and data files for Darknet
 LOCAL_NAMES_FILENAME = "{}/peptides-obj.names".format(TILE_BASE)
 DESTINATION_NAMES_FILENAME = "{}/peptides-obj.names".format(DESTINATION_DATASET_BASE)
@@ -539,4 +386,3 @@ with open(LOCAL_DATA_FILENAME, 'w') as f:
     f.write("backup=backup/\n")
 
 print("finished writing {}".format(LOCAL_DATA_FILENAME))
-
