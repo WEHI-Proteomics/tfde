@@ -119,7 +119,7 @@ RESIZE_FACTOR_X = TILE_WIDTH / MZ_BINS_PER_TILE
 # ### Generate tiles for all frames
 
 # TILE_BASE = '/Users/darylwilding-mcbride/Downloads/yolo-train'
-TILE_BASE = '/home/daryl/yolo-test-rt-3000-3600'
+TILE_BASE = '/home/daryl/yolo-train-rt-{}-{}'.format(RT_LIMIT_LOWER, RT_LIMIT_UPPER)
 PRE_ASSIGNED_FILES_DIR = '{}/pre-assigned'.format(TILE_BASE)
 OVERLAY_FILES_DIR = '{}/overlay'.format(TILE_BASE)
 
