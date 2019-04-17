@@ -3,6 +3,9 @@
 # load the file names into a dataframe
 import glob, os
 import shutil
+import sqlite3
+import pandas as pd
+import numpy as np
 
 RT_LIMIT_LOWER = 4340
 RT_LIMIT_UPPER = 4580
@@ -16,6 +19,8 @@ CONVERTED_DATABASE_NAME = '{}/HeLa_20KInt.sqlite'.format(BASE_NAME)
 TILE_BASE = '/home/daryl/yolo-train-rt-{}-{}'.format(RT_LIMIT_LOWER, RT_LIMIT_UPPER)
 PRE_ASSIGNED_FILES_DIR = '{}/pre-assigned'.format(TILE_BASE)
 OVERLAY_FILES_DIR = '{}/overlay'.format(TILE_BASE)
+
+NUMBER_OF_CLASSES = 4
 
 db_conn = sqlite3.connect(CONVERTED_DATABASE_NAME)
 ms1_frame_properties_df = pd.read_sql_query("select frame_id,retention_time_secs from frame_properties where retention_time_secs >= {} and retention_time_secs <= {} and collision_energy == {}".format(RT_LIMIT_LOWER,RT_LIMIT_UPPER,MS1_CE), db_conn)
@@ -121,13 +126,13 @@ DESTINATION_NAMES_FILENAME = "{}/peptides-obj.names".format(DESTINATION_DATASET_
 LOCAL_DATA_FILENAME = "{}/peptides-obj.data".format(TILE_BASE)
 
 with open(LOCAL_NAMES_FILENAME, 'w') as f:
-    for charge in range(1,MAX_CHARGE_STATE+1):
+    for charge in range(1,NUMBER_OF_CLASSES+1):
         f.write("charge-{}\n".format(charge))
 
 print("finished writing {}".format(LOCAL_NAMES_FILENAME))
 
 with open(LOCAL_DATA_FILENAME, 'w') as f:
-    f.write("classes={}\n".format(MAX_CHARGE_STATE))
+    f.write("classes={}\n".format(NUMBER_OF_CLASSES))
     f.write("train={}\n".format("{}/{}-{}.txt".format(DESTINATION_DATA_FILES_DIR, data_dirs[0], FILE_LIST_SUFFIX)))
     f.write("valid={}\n".format("{}/{}-{}.txt".format(DESTINATION_DATA_FILES_DIR, data_dirs[1], FILE_LIST_SUFFIX)))
     f.write("names={}\n".format(DESTINATION_NAMES_FILENAME))
