@@ -3,19 +3,23 @@ import pandas as pd
 import numpy as np
 import sys
 from matplotlib import colors, cm, pyplot as plt
+import argparse
 
-RT_LIMIT_LOWER = 3000
-RT_LIMIT_UPPER = 3600
 MS1_CE = 10
 
-BASE_NAME = "/home/daryl/HeLa_20KInt-rt-{}-{}".format(RT_LIMIT_LOWER,RT_LIMIT_UPPER)
-# BASE_NAME = "/Users/darylwilding-mcbride/Downloads/HeLa_20KInt-rt-{}-{}".format(RT_LIMIT_LOWER,RT_LIMIT_UPPER)
+parser = argparse.ArgumentParser(description='Create the tiles from raw data.')
+parser.add_argument('-rtl','--rt_lower', type=int, help='Lower bound of the RT range.', required=True)
+parser.add_argument('-rtu','--rt_upper', type=int, help='Upper bound of the RT range.', required=True)
+args = parser.parse_args()
+
+BASE_NAME = "/home/daryl/HeLa_20KInt-rt-{}-{}".format(args.rt_lower, args.rt_upper)
+# BASE_NAME = "/Users/darylwilding-mcbride/Downloads/HeLa_20KInt-rt-{}-{}".format(args.rt_lower, args.rt_upper)
 CONVERTED_DATABASE_NAME = '{}/HeLa_20KInt.sqlite'.format(BASE_NAME)
 ALLPEPTIDES_FILENAME = '/home/daryl/maxquant_results/txt/allPeptides.txt'
 # ALLPEPTIDES_FILENAME = '/Users/darylwilding-mcbride/Downloads/maxquant_results/txt/allPeptides.txt'
 
 db_conn = sqlite3.connect(CONVERTED_DATABASE_NAME)
-ms1_frame_properties_df = pd.read_sql_query("select frame_id,retention_time_secs from frame_properties where retention_time_secs >= {} and retention_time_secs <= {} and collision_energy == {}".format(RT_LIMIT_LOWER,RT_LIMIT_UPPER,MS1_CE), db_conn)
+ms1_frame_properties_df = pd.read_sql_query("select frame_id,retention_time_secs from frame_properties where retention_time_secs >= {} and retention_time_secs <= {} and collision_energy == {}".format(args.rt_lower, args.rt_upper, MS1_CE), db_conn)
 db_conn.close()
 
 frame_delay = ms1_frame_properties_df.iloc[1].retention_time_secs - ms1_frame_properties_df.iloc[0].retention_time_secs
@@ -38,7 +42,7 @@ RT_EACH_SIDE = 0.8
 allpeptides_df = pd.read_csv(ALLPEPTIDES_FILENAME, sep='\t')
 allpeptides_df.rename(columns={'Number of isotopic peaks':'isotope_count', 'm/z':'mz', 'Number of data points':'number_data_points', 'Intensity':'intensity', 'Ion mobility index':'scan', 'Ion mobility index length':'scan_length', 'Ion mobility index length (FWHM)':'scan_length_fwhm', 'Retention time':'rt', 'Retention length':'rt_length', 'Retention length (FWHM)':'rt_length_fwhm', 'Charge':'charge_state', 'Number of pasef MS/MS':'number_pasef_ms2_ids', 'Isotope correlation':'isotope_correlation'}, inplace=True)
 allpeptides_df = allpeptides_df[allpeptides_df.intensity.notnull()].copy()  # remove all the null intensity rows
-allpeptides_df = allpeptides_df[allpeptides_df.intensity.notnull() & (allpeptides_df.isotope_correlation >= MIN_ISOTOPE_CORRELATION) & (allpeptides_df.rt >= RT_LIMIT_LOWER) & (allpeptides_df.rt <= RT_LIMIT_UPPER)].copy()
+allpeptides_df = allpeptides_df[allpeptides_df.intensity.notnull() & (allpeptides_df.isotope_correlation >= MIN_ISOTOPE_CORRELATION) & (allpeptides_df.rt >= args.rt_lower) & (allpeptides_df.rt <= args.rt_upper)].copy()
 
 allpeptides_df["rt_delta"] = allpeptides_df.rt_length / 2
 allpeptides_df["rt_lower"] = allpeptides_df.rt - (allpeptides_df.rt_delta * RT_EACH_SIDE)
@@ -119,7 +123,7 @@ RESIZE_FACTOR_X = TILE_WIDTH / MZ_BINS_PER_TILE
 # ### Generate tiles for all frames
 
 # TILE_BASE = '/Users/darylwilding-mcbride/Downloads/yolo-train'
-TILE_BASE = '/home/daryl/yolo-train-rt-{}-{}'.format(RT_LIMIT_LOWER, RT_LIMIT_UPPER)
+TILE_BASE = '/home/daryl/yolo-train-rt-{}-{}'.format(args.rt_lower, args.rt_upper)
 PRE_ASSIGNED_FILES_DIR = '{}/pre-assigned'.format(TILE_BASE)
 OVERLAY_FILES_DIR = '{}/overlay'.format(TILE_BASE)
 
