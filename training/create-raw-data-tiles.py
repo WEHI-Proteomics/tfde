@@ -18,6 +18,13 @@ CONVERTED_DATABASE_NAME = '{}/HeLa_20KInt.sqlite'.format(BASE_NAME)
 ALLPEPTIDES_FILENAME = '/home/daryl/maxquant_results/txt/allPeptides.txt'
 # ALLPEPTIDES_FILENAME = '/Users/darylwilding-mcbride/Downloads/maxquant_results/txt/allPeptides.txt'
 
+# TILE_BASE = '/Users/darylwilding-mcbride/Downloads/yolo-train'
+TILE_BASE = '/home/daryl/yolo-train-rt-{}-{}'.format(args.rt_lower, args.rt_upper)
+PRE_ASSIGNED_FILES_DIR = '{}/pre-assigned'.format(TILE_BASE)
+OVERLAY_FILES_DIR = '{}/overlay'.format(TILE_BASE)
+
+if not input("This will erase the overlay and pre-assigned directories in {}. Are you sure? (y/n): ".format(TILE_BASE)).lower().strip()[:1] == "y": sys.exit(1)
+
 db_conn = sqlite3.connect(CONVERTED_DATABASE_NAME)
 ms1_frame_properties_df = pd.read_sql_query("select frame_id,retention_time_secs from frame_properties where retention_time_secs >= {} and retention_time_secs <= {} and collision_energy == {}".format(args.rt_lower, args.rt_upper, MS1_CE), db_conn)
 db_conn.close()
@@ -121,11 +128,6 @@ TILES_PER_FRAME = int(MZ_BIN_COUNT / MZ_BINS_PER_TILE)
 RESIZE_FACTOR_X = TILE_WIDTH / MZ_BINS_PER_TILE
 
 # ### Generate tiles for all frames
-
-# TILE_BASE = '/Users/darylwilding-mcbride/Downloads/yolo-train'
-TILE_BASE = '/home/daryl/yolo-train-rt-{}-{}'.format(args.rt_lower, args.rt_upper)
-PRE_ASSIGNED_FILES_DIR = '{}/pre-assigned'.format(TILE_BASE)
-OVERLAY_FILES_DIR = '{}/overlay'.format(TILE_BASE)
 
 import os, shutil
 

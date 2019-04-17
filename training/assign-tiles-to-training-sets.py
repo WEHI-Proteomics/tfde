@@ -26,6 +26,8 @@ OVERLAY_FILES_DIR = '{}/overlay'.format(TILE_BASE)
 
 NUMBER_OF_CLASSES = 4
 
+if not input("This will erase the training set directories in {}. Are you sure? (y/n): ".format(TILE_BASE)).lower().strip()[:1] == "y": sys.exit(1)
+
 db_conn = sqlite3.connect(CONVERTED_DATABASE_NAME)
 ms1_frame_properties_df = pd.read_sql_query("select frame_id,retention_time_secs from frame_properties where retention_time_secs >= {} and retention_time_secs <= {} and collision_energy == {}".format(args.rt_lower, args.rt_upper, MS1_CE), db_conn)
 db_conn.close()
