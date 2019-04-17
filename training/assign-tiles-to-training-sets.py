@@ -10,7 +10,7 @@ import argparse
 
 MS1_CE = 10
 
-parser = argparse.ArgumentParser(description='Convert the Bruker database to a detection database.')
+parser = argparse.ArgumentParser(description='Assign the tiles to a training set.')
 parser.add_argument('-rtl','--rt_lower', type=int, help='Lower bound of the RT range.', required=True)
 parser.add_argument('-rtu','--rt_upper', type=int, help='Upper bound of the RT range.', required=True)
 args = parser.parse_args()
