@@ -38,6 +38,31 @@ for file in glob.glob("{}/*.png".format(PRE_ASSIGNED_FILES_DIR)):
 
 fn_df = pd.DataFrame(filenames, columns=['name'])
 
+# allocate the training, validation, and test sets from separate periods of RT, as frames are a time series - with a 5-frame gap between sets
+def train_validate_test_split_v4(df, train_percent=0.8, validate_percent=0.1, seed=None):
+    test_percent = 1.0 - (train_percent + validate_percent)
+
+    # split the ms1 frame ids into three sections according to their proportions
+    split_1 = int(train_percent*len(ms1_frame_properties_df))
+    split_1_plus_gap = split_1 + 5
+    split_2 = int((train_percent+validate_percent)*len(ms1_frame_properties_df))
+    split_2_plus_gap = split_2 + 5
+    train_ids_df, gap_1_df, valid_ids_df, gap_2_df, test_ids_df = np.split(ms1_frame_properties_df, [split_1, split_1_plus_gap, split_2, split_2_plus_gap])
+    print("training set: {:.1f} to {:.1f} secs ({} frames)".format(train_ids_df.retention_time_secs.min(), train_ids_df.retention_time_secs.max(), len(train_ids_df)))
+    print("validation set: {:.1f} to {:.1f} secs ({} frames)".format(valid_ids_df.retention_time_secs.min(), valid_ids_df.retention_time_secs.max(), len(valid_ids_df)))
+    print("test set: {:.1f} to {:.1f} secs ({} frames)".format(test_ids_df.retention_time_secs.min(), test_ids_df.retention_time_secs.max(), len(test_ids_df)))
+    
+    train_terms = ['frame-' + str(s) for s in train_ids_df.frame_id]
+    train_df = df[df['name'].str.contains('|'.join(train_terms))].copy()
+
+    valid_terms = ['frame-' + str(s) for s in valid_ids_df.frame_id]
+    valid_df = df[df['name'].str.contains('|'.join(valid_terms))].copy()
+
+    test_terms = ['frame-' + str(s) for s in test_ids_df.frame_id]
+    test_df = df[df['name'].str.contains('|'.join(test_terms))].copy()
+
+    return train_df, valid_df, test_df
+
 # allocate the training, validation, and test sets from separate periods of RT, as frames are a time series
 def train_validate_test_split_v3(df, train_percent=0.8, validate_percent=0.1, seed=None):
     test_percent = 1.0 - (train_percent + validate_percent)
@@ -89,7 +114,7 @@ def train_validate_test_split(df, train_percent=.9, validate_percent=.05, seed=N
     test = df.loc[perm[validate_end:]]
     return train, validate, test
 
-train_df,validate_df,test_df = train_validate_test_split_v3(fn_df)
+train_df,validate_df,test_df = train_validate_test_split_v4(fn_df)
 
 print("number of images in train set: {}, validation set: {}, test set {}".format(len(train_df),len(validate_df),len(test_df)))
 
