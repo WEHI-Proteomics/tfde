@@ -273,7 +273,7 @@ def render_tile_for_frame(frame_r):
     return instances_df
 
 
-# for frame_r in zip(ms1_frame_properties_df.frame_id, ms1_frame_properties_df.retention_time_secs):
-ray.get([render_tile_for_frame.remote(frame_r) for frame_r in zip(ms1_frame_properties_df.iloc[:1].frame_id, ms1_frame_properties_df.iloc[:1].retention_time_secs)])
+# ray.get([render_tile_for_frame.remote(frame_r) for frame_r in zip(ms1_frame_properties_df.iloc[:1].frame_id, ms1_frame_properties_df.iloc[:1].retention_time_secs)])
+ray.get([render_tile_for_frame.remote(frame_r) for frame_r in zip(ms1_frame_properties_df.frame_id, ms1_frame_properties_df.retention_time_secs)])
 
 ray.shutdown()
