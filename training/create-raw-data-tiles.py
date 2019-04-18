@@ -5,6 +5,8 @@ import sys
 from matplotlib import colors, cm, pyplot as plt
 import argparse
 import ray
+import os, shutil
+
 
 MS1_CE = 10
 
@@ -62,6 +64,7 @@ allpeptides_df["mq_feature_id"] = np.arange(start=1, stop=len(allpeptides_df)+1)
 
 print("charge states: {} to {}".format(allpeptides_df.charge_state.min(), allpeptides_df.charge_state.max()))
 
+MAX_CHARGE_STATE = int(allpeptides_df.charge_state.max())
 
 # ### Calculate the binned rectangle coordinates for all the MQ features
 
@@ -129,8 +132,6 @@ TILES_PER_FRAME = int(MZ_BIN_COUNT / MZ_BINS_PER_TILE)
 RESIZE_FACTOR_X = TILE_WIDTH / MZ_BINS_PER_TILE
 
 # ### Generate tiles for all frames
-
-import os, shutil
 
 # initialise the directories required for the data set creation
 if os.path.exists(TILE_BASE):
