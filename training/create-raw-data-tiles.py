@@ -4,6 +4,7 @@ import numpy as np
 import sys
 from matplotlib import colors, cm, pyplot as plt
 import argparse
+import ray
 
 MS1_CE = 10
 
@@ -151,25 +152,17 @@ bounds = np.concatenate([a,b])
 colour_map = cm.get_cmap(name='magma', lut=len(bounds))
 norm = colors.BoundaryNorm(boundaries=bounds, ncolors=colour_map.N, clip=True)
 
-from PIL import ImageFont
+if not ray.is_initialized():
+    ray.init()
 
-# load the font to use for labelling the overlays
-# feature_label = ImageFont.truetype('/Library/Fonts/Arial.ttf', 10)
-feature_label = ImageFont.truetype('/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf', 10)
-
-MAX_CHARGE_STATE = int(allpeptides_df.charge_state.max())
-
-from PIL import Image, ImageFont, ImageDraw, ImageEnhance
-
-# count the instances by class
-instances_df = pd.DataFrame([(x,0) for x in range(1,MAX_CHARGE_STATE+1)], columns=['charge','instances'])
-
-print("processing the frames")
-for frame_r in zip(ms1_frame_properties_df.frame_id, ms1_frame_properties_df.retention_time_secs):
-# for frame_r in zip(ms1_frame_properties_df.iloc[:1].frame_id, ms1_frame_properties_df.iloc[:1].retention_time_secs):
+@ray.remote
+def render_tile_for_frame(frame_r):
     frame_id = int(frame_r[0])
     frame_rt = frame_r[1]
     
+    # count the instances by class
+    instances_df = pd.DataFrame([(x,0) for x in range(1,MAX_CHARGE_STATE+1)], columns=['charge','instances'])
+
     # get the features overlapping this frame
     allpeptides_frame_overlap_df = allpeptides_df[(allpeptides_df.rt_lower <= frame_rt) & (allpeptides_df.rt_upper >= frame_rt)].copy()
 
@@ -206,6 +199,10 @@ for frame_r in zip(ms1_frame_properties_df.frame_id, ms1_frame_properties_df.ret
         y = r[1]
         c = r[2]
         frame_im_array[y,x,:] = c
+
+    # load the font to use for labelling the overlays
+    # feature_label = ImageFont.truetype('/Library/Fonts/Arial.ttf', 10)
+    feature_label = ImageFont.truetype('/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf', 10)
 
     # write out the image tiles for the frame
     for tile_idx in range(TILES_PER_FRAME):
@@ -267,5 +264,12 @@ for frame_r in zip(ms1_frame_properties_df.frame_id, ms1_frame_properties_df.ret
             for item in feature_coordinates:
                 f.write("%s\n" % item)
 
-print("{}".format(instances_df))
-print("total number of labelled instances: {}".format(instances_df.instances.sum()))
+    print("{}".format(instances_df))
+    print("total number of labelled instances: {}".format(instances_df.instances.sum()))
+    return instances_df
+
+
+# for frame_r in zip(ms1_frame_properties_df.frame_id, ms1_frame_properties_df.retention_time_secs):
+ray.get([render_tile_for_frame.remote(frame_r) for frame_r in zip(ms1_frame_properties_df.iloc[:1].frame_id, ms1_frame_properties_df.iloc[:1].retention_time_secs)])
+
+ray.shutdown()
