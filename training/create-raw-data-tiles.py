@@ -6,6 +6,7 @@ from matplotlib import colors, cm, pyplot as plt
 import argparse
 import ray
 import os, shutil
+from PIL import Image, ImageFont, ImageDraw, ImageEnhance
 
 
 MS1_CE = 10
