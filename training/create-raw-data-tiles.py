@@ -159,6 +159,8 @@ if not ray.is_initialized():
 def render_tile_for_frame(frame_r):
     frame_id = int(frame_r[0])
     frame_rt = frame_r[1]
+
+    print("processing frame {}".format(frame_id))
     
     # count the instances by class
     instances_df = pd.DataFrame([(x,0) for x in range(1,MAX_CHARGE_STATE+1)], columns=['charge','instances'])
@@ -264,8 +266,8 @@ def render_tile_for_frame(frame_r):
             for item in feature_coordinates:
                 f.write("%s\n" % item)
 
-    print("{}".format(instances_df))
-    print("total number of labelled instances: {}".format(instances_df.instances.sum()))
+    print("frame {}: {}".format(frame_id, instances_df))
+    print("frame {}: total number of labelled instances: {}".format(frame_id, instances_df.instances.sum()))
     return instances_df
 
 
