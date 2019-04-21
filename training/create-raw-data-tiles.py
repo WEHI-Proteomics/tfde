@@ -48,7 +48,7 @@ DELTA_MZ = 1.003355     # Mass difference between Carbon-12 and Carbon-13 isotop
 MZ_TOLERANCE_PPM = 5
 MZ_TOLERANCE_PERCENT = MZ_TOLERANCE_PPM * 10**-4
 MIN_ISOTOPE_CORRELATION = 0.9
-RT_EACH_SIDE = 0.8
+RT_EACH_SIDE = 1.0  # proportion of RT length / 2 used for the bounding box
 
 allpeptides_df = pd.read_csv(ALLPEPTIDES_FILENAME, sep='\t')
 allpeptides_df.rename(columns={'Number of isotopic peaks':'isotope_count', 'm/z':'mz', 'Number of data points':'number_data_points', 'Intensity':'intensity', 'Ion mobility index':'scan', 'Ion mobility index length':'scan_length', 'Ion mobility index length (FWHM)':'scan_length_fwhm', 'Retention time':'rt', 'Retention length':'rt_length', 'Retention length (FWHM)':'rt_length_fwhm', 'Charge':'charge_state', 'Number of pasef MS/MS':'number_pasef_ms2_ids', 'Isotope correlation':'isotope_correlation'}, inplace=True)
