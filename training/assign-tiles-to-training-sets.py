@@ -10,17 +10,23 @@ import argparse
 
 MS1_CE = 10
 
+SET_GAP = 10  # number of frames between training sets to avoid features appearing in more than one set
+
+TRAINING_SET_PROPORTION = 0.8
+VALIDATION_SET_PROPORTION = 0.1
+TEST_SET_PROPORTION = 0.1
+
 parser = argparse.ArgumentParser(description='Assign the tiles to a training set.')
 parser.add_argument('-rtl','--rt_lower', type=int, help='Lower bound of the RT range.', required=True)
 parser.add_argument('-rtu','--rt_upper', type=int, help='Upper bound of the RT range.', required=True)
+parser.add_argument('-tb','--tile_base', type=str, help='Path to the base directory of the training set.', required=True)
+parser.add_argument('-dbb','--database_base', type=str, help='Path to the base directory of the raw database.', required=True)
 args = parser.parse_args()
 
-BASE_NAME = "/home/daryl/HeLa_20KInt-rt-{}-{}".format(args.rt_lower, args.rt_upper)
-# BASE_NAME = "/Users/darylwilding-mcbride/Downloads/HeLa_20KInt-rt-{}-{}".format(args.rt_lower, args.rt_upper)
+BASE_NAME = args.database_base
 CONVERTED_DATABASE_NAME = '{}/HeLa_20KInt.sqlite'.format(BASE_NAME)
 
-# TILE_BASE = '/Users/darylwilding-mcbride/Downloads/yolo-train'
-TILE_BASE = '/home/daryl/yolo-train-rt-{}-{}'.format(args.rt_lower, args.rt_upper)
+TILE_BASE = args.tile_base
 PRE_ASSIGNED_FILES_DIR = '{}/pre-assigned'.format(TILE_BASE)
 OVERLAY_FILES_DIR = '{}/overlay'.format(TILE_BASE)
 
@@ -38,15 +44,15 @@ for file in glob.glob("{}/*.png".format(PRE_ASSIGNED_FILES_DIR)):
 
 fn_df = pd.DataFrame(filenames, columns=['name'])
 
-# allocate the training, validation, and test sets from separate periods of RT, as frames are a time series - with a 5-frame gap between sets
-def train_validate_test_split_v4(df, train_percent=0.8, validate_percent=0.1, seed=None):
+# allocate the training, validation, and test sets from separate periods of RT, as frames are a time series - with an N-frame gap between sets
+def train_validate_test_split_v4(df, train_percent=TRAINING_SET_PROPORTION, validate_percent=VALIDATION_SET_PROPORTION, seed=None):
     test_percent = 1.0 - (train_percent + validate_percent)
 
     # split the ms1 frame ids into three sections according to their proportions
     split_1 = int(train_percent*len(ms1_frame_properties_df))
-    split_1_plus_gap = split_1 + 5
+    split_1_plus_gap = split_1 + SET_GAP
     split_2 = int((train_percent+validate_percent)*len(ms1_frame_properties_df))
-    split_2_plus_gap = split_2 + 5
+    split_2_plus_gap = split_2 + SET_GAP
     train_ids_df, gap_1_df, valid_ids_df, gap_2_df, test_ids_df = np.split(ms1_frame_properties_df, [split_1, split_1_plus_gap, split_2, split_2_plus_gap])
     print("training set: {:.1f} to {:.1f} secs ({} frames)".format(train_ids_df.retention_time_secs.min(), train_ids_df.retention_time_secs.max(), len(train_ids_df)))
     print("validation set: {:.1f} to {:.1f} secs ({} frames)".format(valid_ids_df.retention_time_secs.min(), valid_ids_df.retention_time_secs.max(), len(valid_ids_df)))
@@ -62,57 +68,6 @@ def train_validate_test_split_v4(df, train_percent=0.8, validate_percent=0.1, se
     test_df = df[df['name'].str.contains('|'.join(test_terms))].copy()
 
     return train_df, valid_df, test_df
-
-# allocate the training, validation, and test sets from separate periods of RT, as frames are a time series
-def train_validate_test_split_v3(df, train_percent=0.8, validate_percent=0.1, seed=None):
-    test_percent = 1.0 - (train_percent + validate_percent)
-
-    # split the ms1 frame ids into three sections according to their proportions
-    train_ids_df, valid_ids_df, test_ids_df = np.split(ms1_frame_properties_df, [int(train_percent*len(ms1_frame_properties_df)), int((train_percent+validate_percent)*len(ms1_frame_properties_df))])
-    print("training set: {:.1f} to {:.1f} secs ({} frames)".format(train_ids_df.retention_time_secs.min(), train_ids_df.retention_time_secs.max(), len(train_ids_df)))
-    print("validation set: {:.1f} to {:.1f} secs ({} frames)".format(valid_ids_df.retention_time_secs.min(), valid_ids_df.retention_time_secs.max(), len(valid_ids_df)))
-    print("test set: {:.1f} to {:.1f} secs ({} frames)".format(test_ids_df.retention_time_secs.min(), test_ids_df.retention_time_secs.max(), len(test_ids_df)))
-    
-    train_terms = ['frame-' + str(s) for s in train_ids_df.frame_id]
-    train_df = df[df['name'].str.contains('|'.join(train_terms))].copy()
-
-    valid_terms = ['frame-' + str(s) for s in valid_ids_df.frame_id]
-    valid_df = df[df['name'].str.contains('|'.join(valid_terms))].copy()
-
-    test_terms = ['frame-' + str(s) for s in test_ids_df.frame_id]
-    test_df = df[df['name'].str.contains('|'.join(test_terms))].copy()
-
-    return train_df, valid_df, test_df
-
-# allocate the test set from the last of the tiles in RT, randomly allocated the remainder into training, validation
-def train_validate_test_split_v2(df, train_percent=0.9, validate_percent=0.05, seed=None):
-    test_percent = 1.0 - (train_percent + validate_percent)
-    # take the last test_precent of the frames for the test set
-    test_set_frame_ids = list(ms1_frame_properties_df.tail(int(len(ms1_frame_properties_df) * test_percent)).frame_id)
-    terms = ['frame-' + str(s) for s in test_set_frame_ids]
-    test_df = df[df['name'].str.contains('|'.join(terms))].copy()
-    # remove the test set from the train/valid set
-    train_valid_df = df[~df.name.isin(test_df.name)]
-    # randomly assign tiles to the train and valid sets
-    np.random.seed(seed)
-    perm = np.random.permutation(train_valid_df.index)
-    m = len(df.index)
-    train_end = int(train_percent * m)
-    train_df = train_valid_df.loc[perm[:train_end]].copy()
-    validate_df = train_valid_df.loc[perm[train_end:]].copy()
-    return train_df, validate_df, test_df
-
-# randomly assign each tile to a set
-def train_validate_test_split(df, train_percent=.9, validate_percent=.05, seed=None):
-    np.random.seed(seed)
-    perm = np.random.permutation(df.index)
-    m = len(df.index)
-    train_end = int(train_percent * m)
-    validate_end = int(validate_percent * m) + train_end
-    train = df.loc[perm[:train_end]]
-    validate = df.loc[perm[train_end:validate_end]]
-    test = df.loc[perm[validate_end:]]
-    return train, validate, test
 
 train_df,validate_df,test_df = train_validate_test_split_v4(fn_df)
 
