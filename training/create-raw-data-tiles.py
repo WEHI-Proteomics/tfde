@@ -14,18 +14,16 @@ MS1_CE = 10
 parser = argparse.ArgumentParser(description='Create the tiles from raw data.')
 parser.add_argument('-rtl','--rt_lower', type=int, help='Lower bound of the RT range.', required=True)
 parser.add_argument('-rtu','--rt_upper', type=int, help='Upper bound of the RT range.', required=True)
+parser.add_argument('-tb','--tile_base', type=str, help='Path to the base directory of the training set.', required=True)
+parser.add_argument('-dbb','--database_base', type=str, help='Path to the base directory of the raw database.', required=True)
 args = parser.parse_args()
 
-BASE_NAME = "/home/ubuntu/HeLa_20KInt-rt-{}-{}".format(args.rt_lower, args.rt_upper)
-# BASE_NAME = "/Users/darylwilding-mcbride/Downloads/HeLa_20KInt-rt-{}-{}".format(args.rt_lower, args.rt_upper)
-CONVERTED_DATABASE_NAME = '{}/HeLa_20KInt.sqlite'.format(BASE_NAME)
+CONVERTED_DATABASE_NAME = '{}/HeLa_20KInt.sqlite'.format(args.tile_base)
 ALLPEPTIDES_FILENAME = '/home/ubuntu/maxquant_results/txt/allPeptides.txt'
 # ALLPEPTIDES_FILENAME = '/Users/darylwilding-mcbride/Downloads/maxquant_results/txt/allPeptides.txt'
 
-# TILE_BASE = '/Users/darylwilding-mcbride/Downloads/yolo-train'
-TILE_BASE = '/home/ubuntu/yolo-train-rt-{}-{}'.format(args.rt_lower, args.rt_upper)
-PRE_ASSIGNED_FILES_DIR = '{}/pre-assigned'.format(TILE_BASE)
-OVERLAY_FILES_DIR = '{}/overlay'.format(TILE_BASE)
+PRE_ASSIGNED_FILES_DIR = '{}/pre-assigned'.format(args.tile_base)
+OVERLAY_FILES_DIR = '{}/overlay'.format(args.tile_base)
 
 # if not input("This will erase the overlay and pre-assigned directories in {}. Are you sure? (y/n): ".format(TILE_BASE)).lower().strip()[:1] == "y": sys.exit(1)
 
@@ -91,7 +89,7 @@ for r in zip(allpeptides_df.mq_feature_id,allpeptides_df.charge_state,allpeptide
     # determine the bounding box coordinates for m/z and scan in real space
     mz_ppm_tolerance = mq_feature_mz * MZ_TOLERANCE_PERCENT / 100
     mz_ppm_tolerance_l.append((mz_ppm_tolerance))
-    
+
     # find the bin edges for the feature's mz
     binned_mz_idx_lower = int(np.digitize(mq_feature_mz, mz_bins))-1
     binned_mz_idx_upper = int(np.digitize(mq_feature_mz + ((isotope_count-1) * expected_isotope_spacing_mz), mz_bins))
@@ -110,7 +108,7 @@ for r in zip(allpeptides_df.mq_feature_id,allpeptides_df.charge_state,allpeptide
     rect_scan_range = int(mq_feature_scan_length)
     scan_lower_l.append(rect_scan_lower)
     scan_upper_l.append(rect_scan_upper)
-    
+
 allpeptides_df['mz_ppm_tolerance'] = mz_ppm_tolerance_l
 allpeptides_df['binned_rect_mz_lower'] = binned_mz_lower_l
 allpeptides_df['binned_rect_mz_upper'] = binned_mz_upper_l
@@ -163,7 +161,7 @@ def render_tile_for_frame(frame_r):
     frame_rt = frame_r[1]
 
     print("processing frame {}".format(frame_id))
-    
+
     # count the instances by class
     instances_df = pd.DataFrame([(x,0) for x in range(1,MAX_CHARGE_STATE+1)], columns=['charge','instances'])
 
@@ -174,7 +172,7 @@ def render_tile_for_frame(frame_r):
     db_conn = sqlite3.connect(CONVERTED_DATABASE_NAME)
     raw_points_df = pd.read_sql_query("select mz,scan,intensity from frames where frame_id == {}".format(frame_id), db_conn)
     db_conn.close()
-    
+
     # convert the raw points to an intensity array
     frame_intensity_array = np.zeros([SCAN_MAX+1, MZ_BIN_COUNT+1], dtype=np.uint16)  # scratchpad for the intensity value prior to image conversion
     for r in zip(raw_points_df.mz,raw_points_df.scan,raw_points_df.intensity):
