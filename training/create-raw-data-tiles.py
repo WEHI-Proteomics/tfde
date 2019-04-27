@@ -18,7 +18,7 @@ parser.add_argument('-tb','--tile_base', type=str, help='Path to the base direct
 parser.add_argument('-dbb','--database_base', type=str, help='Path to the base directory of the raw database.', required=True)
 args = parser.parse_args()
 
-CONVERTED_DATABASE_NAME = '{}/HeLa_20KInt.sqlite'.format(args.tile_base)
+CONVERTED_DATABASE_NAME = '{}/HeLa_20KInt.sqlite'.format(args.database_base)
 ALLPEPTIDES_FILENAME = '/home/ubuntu/maxquant_results/txt/allPeptides.txt'
 # ALLPEPTIDES_FILENAME = '/Users/darylwilding-mcbride/Downloads/maxquant_results/txt/allPeptides.txt'
 
