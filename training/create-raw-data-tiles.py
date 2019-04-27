@@ -134,9 +134,9 @@ RESIZE_FACTOR_X = TILE_WIDTH / MZ_BINS_PER_TILE
 # ### Generate tiles for all frames
 
 # initialise the directories required for the data set creation
-if os.path.exists(TILE_BASE):
-    shutil.rmtree(TILE_BASE)
-os.makedirs(TILE_BASE)
+if os.path.exists(args.tile_base):
+    shutil.rmtree(args.tile_base)
+os.makedirs(args.tile_base)
 
 if os.path.exists(PRE_ASSIGNED_FILES_DIR):
     shutil.rmtree(PRE_ASSIGNED_FILES_DIR)
