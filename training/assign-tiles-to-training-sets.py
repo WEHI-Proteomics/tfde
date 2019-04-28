@@ -46,8 +46,8 @@ for file in glob.glob("{}/*.png".format(PRE_ASSIGNED_FILES_DIR)):
 fn_df = pd.DataFrame(filenames, columns=['name'])
 
 # allocate the training, validation, and test sets from separate periods of RT, as frames are a time series - with an N-frame gap between sets
-def train_validate_test_split_v4(tile_filenames_df, ms1_frames_df, train_percent=TRAINING_SET_PROPORTION, validate_percent=VALIDATION_SET_PROPORTION, seed=None):
-    test_percent = 1.0 - (train_percent + validate_percent)
+def train_validate_test_split_v4(tile_filenames_df, ms1_frames_df, train_percent=TRAINING_SET_PROPORTION, valid_percent=VALIDATION_SET_PROPORTION, seed=None):
+    test_percent = 1.0 - (train_percent + valid_percent)
 
     # divide the ms1 frames into equal-size bands
     bands = np.array_split(ms1_frames_df, NUMBER_OF_BANDS)
