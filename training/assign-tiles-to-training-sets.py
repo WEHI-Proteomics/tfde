@@ -58,19 +58,19 @@ def train_validate_test_split_v4(tile_filenames_df, ms1_frames_df, train_percent
 
     for band_idx,band_df in enumerate(bands):
 
-        band_length = len(band_df)
+        band_length = len(band_df) - (3 * SET_GAP)
         train_length = int(train_percent * band_length)
         valid_length = int(valid_percent * band_length)
         test_length = int(test_percent * band_length)
 
         train_start = 0
-        train_stop = train_start + train_length - SET_GAP
+        train_stop = train_start + train_length
 
-        valid_start = train_start + train_length
-        valid_stop = valid_start + valid_length - SET_GAP
+        valid_start = train_stop + SET_GAP
+        valid_stop = valid_start + valid_length
 
-        test_start = valid_start + valid_length
-        test_stop = test_start + test_length - SET_GAP
+        test_start = valid_stop + SET_GAP
+        test_stop = test_start + test_length
 
         # split the band into three sections according to their proportions
         train_ids_df, gap_1_df, valid_ids_df, gap_2_df, test_ids_df, gap_3_df = np.split(band_df, [train_stop, valid_start, valid_stop, test_start, test_stop])
