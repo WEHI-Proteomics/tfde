@@ -14,7 +14,7 @@ parser.add_argument('-pa','--proportion_to_augment', type=float, default=0.3, he
 parser.add_argument('-at','--augmentations_per_tile', type=int, default=10, help='Number of augmentations for each tile.', required=False)
 parser.add_argument('-mx','--max_translation_x', type=int, default=300, help='Maximum number of pixels to translate in the x dimension.', required=False)
 parser.add_argument('-my','--max_translation_y', type=int, default=300, help='Maximum number of pixels to translate in the y dimension.', required=False)
-parser.add_argument('-os','--operating_system', type=string, default='linux', help='Operating system can be linux or macos.', required=False)
+parser.add_argument('-os','--operating_system', type=str, default='linux', help='Operating system can be linux or macos.', required=False)
 args = parser.parse_args()
 
 # load the tiles and their labels
