@@ -40,11 +40,14 @@ filenames_df = pd.DataFrame(filenames, columns=['filename'])
 number_to_select = int(len(filenames_df) * args.proportion_to_augment)
 filenames_to_augment_df = filenames_df.sample(n=number_to_select)
 
+print("generating {} augmentations of {} tiles".format(args.augmentations_per_tile, number_to_select))
+
 feature_label = ImageFont.truetype('/Library/Fonts/Arial.ttf', 10)
 # feature_label = ImageFont.truetype('/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf', 10)
 
 for filename_idx in range(len(filenames_to_augment_df)):
     filename = filenames_to_augment_df.iloc[filename_idx].filename
+    print("augmenting {}".format(filename))
     # load the tile
     img = Image.open('{}/{}.png'.format(TRAINING_SET_FILES_DIR, filename))
     # generate the augmented tiles
@@ -67,7 +70,7 @@ for filename_idx in range(len(filenames_to_augment_df)):
         draw_context = ImageDraw.Draw(overlay_img)
         label_df = pd.read_csv('{}/{}.txt'.format(TRAINING_SET_FILES_DIR, filename), sep=' ', header=None, names=['class_id','x','y','w','h'])
         for label_idx in range(len(label_df)):
-            class_id = label_df.iloc[label_idx].class_id
+            class_id = int(label_df.iloc[label_idx].class_id)
             label_x = label_df.iloc[label_idx].x
             label_y = label_df.iloc[label_idx].y
             label_width = label_df.iloc[label_idx].w
@@ -86,7 +89,7 @@ for filename_idx in range(len(filenames_to_augment_df)):
             # label the object if its centre is still within the tile
             if ((augment_label_x >= 0) and (augment_label_x <= 1) and (augment_label_y >= 0) and (augment_label_y <= 1)):
                 # add it to the list of new labels
-                augment_label_l.append(("{} {:.6f} {:.6f} {:.6f} {:.6f}".format(class_id, augment_pixel_x, augment_pixel_y, label_width, label_height)))
+                augment_label_l.append(("{} {:.6f} {:.6f} {:.6f} {:.6f}".format(class_id, augment_label_x, augment_label_y, label_width, label_height)))
                 # calculate the overlay rectangle
                 x0 = int(augment_pixel_x - (pixel_width / 2))
                 x1 = int(augment_pixel_x + (pixel_width / 2))
@@ -107,3 +110,27 @@ for filename_idx in range(len(filenames_to_augment_df)):
         # save the overlay image
         overlay_img.save('{}/{}.png'.format(AUGMENTED_OVERLAY_FILES_DIR, augmented_base_filename))
 
+print("copying the augmented tiles to the training set.")
+
+# delete the augmented tiles already in the training set
+augmented_files = glob.glob("{}/*-aug-*.png".format(TRAINING_SET_FILES_DIR))
+for fname in augmented_files:
+    if os.path.isfile(fname):
+        os.remove(fname)
+
+# copy the augmented tiles to the training set
+augmented_files = glob.glob("{}/*.png".format(AUGMENTED_FILES_DIR))
+for fname in augmented_files:
+    if os.path.isfile(fname):
+        basename = os.path.basename(fname)
+        shutil.copyfile('{}/{}'.format(AUGMENTED_FILES_DIR, basename), '{}/{}'.format(TRAINING_SET_FILES_DIR, basename))
+
+# regenerate the training file list
+training_set_files = glob.glob("{}/*.png".format(TRAINING_SET_FILES_DIR))
+training_set_l = []
+for fname in training_set_files:
+    if os.path.isfile(fname):
+        basename = os.path.basename(fname)
+        training_set_l.append('data/peptides/train/{}'.format(basename))
+df = pd.DataFrame(training_set_l, columns=['filename'])
+df.to_csv("{}/data-files/train-list.txt".format(TILE_BASE), index=False, header=False)
