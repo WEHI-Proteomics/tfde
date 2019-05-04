@@ -119,10 +119,9 @@ for filename_idx in range(len(filenames_to_augment_df)):
         # save the overlay image
         overlay_img.save('{}/{}.png'.format(AUGMENTED_OVERLAY_FILES_DIR, augmented_base_filename))
 
-print("copying the augmented tiles to the training set.")
-
 # copy the augmented tiles to the training set
 augmented_files = glob.glob("{}/*.*".format(AUGMENTED_FILES_DIR))
+print("copying {} augmented tiles to the training set.".format(len(augmented_files)))
 for fname in augmented_files:
     if os.path.isfile(fname):
         basename = os.path.basename(fname)
@@ -130,6 +129,7 @@ for fname in augmented_files:
 
 # regenerate the training file list
 training_set_files = glob.glob("{}/*.png".format(TRAINING_SET_FILES_DIR))
+print("total number of tiles in the training set is {}.".format(len(training_set_files)))
 training_set_l = []
 for fname in training_set_files:
     if os.path.isfile(fname):
