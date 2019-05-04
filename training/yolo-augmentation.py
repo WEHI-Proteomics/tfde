@@ -106,3 +106,4 @@ for filename_idx in range(len(filenames_to_augment_df)):
                 f.write("%s\n" % item)
         # save the overlay image
         overlay_img.save('{}/{}.png'.format(AUGMENTED_OVERLAY_FILES_DIR, augmented_base_filename))
+
