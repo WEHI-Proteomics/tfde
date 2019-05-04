@@ -14,6 +14,7 @@ parser.add_argument('-pa','--proportion_to_augment', type=float, default=0.3, he
 parser.add_argument('-at','--augmentations_per_tile', type=int, default=10, help='Number of augmentations for each tile.', required=False)
 parser.add_argument('-mx','--max_translation_x', type=int, default=300, help='Maximum number of pixels to translate in the x dimension.', required=False)
 parser.add_argument('-my','--max_translation_y', type=int, default=300, help='Maximum number of pixels to translate in the y dimension.', required=False)
+parser.add_argument('-os','--operating_system', type=string, default='linux', help='Operating system can be linux or macos.', required=False)
 args = parser.parse_args()
 
 # load the tiles and their labels
@@ -48,8 +49,10 @@ filenames_to_augment_df = filenames_df.sample(n=number_to_select)
 
 print("generating {} augmentations of {} tiles".format(args.augmentations_per_tile, number_to_select))
 
-feature_label = ImageFont.truetype('/Library/Fonts/Arial.ttf', 10)
-# feature_label = ImageFont.truetype('/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf', 10)
+if args.operating_system == 'macos':
+    feature_label = ImageFont.truetype('/Library/Fonts/Arial.ttf', 10)
+else:
+    feature_label = ImageFont.truetype('/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf', 10)
 
 for filename_idx in range(len(filenames_to_augment_df)):
     filename = filenames_to_augment_df.iloc[filename_idx].filename
