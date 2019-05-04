@@ -53,7 +53,7 @@ feature_label = ImageFont.truetype('/Library/Fonts/Arial.ttf', 10)
 
 for filename_idx in range(len(filenames_to_augment_df)):
     filename = filenames_to_augment_df.iloc[filename_idx].filename
-    print("augmenting {}".format(filename))
+    print("augmenting {} ({} of {})".format(filename, filename_idx+1, len(filenames_to_augment_df)))
     # load the tile
     img = Image.open('{}/{}.png'.format(TRAINING_SET_FILES_DIR, filename))
     # generate the augmented tiles
