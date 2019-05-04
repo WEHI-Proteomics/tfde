@@ -119,7 +119,7 @@ for fname in augmented_files:
         os.remove(fname)
 
 # copy the augmented tiles to the training set
-augmented_files = glob.glob("{}/*.png".format(AUGMENTED_FILES_DIR))
+augmented_files = glob.glob("{}/*.*".format(AUGMENTED_FILES_DIR))
 for fname in augmented_files:
     if os.path.isfile(fname):
         basename = os.path.basename(fname)
