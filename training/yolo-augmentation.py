@@ -30,6 +30,12 @@ if os.path.exists(AUGMENTED_FILES_DIR):
 os.makedirs(AUGMENTED_FILES_DIR)
 os.makedirs(AUGMENTED_OVERLAY_FILES_DIR)
 
+# delete the augmented tiles already in the training set
+augmented_files = glob.glob("{}/*-aug-*.png".format(TRAINING_SET_FILES_DIR))
+for fname in augmented_files:
+    if os.path.isfile(fname):
+        os.remove(fname)
+
 # load the file names into a dataframe
 filenames = []
 for file in glob.glob("{}/*.png".format(TRAINING_SET_FILES_DIR)):
@@ -85,7 +91,7 @@ for filename_idx in range(len(filenames_to_augment_df)):
             augment_pixel_y = pixel_y + y_offset
             # calculate the new label centre x,y in label coordinates
             augment_label_x = augment_pixel_x / PIXELS # new centre in label coordinates
-            augment_label_y = augment_pixel_x / PIXELS
+            augment_label_y = augment_pixel_y / PIXELS
             # label the object if its centre is still within the tile
             if ((augment_label_x >= 0) and (augment_label_x <= 1) and (augment_label_y >= 0) and (augment_label_y <= 1)):
                 # add it to the list of new labels
@@ -111,12 +117,6 @@ for filename_idx in range(len(filenames_to_augment_df)):
         overlay_img.save('{}/{}.png'.format(AUGMENTED_OVERLAY_FILES_DIR, augmented_base_filename))
 
 print("copying the augmented tiles to the training set.")
-
-# delete the augmented tiles already in the training set
-augmented_files = glob.glob("{}/*-aug-*.png".format(TRAINING_SET_FILES_DIR))
-for fname in augmented_files:
-    if os.path.isfile(fname):
-        os.remove(fname)
 
 # copy the augmented tiles to the training set
 augmented_files = glob.glob("{}/*.*".format(AUGMENTED_FILES_DIR))
