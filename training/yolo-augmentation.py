@@ -7,6 +7,7 @@ import shutil
 from random import randint
 from PIL import Image, ImageFont, ImageDraw, ImageEnhance
 import argparse
+import ray
 
 parser = argparse.ArgumentParser(description='Augment with training set.')
 parser.add_argument('-tb','--tile_base', type=str, help='Path to the base directory of the training set.', required=True)
@@ -16,6 +17,10 @@ parser.add_argument('-mx','--max_translation_x', type=int, default=300, help='Ma
 parser.add_argument('-my','--max_translation_y', type=int, default=300, help='Maximum number of pixels to translate in the y dimension.', required=False)
 parser.add_argument('-os','--operating_system', type=str, default='linux', help='Operating system can be linux or macos.', required=False)
 args = parser.parse_args()
+
+# initialise Ray
+if not ray.is_initialized():
+    ray.init()
 
 # load the tiles and their labels
 TILE_BASE = args.tile_base
@@ -43,20 +48,22 @@ for file in glob.glob("{}/*.png".format(TRAINING_SET_FILES_DIR)):
     filenames.append((os.path.basename(os.path.splitext(file)[0])))
 
 filenames_df = pd.DataFrame(filenames, columns=['filename'])
+training_set_original_size = len(filenames_df)
 
-number_to_select = int(len(filenames_df) * args.proportion_to_augment)
+number_to_select = int(training_set_original_size * args.proportion_to_augment)
 filenames_to_augment_df = filenames_df.sample(n=number_to_select)
 
 print("generating {} augmentations of {} tiles".format(args.augmentations_per_tile, number_to_select))
 
-if args.operating_system == 'macos':
-    feature_label = ImageFont.truetype('/Library/Fonts/Arial.ttf', 10)
-else:
-    feature_label = ImageFont.truetype('/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf', 10)
-
-for filename_idx in range(len(filenames_to_augment_df)):
-    filename = filenames_to_augment_df.iloc[filename_idx].filename
+@ray.remote
+def augment_tile(filename, filename_idx):
     print("augmenting {} ({} of {})".format(filename, filename_idx+1, len(filenames_to_augment_df)))
+
+    if args.operating_system == 'macos':
+        feature_label = ImageFont.truetype('/Library/Fonts/Arial.ttf', 10)
+    else:
+        feature_label = ImageFont.truetype('/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf', 10)
+
     # load the tile
     img = Image.open('{}/{}.png'.format(TRAINING_SET_FILES_DIR, filename))
     # generate the augmented tiles
@@ -119,9 +126,14 @@ for filename_idx in range(len(filenames_to_augment_df)):
         # save the overlay image
         overlay_img.save('{}/{}.png'.format(AUGMENTED_OVERLAY_FILES_DIR, augmented_base_filename))
 
+ray.get([augment_tile.remote(filename=filename, filename_idx=idx) for idx,filename in enumerate(filenames_to_augment_df.filename)])
+
+print("shutting down ray")
+ray.shutdown()
+
 # copy the augmented tiles to the training set
 augmented_files = glob.glob("{}/*.*".format(AUGMENTED_FILES_DIR))
-print("copying {} augmented tiles to the training set.".format(len(augmented_files)))
+print("copying augmented tiles to the training set.")
 for fname in augmented_files:
     if os.path.isfile(fname):
         basename = os.path.basename(fname)
@@ -129,7 +141,8 @@ for fname in augmented_files:
 
 # regenerate the training file list
 training_set_files = glob.glob("{}/*.png".format(TRAINING_SET_FILES_DIR))
-print("total number of tiles in the training set is {}.".format(len(training_set_files)))
+training_set_augmented_size = len(training_set_files)
+print("increased the training set from {} to {} tiles ({} augmented).".format(training_set_original_size, training_set_augmented_size, training_set_augmented_size-training_set_original_size))
 training_set_l = []
 for fname in training_set_files:
     if os.path.isfile(fname):
