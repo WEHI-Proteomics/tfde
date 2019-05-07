@@ -343,7 +343,7 @@ def analyse_isolation_window(window_number, window_df):
                 print("\t\twindow {}, there were no overlapping isolation windows".format(window_number))
         else:
             print("\t\twindow {}, found no raw points in this monoisotopic's region - skipping".format(window_number))
-    return spectra
+    return mgf_spectra
 
 
 spectra_l = ray.get([analyse_isolation_window.remote(window_number=idx+1, window_df=isolation_window_df.iloc[idx]) for idx in range(len(isolation_window_df))])
