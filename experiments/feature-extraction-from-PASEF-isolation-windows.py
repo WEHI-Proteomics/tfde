@@ -71,6 +71,8 @@ print("There are {} precursor isolation windows.".format(len(isolation_window_df
 def analyse_isolation_window(window_number, window_df):
     print("processing precursor window {}".format(isolation_window_number))
 
+    mgf_spectra = []
+
     window_mz_lower = window_df.mz_lower
     window_mz_upper = window_df.mz_upper
     scan_width = int(window_df.ScanNumEnd - window_df.ScanNumBegin)
@@ -94,7 +96,6 @@ def analyse_isolation_window(window_number, window_df):
 
     # get the raw points constrained to the fragmentation event's RT
     fe_raw_points_df = ms1_raw_points_df[(ms1_raw_points_df.retention_time_secs >= fe_rt_lower) & (ms1_raw_points_df.retention_time_secs <= fe_rt_upper)]
-    fe_raw_points_df.to_csv('/Users/darylwilding-mcbride/Downloads/fe_raw_points_ms1.csv')
 
     ms1_bins = np.arange(start=window_mz_lower, stop=window_mz_upper+args.ms1_bin_width, step=args.ms1_bin_width)  # go slightly wider to accomodate the maximum value
     MZ_BIN_COUNT = len(ms1_bins)
@@ -337,15 +338,18 @@ def analyse_isolation_window(window_number, window_df):
                 spectrum["params"] = params
                 spectra.append(spectrum)
 
-                # write out the MGF file
-                mgf.write(output=MGF_FILENAME, spectra=spectra, file_mode='a')
+                # add it to the list of spectra
+                mgf_spectra.append(spectra)
             else:
                 print("\t\twindow {}, there were no overlapping isolation windows".format(window_number))
         else:
             print("\t\twindow {}, found no raw points in this monoisotopic's region - skipping".format(window_number))
+    return spectra
 
 
-ray.get([analyse_isolation_window.remote(window_number=idx+1, window_df=window_df) for idx,window_df in enumerate(isolation_window_df)])
+spectra_l = ray.get([analyse_isolation_window.remote(window_number=idx+1, window_df=window_df) for idx,window_df in enumerate(isolation_window_df[:50])])
+for spectra in spectra_l:
+    mgf.write(output=MGF_FILENAME, spectra=spectra, file_mode='a')
 
 print("shutting down ray")
 ray.shutdown()
