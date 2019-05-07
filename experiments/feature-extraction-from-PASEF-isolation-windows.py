@@ -35,8 +35,6 @@ RAW_DATABASE_NAME = "{}/analysis.tdf".format(args.raw_database_base)
 
 PROTON_MASS = 1.0073  # Mass of a proton in unified atomic mass units, or Da. For calculating the monoisotopic mass.
 
-feature_id = 0
-
 print("reading converted raw data from {}".format(CONVERTED_DATABASE_NAME))
 db_conn = sqlite3.connect(CONVERTED_DATABASE_NAME)
 ms1_frame_properties_df = pd.read_sql_query("select frame_id,retention_time_secs from frame_properties where retention_time_secs >= {} and retention_time_secs <= {} and collision_energy == {}".format(args.rt_lower, args.rt_upper, args.ms1_collision_energy), db_conn)
@@ -71,6 +69,7 @@ print("There are {} precursor isolation windows.".format(len(isolation_window_df
 def analyse_isolation_window(window_number, window_df):
     print("processing precursor window {}".format(window_number))
 
+    feature_id = 0
     mgf_spectra = []
 
     window_mz_lower = window_df.mz_lower
@@ -349,7 +348,8 @@ def analyse_isolation_window(window_number, window_df):
 
 spectra_l = ray.get([analyse_isolation_window.remote(window_number=idx+1, window_df=isolation_window_df.iloc[idx]) for idx in range(len(isolation_window_df))])
 for spectra in spectra_l:
-    mgf.write(output=MGF_FILENAME, spectra=spectra, file_mode='a')
+    for spec in spectra:
+        mgf.write(output=MGF_FILENAME, spectra=spec, file_mode='a')
 
 print("shutting down ray")
 ray.shutdown()
