@@ -220,7 +220,7 @@ def analyse_isolation_window(window_number, window_df):
                 valley_idx_below = valleys_idx[valleys_idx < peak_idx].max()
                 feature_rt_base_lower = valleys_df.loc[valley_idx_below].retention_time_secs
             else:
-                feature_rt_base_upper = rt_df.retention_time_secs.min()
+                feature_rt_base_lower = rt_df.retention_time_secs.min()
 
             # find the isolation windows overlapping the feature's mono or second peak, plus scan and RT
             indexes = isolation_window_df.index[
