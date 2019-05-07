@@ -347,7 +347,7 @@ def analyse_isolation_window(window_number, window_df):
     return spectra
 
 
-spectra_l = ray.get([analyse_isolation_window.remote(window_number=idx+1, window_df=window_df) for idx,window_df in enumerate(isolation_window_df)])
+spectra_l = ray.get([analyse_isolation_window.remote(window_number=idx+1, window_df=isolation_window_df.iloc[idx]) for idx in range(len(isolation_window_df))])
 for spectra in spectra_l:
     mgf.write(output=MGF_FILENAME, spectra=spectra, file_mode='a')
 
