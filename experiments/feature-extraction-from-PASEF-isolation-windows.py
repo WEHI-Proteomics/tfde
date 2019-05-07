@@ -69,7 +69,7 @@ print("There are {} precursor isolation windows.".format(len(isolation_window_df
 
 @ray.remote
 def analyse_isolation_window(window_number, window_df):
-    print("processing precursor window {}".format(isolation_window_number))
+    print("processing precursor window {}".format(window_number))
 
     mgf_spectra = []
 
