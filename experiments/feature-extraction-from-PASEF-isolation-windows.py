@@ -22,12 +22,15 @@ parser.add_argument('-ms1bw','--ms1_bin_width', type=float, default=0.00001, hel
 parser.add_argument('-ms2bw','--ms2_bin_width', type=float, default=0.001, help='Width of ms2 bins, in Thomsons.', required=False)
 parser.add_argument('-ms1dt','--ms1_peak_delta', type=float, default=0.01, help='How far either side of a peak in ms1 to include when calculating its centroid and intensity, in Thomsons.', required=False)
 parser.add_argument('-ms2dt','--ms2_peak_delta', type=float, default=0.01, help='How far either side of a peak in ms2 to include when calculating its centroid and intensity, in Thomsons.', required=False)
+parser.add_argument('-cl','--cluster_mode', action='store_true', help='Run on a cluster.')
 args = parser.parse_args()
 
 # initialise Ray
 if not ray.is_initialized():
-    ray.init(redis_address="localhost:6379")
-    # ray.init()
+    if args.cluster_mode:
+        ray.init(redis_address="localhost:6379")
+    else:
+        ray.init()
 
 CONVERTED_DATABASE_NAME = '{}/HeLa_20KInt.sqlite'.format(args.converted_database_base)
 MGF_FILENAME = '{}/HeLa_20KInt-features.mgf'.format(args.converted_database_base)
