@@ -26,7 +26,8 @@ args = parser.parse_args()
 
 # initialise Ray
 if not ray.is_initialized():
-    ray.init()
+    ray.init(redis_address="localhost:6379")
+    # ray.init()
 
 CONVERTED_DATABASE_NAME = '{}/HeLa_20KInt.sqlite'.format(args.converted_database_base)
 MGF_FILENAME = '{}/HeLa_20KInt-features.mgf'.format(args.converted_database_base)
@@ -63,7 +64,7 @@ isolation_window_df['fe_rt_upper'] = isolation_window_df.retention_time_secs + a
 # filter out isolation windows that don't fit in the database subset we have loaded
 isolation_window_df = isolation_window_df[(isolation_window_df.wide_rt_lower >= args.rt_lower) & (isolation_window_df.wide_rt_upper <= args.rt_upper)]
 
-print("There are {} precursor isolation windows.".format(len(isolation_window_df)))
+print("There are {} precursor unique isolation windows.".format(isolation_window_df.Precursor.nunique()))
 
 @ray.remote
 def analyse_isolation_window(window_number, window_df):
@@ -345,8 +346,11 @@ def analyse_isolation_window(window_number, window_df):
             print("\t\twindow {}, found no raw points in this monoisotopic's region - skipping".format(window_number))
     return mgf_spectra
 
+# run the analysis for each unique precursor ID
+spectra_l = ray.get([analyse_isolation_window.remote(window_number=idx+1, window_df=group_df.iloc[0]) for idx,group_df in isolation_window_df.groupby('Precursor')])
 
-spectra_l = ray.get([analyse_isolation_window.remote(window_number=idx+1, window_df=isolation_window_df.iloc[idx]) for idx in range(len(isolation_window_df))])
+# write out the MGF
+print("generating the MGF at {}".format(MGF_FILENAME))
 for spectra in spectra_l:
     for spec in spectra:
         mgf.write(output=MGF_FILENAME, spectra=spec, file_mode='a')
