@@ -40,6 +40,8 @@ info = []
 for arg in vars(args):
     info.append((arg, getattr(args, arg)))
 
+print("{} info: {}".format(parser.prog, info))
+
 CONVERTED_DATABASE_NAME = '{}/HeLa_20KInt.sqlite'.format(args.converted_database_base)
 MGF_FILENAME = '{}/HeLa_20KInt-features.mgf'.format(args.converted_database_base)
 
