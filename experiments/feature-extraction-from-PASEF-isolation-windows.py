@@ -8,6 +8,7 @@ from pyteomics import mgf
 import os.path
 import argparse
 import ray
+import time
 
 
 parser = argparse.ArgumentParser(description='Extract features from PASEF isolation windows.')
@@ -31,6 +32,13 @@ if not ray.is_initialized():
         ray.init(redis_address="localhost:6379")
     else:
         ray.init()
+
+start_run = time.time()
+
+# Store the arguments as metadata for later reference
+info = []
+for arg in vars(args):
+    info.append((arg, getattr(args, arg)))
 
 CONVERTED_DATABASE_NAME = '{}/HeLa_20KInt.sqlite'.format(args.converted_database_base)
 MGF_FILENAME = '{}/HeLa_20KInt-features.mgf'.format(args.converted_database_base)
@@ -357,6 +365,12 @@ print("generating the MGF at {}".format(MGF_FILENAME))
 for spectra in spectra_l:
     for spec in spectra:
         mgf.write(output=MGF_FILENAME, spectra=spec, file_mode='a')
+
+stop_run = time.time()
+info.append(("run processing time (sec)", stop_run-start_run))
+info.append(("processed", time.ctime()))
+info.append(("processor", parser.prog))
+print("{} info: {}".format(parser.prog, info))
 
 print("shutting down ray")
 ray.shutdown()
