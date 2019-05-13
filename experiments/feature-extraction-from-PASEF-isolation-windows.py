@@ -24,6 +24,7 @@ parser.add_argument('-ms2bw','--ms2_bin_width', type=float, default=0.001, help=
 parser.add_argument('-ms1dt','--ms1_peak_delta', type=float, default=0.01, help='How far either side of a peak in ms1 to include when calculating its centroid and intensity, in Thomsons.', required=False)
 parser.add_argument('-ms2dt','--ms2_peak_delta', type=float, default=0.01, help='How far either side of a peak in ms2 to include when calculating its centroid and intensity, in Thomsons.', required=False)
 parser.add_argument('-cl','--cluster_mode', action='store_true', help='Run on a cluster.')
+parser.add_argument('-noms2','--no_ms2_extraction', action='store_true', help='Don\'t extract ms2 or generate the MGF.')
 args = parser.parse_args()
 
 # initialise Ray
@@ -44,6 +45,7 @@ print("{} info: {}".format(parser.prog, info))
 
 CONVERTED_DATABASE_NAME = '{}/HeLa_20KInt.sqlite'.format(args.converted_database_base)
 MGF_FILENAME = '{}/HeLa_20KInt-features.mgf'.format(args.converted_database_base)
+FEATURE_CHARACTERISTICS_FILENAME = '{}/HeLa_20KInt-feature-characteristics.csv'.format(args.converted_database_base)
 
 RAW_DATABASE_NAME = "{}/analysis.tdf".format(args.raw_database_base)
 
@@ -76,6 +78,7 @@ isolation_window_df['fe_rt_upper'] = isolation_window_df.retention_time_secs + a
 
 # filter out isolation windows that don't fit in the database subset we have loaded
 isolation_window_df = isolation_window_df[(isolation_window_df.wide_rt_lower >= args.rt_lower) & (isolation_window_df.wide_rt_upper <= args.rt_upper)]
+# DEBUG isolation_window_df = isolation_window_df[:2]
 
 print("There are {} precursor unique isolation windows.".format(isolation_window_df.Precursor.nunique()))
 
@@ -85,6 +88,7 @@ def analyse_isolation_window(window_number, window_df):
 
     feature_id = 0
     mgf_spectra = []
+    ms1_characteristics = []
 
     window_mz_lower = window_df.mz_lower
     window_mz_upper = window_df.mz_upper
@@ -250,123 +254,139 @@ def analyse_isolation_window(window_number, window_df):
             if len(isolation_windows_overlapping_feature_df) > 0:
                 print("\t\twindow {}, there are {} overlapping isolation windows - finding the ms2 peaks".format(window_number, len(isolation_windows_overlapping_feature_df)))
 
-                # extract the raw ms2 points from the overlapping isolation windows
-                ms2_raw_points_df = pd.DataFrame()
-                for idx in range(len(isolation_windows_overlapping_feature_df)):
-                    isolation_window_scan_lower = int(isolation_windows_overlapping_feature_df.iloc[idx].ScanNumBegin)
-                    isolation_window_scan_upper = int(isolation_windows_overlapping_feature_df.iloc[idx].ScanNumEnd)
-                    isolation_window_frame_id = int(isolation_windows_overlapping_feature_df.iloc[idx].Frame)
+                ms1_characteristics.append((round(feature_monoisotopic_mass,6), feature_charge, feature_monoisotopic_mz, feature_intensity, feature_scan_centroid, round(feature_rt_apex,2), precursor_id))
 
-                    # get the raw ms2 points from the fragmentation frame within the scan constraints
-                    db_conn = sqlite3.connect(CONVERTED_DATABASE_NAME)
-                    df = pd.read_sql_query("select frame_id,mz,scan,intensity,retention_time_secs from frames where frame_id == {} and scan >= {} and scan <= {}".format(isolation_window_frame_id,isolation_window_scan_lower,isolation_window_scan_upper), db_conn)
-                    db_conn.close()
+                if not args.no_ms2_extraction:
 
-                    # add these to the collection
-                    ms2_raw_points_df = ms2_raw_points_df.append(df, ignore_index=True)
+                    # extract the raw ms2 points from the overlapping isolation windows
+                    ms2_raw_points_df = pd.DataFrame()
+                    for idx in range(len(isolation_windows_overlapping_feature_df)):
+                        isolation_window_scan_lower = int(isolation_windows_overlapping_feature_df.iloc[idx].ScanNumBegin)
+                        isolation_window_scan_upper = int(isolation_windows_overlapping_feature_df.iloc[idx].ScanNumEnd)
+                        isolation_window_frame_id = int(isolation_windows_overlapping_feature_df.iloc[idx].Frame)
 
-                # bin the data
-                MS2_MZ_MAX = ms2_raw_points_df.mz.max()
-                MS2_MZ_MIN = ms2_raw_points_df.mz.min()
+                        # get the raw ms2 points from the fragmentation frame within the scan constraints
+                        db_conn = sqlite3.connect(CONVERTED_DATABASE_NAME)
+                        df = pd.read_sql_query("select frame_id,mz,scan,intensity,retention_time_secs from frames where frame_id == {} and scan >= {} and scan <= {}".format(isolation_window_frame_id,isolation_window_scan_lower,isolation_window_scan_upper), db_conn)
+                        db_conn.close()
 
-                ms2_bins = np.arange(start=MS2_MZ_MIN, stop=MS2_MZ_MAX+args.ms2_bin_width, step=args.ms2_bin_width)  # go slightly wider to accomodate the maximum value
-                MS2_MZ_BIN_COUNT = len(ms2_bins)
+                        # add these to the collection
+                        ms2_raw_points_df = ms2_raw_points_df.append(df, ignore_index=True)
 
-                # initialise an array of lists to hold the m/z and intensity values allocated to each bin
-                ms2_mz_values_array = np.empty(MS2_MZ_BIN_COUNT, dtype=np.object)
-                for idx in range(MS2_MZ_BIN_COUNT):
-                    ms2_mz_values_array[idx] = []
+                    # bin the data
+                    MS2_MZ_MAX = ms2_raw_points_df.mz.max()
+                    MS2_MZ_MIN = ms2_raw_points_df.mz.min()
 
-                # gather the m/z values into bins
-                for r in zip(ms2_raw_points_df.mz, ms2_raw_points_df.intensity):
-                    mz = r[0]
-                    intensity = int(r[1])
-                    if (mz >= MS2_MZ_MIN) and (mz <= MS2_MZ_MAX): # it should already but just to be sure
-                        mz_array_idx = int(np.digitize(mz, ms2_bins)) # in which bin should this mz go
-                        ms2_mz_values_array[mz_array_idx].append((mz, intensity))
+                    ms2_bins = np.arange(start=MS2_MZ_MIN, stop=MS2_MZ_MAX+args.ms2_bin_width, step=args.ms2_bin_width)  # go slightly wider to accomodate the maximum value
+                    MS2_MZ_BIN_COUNT = len(ms2_bins)
 
-                # compute the intensity-weighted m/z centroid and the summed intensity of the bins
-                binned_ms2_l = []
-                for bin_idx in range(MS2_MZ_BIN_COUNT):
-                    if len(ms2_mz_values_array[bin_idx]) > 0:
-                        mz_values_for_bin = np.array([ list[0] for list in ms2_mz_values_array[bin_idx]])
-                        intensity_values_for_bin = np.array([ list[1] for list in ms2_mz_values_array[bin_idx]]).astype(int)
-                        mz_centroid = peakutils.centroid(mz_values_for_bin, intensity_values_for_bin)
-                        summed_intensity = intensity_values_for_bin.sum()
-                        binned_ms2_l.append((mz_centroid,summed_intensity))
+                    # initialise an array of lists to hold the m/z and intensity values allocated to each bin
+                    ms2_mz_values_array = np.empty(MS2_MZ_BIN_COUNT, dtype=np.object)
+                    for idx in range(MS2_MZ_BIN_COUNT):
+                        ms2_mz_values_array[idx] = []
 
-                binned_ms2_df = pd.DataFrame(binned_ms2_l, columns=['mz_centroid','summed_intensity'])
+                    # gather the m/z values into bins
+                    for r in zip(ms2_raw_points_df.mz, ms2_raw_points_df.intensity):
+                        mz = r[0]
+                        intensity = int(r[1])
+                        if (mz >= MS2_MZ_MIN) and (mz <= MS2_MZ_MAX): # it should already but just to be sure
+                            mz_array_idx = int(np.digitize(mz, ms2_bins)) # in which bin should this mz go
+                            ms2_mz_values_array[mz_array_idx].append((mz, intensity))
 
-                # now do intensity descent to find the peaks
-                raw_scratch_df = binned_ms2_df.copy() # take a copy because we're going to delete stuff
+                    # compute the intensity-weighted m/z centroid and the summed intensity of the bins
+                    binned_ms2_l = []
+                    for bin_idx in range(MS2_MZ_BIN_COUNT):
+                        if len(ms2_mz_values_array[bin_idx]) > 0:
+                            mz_values_for_bin = np.array([ list[0] for list in ms2_mz_values_array[bin_idx]])
+                            intensity_values_for_bin = np.array([ list[1] for list in ms2_mz_values_array[bin_idx]]).astype(int)
+                            mz_centroid = peakutils.centroid(mz_values_for_bin, intensity_values_for_bin)
+                            summed_intensity = intensity_values_for_bin.sum()
+                            binned_ms2_l.append((mz_centroid,summed_intensity))
 
-                ms2_peaks_l = []
-                while len(raw_scratch_df) > 0:
-                    # find the most intense point
-                    peak_df = raw_scratch_df.loc[raw_scratch_df.summed_intensity.idxmax()]
-                    peak_mz = peak_df.mz_centroid
-                    peak_mz_lower = peak_mz - args.ms2_peak_delta
-                    peak_mz_upper = peak_mz + args.ms2_peak_delta
+                    binned_ms2_df = pd.DataFrame(binned_ms2_l, columns=['mz_centroid','summed_intensity'])
 
-                    # get all the raw points within this m/z region
-                    peak_raw_points_df = raw_scratch_df[(raw_scratch_df.mz_centroid >= peak_mz_lower) & (raw_scratch_df.mz_centroid <= peak_mz_upper)]
-                    if len(peak_raw_points_df) > 0:
-                        mz_centroid = peakutils.centroid(peak_raw_points_df.mz_centroid, peak_raw_points_df.summed_intensity)
-                        summed_intensity = peak_raw_points_df.summed_intensity.sum()
-                        ms2_peaks_l.append((mz_centroid, summed_intensity))
+                    # now do intensity descent to find the peaks
+                    raw_scratch_df = binned_ms2_df.copy() # take a copy because we're going to delete stuff
 
-                        # remove the raw points assigned to this peak
-                        raw_scratch_df = raw_scratch_df[~raw_scratch_df.isin(peak_raw_points_df)].dropna(how = 'all')
+                    ms2_peaks_l = []
+                    while len(raw_scratch_df) > 0:
+                        # find the most intense point
+                        peak_df = raw_scratch_df.loc[raw_scratch_df.summed_intensity.idxmax()]
+                        peak_mz = peak_df.mz_centroid
+                        peak_mz_lower = peak_mz - args.ms2_peak_delta
+                        peak_mz_upper = peak_mz + args.ms2_peak_delta
 
-                ms2_peaks_df = pd.DataFrame(ms2_peaks_l, columns=['mz','intensity'])
+                        # get all the raw points within this m/z region
+                        peak_raw_points_df = raw_scratch_df[(raw_scratch_df.mz_centroid >= peak_mz_lower) & (raw_scratch_df.mz_centroid <= peak_mz_upper)]
+                        if len(peak_raw_points_df) > 0:
+                            mz_centroid = peakutils.centroid(peak_raw_points_df.mz_centroid, peak_raw_points_df.summed_intensity)
+                            summed_intensity = peak_raw_points_df.summed_intensity.sum()
+                            ms2_peaks_l.append((mz_centroid, summed_intensity))
 
-                # deconvolute the peaks
-                ms2_deconvoluted_peaks, _ = deconvolute_peaks(ms2_peaks_l, averagine=averagine.peptide, charge_range=(1,5), scorer=scoring.MSDeconVFitter(10.0), truncate_after=0.95)
+                            # remove the raw points assigned to this peak
+                            raw_scratch_df = raw_scratch_df[~raw_scratch_df.isin(peak_raw_points_df)].dropna(how = 'all')
 
-                ms2_deconvoluted_peaks_l = []
-                for peak in ms2_deconvoluted_peaks:
-                    # discard a monoisotopic peak that has a second isotope with intensity of 1 (rubbish value)
-                    if ((len(peak.envelope) > 1) and (peak.envelope[1][1] > 1)):
-                        ms2_deconvoluted_peaks_l.append((round(peak.mz, 4), int(peak.charge), peak.neutral_mass, int(peak.intensity), peak.score, peak.signal_to_noise))
+                    ms2_peaks_df = pd.DataFrame(ms2_peaks_l, columns=['mz','intensity'])
 
-                ms2_deconvoluted_peaks_df = pd.DataFrame(ms2_deconvoluted_peaks_l, columns=['mz','charge','neutral_mass','intensity','score','SN'])
-                # 'neutral mass' is the zero charge M, so we add the proton mass to get M+H (the monoisotopic mass)
-                ms2_deconvoluted_peaks_df['m_plus_h'] = ms2_deconvoluted_peaks_df.neutral_mass + PROTON_MASS
+                    # deconvolute the peaks
+                    ms2_deconvoluted_peaks, _ = deconvolute_peaks(ms2_peaks_l, averagine=averagine.peptide, charge_range=(1,5), scorer=scoring.MSDeconVFitter(10.0), truncate_after=0.95)
 
-                print("\t\twindow {}, building the MGF".format(window_number))
+                    ms2_deconvoluted_peaks_l = []
+                    for peak in ms2_deconvoluted_peaks:
+                        # discard a monoisotopic peak that has a second isotope with intensity of 1 (rubbish value)
+                        if ((len(peak.envelope) > 1) and (peak.envelope[1][1] > 1)):
+                            ms2_deconvoluted_peaks_l.append((round(peak.mz, 4), int(peak.charge), peak.neutral_mass, int(peak.intensity), peak.score, peak.signal_to_noise))
 
-                # append the monoisotopic and the ms2 fragments to the list for MGF creation
-                pairs_df = ms2_deconvoluted_peaks_df[['mz', 'intensity']].copy().sort_values(by=['intensity'], ascending=False)
-                spectra = []
-                spectrum = {}
-                spectrum["m/z array"] = pairs_df.mz.values
-                spectrum["intensity array"] = pairs_df.intensity.values
-                params = {}
-                params["TITLE"] = "RawFile: {} Index: 0 precursor: {} Charge: {} FeatureIntensity: {} Feature#: {} RtApex: {}".format(os.path.basename(CONVERTED_DATABASE_NAME).split('.')[0], precursor_id, feature_charge, feature_intensity, feature_id, round(feature_rt_apex,2))
-                params["INSTRUMENT"] = "ESI-QUAD-TOF"
-                params["PEPMASS"] = "{} {}".format(round(feature_monoisotopic_mass,6), feature_intensity)
-                params["CHARGE"] = "{}+".format(feature_charge)
-                params["RTINSECONDS"] = "{}".format(round(feature_rt_apex,2))
-                params["SCANS"] = "{}".format(int(feature_rt_apex))
-                spectrum["params"] = params
-                spectra.append(spectrum)
+                    ms2_deconvoluted_peaks_df = pd.DataFrame(ms2_deconvoluted_peaks_l, columns=['mz','charge','neutral_mass','intensity','score','SN'])
+                    # 'neutral mass' is the zero charge M, so we add the proton mass to get M+H (the monoisotopic mass)
+                    ms2_deconvoluted_peaks_df['m_plus_h'] = ms2_deconvoluted_peaks_df.neutral_mass + PROTON_MASS
 
-                # add it to the list of spectra
-                mgf_spectra.append(spectra)
+                    print("\t\twindow {}, building the MGF".format(window_number))
+
+                    # append the monoisotopic and the ms2 fragments to the list for MGF creation
+                    pairs_df = ms2_deconvoluted_peaks_df[['mz', 'intensity']].copy().sort_values(by=['intensity'], ascending=False)
+                    spectra = []
+                    spectrum = {}
+                    spectrum["m/z array"] = pairs_df.mz.values
+                    spectrum["intensity array"] = pairs_df.intensity.values
+                    params = {}
+                    params["TITLE"] = "RawFile: {} Index: 0 precursor: {} Charge: {} FeatureIntensity: {} Feature#: {} RtApex: {}".format(os.path.basename(CONVERTED_DATABASE_NAME).split('.')[0], precursor_id, feature_charge, feature_intensity, feature_id, round(feature_rt_apex,2))
+                    params["INSTRUMENT"] = "ESI-QUAD-TOF"
+                    params["PEPMASS"] = "{} {}".format(round(feature_monoisotopic_mass,6), feature_intensity)
+                    params["CHARGE"] = "{}+".format(feature_charge)
+                    params["RTINSECONDS"] = "{}".format(round(feature_rt_apex,2))
+                    params["SCANS"] = "{}".format(int(feature_rt_apex))
+                    spectrum["params"] = params
+                    spectra.append(spectrum)
+
+                    # add it to the list of spectra
+                    mgf_spectra.append(spectra)
             else:
                 print("\t\twindow {}, there were no overlapping isolation windows".format(window_number))
         else:
             print("\t\twindow {}, found no raw points in this monoisotopic's region - skipping".format(window_number))
-    return mgf_spectra
+        result = {"spectra":mgf_spectra, "ms1_characteristics":ms1_characteristics}
+    return result
 
 # run the analysis for each unique precursor ID
-spectra_l = ray.get([analyse_isolation_window.remote(window_number=idx+1, window_df=group_df.iloc[0]) for idx,group_df in isolation_window_df.groupby('Precursor')])
+isolation_window_result = ray.get([analyse_isolation_window.remote(window_number=idx+1, window_df=group_df.iloc[0]) for idx,group_df in isolation_window_df.groupby('Precursor')])
 
-# write out the MGF
-print("generating the MGF at {}".format(MGF_FILENAME))
-for spectra in spectra_l:
-    for spec in spectra:
-        mgf.write(output=MGF_FILENAME, spectra=spec, file_mode='a')
+# write out the results
+ms1_characteristics_l = []
+if not args.no_ms2_extraction:
+    print("generating the MGF file at {}".format(MGF_FILENAME))
+for result in isolation_window_result:
+    spectra = result["spectra"]
+    ms1_characteristics = result["ms1_characteristics"]
+
+    if not args.no_ms2_extraction:
+        for spec in spectra:
+            mgf.write(output=MGF_FILENAME, spectra=spec, file_mode='a')
+    ms1_characteristics_l += ms1_characteristics
+
+print("generating the ms1 characteristics file at {}".format(FEATURE_CHARACTERISTICS_FILENAME))
+ms1_characteristics_df = pd.DataFrame(ms1_characteristics_l, columns=['monoisotopic_mass', 'charge', 'monoisotopic_mz', 'intensity', 'scan_centroid', 'rt_apex', 'precursor_id'])
+ms1_characteristics_df.to_csv(FEATURE_CHARACTERISTICS_FILENAME, index=False, header=True)
 
 stop_run = time.time()
 info.append(("run processing time (sec)", stop_run-start_run))
