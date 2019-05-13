@@ -168,8 +168,8 @@ def analyse_isolation_window(window_number, window_df):
 
     ms1_deconvoluted_peaks_l = []
     for peak in deconvoluted_peaks:
-        # discard a monoisotopic peak that has a second isotope with intensity of 1 (rubbish value)
-        if ((len(peak.envelope) > 1) and (peak.envelope[1][1] > 1)):
+        # discard a monoisotopic peak if it has fewer than three isotopes
+        if len(peak.envelope) >= 3:
             ms1_deconvoluted_peaks_l.append((peak.mz, peak.neutral_mass, peak.intensity, peak.score, peak.signal_to_noise, peak.envelope, peak.charge))
 
     ms1_deconvoluted_peaks_df = pd.DataFrame(ms1_deconvoluted_peaks_l, columns=['mz','neutral_mass','intensity','score','SN','envelope','charge'])
@@ -365,7 +365,7 @@ def analyse_isolation_window(window_number, window_df):
                 print("\t\twindow {}, there were no overlapping isolation windows".format(window_number))
         else:
             print("\t\twindow {}, found no raw points in this monoisotopic's region - skipping".format(window_number))
-        result = {"spectra":mgf_spectra, "ms1_characteristics":ms1_characteristics}
+    result = {"spectra":mgf_spectra, "ms1_characteristics":ms1_characteristics}
     return result
 
 # run the analysis for each unique precursor ID
