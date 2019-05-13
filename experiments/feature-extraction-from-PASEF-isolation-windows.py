@@ -333,8 +333,8 @@ def analyse_isolation_window(window_number, window_df):
 
                     ms2_deconvoluted_peaks_l = []
                     for peak in ms2_deconvoluted_peaks:
-                        # discard a monoisotopic peak that has a second isotope with intensity of 1 (rubbish value)
-                        if ((len(peak.envelope) > 1) and (peak.envelope[1][1] > 1)):
+                        # discard a monoisotopic peak that has fewer than three isotopes
+                        if len(peak.envelope) >= 3:
                             ms2_deconvoluted_peaks_l.append((round(peak.mz, 4), int(peak.charge), peak.neutral_mass, int(peak.intensity), peak.score, peak.signal_to_noise))
 
                     ms2_deconvoluted_peaks_df = pd.DataFrame(ms2_deconvoluted_peaks_l, columns=['mz','charge','neutral_mass','intensity','score','SN'])
