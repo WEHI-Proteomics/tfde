@@ -7,25 +7,37 @@ import argparse
 import ray
 import os, shutil
 from PIL import Image, ImageFont, ImageDraw, ImageEnhance
+import time
 
 
 MS1_CE = 10
 
 parser = argparse.ArgumentParser(description='Create the tiles from raw data.')
+parser.add_argument('-cdbb','--converted_database_base', type=str, help='Path to the base directory of the raw converted database.', required=True)
+parser.add_argument('-tb','--tile_base', type=str, help='Path to the base directory of the training set.', required=True)
+parser.add_argument('-mqb','--maxquant_base', type=str, help='Path to the base directory of the MaxQuant files.', required=True)
 parser.add_argument('-rtl','--rt_lower', type=int, help='Lower bound of the RT range.', required=True)
 parser.add_argument('-rtu','--rt_upper', type=int, help='Upper bound of the RT range.', required=True)
-parser.add_argument('-tb','--tile_base', type=str, help='Path to the base directory of the training set.', required=True)
-parser.add_argument('-dbb','--database_base', type=str, help='Path to the base directory of the raw database.', required=True)
+parser.add_argument('-tm','--test_mode', action='store_true', help='A small subset of the data for testing purposes.')
 args = parser.parse_args()
 
-CONVERTED_DATABASE_NAME = '{}/HeLa_20KInt.sqlite'.format(args.database_base)
-ALLPEPTIDES_FILENAME = '/home/ubuntu/maxquant_results/txt/allPeptides.txt'
-# ALLPEPTIDES_FILENAME = '/Users/darylwilding-mcbride/Downloads/maxquant_results/txt/allPeptides.txt'
+CONVERTED_DATABASE_NAME = '{}/HeLa_20KInt.sqlite'.format(args.converted_database_base)
+ALLPEPTIDES_FILENAME = '{}/txt/allPeptides.txt'.format(args.maxquant_base)
 
 PRE_ASSIGNED_FILES_DIR = '{}/pre-assigned'.format(args.tile_base)
 OVERLAY_FILES_DIR = '{}/overlay'.format(args.tile_base)
 
-# if not input("This will erase the overlay and pre-assigned directories in {}. Are you sure? (y/n): ".format(TILE_BASE)).lower().strip()[:1] == "y": sys.exit(1)
+UBUNTU_FONT_PATH = '/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf'
+MACOS_FONT_PATH = '/Library/Fonts/Arial.ttf'
+
+start_run = time.time()
+
+# Store the arguments as metadata for later reference
+info = []
+for arg in vars(args):
+    info.append((arg, getattr(args, arg)))
+
+print("{} info: {}".format(parser.prog, info))
 
 print("opening {}".format(CONVERTED_DATABASE_NAME))
 db_conn = sqlite3.connect(CONVERTED_DATABASE_NAME)
@@ -47,7 +59,7 @@ DELTA_MZ = 1.003355     # Mass difference between Carbon-12 and Carbon-13 isotop
 MZ_TOLERANCE_PPM = 5
 MZ_TOLERANCE_PERCENT = MZ_TOLERANCE_PPM * 10**-4
 MIN_ISOTOPE_CORRELATION = 0.9
-RT_EACH_SIDE = 0.6  # proportion of RT length / 2 used for the bounding box
+RT_EACH_SIDE = 1.0  # proportion of RT length / 2 used for the bounding box
 
 allpeptides_df = pd.read_csv(ALLPEPTIDES_FILENAME, sep='\t')
 allpeptides_df.rename(columns={'Number of isotopic peaks':'isotope_count', 'm/z':'mz', 'Number of data points':'number_data_points', 'Intensity':'intensity', 'Ion mobility index':'scan', 'Ion mobility index length':'scan_length', 'Ion mobility index length (FWHM)':'scan_length_fwhm', 'Retention time':'rt', 'Retention length':'rt_length', 'Retention length (FWHM)':'rt_length_fwhm', 'Charge':'charge_state', 'Number of pasef MS/MS':'number_pasef_ms2_ids', 'Isotope correlation':'isotope_correlation'}, inplace=True)
@@ -147,11 +159,8 @@ if os.path.exists(OVERLAY_FILES_DIR):
 os.makedirs(OVERLAY_FILES_DIR)
 
 # calculate the colour to represent the intensity
-a = np.arange(start=0, stop=200, step=2, dtype=np.int)  # use up the darker colours for the low intensity points
-b = np.arange(start=200, stop=13000, step=200, dtype=np.int)
-bounds = np.concatenate([a,b])
-colour_map = cm.get_cmap(name='magma', lut=len(bounds))
-norm = colors.BoundaryNorm(boundaries=bounds, ncolors=colour_map.N, clip=True)
+colour_map = cm.get_cmap(name='magma')
+norm = colors.LogNorm(vmin=1, vmax=1e4, clip=True)  # aiming to get good colour variation in the lower range, and clipping everything else
 
 if not ray.is_initialized():
     ray.init()
@@ -189,6 +198,7 @@ def render_tile_for_frame(frame_r):
     intensity_df = pd.DataFrame(frame_intensity_array).stack().rename_axis(['y', 'x']).reset_index(name='intensity')
     # remove all the zero-intensity elements
     intensity_df = intensity_df[intensity_df.intensity > 0]
+
     # calculate the colour to represent the intensity
     colour_l = []
     for r in zip(intensity_df.intensity):
@@ -204,8 +214,10 @@ def render_tile_for_frame(frame_r):
         frame_im_array[y,x,:] = c
 
     # load the font to use for labelling the overlays
-    # feature_label = ImageFont.truetype('/Library/Fonts/Arial.ttf', 10)
-    feature_label = ImageFont.truetype('/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf', 10)
+    if os.path.isfile(UBUNTU_FONT_PATH):
+        feature_label = ImageFont.truetype(UBUNTU_FONT_PATH, 10)
+    else:
+        feature_label = ImageFont.truetype(MACOS_FONT_PATH, 10)
 
     # write out the image tiles for the frame
     for tile_idx in range(TILES_PER_FRAME):
@@ -273,8 +285,17 @@ def render_tile_for_frame(frame_r):
     return instances_df
 
 
-# ray.get([render_tile_for_frame.remote(frame_r) for frame_r in zip(ms1_frame_properties_df.iloc[:1].frame_id, ms1_frame_properties_df.iloc[:1].retention_time_secs)])
+if args.test_mode:
+    ms1_frame_properties_df = ms1_frame_properties_df[:20]
+
 ray.get([render_tile_for_frame.remote(frame_r) for frame_r in zip(ms1_frame_properties_df.frame_id, ms1_frame_properties_df.retention_time_secs)])
+
+
+stop_run = time.time()
+info.append(("run processing time (sec)", stop_run-start_run))
+info.append(("processed", time.ctime()))
+info.append(("processor", parser.prog))
+print("{} info: {}".format(parser.prog, info))
 
 print("shutting down ray")
 ray.shutdown()
