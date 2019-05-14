@@ -18,10 +18,10 @@ VALIDATION_SET_PROPORTION = 0.1
 TEST_SET_PROPORTION = 0.1
 
 parser = argparse.ArgumentParser(description='Assign the tiles to a training set.')
+parser.add_argument('-cdbb','--converted_database_base', type=str, help='Path to the base directory of the raw converted database.', required=True)
+parser.add_argument('-tb','--tile_base', type=str, help='Path to the base directory of the training set.', required=True)
 parser.add_argument('-rtl','--rt_lower', type=int, help='Lower bound of the RT range.', required=True)
 parser.add_argument('-rtu','--rt_upper', type=int, help='Upper bound of the RT range.', required=True)
-parser.add_argument('-tb','--tile_base', type=str, help='Path to the base directory of the training set.', required=True)
-parser.add_argument('-dbb','--database_base', type=str, help='Path to the base directory of the raw database.', required=True)
 args = parser.parse_args()
 
 BASE_NAME = args.database_base
