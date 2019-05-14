@@ -8,6 +8,7 @@ from random import randint
 from PIL import Image, ImageFont, ImageDraw, ImageEnhance
 import argparse
 import ray
+import time
 
 parser = argparse.ArgumentParser(description='Augment with training set.')
 parser.add_argument('-tb','--tile_base', type=str, help='Path to the base directory of the training set.', required=True)
@@ -15,7 +16,6 @@ parser.add_argument('-pa','--proportion_to_augment', type=float, default=0.3, he
 parser.add_argument('-at','--augmentations_per_tile', type=int, default=10, help='Number of augmentations for each tile.', required=False)
 parser.add_argument('-mx','--max_translation_x', type=int, default=300, help='Maximum number of pixels to translate in the x dimension.', required=False)
 parser.add_argument('-my','--max_translation_y', type=int, default=300, help='Maximum number of pixels to translate in the y dimension.', required=False)
-parser.add_argument('-os','--operating_system', type=str, default='linux', help='Operating system can be linux or macos.', required=False)
 args = parser.parse_args()
 
 # initialise Ray
@@ -29,6 +29,18 @@ AUGMENTED_FILES_DIR = '{}/augmented'.format(TILE_BASE)
 AUGMENTED_OVERLAY_FILES_DIR = '{}/overlay'.format(AUGMENTED_FILES_DIR)
 
 PIXELS = 910 # length of each tile edge in pixels
+
+UBUNTU_FONT_PATH = '/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf'
+MACOS_FONT_PATH = '/Library/Fonts/Arial.ttf'
+
+start_run = time.time()
+
+# Store the arguments as metadata for later reference
+info = []
+for arg in vars(args):
+    info.append((arg, getattr(args, arg)))
+
+print("{} info: {}".format(parser.prog, info))
 
 # initialise the directories required for the data set creation
 if os.path.exists(AUGMENTED_FILES_DIR):
@@ -59,10 +71,11 @@ print("generating {} augmentations of {} tiles".format(args.augmentations_per_ti
 def augment_tile(filename, filename_idx):
     print("augmenting {} ({} of {})".format(filename, filename_idx+1, len(filenames_to_augment_df)))
 
-    if args.operating_system == 'macos':
-        feature_label = ImageFont.truetype('/Library/Fonts/Arial.ttf', 10)
+    # load the font to use for labelling the overlays
+    if os.path.isfile(UBUNTU_FONT_PATH):
+        feature_label = ImageFont.truetype(UBUNTU_FONT_PATH, 10)
     else:
-        feature_label = ImageFont.truetype('/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf', 10)
+        feature_label = ImageFont.truetype(MACOS_FONT_PATH, 10)
 
     # load the tile
     img = Image.open('{}/{}.png'.format(TRAINING_SET_FILES_DIR, filename))
@@ -150,3 +163,9 @@ for fname in training_set_files:
         training_set_l.append('data/peptides/train/{}'.format(basename))
 df = pd.DataFrame(training_set_l, columns=['filename'])
 df.to_csv("{}/data-files/train-list.txt".format(TILE_BASE), index=False, header=False)
+
+stop_run = time.time()
+info.append(("run processing time (sec)", stop_run-start_run))
+info.append(("processed", time.ctime()))
+info.append(("processor", parser.prog))
+print("{} info: {}".format(parser.prog, info))
