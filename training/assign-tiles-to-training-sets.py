@@ -24,7 +24,7 @@ parser.add_argument('-rtl','--rt_lower', type=int, help='Lower bound of the RT r
 parser.add_argument('-rtu','--rt_upper', type=int, help='Upper bound of the RT range.', required=True)
 args = parser.parse_args()
 
-BASE_NAME = args.database_base
+BASE_NAME = args.converted_database_base
 CONVERTED_DATABASE_NAME = '{}/HeLa_20KInt.sqlite'.format(BASE_NAME)
 
 TILE_BASE = args.tile_base
