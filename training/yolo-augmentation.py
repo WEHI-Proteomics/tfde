@@ -12,7 +12,7 @@ import time
 
 parser = argparse.ArgumentParser(description='Augment with training set.')
 parser.add_argument('-tb','--tile_base', type=str, help='Path to the base directory of the training set.', required=True)
-parser.add_argument('-pa','--proportion_to_augment', type=float, default=0.3, help='Proportion of the training set to augment.', required=False)
+parser.add_argument('-pa','--proportion_to_augment', type=float, default=1.0, help='Proportion of the training set to augment.', required=False)
 parser.add_argument('-at','--augmentations_per_tile', type=int, default=10, help='Number of augmentations for each tile.', required=False)
 parser.add_argument('-mx','--max_translation_x', type=int, default=300, help='Maximum number of pixels to translate in the x dimension.', required=False)
 parser.add_argument('-my','--max_translation_y', type=int, default=300, help='Maximum number of pixels to translate in the y dimension.', required=False)
