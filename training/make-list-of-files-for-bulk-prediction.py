@@ -1,3 +1,6 @@
+# This script gets all the tiles for a particular section of m/z and creates a file
+# containing their filenames for the purpose of bulk inference.
+
 import glob,os
 
 BASE_DIR = './yolo-train-rt-1000-4200-15-may'

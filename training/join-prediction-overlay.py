@@ -1,3 +1,7 @@
+# This script looks at the tiles in the predicted directory, gets the corresponding 
+# tiles from the overlay directory, and combines them into a single side-by-side montage
+# for comparison.
+
 import glob,os
 
 PREDICTION_DIR = '~/Downloads/predictions'
