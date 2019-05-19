@@ -116,7 +116,7 @@ def augment_tile(filename, filename_idx):
             augment_label_x = augment_pixel_x / PIXELS # new centre in label coordinates
             augment_label_y = augment_pixel_y / PIXELS
             # label the object if its centre is still within the tile
-            if ((augment_label_x >= 0) and (augment_label_x <= 1) and (augment_label_y >= 0) and (augment_label_y <= 1)):
+            if ((augment_label_x > 0) and (augment_label_x < 1) and (augment_label_y > 0) and (augment_label_y < 1)):
                 # add it to the list of new labels
                 augment_label_l.append(("{} {:.6f} {:.6f} {:.6f} {:.6f}".format(class_id, augment_label_x, augment_label_y, label_width, label_height)))
                 # calculate the overlay rectangle
