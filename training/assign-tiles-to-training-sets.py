@@ -10,7 +10,7 @@ import argparse
 
 MS1_CE = 10
 
-SET_GAP = 10  # number of frames between training sets to avoid features appearing in more than one set
+SET_GAP = 30  # number of frames between training sets to avoid features appearing in more than one set
 NUMBER_OF_BANDS = 4  # periods over the run from which mini sets will be taken
 
 TRAINING_SET_PROPORTION = 0.8
