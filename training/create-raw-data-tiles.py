@@ -260,8 +260,8 @@ def render_tile_for_frame(frame_r):
             y = (y0 + ((y1 - y0) / 2)) / TILE_HEIGHT
             width = (x1 - x0) / TILE_WIDTH
             height = (y1 - y0) / TILE_HEIGHT
-            # object_class = mq_feature_charge_state-1
-            object_class = 0
+            object_class = mq_feature_charge_state-1
+            # object_class = 0
             # draw the MQ feature if its centre is within the tile
             if ((x > 0) and (x < 1) and (y > 0) and (y < 1)):
                 draw.rectangle(xy=[(x0, y0), (x1, y1)], fill=None, outline='red')
