@@ -155,6 +155,7 @@ if os.path.exists(TRAINING_SET_BACKUP_FILES_DIR):
 shutil.copytree(TRAINING_SET_FILES_DIR, TRAINING_SET_BACKUP_FILES_DIR)
 
 # delete the specified proportion of the original, un-augmented training set
+print("deleting {}% of the original training set".format(int(args.proportion_to_delete*100)))
 for filename in filenames_to_delete_df.filename:
     image_file = "{}/{}.png".format(TRAINING_SET_FILES_DIR, filename)
     label_file = "{}/{}.txt".format(TRAINING_SET_FILES_DIR, filename)
@@ -175,6 +176,7 @@ for fname in augmented_files:
 training_set_files = glob.glob("{}/*.png".format(TRAINING_SET_FILES_DIR))
 training_set_augmented_size = len(training_set_files)
 print("increased the training set from {} to {} tiles ({} augmented).".format(training_set_original_size, training_set_augmented_size, training_set_augmented_size-training_set_original_size))
+print("refreshing the train-list file")
 training_set_l = []
 for fname in training_set_files:
     if os.path.isfile(fname):
@@ -187,4 +189,4 @@ stop_run = time.time()
 info.append(("run processing time (sec)", stop_run-start_run))
 info.append(("processed", time.ctime()))
 info.append(("processor", parser.prog))
-print("{} info: {}".format(parser.prog, info))
+print("\n{} info: {}".format(parser.prog, info))
