@@ -13,9 +13,10 @@ import time
 parser = argparse.ArgumentParser(description='Augment with training set.')
 parser.add_argument('-tb','--tile_base', type=str, help='Path to the base directory of the training set.', required=True)
 parser.add_argument('-pa','--proportion_to_augment', type=float, default=1.0, help='Proportion of the training set to augment.', required=False)
-parser.add_argument('-at','--augmentations_per_tile', type=int, default=10, help='Number of augmentations for each tile.', required=False)
+parser.add_argument('-at','--augmentations_per_tile', type=int, default=2, help='Number of augmentations for each tile.', required=False)
 parser.add_argument('-mx','--max_translation_x', type=int, default=300, help='Maximum number of pixels to translate in the x dimension.', required=False)
-parser.add_argument('-my','--max_translation_y', type=int, default=300, help='Maximum number of pixels to translate in the y dimension.', required=False)
+parser.add_argument('-my','--max_translation_y', type=int, default=50, help='Maximum number of pixels to translate in the y dimension.', required=False)
+parser.add_argument('-pd','--proportion_to_delete', type=float, default=0.1, help='Proportion of the original training set to delete after augmentation.', required=False)
 args = parser.parse_args()
 
 # initialise Ray
@@ -25,6 +26,7 @@ if not ray.is_initialized():
 # load the tiles and their labels
 TILE_BASE = args.tile_base
 TRAINING_SET_FILES_DIR = '{}/train'.format(TILE_BASE)
+TRAINING_SET_BACKUP_FILES_DIR = '{}/train-backup'.format(TILE_BASE)
 AUGMENTED_FILES_DIR = '{}/augmented'.format(TILE_BASE)
 AUGMENTED_OVERLAY_FILES_DIR = '{}/overlay'.format(AUGMENTED_FILES_DIR)
 
@@ -64,6 +66,9 @@ training_set_original_size = len(filenames_df)
 
 number_to_select = int(training_set_original_size * args.proportion_to_augment)
 filenames_to_augment_df = filenames_df.sample(n=number_to_select)
+
+number_to_delete = int(training_set_original_size * args.proportion_to_delete)
+filenames_to_delete_df = filenames_df.sample(n=number_to_delete)
 
 print("generating {} augmentations of {} tiles".format(args.augmentations_per_tile, number_to_select))
 
@@ -143,6 +148,20 @@ ray.get([augment_tile.remote(filename=filename, filename_idx=idx) for idx,filena
 
 print("shutting down ray")
 ray.shutdown()
+
+# keep a copy of the training set
+if os.path.exists(TRAINING_SET_BACKUP_FILES_DIR):
+    shutil.rmtree(TRAINING_SET_BACKUP_FILES_DIR)
+shutil.copytree(TRAINING_SET_FILES_DIR, TRAINING_SET_BACKUP_FILES_DIR)
+
+# delete a defined proportion of the un-augmented training set
+for filename in filenames_to_delete_df.filename:
+    image_file = "{}/{}.png".format(TRAINING_SET_FILES_DIR, filename)
+    label_file = "{}/{}.txt".format(TRAINING_SET_FILES_DIR, filename)
+    if os.path.isfile(image_file):
+        os.remove(image_file)
+    if os.path.isfile(label_file):
+        os.remove(label_file)
 
 # copy the augmented tiles to the training set
 augmented_files = glob.glob("{}/*.*".format(AUGMENTED_FILES_DIR))
