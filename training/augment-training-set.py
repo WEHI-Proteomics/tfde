@@ -149,12 +149,12 @@ ray.get([augment_tile.remote(filename=filename, filename_idx=idx) for idx,filena
 print("shutting down ray")
 ray.shutdown()
 
-# keep a copy of the training set
+# keep a copy of the original training set
 if os.path.exists(TRAINING_SET_BACKUP_FILES_DIR):
     shutil.rmtree(TRAINING_SET_BACKUP_FILES_DIR)
 shutil.copytree(TRAINING_SET_FILES_DIR, TRAINING_SET_BACKUP_FILES_DIR)
 
-# delete a defined proportion of the un-augmented training set
+# delete the specified proportion of the original, un-augmented training set
 for filename in filenames_to_delete_df.filename:
     image_file = "{}/{}.png".format(TRAINING_SET_FILES_DIR, filename)
     label_file = "{}/{}.txt".format(TRAINING_SET_FILES_DIR, filename)
@@ -163,7 +163,7 @@ for filename in filenames_to_delete_df.filename:
     if os.path.isfile(label_file):
         os.remove(label_file)
 
-# copy the augmented tiles to the training set
+# copy the augmented tiles to the training set directory
 augmented_files = glob.glob("{}/*.*".format(AUGMENTED_FILES_DIR))
 print("copying augmented tiles to the training set.")
 for fname in augmented_files:
