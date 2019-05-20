@@ -31,7 +31,7 @@ TILE_BASE = args.tile_base
 PRE_ASSIGNED_FILES_DIR = '{}/pre-assigned'.format(TILE_BASE)
 OVERLAY_FILES_DIR = '{}/overlay'.format(TILE_BASE)
 
-NUMBER_OF_CLASSES = 1
+NUMBER_OF_CLASSES = 4
 
 if not input("This will erase the training set directories in {}. Are you sure? (y/n): ".format(TILE_BASE)).lower().strip()[:1] == "y": sys.exit(1)
 
