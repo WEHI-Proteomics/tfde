@@ -25,6 +25,7 @@ parser.add_argument('-ms1dt','--ms1_peak_delta', type=float, default=0.01, help=
 parser.add_argument('-ms2dt','--ms2_peak_delta', type=float, default=0.01, help='How far either side of a peak in ms2 to include when calculating its centroid and intensity, in Thomsons.', required=False)
 parser.add_argument('-cl','--cluster_mode', action='store_true', help='Run on a cluster.')
 parser.add_argument('-noms2','--no_ms2_extraction', action='store_true', help='Don\'t extract ms2 or generate the MGF.')
+parser.add_argument('-pbms2','--prebinned_ms2', type=str, help='Pickle file path for the pre-binned ms2 values.', required=True)
 args = parser.parse_args()
 
 # initialise Ray
@@ -168,8 +169,8 @@ def analyse_isolation_window(window_number, window_df):
 
     ms1_deconvoluted_peaks_l = []
     for peak in deconvoluted_peaks:
-        # discard a monoisotopic peak if it has fewer than three isotopes
-        if len(peak.envelope) >= 3:
+        # discard a monoisotopic peak that has either of the first two peaks as placeholders (indicated by intensity of 1)
+        if ((len(peak.envelope) >= 3) and (peak.envelope[0][1] > 1) and (peak.envelope[1][1] > 1)):
             ms1_deconvoluted_peaks_l.append((peak.mz, peak.neutral_mass, peak.intensity, peak.score, peak.signal_to_noise, peak.envelope, peak.charge))
 
     ms1_deconvoluted_peaks_df = pd.DataFrame(ms1_deconvoluted_peaks_l, columns=['mz','neutral_mass','intensity','score','SN','envelope','charge'])
@@ -200,9 +201,20 @@ def analyse_isolation_window(window_number, window_df):
         if len(monoisotopic_raw_points_df) > 0:
             # collapsing the monoisotopic's summed points onto the mobility dimension
             scan_df = monoisotopic_raw_points_df.groupby(['scan'], as_index=False).intensity.sum()
-            centroid_scan = peakutils.centroid(scan_df.scan, scan_df.intensity)
 
-            feature_scan_centroid = centroid_scan
+            mobility_curve_fit = False
+            try:
+                scan_apex = peakutils.peak.gaussian_fit(scan_df.scan, scan_df.intensity, center_only=True)
+                if (scan_apex >= wide_scan_lower) and (scan_apex <= wide_scan_upper):
+                    mobility_curve_fit = True
+            except:
+                print("\twindow {}, monoisotopic {}: could not fit a curve in the mobility dimension".format(window_number, monoisotopic_idx+1))
+
+            # if we couldn't fit a curve to the mobility dimension, take the intensity-weighted centroid
+            if not mobility_curve_fit:
+                scan_apex = peakutils.centroid(scan_df.scan, scan_df.intensity)
+
+            feature_scan_apex = scan_apex
             feature_scan_lower = window_df.ScanNumBegin
             feature_scan_upper = window_df.ScanNumEnd
 
@@ -210,6 +222,7 @@ def analyse_isolation_window(window_number, window_df):
             wide_rt_monoisotopic_raw_points_df = ms1_raw_points_df[(ms1_raw_points_df.mz >= monoisotopic_mz_lower) & (ms1_raw_points_df.mz <= monoisotopic_mz_upper)]
             rt_df = wide_rt_monoisotopic_raw_points_df.groupby(['frame_id','retention_time_secs'], as_index=False).intensity.sum()
 
+            rt_curve_fit = False
             peaks_threshold = 0.3
             peaks_idx = peakutils.indexes(rt_df.intensity.values, thres=peaks_threshold, min_dist=10)
             if len(peaks_idx) > 0:
@@ -218,6 +231,7 @@ def analyse_isolation_window(window_number, window_df):
                 peaks_df['fragmentation_rt_delta'] = abs(window_df.retention_time_secs - peaks_df.retention_time_secs)
                 peak_idx = peaks_df.fragmentation_rt_delta.idxmin()
                 feature_rt_apex = peaks_df.loc[peak_idx].retention_time_secs
+                rt_curve_fit = True
             else:
                 # couldn't find a peak so just take the maximum
                 peak_idx = rt_df.intensity.idxmax()
@@ -244,8 +258,8 @@ def analyse_isolation_window(window_number, window_df):
             indexes = isolation_window_df.index[
                                         (((isolation_window_df.mz_upper >= feature_monoisotopic_mz) & (isolation_window_df.mz_lower <= feature_monoisotopic_mz)) |
                                         ((isolation_window_df.mz_upper >= second_peak_mz) & (isolation_window_df.mz_lower <= second_peak_mz))) &
-                                        (isolation_window_df.ScanNumEnd >= feature_scan_centroid) &
-                                        (isolation_window_df.ScanNumBegin <= feature_scan_centroid) &
+                                        (isolation_window_df.ScanNumEnd >= feature_scan_apex) &
+                                        (isolation_window_df.ScanNumBegin <= feature_scan_apex) &
                                         (isolation_window_df.retention_time_secs >= feature_rt_base_lower) &
                                         (isolation_window_df.retention_time_secs <= feature_rt_base_upper)
                                    ]
@@ -254,60 +268,15 @@ def analyse_isolation_window(window_number, window_df):
             if len(isolation_windows_overlapping_feature_df) > 0:
                 print("\t\twindow {}, there are {} overlapping isolation windows - finding the ms2 peaks".format(window_number, len(isolation_windows_overlapping_feature_df)))
 
-                ms1_characteristics.append((round(feature_monoisotopic_mass,6), feature_charge, feature_monoisotopic_mz, feature_intensity, feature_scan_centroid, round(feature_rt_apex,2), precursor_id))
+                ms1_characteristics.append((round(feature_monoisotopic_mass,6), feature_charge, feature_monoisotopic_mz, feature_intensity, feature_scan_apex, mobility_curve_fit, round(feature_rt_apex,2), rt_curve_fit, precursor_id))
 
                 if not args.no_ms2_extraction:
 
-                    # extract the raw ms2 points from the overlapping isolation windows
-                    ms2_raw_points_df = pd.DataFrame()
-                    for idx in range(len(isolation_windows_overlapping_feature_df)):
-                        isolation_window_scan_lower = int(isolation_windows_overlapping_feature_df.iloc[idx].ScanNumBegin)
-                        isolation_window_scan_upper = int(isolation_windows_overlapping_feature_df.iloc[idx].ScanNumEnd)
-                        isolation_window_frame_id = int(isolation_windows_overlapping_feature_df.iloc[idx].Frame)
-
-                        # get the raw ms2 points from the fragmentation frame within the scan constraints
-                        db_conn = sqlite3.connect(CONVERTED_DATABASE_NAME)
-                        df = pd.read_sql_query("select frame_id,mz,scan,intensity,retention_time_secs from frames where frame_id == {} and scan >= {} and scan <= {}".format(isolation_window_frame_id,isolation_window_scan_lower,isolation_window_scan_upper), db_conn)
-                        db_conn.close()
-
-                        # add these to the collection
-                        ms2_raw_points_df = ms2_raw_points_df.append(df, ignore_index=True)
-
-                    # bin the data
-                    MS2_MZ_MAX = ms2_raw_points_df.mz.max()
-                    MS2_MZ_MIN = ms2_raw_points_df.mz.min()
-
-                    ms2_bins = np.arange(start=MS2_MZ_MIN, stop=MS2_MZ_MAX+args.ms2_bin_width, step=args.ms2_bin_width)  # go slightly wider to accomodate the maximum value
-                    MS2_MZ_BIN_COUNT = len(ms2_bins)
-
-                    # initialise an array of lists to hold the m/z and intensity values allocated to each bin
-                    ms2_mz_values_array = np.empty(MS2_MZ_BIN_COUNT, dtype=np.object)
-                    for idx in range(MS2_MZ_BIN_COUNT):
-                        ms2_mz_values_array[idx] = []
-
-                    # gather the m/z values into bins
-                    for r in zip(ms2_raw_points_df.mz, ms2_raw_points_df.intensity):
-                        mz = r[0]
-                        intensity = int(r[1])
-                        if (mz >= MS2_MZ_MIN) and (mz <= MS2_MZ_MAX): # it should already but just to be sure
-                            mz_array_idx = int(np.digitize(mz, ms2_bins)) # in which bin should this mz go
-                            ms2_mz_values_array[mz_array_idx].append((mz, intensity))
-
-                    # compute the intensity-weighted m/z centroid and the summed intensity of the bins
-                    binned_ms2_l = []
-                    for bin_idx in range(MS2_MZ_BIN_COUNT):
-                        if len(ms2_mz_values_array[bin_idx]) > 0:
-                            mz_values_for_bin = np.array([ list[0] for list in ms2_mz_values_array[bin_idx]])
-                            intensity_values_for_bin = np.array([ list[1] for list in ms2_mz_values_array[bin_idx]]).astype(int)
-                            mz_centroid = peakutils.centroid(mz_values_for_bin, intensity_values_for_bin)
-                            summed_intensity = intensity_values_for_bin.sum()
-                            binned_ms2_l.append((mz_centroid,summed_intensity))
-
-                    binned_ms2_df = pd.DataFrame(binned_ms2_l, columns=['mz_centroid','summed_intensity'])
-
-                    # now do intensity descent to find the peaks
+                    # load the pre-binned ms2 values
+                    binned_ms2_df = pd.read_pickle(args.prebinned_ms2)
                     raw_scratch_df = binned_ms2_df.copy() # take a copy because we're going to delete stuff
 
+                    # do intensity descent to find the peaks
                     ms2_peaks_l = []
                     while len(raw_scratch_df) > 0:
                         # find the most intense point
@@ -333,8 +302,8 @@ def analyse_isolation_window(window_number, window_df):
 
                     ms2_deconvoluted_peaks_l = []
                     for peak in ms2_deconvoluted_peaks:
-                        # discard a monoisotopic peak that has fewer than three isotopes
-                        if len(peak.envelope) >= 3:
+                        # discard a monoisotopic peak that has either of the first two peaks as placeholders (indicated by intensity of 1)
+                        if ((len(peak.envelope) >= 3) and (peak.envelope[0][1] > 1) and (peak.envelope[1][1] > 1)):
                             ms2_deconvoluted_peaks_l.append((round(peak.mz, 4), int(peak.charge), peak.neutral_mass, int(peak.intensity), peak.score, peak.signal_to_noise))
 
                     ms2_deconvoluted_peaks_df = pd.DataFrame(ms2_deconvoluted_peaks_l, columns=['mz','charge','neutral_mass','intensity','score','SN'])
@@ -385,7 +354,7 @@ for result in isolation_window_result:
     ms1_characteristics_l += ms1_characteristics
 
 print("generating the ms1 characteristics file at {}".format(FEATURE_CHARACTERISTICS_FILENAME))
-ms1_characteristics_df = pd.DataFrame(ms1_characteristics_l, columns=['monoisotopic_mass', 'charge', 'monoisotopic_mz', 'intensity', 'scan_centroid', 'rt_apex', 'precursor_id'])
+ms1_characteristics_df = pd.DataFrame(ms1_characteristics_l, columns=['monoisotopic_mass', 'charge', 'monoisotopic_mz', 'intensity', 'scan_apex', 'scan_curve_fit', 'rt_apex', 'rt_curve_fit', 'precursor_id'])
 ms1_characteristics_df.to_csv(FEATURE_CHARACTERISTICS_FILENAME, index=False, header=True)
 
 stop_run = time.time()
