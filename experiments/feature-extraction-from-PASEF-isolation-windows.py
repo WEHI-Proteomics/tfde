@@ -25,8 +25,13 @@ parser.add_argument('-ms1dt','--ms1_peak_delta', type=float, default=0.01, help=
 parser.add_argument('-ms2dt','--ms2_peak_delta', type=float, default=0.01, help='How far either side of a peak in ms2 to include when calculating its centroid and intensity, in Thomsons.', required=False)
 parser.add_argument('-cl','--cluster_mode', action='store_true', help='Run on a cluster.')
 parser.add_argument('-noms2','--no_ms2_extraction', action='store_true', help='Don\'t extract ms2 or generate the MGF.')
-parser.add_argument('-pbms2','--prebinned_ms2', type=str, help='Pickle file path for the pre-binned ms2 values.', required=True)
+parser.add_argument('-pbms2','--prebinned_ms2', type=str, help='Pickle file path for the pre-binned ms2 values.', required=False)
 args = parser.parse_args()
+
+if not args.no_ms2_extraction:
+    if args.prebinned_ms2 is None:
+        print("--prebinned_ms2 must be specified.")
+        sys.exit(1)
 
 # initialise Ray
 if not ray.is_initialized():
