@@ -284,15 +284,14 @@ def render_tile_for_frame(frame_r):
             for item in feature_coordinates:
                 f.write("%s\n" % item)
 
-    print("frame {}: {}".format(frame_id, instances_df))
-    print("frame {}: total number of labelled instances: {}".format(frame_id, instances_df.instances.sum()))
     return instances_df
 
 
 if args.test_mode:
     ms1_frame_properties_df = ms1_frame_properties_df[:20]
 
-ray.get([render_tile_for_frame.remote(frame_r) for frame_r in zip(ms1_frame_properties_df.frame_id, ms1_frame_properties_df.retention_time_secs)])
+instances_l = ray.get([render_tile_for_frame.remote(frame_r) for frame_r in zip(ms1_frame_properties_df.frame_id, ms1_frame_properties_df.retention_time_secs)])
+print("labelled instances: {}, total {}".format(list(sum(instances_l).instances), sum(instances_l).instances.sum()))
 
 stop_run = time.time()
 info.append(("run processing time (sec)", stop_run-start_run))

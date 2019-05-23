@@ -131,10 +131,10 @@ for idx,dd in enumerate(data_dirs):
 
 # take a copy of the training set because we'll be augmenting it later
 print("taking a backup of the training set")
-if os.path.exists(TRAINING_SET_BACKUP_FILES_DIR):
-    shutil.rmtree(TRAINING_SET_BACKUP_FILES_DIR)
 training_set_dir = "{}/{}".format(TILE_BASE, data_dirs[0])
 backup_training_set_dir = "{}-backup".format(training_set_dir)
+if os.path.exists(backup_training_set_dir):
+    shutil.rmtree(backup_training_set_dir)
 shutil.copytree(training_set_dir, backup_training_set_dir)
 
 # create the names and data files for Darknet
