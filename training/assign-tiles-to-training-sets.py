@@ -39,10 +39,10 @@ db_conn = sqlite3.connect(CONVERTED_DATABASE_NAME)
 ms1_frame_properties_df = pd.read_sql_query("select frame_id,retention_time_secs from frame_properties where retention_time_secs >= {} and retention_time_secs <= {} and collision_energy == {}".format(args.rt_lower, args.rt_upper, MS1_CE), db_conn)
 db_conn.close()
 
+# load all the file names to be allocated to a set
 filenames = []
 for file in glob.glob("{}/*.png".format(PRE_ASSIGNED_FILES_DIR)):
     filenames.append((os.path.basename(os.path.splitext(file)[0])))
-
 fn_df = pd.DataFrame(filenames, columns=['name'])
 
 # allocate the training, validation, and test sets from separate periods of RT, as frames are a time series - with an N-frame gap between sets
@@ -128,6 +128,14 @@ for idx,dd in enumerate(data_dirs):
 
     # generate the text files for each set
     data_dfs[idx].text_entry.to_csv("{}/{}-{}.txt".format(LOCAL_DATA_FILES_DIR, dd, FILE_LIST_SUFFIX), index=False, header=False)
+
+# take a copy of the training set because we'll be augmenting it later
+print("taking a backup of the training set")
+if os.path.exists(TRAINING_SET_BACKUP_FILES_DIR):
+    shutil.rmtree(TRAINING_SET_BACKUP_FILES_DIR)
+training_set_dir = "{}/{}".format(TILE_BASE, data_dirs[0])
+backup_training_set_dir = "{}-backup".format(training_set_dir)
+shutil.copytree(training_set_dir, backup_training_set_dir)
 
 # create the names and data files for Darknet
 LOCAL_NAMES_FILENAME = "{}/peptides-obj.names".format(TILE_BASE)
