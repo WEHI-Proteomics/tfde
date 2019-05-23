@@ -51,6 +51,7 @@ MZ_MAX = 1700.0
 MZ_BIN_WIDTH = 0.1
 SCAN_MIN = 1
 SCAN_MAX = 910
+SCAN_LENGTH_MINIMUM = SCAN_MAX * 0.05  # filter out the small-extent features
 
 mz_bins = np.arange(start=MZ_MIN, stop=MZ_MAX+MZ_BIN_WIDTH, step=MZ_BIN_WIDTH)  # go slightly wider to accomodate the maximum value
 
@@ -63,8 +64,13 @@ RT_EACH_SIDE = 1.0  # proportion of RT length / 2 used for the bounding box
 
 allpeptides_df = pd.read_csv(ALLPEPTIDES_FILENAME, sep='\t')
 allpeptides_df.rename(columns={'Number of isotopic peaks':'isotope_count', 'm/z':'mz', 'Number of data points':'number_data_points', 'Intensity':'intensity', 'Ion mobility index':'scan', 'Ion mobility index length':'scan_length', 'Ion mobility index length (FWHM)':'scan_length_fwhm', 'Retention time':'rt', 'Retention length':'rt_length', 'Retention length (FWHM)':'rt_length_fwhm', 'Charge':'charge_state', 'Number of pasef MS/MS':'number_pasef_ms2_ids', 'Isotope correlation':'isotope_correlation'}, inplace=True)
-allpeptides_df = allpeptides_df[allpeptides_df.intensity.notnull()].copy()  # remove all the null intensity rows
-allpeptides_df = allpeptides_df[allpeptides_df.intensity.notnull() & (allpeptides_df.isotope_correlation >= MIN_ISOTOPE_CORRELATION) & (allpeptides_df.rt >= args.rt_lower) & (allpeptides_df.rt <= args.rt_upper)].copy()
+allpeptides_df = allpeptides_df[
+                    allpeptides_df.intensity.notnull() &
+                    (allpeptides_df.isotope_correlation >= MIN_ISOTOPE_CORRELATION) &
+                    (allpeptides_df.rt >= args.rt_lower) & (allpeptides_df.rt <= args.rt_upper) &
+                    (allpeptides_df.isotope_count > 2) &
+                    (allpeptides_df.scan_length > SCAN_LENGTH_MINIMUM)
+                ].copy()
 
 allpeptides_df["rt_delta"] = allpeptides_df.rt_length / 2
 allpeptides_df["rt_lower"] = allpeptides_df.rt - (allpeptides_df.rt_delta * RT_EACH_SIDE)
@@ -77,8 +83,6 @@ allpeptides_df["mq_feature_id"] = np.arange(start=1, stop=len(allpeptides_df)+1)
 print("charge states: {} to {}".format(allpeptides_df.charge_state.min(), allpeptides_df.charge_state.max()))
 
 MAX_CHARGE_STATE = int(allpeptides_df.charge_state.max())
-
-# ### Calculate the binned rectangle coordinates for all the MQ features
 
 mz_ppm_tolerance_l = []
 binned_mz_lower_l = []
@@ -289,7 +293,6 @@ if args.test_mode:
     ms1_frame_properties_df = ms1_frame_properties_df[:20]
 
 ray.get([render_tile_for_frame.remote(frame_r) for frame_r in zip(ms1_frame_properties_df.frame_id, ms1_frame_properties_df.retention_time_secs)])
-
 
 stop_run = time.time()
 info.append(("run processing time (sec)", stop_run-start_run))
