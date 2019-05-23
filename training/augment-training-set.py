@@ -50,11 +50,10 @@ if os.path.exists(AUGMENTED_FILES_DIR):
 os.makedirs(AUGMENTED_FILES_DIR)
 os.makedirs(AUGMENTED_OVERLAY_FILES_DIR)
 
-# delete the augmented tiles already in the training set
-augmented_files = glob.glob("{}/*-aug-*.png".format(TRAINING_SET_FILES_DIR))
-for fname in augmented_files:
-    if os.path.isfile(fname):
-        os.remove(fname)
+# restore the backup of the original training set made during the previous step
+if os.path.exists(TRAINING_SET_FILES_DIR):
+    shutil.rmtree(TRAINING_SET_FILES_DIR)
+shutil.copytree(TRAINING_SET_BACKUP_FILES_DIR, TRAINING_SET_FILES_DIR)
 
 # load the file names into a dataframe
 filenames = []
@@ -148,11 +147,6 @@ ray.get([augment_tile.remote(filename=filename, filename_idx=idx) for idx,filena
 
 print("shutting down ray")
 ray.shutdown()
-
-# keep a copy of the original training set
-if os.path.exists(TRAINING_SET_BACKUP_FILES_DIR):
-    shutil.rmtree(TRAINING_SET_BACKUP_FILES_DIR)
-shutil.copytree(TRAINING_SET_FILES_DIR, TRAINING_SET_BACKUP_FILES_DIR)
 
 # delete the specified proportion of the original, un-augmented training set
 print("deleting {}% of the original training set".format(int(args.proportion_to_delete*100)))
