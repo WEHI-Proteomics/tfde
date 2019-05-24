@@ -57,11 +57,13 @@ if not os.path.isfile(CONVERTED_DATABASE_NAME):
     print("The converted database doesn't exist: {}".format(CONVERTED_DATABASE_NAME))
     sys.exit(1)
 
-if not (args.create_new_prebin_ms2 and os.path.isfile(args.pre_binned_ms2_filename)):
-    print("The pre-binned ms2 file is required but doesn't exist: {}".format(args.pre_binned_ms2_filename))
-    sys.exit(1)
+if args.create_new_prebin_ms2:
+    if os.path.isfile(args.pre_binned_ms2_filename)):
+        os.remove(args.pre_binned_ms2_filename)
 else:
-    os.remove(args.pre_binned_ms2_filename)
+    if not os.path.isfile(args.pre_binned_ms2_filename)):
+        print("The pre-binned ms2 file is required but doesn't exist: {}".format(args.pre_binned_ms2_filename))
+        sys.exit(1)
 
 PROTON_MASS = 1.0073  # Mass of a proton in unified atomic mass units, or Da. For calculating the monoisotopic mass.
 
