@@ -58,10 +58,10 @@ if not os.path.isfile(CONVERTED_DATABASE_NAME):
     sys.exit(1)
 
 if args.create_new_prebin_ms2:
-    if os.path.isfile(args.pre_binned_ms2_filename)):
+    if os.path.isfile(args.pre_binned_ms2_filename):
         os.remove(args.pre_binned_ms2_filename)
 else:
-    if not os.path.isfile(args.pre_binned_ms2_filename)):
+    if not os.path.isfile(args.pre_binned_ms2_filename):
         print("The pre-binned ms2 file is required but doesn't exist: {}".format(args.pre_binned_ms2_filename))
         sys.exit(1)
 
@@ -209,7 +209,6 @@ def find_features(window_number, window_df):
     # For each monoisotopic peak found, find its apex in RT and mobility
     for monoisotopic_idx in range(len(ms1_deconvoluted_peaks_df)):
         print("\twindow {}, processing monoisotopic {}".format(window_number, monoisotopic_idx+1))
-        feature_id += 1
         feature_monoisotopic_mz = ms1_deconvoluted_peaks_df.iloc[monoisotopic_idx].mz
         feature_charge = int(ms1_deconvoluted_peaks_df.iloc[monoisotopic_idx].charge)
         feature_intensity = int(ms1_deconvoluted_peaks_df.iloc[monoisotopic_idx].intensity)
@@ -297,8 +296,6 @@ def find_features(window_number, window_df):
                 ms1_characteristics_l.append((round(feature_monoisotopic_mass,6), feature_charge, feature_monoisotopic_mz, feature_intensity, feature_scan_apex, mobility_curve_fit, round(feature_rt_apex,2), rt_curve_fit, precursor_id, ms2_frames))
 
     ms1_characteristics_df = pd.DataFrame(ms1_characteristics_l, columns=['monoisotopic_mass', 'charge', 'monoisotopic_mz', 'intensity', 'scan_apex', 'scan_curve_fit', 'rt_apex', 'rt_curve_fit', 'precursor_id', 'ms2_frames'])
-    ms1_characteristics_df.sort_values(by=['intensity'], ascending=False, inplace=True)
-    ms1_characteristics_df["feature_id"] = np.arange(start=1, stop=len(ms1_characteristics_df)+1)
     return ms1_characteristics_df
 
 def remove_ms1_duplicates(ms1_features_df):
@@ -321,17 +318,16 @@ def remove_ms1_duplicates(ms1_features_df):
         rt_upper = rt + RT_TOLERANCE
 
         # find the matches within these tolerances
-        matches_df = scratch_df[(scratch_df.monoisotopic_mz >= mz_lower) & (scratch_df.monoisotopic_mz <= mz_upper) & (scratch_df.scan_apex >= scan_lower) & (scratch_df.scan_apex <= scan_upper) & (scratch_df.rt_apex >= rt_lower) & (scratch_df.rt_apex <= rt_upper)]
-        peak_df = matches_df.loc[matches_df.intensity.idxmax()].copy()
+        matching_idxs = (scratch_df.monoisotopic_mz >= mz_lower) & (scratch_df.monoisotopic_mz <= mz_upper) & (scratch_df.scan_apex >= scan_lower) & (scratch_df.scan_apex <= scan_upper) & (scratch_df.rt_apex >= rt_lower) & (scratch_df.rt_apex <= rt_upper)
+        matches_df = scratch_df[matching_idxs]
+        scratch_df.drop(scratch_df[matching_idxs].index, axis=0, inplace=True)
+
+        # add the most intense match to the list
+        peak_df = matches_df[matches_df.intensity == matches_df.intensity.max()]
         peak_df['duplicates'] = len(matches_df)
+        ms1_peaks_l.append(peak_df)
 
-        # add the most intense to the list
-        ms1_peaks_l.append(tuple(peak_df))
-
-        # remove the matches
-        scratch_df = scratch_df[~scratch_df.isin(matches_df)].dropna(how = 'all')
-
-    ms1_deduped_df = pd.DataFrame(ms1_peaks_l, columns=ms1_features_df.columns)
+    ms1_deduped_df = pd.concat(ms1_peaks_l)
     ms1_deduped_df.sort_values(by=['intensity'], ascending=False, inplace=True)
     ms1_deduped_df["feature_id"] = np.arange(start=1, stop=len(ms1_deduped_df)+1)
     return ms1_deduped_df
@@ -343,7 +339,7 @@ def deconvolute_ms2_peaks_for_feature(binned_ms2_df):
     ms2_peaks_l = []
     while len(raw_scratch_df) > 0:
         # find the most intense point
-        peak_df = raw_scratch_df.loc[raw_scratch_df.summed_intensity.idxmax()]
+        peak_df = raw_scratch_df.loc[raw_scratch_df.intensity.idxmax()]
         peak_mz = peak_df.mz_centroid
         peak_mz_lower = peak_mz - args.ms2_peak_delta
         peak_mz_upper = peak_mz + args.ms2_peak_delta
@@ -375,11 +371,26 @@ def deconvolute_ms2_peaks_for_feature(binned_ms2_df):
 
     return ms2_deconvoluted_peaks_df
 
+# calculate the centroid, intensity of a bin
+def calc_centroid(bin_df):
+    d = {}
+    d['bin_idx'] = bin_df.iloc[0].bin_idx
+    d['mz_centroid'] = peakutils.centroid(bin_df.mz, bin_df.intensity)
+    d['summed_intensity'] = bin_df.intensity.sum()
+    d['point_count'] = len(bin_df)
+    return pd.Series(d, index=['bin_idx','mz_centroid','summed_intensity','point_count'])
+
 def ms2_points_for_feature(feature_df, binned_ms2_df):
     # get the binned ms2 points for this feature
     ms2_frame_ids = feature_df.ms2_frames
     ms2_raw_points_df = binned_ms2_df[binned_ms2_df.frame_id.isin(ms2_frame_ids)]
-    return ms2_raw_points_df
+    # calculate the bin centroid and summed instensity for the combined frames
+    combined_ms2_df = ms2_raw_points_df.groupby(['bin_idx'], as_index=False).apply(calc_centroid)
+    combined_ms2_df.summed_intensity = combined_ms2_df.summed_intensity.astype(int)
+    combined_ms2_df.bin_idx = combined_ms2_df.bin_idx.astype(int)
+    combined_ms2_df.point_count = combined_ms2_df.point_count.astype(int)
+
+    return combined_ms2_df
 
 def collate_spectra_for_feature(feature_df, ms2_deconvoluted_df):
     # append the monoisotopic and the ms2 fragments to the list for MGF creation
@@ -408,6 +419,7 @@ ms1_df = pd.concat(ms1_df_l)  # combines a list of dataframes into a single data
 # remove duplicates in ms1
 print("removing duplicates")
 ms1_deduped_df = remove_ms1_duplicates(ms1_df)
+print("removed {} duplicates".format(len(ms1_df)-len(ms1_deduped_df)))
 
 if args.create_new_prebin_ms2:
     # bin ms2 frames
