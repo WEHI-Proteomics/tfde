@@ -207,8 +207,8 @@ def find_features(window_number, window_df):
     ms1_deconvoluted_peaks_df['m_plus_h'] = ms1_deconvoluted_peaks_df.neutral_mass + PROTON_MASS
 
     # For each monoisotopic peak found, find its apex in RT and mobility
+    print("window {}, processing {} monoisotopics".format(window_number, len(ms1_deconvoluted_peaks_df)))
     for monoisotopic_idx in range(len(ms1_deconvoluted_peaks_df)):
-        print("\twindow {}, processing monoisotopic {}".format(window_number, monoisotopic_idx+1))
         feature_monoisotopic_mz = ms1_deconvoluted_peaks_df.iloc[monoisotopic_idx].mz
         feature_charge = int(ms1_deconvoluted_peaks_df.iloc[monoisotopic_idx].charge)
         feature_intensity = int(ms1_deconvoluted_peaks_df.iloc[monoisotopic_idx].intensity)
@@ -412,6 +412,7 @@ def collate_spectra_for_feature(feature_df, ms2_deconvoluted_df):
 print("finding ms1 features")
 ms1_df_l = ray.get([find_features.remote(window_number=idx+1, window_df=group_df.iloc[0]) for idx,group_df in isolation_window_df.groupby('Precursor')])
 ms1_df = pd.concat(ms1_df_l)  # combines a list of dataframes into a single dataframe
+ms1_df.to_pickle('~/Downloads/ms1_df.pkl')
 
 # remove duplicates in ms1
 print("removing duplicates")
