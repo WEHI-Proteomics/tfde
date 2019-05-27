@@ -25,8 +25,12 @@ parser.add_argument('-ms1dt','--ms1_peak_delta', type=float, default=0.01, help=
 parser.add_argument('-ms2dt','--ms2_peak_delta', type=float, default=0.01, help='How far either side of a peak in ms2 to include when calculating its centroid and intensity, in Thomsons.', required=False)
 parser.add_argument('-ms2l','--ms2_lower', type=float, default=90.0, help='Lower limit of m/z range in ms2.', required=False)
 parser.add_argument('-ms2u','--ms2_upper', type=float, default=1750.0, help='Upper limit of m/z range in ms2.', required=False)
-parser.add_argument('-pbms2','--pre_binned_ms2_filename', type=str, help='File containing previously pre-binned ms2 frames.', required=True)
-parser.add_argument('-npbms2','--create_new_prebin_ms2', action='store_true', help='Create a new pre-bin file for ms2 frames.')
+parser.add_argument('-pbms2','--pre_binned_ms2_filename', type=str, default='./pre_binned_ms2.pkl', help='File containing previously pre-binned ms2 frames.', required=False)
+parser.add_argument('-npbms2','--new_prebin_ms2', action='store_true', help='Create a new pre-bin file for ms2 frames.')
+parser.add_argument('-ms1f','--ms1_features_filename', type=str, default='./ms1_df.pkl', help='File containing ms1 features.', required=False)
+parser.add_argument('-nms1f','--new_ms1_features', action='store_true', help='Create a new ms1 features file.')
+parser.add_argument('-ddms1','--dedup_ms1_filename', type=str, default='./ms1_deduped_df.pkl', help='File containing de-duped ms1 features.', required=False)
+parser.add_argument('-nddms1','--new_dedup_ms1_features', action='store_true', help='Create a new de-duped ms1 features file.')
 parser.add_argument('-cl','--cluster_mode', action='store_true', help='Run on a cluster.')
 parser.add_argument('-tm','--test_mode', action='store_true', help='A small subset of the data for testing purposes.')
 args = parser.parse_args()
@@ -57,12 +61,28 @@ if not os.path.isfile(CONVERTED_DATABASE_NAME):
     print("The converted database doesn't exist: {}".format(CONVERTED_DATABASE_NAME))
     sys.exit(1)
 
-if args.create_new_prebin_ms2:
+if args.new_prebin_ms2:
     if os.path.isfile(args.pre_binned_ms2_filename):
         os.remove(args.pre_binned_ms2_filename)
 else:
     if not os.path.isfile(args.pre_binned_ms2_filename):
         print("The pre-binned ms2 file is required but doesn't exist: {}".format(args.pre_binned_ms2_filename))
+        sys.exit(1)
+
+if args.new_ms1_features:
+    if os.path.isfile(args.ms1_features_filename):
+        os.remove(args.ms1_features_filename)
+else:
+    if not os.path.isfile(args.ms1_features_filename):
+        print("The ms1 features file is required but doesn't exist: {}".format(args.ms1_features_filename))
+        sys.exit(1)
+
+if args.new_dedup_ms1_features:
+    if os.path.isfile(args.dedup_ms1_filename):
+        os.remove(args.dedup_ms1_filename)
+else:
+    if not os.path.isfile(args.dedup_ms1_filename):
+        print("The de-duped ms1 features file is required but doesn't exist: {}".format(args.dedup_ms1_filename))
         sys.exit(1)
 
 PROTON_MASS = 1.0073  # Mass of a proton in unified atomic mass units, or Da. For calculating the monoisotopic mass.
@@ -408,19 +428,30 @@ def collate_spectra_for_feature(feature_df, ms2_deconvoluted_df):
     spectrum["params"] = params
     return spectrum
 
-# find ms1 features for each unique precursor ID
-print("finding ms1 features")
-ms1_df_l = ray.get([find_features.remote(window_number=idx+1, window_df=group_df.iloc[0]) for idx,group_df in isolation_window_df.groupby('Precursor')])
-ms1_df = pd.concat(ms1_df_l)  # combines a list of dataframes into a single dataframe
-ms1_df.to_pickle('./ms1_df.pkl')
 
-# remove duplicates in ms1
-print("removing duplicates")
-ms1_deduped_df = remove_ms1_duplicates(ms1_df)
-ms1_deduped_df.to_pickle('./ms1_deduped_df.pkl')
-print("removed {} duplicates - processing {} features".format(len(ms1_df)-len(ms1_deduped_df), len(ms1_deduped_df)))
+if args.new_ms1_features:
+    # find ms1 features for each unique precursor ID
+    print("finding ms1 features")
+    ms1_df_l = ray.get([find_features.remote(window_number=idx+1, window_df=group_df.iloc[0]) for idx,group_df in isolation_window_df.groupby('Precursor')])
+    ms1_df = pd.concat(ms1_df_l)  # combines a list of dataframes into a single dataframe
+    ms1_df.to_pickle('./ms1_df.pkl')
+else:
+    # load previously detected ms1 features
+    print("loading ms1 features")
+    ms1_df = pd.read_pickle(args.ms1_features_filename)
 
-if args.create_new_prebin_ms2:
+if args.new_dedup_ms1_features:
+    # remove duplicates in ms1
+    print("removing duplicates")
+    ms1_deduped_df = remove_ms1_duplicates(ms1_df)
+    ms1_deduped_df.to_pickle(args.dedup_ms1_filename)
+    print("removed {} duplicates - processing {} features".format(len(ms1_df)-len(ms1_deduped_df), len(ms1_deduped_df)))
+else:
+    # load previously de-duped ms1 features
+    print("loading de-duped ms1 features")
+    ms1_deduped_df = pd.read_pickle(args.dedup_ms1_filename)
+
+if args.new_prebin_ms2:
     # bin ms2 frames
     print("binning ms2 frames")
     binned_ms2_df = bin_ms2_frames()
