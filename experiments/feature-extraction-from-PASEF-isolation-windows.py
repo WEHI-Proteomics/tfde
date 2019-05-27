@@ -395,21 +395,18 @@ def ms2_points_for_feature(feature_df, binned_ms2_df):
 def collate_spectra_for_feature(feature_df, ms2_deconvoluted_df):
     # append the monoisotopic and the ms2 fragments to the list for MGF creation
     pairs_df = ms2_deconvoluted_df[['mz', 'intensity']].copy().sort_values(by=['intensity'], ascending=False)
-    spectra = []
     spectrum = {}
     spectrum["m/z array"] = pairs_df.mz.values
     spectrum["intensity array"] = pairs_df.intensity.values
     params = {}
-    params["TITLE"] = "RawFile: {} Index: 0 precursor: {} Charge: {} FeatureIntensity: {} Feature#: {} RtApex: {}".format(os.path.basename(CONVERTED_DATABASE_NAME).split('.')[0], feature_df.precursor_id, feature_df.charge, feature_df.intensity, feature_df.feature_id, round(feature_df.rt_apex,2))
+    params["TITLE"] = "RawFile: {} Index: 10 precursor: {} Charge: {} FeatureIntensity: {} Feature#: {} RtApex: {}".format(os.path.basename(CONVERTED_DATABASE_NAME).split('.')[0], feature_df.precursor_id, feature_df.charge, feature_df.intensity, feature_df.feature_id, round(feature_df.rt_apex,2))
     params["INSTRUMENT"] = "ESI-QUAD-TOF"
     params["PEPMASS"] = "{} {}".format(round(feature_df.monoisotopic_mass,6), feature_df.intensity)
     params["CHARGE"] = "{}+".format(feature_df.charge)
     params["RTINSECONDS"] = "{}".format(round(feature_df.rt_apex,2))
     params["SCANS"] = "{}".format(int(feature_df.rt_apex))
     spectrum["params"] = params
-    spectra.append(spectrum)
-
-    return spectra
+    return spectrum
 
 # find ms1 features for each unique precursor ID
 print("finding ms1 features")
@@ -419,7 +416,7 @@ ms1_df = pd.concat(ms1_df_l)  # combines a list of dataframes into a single data
 # remove duplicates in ms1
 print("removing duplicates")
 ms1_deduped_df = remove_ms1_duplicates(ms1_df)
-print("removed {} duplicates".format(len(ms1_df)-len(ms1_deduped_df)))
+print("removed {} duplicates - processing {} features".format(len(ms1_df)-len(ms1_deduped_df), len(ms1_deduped_df)))
 
 if args.create_new_prebin_ms2:
     # bin ms2 frames
@@ -429,7 +426,7 @@ if args.create_new_prebin_ms2:
 else:
     # load previously binned ms2
     print("loading pre-binned ms2 frames")
-    binned_ms2_df.read_pickle(args.pre_binned_ms2_filename)
+    binned_ms2_df = pd.read_pickle(args.pre_binned_ms2_filename)
 
 # find ms2 peaks for each feature found in ms1, and collate the spectra for the MGF
 print("finding peaks in ms2 for each feature")
