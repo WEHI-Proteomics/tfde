@@ -339,7 +339,7 @@ def deconvolute_ms2_peaks_for_feature(binned_ms2_df):
     ms2_peaks_l = []
     while len(raw_scratch_df) > 0:
         # find the most intense point
-        peak_df = raw_scratch_df.loc[raw_scratch_df.intensity.idxmax()]
+        peak_df = raw_scratch_df.loc[raw_scratch_df.summed_intensity.idxmax()]
         peak_mz = peak_df.mz_centroid
         peak_mz_lower = peak_mz - args.ms2_peak_delta
         peak_mz_upper = peak_mz + args.ms2_peak_delta
