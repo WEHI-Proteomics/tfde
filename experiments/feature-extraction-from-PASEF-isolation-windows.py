@@ -412,11 +412,12 @@ def collate_spectra_for_feature(feature_df, ms2_deconvoluted_df):
 print("finding ms1 features")
 ms1_df_l = ray.get([find_features.remote(window_number=idx+1, window_df=group_df.iloc[0]) for idx,group_df in isolation_window_df.groupby('Precursor')])
 ms1_df = pd.concat(ms1_df_l)  # combines a list of dataframes into a single dataframe
-ms1_df.to_pickle('~/Downloads/ms1_df.pkl')
+ms1_df.to_pickle('./ms1_df.pkl')
 
 # remove duplicates in ms1
 print("removing duplicates")
 ms1_deduped_df = remove_ms1_duplicates(ms1_df)
+ms1_deduped_df.to_pickle('./ms1_deduped_df.pkl')
 print("removed {} duplicates - processing {} features".format(len(ms1_df)-len(ms1_deduped_df), len(ms1_deduped_df)))
 
 if args.create_new_prebin_ms2:
