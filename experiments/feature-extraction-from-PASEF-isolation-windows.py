@@ -9,6 +9,7 @@ import os.path
 import argparse
 import ray
 import time
+import pickle
 
 parser = argparse.ArgumentParser(description='Extract ms1 features from PASEF isolation windows.')
 parser.add_argument('-cdbb','--converted_database_base', type=str, help='base path to the converted database.', required=True)
