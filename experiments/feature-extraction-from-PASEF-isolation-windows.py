@@ -471,6 +471,7 @@ print("finding peaks in ms2 for each feature")
 mgf_spectra = []
 ms2_spectra = []
 for idx,feature_df in ms1_deduped_df.iterrows():
+    print("processing feature {} of {}".format(idx+1, len(ms1_deduped_df)))
     ms2_feature_df = ms2_points_for_feature(feature_df, binned_ms2_df)
     ms2_deconvoluted_df = deconvolute_ms2_peaks_for_feature(ms2_feature_df)
     feature_spectra = collate_spectra_for_feature(feature_df, ms2_deconvoluted_df)
