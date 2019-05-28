@@ -379,7 +379,7 @@ def deconvolute_ms2_peaks_for_feature(binned_ms2_df):
     print("{} ms2 peaks prior to deconvolution".format(len(ms2_peaks_df)))
 
     # deconvolute the peaks
-    ms2_deconvoluted_peaks, _ = deconvolute_peaks(ms2_peaks_l, averagine=averagine.peptide, charge_range=(1,5), scorer=scoring.MSDeconVFitter(10.0), truncate_after=0.95)
+    ms2_deconvoluted_peaks, _ = deconvolute_peaks(ms2_peaks_l, averagine=averagine.peptide, charge_range=(1,5), scorer=scoring.MSDeconVFitter(10.0), truncate_after=0.8)
 
     print("{} ms2 peaks after deconvolution".format(len(ms2_deconvoluted_peaks)))
 
