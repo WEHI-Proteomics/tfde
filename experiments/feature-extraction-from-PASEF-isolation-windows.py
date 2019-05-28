@@ -482,7 +482,7 @@ for idx,feature_df in ms1_deduped_df.iterrows():
     ms2_deconvoluted_df = deconvolute_ms2_peaks_for_feature(ms2_peaks_df)
     feature_spectra = collate_spectra_for_feature(feature_df, ms2_deconvoluted_df)
     mgf_spectra.append(feature_spectra)
-    ms2_spectra.append((feature_df, ms2_deconvoluted_df))
+    ms2_spectra.append((feature_df, feature_spectra))
 
 # generate the MGF for all the features
 print("generating the MGF: {}".format(args.mgf_filename))
@@ -490,8 +490,8 @@ if os.path.isfile(args.mgf_filename):
     os.remove(args.mgf_filename)
 mgf.write(output=args.mgf_filename, spectra=mgf_spectra)
 
-ms2_spectra_df = pd.DataFrame(ms2_spectra, columns=['feature', 'deconvoluted_ms2'])
-ms2_spectra_df.to_pickle('./deconvoluted_ms2_spectra.pkl')
+with open('./ms2_spectra.pkl', 'wb') as f:
+    pickle.dump(ms2_spectra, f)
 
 stop_run = time.time()
 info.append(("run processing time (sec)", stop_run-start_run))
