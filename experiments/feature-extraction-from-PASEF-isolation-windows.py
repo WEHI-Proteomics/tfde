@@ -400,16 +400,13 @@ def calc_centroid(bin_df):
     d['point_count'] = len(bin_df)
     return pd.Series(d, index=['bin_idx','mz_centroid','summed_intensity','point_count'])
 
-def ms2_points_for_feature(feature_df, binned_ms2_df):
-    # get the binned ms2 points for this feature
-    ms2_frame_ids = feature_df.ms2_frames
-    ms2_raw_points_df = binned_ms2_df[binned_ms2_df.frame_id.isin(ms2_frame_ids)]
-    # calculate the bin centroid and summed instensity for the combined frames
+# sum and centroid the ms2 bins for this feature
+def find_ms2_peaks_for_feature(feature_df, binned_ms2_df):
+    # calculate the bin centroid and summed intensity for the combined frames
     combined_ms2_df = ms2_raw_points_df.groupby(['bin_idx'], as_index=False).apply(calc_centroid)
     combined_ms2_df.summed_intensity = combined_ms2_df.summed_intensity.astype(int)
     combined_ms2_df.bin_idx = combined_ms2_df.bin_idx.astype(int)
     combined_ms2_df.point_count = combined_ms2_df.point_count.astype(int)
-
     return combined_ms2_df
 
 def collate_spectra_for_feature(feature_df, ms2_deconvoluted_df):
@@ -470,10 +467,14 @@ else:
 print("finding peaks in ms2 for each feature")
 mgf_spectra = []
 ms2_spectra = []
+ms1_deduped_df.reset_index(inplace=True)
 for idx,feature_df in ms1_deduped_df.iterrows():
     print("processing feature {} of {}".format(idx+1, len(ms1_deduped_df)))
-    ms2_feature_df = ms2_points_for_feature(feature_df, binned_ms2_df)
-    ms2_deconvoluted_df = deconvolute_ms2_peaks_for_feature(ms2_feature_df)
+    # get the binned ms2 points for this feature
+    ms2_frame_ids = feature_df.ms2_frames
+    ms2_raw_points_df = binned_ms2_df[binned_ms2_df.frame_id.isin(ms2_frame_ids)]
+    ms2_peaks_df = find_ms2_peaks_for_feature(feature_df, ms2_raw_points_df)
+    ms2_deconvoluted_df = deconvolute_ms2_peaks_for_feature(ms2_peaks_df)
     feature_spectra = collate_spectra_for_feature(feature_df, ms2_deconvoluted_df)
     mgf_spectra.append(feature_spectra)
     ms2_spectra.append((feature_df, ms2_deconvoluted_df))
