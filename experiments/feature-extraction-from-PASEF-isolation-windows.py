@@ -376,8 +376,12 @@ def deconvolute_ms2_peaks_for_feature(binned_ms2_df):
 
     ms2_peaks_df = pd.DataFrame(ms2_peaks_l, columns=['mz','intensity'])
 
+    print("{} ms2 peaks prior to deconvolution".format(len(ms2_peaks_df)))
+
     # deconvolute the peaks
     ms2_deconvoluted_peaks, _ = deconvolute_peaks(ms2_peaks_l, averagine=averagine.peptide, charge_range=(1,5), scorer=scoring.MSDeconVFitter(10.0), truncate_after=0.95)
+
+    print("{} ms2 peaks after deconvolution".format(len(ms2_deconvoluted_peaks)))
 
     ms2_deconvoluted_peaks_l = []
     for peak in ms2_deconvoluted_peaks:
@@ -386,6 +390,7 @@ def deconvolute_ms2_peaks_for_feature(binned_ms2_df):
             ms2_deconvoluted_peaks_l.append((round(peak.mz, 4), int(peak.charge), peak.neutral_mass, int(peak.intensity), peak.score, peak.signal_to_noise))
 
     ms2_deconvoluted_peaks_df = pd.DataFrame(ms2_deconvoluted_peaks_l, columns=['mz','charge','neutral_mass','intensity','score','SN'])
+    print("{} peaks after quality filtering".format(len(ms2_deconvoluted_peaks_df)))
     # 'neutral mass' is the zero charge M, so we add the proton mass to get M+H (the monoisotopic mass)
     ms2_deconvoluted_peaks_df['m_plus_h'] = ms2_deconvoluted_peaks_df.neutral_mass + PROTON_MASS
 
