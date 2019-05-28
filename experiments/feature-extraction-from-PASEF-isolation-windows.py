@@ -435,10 +435,12 @@ if args.new_ms1_features:
     ms1_df_l = ray.get([find_features.remote(window_number=idx+1, window_df=group_df.iloc[0]) for idx,group_df in isolation_window_df.groupby('Precursor')])
     ms1_df = pd.concat(ms1_df_l)  # combines a list of dataframes into a single dataframe
     ms1_df.to_pickle('./ms1_df.pkl')
+    print("detected {} features".format(len(ms1_df)))
 else:
     # load previously detected ms1 features
     print("loading ms1 features")
     ms1_df = pd.read_pickle(args.ms1_features_filename)
+    print("loaded {} features".format(len(ms1_df)))
 
 if args.new_dedup_ms1_features:
     # remove duplicates in ms1
@@ -450,16 +452,19 @@ else:
     # load previously de-duped ms1 features
     print("loading de-duped ms1 features")
     ms1_deduped_df = pd.read_pickle(args.dedup_ms1_filename)
+    print("loaded {} features".format(len(ms1_deduped_df)))
 
 if args.new_prebin_ms2:
     # bin ms2 frames
     print("binning ms2 frames")
     binned_ms2_df = bin_ms2_frames()
     binned_ms2_df.to_pickle(args.pre_binned_ms2_filename)
+    print("binned {} points".format(len(binned_ms2_df)))
 else:
     # load previously binned ms2
     print("loading pre-binned ms2 frames")
     binned_ms2_df = pd.read_pickle(args.pre_binned_ms2_filename)
+    print("loaded {} pre-binned points".format(len(binned_ms2_df)))
 
 # find ms2 peaks for each feature found in ms1, and collate the spectra for the MGF
 print("finding peaks in ms2 for each feature")
