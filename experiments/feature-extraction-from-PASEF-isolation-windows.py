@@ -436,7 +436,8 @@ def collate_spectra_for_feature(feature_df, ms2_deconvoluted_df):
     return spectrum
 
 @ray.remote
-def deconvolute_ms2(feature_df, binned_ms2_df):
+def deconvolute_ms2(feature_df, binned_ms2_df, idx, total):
+    print("processing feature idx {} of {}".format(idx, total))
     # get the binned ms2 points for this feature
     ms2_frame_ids = feature_df.ms2_frames
     ms2_raw_points_df = binned_ms2_df[binned_ms2_df.frame_id.isin(ms2_frame_ids)]
