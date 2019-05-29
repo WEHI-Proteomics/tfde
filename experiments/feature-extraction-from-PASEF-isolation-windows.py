@@ -341,13 +341,14 @@ def remove_ms1_duplicates(ms1_features_df):
         # find the matches within these tolerances
         cond_1 = (scratch_df.monoisotopic_mz >= mz_lower) & (scratch_df.monoisotopic_mz <= mz_upper) & (scratch_df.scan_apex >= scan_lower) & (scratch_df.scan_apex <= scan_upper) & (scratch_df.rt_apex >= rt_lower) & (scratch_df.rt_apex <= rt_upper)
         matching_rows = scratch_df.loc[cond_1, :]
-        scratch_df.drop(matching_rows.index, inplace=True)
         # of those, find the most intense
         cond_2 = (matching_rows.intensity == matching_rows.intensity.max())
         most_intense_row = matching_rows.loc[cond_2, :].copy()
         most_intense_row['duplicates'] = len(matching_rows)
         # add it to the list
         ms1_features_l.append(tuple(most_intense_row))
+        # drop the duplicates
+        scratch_df.drop(matching_rows.index, inplace=True)
 
         print("{} matches, {} remaining".format(len(matching_rows), len(scratch_df)))
 
