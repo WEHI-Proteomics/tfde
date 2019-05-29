@@ -321,9 +321,9 @@ def find_features(window_number, window_df):
 
 def remove_ms1_duplicates(ms1_features_df):
     scratch_df = ms1_features_df.copy() # take a copy because we're going to delete stuff
-    scratch_df.reset_index()
     ms1_peaks_l = []
     while len(scratch_df) > 0:
+        scratch_df.reset_index()
         # take the first row
         row = scratch_df.iloc[0]
         mz = row.monoisotopic_mz
