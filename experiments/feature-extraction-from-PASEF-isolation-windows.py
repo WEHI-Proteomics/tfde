@@ -339,21 +339,18 @@ def remove_ms1_duplicates(ms1_features_df):
         rt_upper = rt + RT_TOLERANCE
 
         # find the matches within these tolerances
-        matches_df = scratch_df[(scratch_df.monoisotopic_mz >= mz_lower) & (scratch_df.monoisotopic_mz <= mz_upper) & (scratch_df.scan_apex >= scan_lower) & (scratch_df.scan_apex <= scan_upper) & (scratch_df.rt_apex >= rt_lower) & (scratch_df.rt_apex <= rt_upper)]
+        matches_df = scratch_df[(scratch_df.monoisotopic_mz >= mz_lower) & (scratch_df.monoisotopic_mz <= mz_upper) & (scratch_df.scan_apex >= scan_lower) & (scratch_df.scan_apex <= scan_upper) & (scratch_df.rt_apex >= rt_lower) & (scratch_df.rt_apex <= rt_upper)].copy()
         matches_df.reset_index(inplace=True)
         print(matches_df.to_string())
         print(matches_df['intensity'])
-        if len(matches_df) == 1:
-            peak_df = matches_df
-        else:
-            peak_df = matches_df.loc[matches_df['intensity'].idxmax()].copy()
+        peak_df = matches_df.loc[matches_df['intensity'].idxmax()].copy()
         peak_df['duplicates'] = len(matches_df)
 
         # add the most intense to the list
         ms1_peaks_l.append(tuple(peak_df))
 
         # remove the matches
-        scratch_df = scratch_df[~scratch_df.isin(matches_df)].dropna(how = 'all')
+        scratch_df = scratch_df[~scratch_df.stack().isin(matches_df.stack().values).unstack()].dropna(how = 'all')
         print("{} matches, {} remaining".format(len(matches_df), len(scratch_df)))
 
     ms1_deduped_df = pd.DataFrame(ms1_peaks_l, columns=['monoisotopic_mass', 'charge', 'monoisotopic_mz', 'intensity', 'scan_apex', 'scan_curve_fit', 'rt_apex', 'rt_curve_fit', 'precursor_id', 'duplicates'])
