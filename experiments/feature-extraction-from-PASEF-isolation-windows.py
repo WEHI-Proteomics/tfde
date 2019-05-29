@@ -489,7 +489,7 @@ else:
 # find ms2 peaks for each feature found in ms1, and collate the spectra for the MGF
 print("finding peaks in ms2 for each feature")
 ms1_deduped_df.reset_index(drop=True, inplace=True)
-mgf_spectra_l = ray.get([deconvolute_ms2.remote(feature_df=feature_df, binned_ms2_df=binned_ms2_df, idx=idx, total=len(ms1_deduped_df)) for idx,feature_df in enumerate(ms1_deduped_df)])
+mgf_spectra_l = ray.get([deconvolute_ms2.remote(feature_df=feature_df, binned_ms2_df=binned_ms2_df, idx=idx, total=len(ms1_deduped_df)) for idx,feature_df in ms1_deduped_df.iterrows()])
 # write out the results for analysis
 with open('./mgf_spectra.pkl', 'wb') as f:
     pickle.dump(mgf_spectra_l, f)
