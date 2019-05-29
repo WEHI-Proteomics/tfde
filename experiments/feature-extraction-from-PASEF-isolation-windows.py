@@ -323,6 +323,7 @@ def remove_ms1_duplicates(ms1_features_df):
     scratch_df = ms1_features_df.copy() # take a copy because we're going to delete stuff
     ms1_peaks_l = []
     while len(scratch_df) > 0:
+        print("{} peaks remaining".format(len(scratch_df)))
         # take the first row
         row = scratch_df.iloc[0]
         mz = row.monoisotopic_mz
@@ -339,13 +340,10 @@ def remove_ms1_duplicates(ms1_features_df):
         rt_upper = rt + RT_TOLERANCE
 
         # find the matches within these tolerances
-        matches_df = scratch_df[(scratch_df.monoisotopic_mz >= mz_lower) & (scratch_df.monoisotopic_mz <= mz_upper) & (scratch_df.scan_apex >= scan_lower) & (scratch_df.scan_apex <= scan_upper) & (scratch_df.rt_apex >= rt_lower) & (scratch_df.rt_apex <= rt_upper)].copy()
-        if len(matches_df) > 1:
-            peak_df = matches_df.loc[matches_df.intensity.idxmax()].copy()
-        else:
-            peak_df = matches_df.copy()
+        matches_df = scratch_df[(scratch_df.monoisotopic_mz >= mz_lower) & (scratch_df.monoisotopic_mz <= mz_upper) & (scratch_df.scan_apex >= scan_lower) & (scratch_df.scan_apex <= scan_upper) & (scratch_df.rt_apex >= rt_lower) & (scratch_df.rt_apex <= rt_upper)]
+        print("{} matches".format(len(matches_df)))
+        peak_df = matches_df.loc[matches_df.intensity.idxmax()].copy()
         peak_df['duplicates'] = len(matches_df)
-        print("found {} duplicates; {} features remaining".format(len(matches_df), len(scratch_df)))
 
         # add the most intense to the list
         ms1_peaks_l.append(tuple(peak_df))
