@@ -411,9 +411,9 @@ def calc_centroid(bin_df):
     return pd.Series(d, index=['bin_idx','mz_centroid','summed_intensity','point_count'])
 
 # sum and centroid the ms2 bins for this feature
-def find_ms2_peaks_for_feature(feature_df, binned_ms2_df):
+def find_ms2_peaks_for_feature(feature_df, binned_ms2_for_feature_df):
     # calculate the bin centroid and summed intensity for the combined frames
-    combined_ms2_df = ms2_raw_points_df.groupby(['bin_idx'], as_index=False).apply(calc_centroid)
+    combined_ms2_df = binned_ms2_for_feature_df.groupby(['bin_idx'], as_index=False).apply(calc_centroid)
     combined_ms2_df.summed_intensity = combined_ms2_df.summed_intensity.astype(int)
     combined_ms2_df.bin_idx = combined_ms2_df.bin_idx.astype(int)
     combined_ms2_df.point_count = combined_ms2_df.point_count.astype(int)
@@ -440,9 +440,9 @@ def deconvolute_ms2(feature_df, binned_ms2_df, idx, total):
     print("processing feature idx {} of {}".format(idx, total))
     # get the binned ms2 points for this feature
     ms2_frame_ids = feature_df.ms2_frames
-    ms2_raw_points_df = binned_ms2_df[binned_ms2_df.frame_id.isin(ms2_frame_ids)]
+    binned_ms2_for_feature_df = binned_ms2_df[binned_ms2_df.frame_id.isin(ms2_frame_ids)]
     # detect peaks
-    ms2_peaks_df = find_ms2_peaks_for_feature(feature_df, ms2_raw_points_df)
+    ms2_peaks_df = find_ms2_peaks_for_feature(feature_df, binned_ms2_for_feature_df)
     # deconvolve the peaks
     ms2_deconvoluted_df = deconvolute_ms2_peaks_for_feature(ms2_peaks_df)
     # package it up for the MGF
