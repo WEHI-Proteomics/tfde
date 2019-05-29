@@ -474,6 +474,7 @@ else:
     ms1_deduped_df = pd.read_pickle(args.dedup_ms1_filename)
     print("loaded {} features".format(len(ms1_deduped_df)))
 
+binned_ms2_df = None  # placeholder
 if args.new_prebin_ms2:
     # bin ms2 frames
     print("binning ms2 frames")
