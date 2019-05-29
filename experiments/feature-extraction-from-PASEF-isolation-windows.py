@@ -321,7 +321,7 @@ def find_features(window_number, window_df):
 
 def remove_ms1_duplicates(ms1_features_df):
     scratch_df = ms1_features_df.copy() # take a copy because we're going to delete stuff
-    ms1_peaks_l = []
+    ms1_features_l = []
     while len(scratch_df) > 0:
         # take the first row
         row = scratch_df.iloc[0]
@@ -339,21 +339,20 @@ def remove_ms1_duplicates(ms1_features_df):
         rt_upper = rt + RT_TOLERANCE
 
         # find the matches within these tolerances
-        matches_df = scratch_df[(scratch_df.monoisotopic_mz >= mz_lower) & (scratch_df.monoisotopic_mz <= mz_upper) & (scratch_df.scan_apex >= scan_lower) & (scratch_df.scan_apex <= scan_upper) & (scratch_df.rt_apex >= rt_lower) & (scratch_df.rt_apex <= rt_upper)].copy()
-        matches_df.reset_index(inplace=True)
-        print(matches_df.to_string())
-        print(matches_df['intensity'])
-        peak_df = matches_df.loc[matches_df['intensity'].idxmax()].copy()
-        peak_df['duplicates'] = len(matches_df)
+        cond_1 = (scratch_df.monoisotopic_mz >= mz_lower) & (scratch_df.monoisotopic_mz <= mz_upper) & (scratch_df.scan_apex >= scan_lower) & (scratch_df.scan_apex <= scan_upper) & (scratch_df.rt_apex >= rt_lower) & (scratch_df.rt_apex <= rt_upper)
+        matching_rows = scratch_df.loc[cond_1, :]
+        scratch_df.drop(matching_rows.index, inplace=True)
+        # of those, find the most intense
+        cond_2 = matching_rows.intensity.idxmax()
+        most_intense_row = matching_rows.loc[cond_2, :].copy()
+        most_intense_row['duplicates'] = len(matching_rows)
+        # add it to the list
+        ms1_features_l.append(tuple(most_intense_row))
 
-        # add the most intense to the list
-        ms1_peaks_l.append(tuple(peak_df))
+        print("{} matches, {} remaining".format(len(matching_rows), len(scratch_df)))
 
-        # remove the matches
-        scratch_df = scratch_df[~scratch_df.stack().isin(matches_df.stack().values).unstack()].dropna(how = 'all')
-        print("{} matches, {} remaining".format(len(matches_df), len(scratch_df)))
-
-    ms1_deduped_df = pd.DataFrame(ms1_peaks_l, columns=['monoisotopic_mass', 'charge', 'monoisotopic_mz', 'intensity', 'scan_apex', 'scan_curve_fit', 'rt_apex', 'rt_curve_fit', 'precursor_id', 'duplicates'])
+    cols = scratch_df.columns.append(pd.Index(['duplicates']))
+    ms1_deduped_df = pd.DataFrame(ms1_features_l, columns=cols)
     ms1_deduped_df.sort_values(by=['intensity'], ascending=False, inplace=True)
     ms1_deduped_df["feature_id"] = np.arange(start=1, stop=len(ms1_deduped_df)+1)
     return ms1_deduped_df
