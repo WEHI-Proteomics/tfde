@@ -351,8 +351,6 @@ def remove_ms1_duplicates(ms1_features_df):
         # drop the duplicates
         scratch_df.drop(matching_rows.index, inplace=True)
 
-        print("{} matches, {} remaining".format(len(matching_rows), len(scratch_df)))
-
     cols = scratch_df.columns.append(pd.Index(['duplicates']))
     ms1_deduped_df = pd.DataFrame(ms1_features_l, columns=cols)
     ms1_deduped_df.sort_values(by=['intensity'], ascending=False, inplace=True)
