@@ -340,7 +340,7 @@ def remove_ms1_duplicates(ms1_features_df):
 
         # find the matches within these tolerances
         matches_df = scratch_df[(scratch_df.monoisotopic_mz >= mz_lower) & (scratch_df.monoisotopic_mz <= mz_upper) & (scratch_df.scan_apex >= scan_lower) & (scratch_df.scan_apex <= scan_upper) & (scratch_df.rt_apex >= rt_lower) & (scratch_df.rt_apex <= rt_upper)]
-        matches_df.reset_index()
+        matches_df.reset_index(inplace=True)
         print(matches_df.to_string())
         print(matches_df['intensity'])
         if len(matches_df) == 1:
