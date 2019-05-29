@@ -435,6 +435,18 @@ def collate_spectra_for_feature(feature_df, ms2_deconvoluted_df):
     spectrum["params"] = params
     return spectrum
 
+@ray.remote
+def deconvolute_ms2(feature_df, binned_ms2_df):
+    # get the binned ms2 points for this feature
+    ms2_frame_ids = feature_df.ms2_frames
+    ms2_raw_points_df = binned_ms2_df[binned_ms2_df.frame_id.isin(ms2_frame_ids)]
+    # detect peaks
+    ms2_peaks_df = find_ms2_peaks_for_feature(feature_df, ms2_raw_points_df)
+    # deconvolve the peaks
+    ms2_deconvoluted_df = deconvolute_ms2_peaks_for_feature(ms2_peaks_df)
+    # package it up for the MGF
+    feature_spectra = collate_spectra_for_feature(feature_df, ms2_deconvoluted_df)
+    return feature_spectra
 
 if args.new_ms1_features:
     # find ms1 features for each unique precursor ID
@@ -475,28 +487,17 @@ else:
 
 # find ms2 peaks for each feature found in ms1, and collate the spectra for the MGF
 print("finding peaks in ms2 for each feature")
-mgf_spectra = []
-ms2_spectra = []
-ms1_deduped_df.reset_index(inplace=True)
-for idx,feature_df in ms1_deduped_df.iterrows():
-    print("processing feature {} of {}".format(idx+1, len(ms1_deduped_df)))
-    # get the binned ms2 points for this feature
-    ms2_frame_ids = feature_df.ms2_frames
-    ms2_raw_points_df = binned_ms2_df[binned_ms2_df.frame_id.isin(ms2_frame_ids)]
-    ms2_peaks_df = find_ms2_peaks_for_feature(feature_df, ms2_raw_points_df)
-    ms2_deconvoluted_df = deconvolute_ms2_peaks_for_feature(ms2_peaks_df)
-    feature_spectra = collate_spectra_for_feature(feature_df, ms2_deconvoluted_df)
-    mgf_spectra.append(feature_spectra)
-    ms2_spectra.append((feature_df, feature_spectra))
+ms1_deduped_df.reset_index(drop=True, inplace=True)
+mgf_spectra_l = ray.get([deconvolute_ms2.remote(feature_df=feature_df, binned_ms2_df=binned_ms2_df, idx=idx, total=len(ms1_deduped_df)) for idx,feature_df in enumerate(ms1_deduped_df)])
+# write out the results for analysis
+with open('./mgf_spectra.pkl', 'wb') as f:
+    pickle.dump(mgf_spectra_l, f)
 
 # generate the MGF for all the features
 print("generating the MGF: {}".format(args.mgf_filename))
 if os.path.isfile(args.mgf_filename):
     os.remove(args.mgf_filename)
 mgf.write(output=args.mgf_filename, spectra=mgf_spectra)
-
-with open('./ms2_spectra.pkl', 'wb') as f:
-    pickle.dump(ms2_spectra, f)
 
 stop_run = time.time()
 info.append(("run processing time (sec)", stop_run-start_run))
