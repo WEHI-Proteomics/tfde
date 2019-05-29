@@ -344,7 +344,7 @@ def remove_ms1_duplicates(ms1_features_df):
         scratch_df.drop(scratch_df[matching_idxs].index, axis=0, inplace=True)
 
         # add the most intense match to the list
-        peak_df = matches_df[matches_df.intensity == matches_df.intensity.max()]
+        peak_df = matches_df[matches_df.intensity == matches_df.intensity.max()].copy()
         peak_df['duplicates'] = len(matches_df)
         ms1_peaks_l.append(peak_df)
 
