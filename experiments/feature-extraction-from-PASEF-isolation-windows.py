@@ -323,7 +323,7 @@ def remove_ms1_duplicates(ms1_features_df):
     scratch_df = ms1_features_df.copy() # take a copy because we're going to delete stuff
     ms1_features_l = []
     while len(scratch_df) > 0:
-        scratch_df.reset_index(inplace=True)
+        scratch_df.reset_index(drop=True, inplace=True)
         # take the first row
         row = scratch_df.iloc[0]
         mz = row.monoisotopic_mz
