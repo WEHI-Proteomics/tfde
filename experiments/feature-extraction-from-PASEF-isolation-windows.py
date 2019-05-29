@@ -343,8 +343,8 @@ def remove_ms1_duplicates(ms1_features_df):
         matching_rows = scratch_df.loc[cond_1, :]
         scratch_df.drop(matching_rows.index, inplace=True)
         # of those, find the most intense
-        cond_2 = (scratch_df.intensity == scratch_df.intensity.max())
-        most_intense_row = matching_rows.loc[cond_2, :].copy(ignore_index=True)
+        cond_2 = (matching_rows.intensity == matching_rows.intensity.max())
+        most_intense_row = matching_rows.loc[cond_2, :].copy()
         most_intense_row['duplicates'] = len(matching_rows)
         # add it to the list
         ms1_features_l.append(tuple(most_intense_row))
