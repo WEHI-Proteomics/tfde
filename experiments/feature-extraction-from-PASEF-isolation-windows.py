@@ -41,7 +41,7 @@ if not ray.is_initialized():
     if args.cluster_mode:
         ray.init(redis_address="localhost:6379")
     else:
-        ray.init(object_store_memory=50000000000)
+        ray.init(object_store_memory=100000000000)
 
 start_run = time.time()
 
