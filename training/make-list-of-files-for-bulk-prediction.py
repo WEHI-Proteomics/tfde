@@ -3,7 +3,7 @@
 
 import glob,os
 
-BASE_DIR = './yolo-train-rt-1000-4200-15-may'
+BASE_DIR = './yolo-train-rt-1000-4200-23-may'
 TEST_DIR = '{}/test'.format(BASE_DIR)
 TARGET_DIR = 'data/peptides/test'
 TILE_ID = 33
