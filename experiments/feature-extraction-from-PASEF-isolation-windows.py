@@ -463,7 +463,7 @@ if args.new_ms1_features:
     print("finding ms1 features")
     ms1_df_l = ray.get([find_features.remote(window_number=idx+1, window_df=group_df.iloc[0]) for idx,group_df in isolation_window_df.groupby('Precursor')])
     ms1_df = pd.concat(ms1_df_l)  # combines a list of dataframes into a single dataframe
-    ms1_df.to_pickle('./ms1_df.pkl')
+    ms1_df.to_pickle(args.ms1_features_filename)
     print("detected {} features".format(len(ms1_df)))
 else:
     # load previously detected ms1 features
