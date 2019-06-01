@@ -501,13 +501,13 @@ if args.new_mgf_spectra:
     ms1_deduped_df.reset_index(drop=True, inplace=True)
     mgf_spectra_l = ray.get([deconvolute_ms2.remote(feature_df=feature_df, binned_ms2_for_feature=binned_ms2_df[binned_ms2_df.frame_id.isin(feature_df.ms2_frames)], idx=idx, total=len(ms1_deduped_df)) for idx,feature_df in ms1_deduped_df.iterrows()])
     # write out the results for analysis
-    with open(args.mgf_spectra, 'wb') as f:
+    with open(args.mgf_spectra_filename, 'wb') as f:
         pickle.dump(mgf_spectra_l, f)
 else:
     # load previously saved mgf spectra
-    with open(args.mgf_spectra, 'rb') as f:
+    with open(args.mgf_spectra_filename, 'rb') as f:
         mgf_spectra_l = pickle.load(f)
-    print("loaded the mgf spectra from {}".format(args.mgf_spectra))
+    print("loaded the mgf spectra from {}".format(args.mgf_spectra_filename))
 
 # generate the MGF for all the features
 print("generating the MGF: {}".format(args.mgf_filename))
