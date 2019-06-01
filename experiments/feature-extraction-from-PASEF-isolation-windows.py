@@ -440,7 +440,8 @@ def collate_spectra_for_feature(feature_df, ms2_deconvoluted_df):
     params = {}
     params["TITLE"] = "RawFile: {} Index: 10 precursor: {} Charge: {} FeatureIntensity: {} Feature#: {} RtApex: {}".format(os.path.basename(CONVERTED_DATABASE_NAME).split('.')[0], feature_df.precursor_id, feature_df.charge, feature_df.intensity, feature_df.feature_id, round(feature_df.rt_apex,2))
     params["INSTRUMENT"] = "ESI-QUAD-TOF"
-    params["PEPMASS"] = "{} {}".format(round(feature_df.monoisotopic_mass,6), feature_df.intensity)
+    # params["PEPMASS"] = "{} {}".format(round(feature_df.monoisotopic_mass,6), feature_df.intensity)
+    params["PEPMASS"] = "{} {}".format(round(feature_df.monoisotopic_mass-PROTON_MASS,6), feature_df.intensity)
     params["CHARGE"] = "{}+".format(feature_df.charge)
     params["RTINSECONDS"] = "{}".format(round(feature_df.rt_apex,2))
     params["SCANS"] = "{}".format(int(feature_df.rt_apex))
