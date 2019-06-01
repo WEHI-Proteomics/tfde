@@ -233,20 +233,19 @@ def find_features(window_number, window_df):
     for peak in deconvoluted_peaks:
         # discard a monoisotopic peak that has either of the first two peaks as placeholders (indicated by intensity of 1)
         if ((len(peak.envelope) >= 3) and (peak.envelope[0][1] > 1) and (peak.envelope[1][1] > 1)):
-            ms1_deconvoluted_peaks_l.append((peak.mz, peak.neutral_mass, peak.intensity, peak.score, peak.signal_to_noise, peak.envelope, peak.charge))
+            monoisotopic_peak_mz = peak.envelope[0][0]
+            second_peak_mz = peak.envelope[1][0]
+            ms1_deconvoluted_peaks_l.append((monoisotopic_peak_mz, second_peak_mz, peak.neutral_mass, peak.intensity, peak.score, peak.signal_to_noise, peak.charge))
 
-    ms1_deconvoluted_peaks_df = pd.DataFrame(ms1_deconvoluted_peaks_l, columns=['mz','neutral_mass','intensity','score','SN','envelope','charge'])
-    # 'neutral mass' is the zero charge M, so we add the proton mass to get M+H (the monoisotopic mass)
-    ms1_deconvoluted_peaks_df['m_plus_h'] = ms1_deconvoluted_peaks_df.neutral_mass + PROTON_MASS
+    ms1_deconvoluted_peaks_df = pd.DataFrame(ms1_deconvoluted_peaks_l, columns=['mono_mz','second_peak_mz','neutral_mass','intensity','score','SN','charge'])
 
     # For each monoisotopic peak found, find its apex in RT and mobility
     print("window {}, processing {} monoisotopics".format(window_number, len(ms1_deconvoluted_peaks_df)))
     for monoisotopic_idx in range(len(ms1_deconvoluted_peaks_df)):
-        feature_monoisotopic_mz = ms1_deconvoluted_peaks_df.iloc[monoisotopic_idx].mz
+        feature_monoisotopic_mz = ms1_deconvoluted_peaks_df.iloc[monoisotopic_idx].mono_mz
+        second_peak_mz = ms1_deconvoluted_peaks_df.iloc[monoisotopic_idx].second_peak_mz
         feature_charge = int(ms1_deconvoluted_peaks_df.iloc[monoisotopic_idx].charge)
         feature_intensity = int(ms1_deconvoluted_peaks_df.iloc[monoisotopic_idx].intensity)
-        second_peak_mz = ms1_deconvoluted_peaks_df.iloc[monoisotopic_idx].envelope[1][0]
-        feature_monoisotopic_mass = ms1_deconvoluted_peaks_df.iloc[monoisotopic_idx].m_plus_h
 
         # Get the raw points for the monoisotopic peak (constrained by the fragmentation event)
         MZ_TOLERANCE_PPM = 20
@@ -326,9 +325,9 @@ def find_features(window_number, window_df):
 
             if len(isolation_windows_overlapping_feature_df) > 0:
                 ms2_frames = list(isolation_windows_overlapping_feature_df.Frame)
-                ms1_characteristics_l.append((round(feature_monoisotopic_mass,6), feature_charge, feature_monoisotopic_mz, feature_intensity, feature_scan_apex, mobility_curve_fit, round(feature_rt_apex,2), rt_curve_fit, precursor_id, ms2_frames))
+                ms1_characteristics_l.append(feature_monoisotopic_mz, feature_charge, feature_intensity, feature_scan_apex, mobility_curve_fit, round(feature_rt_apex,2), rt_curve_fit, precursor_id, ms2_frames))
 
-    ms1_characteristics_df = pd.DataFrame(ms1_characteristics_l, columns=['monoisotopic_mass', 'charge', 'monoisotopic_mz', 'intensity', 'scan_apex', 'scan_curve_fit', 'rt_apex', 'rt_curve_fit', 'precursor_id', 'ms2_frames'])
+    ms1_characteristics_df = pd.DataFrame(ms1_characteristics_l, columns=['monoisotopic_mz', 'charge', 'intensity', 'scan_apex', 'scan_curve_fit', 'rt_apex', 'rt_curve_fit', 'precursor_id', 'ms2_frames'])
     return ms1_characteristics_df
 
 def remove_ms1_duplicates(ms1_features_df):
@@ -404,12 +403,11 @@ def deconvolute_ms2_peaks_for_feature(binned_ms2_df):
     for peak in ms2_deconvoluted_peaks:
         # discard a monoisotopic peak that has either of the first two peaks as placeholders (indicated by intensity of 1)
         if ((len(peak.envelope) >= 3) and (peak.envelope[0][1] > 1) and (peak.envelope[1][1] > 1)):
-            ms2_deconvoluted_peaks_l.append((round(peak.mz, 4), int(peak.charge), peak.neutral_mass, int(peak.intensity), peak.score, peak.signal_to_noise))
+            mz_h = peak.envelope[0][0] + PROTON_MASS
+            ms2_deconvoluted_peaks_l.append((round(mz_h, 4), int(peak.charge), int(peak.intensity), peak.score, peak.signal_to_noise))
 
-    ms2_deconvoluted_peaks_df = pd.DataFrame(ms2_deconvoluted_peaks_l, columns=['mz','charge','neutral_mass','intensity','score','SN'])
+    ms2_deconvoluted_peaks_df = pd.DataFrame(ms2_deconvoluted_peaks_l, columns=['mz_h','charge','intensity','score','SN'])
     print("{} peaks after quality filtering".format(len(ms2_deconvoluted_peaks_df)))
-    # 'neutral mass' is the zero charge M, so we add the proton mass to get M+H (the monoisotopic mass)
-    ms2_deconvoluted_peaks_df['m_plus_h'] = ms2_deconvoluted_peaks_df.neutral_mass + PROTON_MASS
 
     return ms2_deconvoluted_peaks_df
 
@@ -433,15 +431,14 @@ def find_ms2_peaks_for_feature(feature_df, binned_ms2_for_feature_df):
 
 def collate_spectra_for_feature(feature_df, ms2_deconvoluted_df):
     # append the monoisotopic and the ms2 fragments to the list for MGF creation
-    pairs_df = ms2_deconvoluted_df[['mz', 'intensity']].copy().sort_values(by=['intensity'], ascending=False)
+    pairs_df = ms2_deconvoluted_df[['mz_h', 'intensity']].copy().sort_values(by=['intensity'], ascending=False)
     spectrum = {}
-    spectrum["m/z array"] = pairs_df.mz.values
+    spectrum["m/z array"] = pairs_df.mz_h.values
     spectrum["intensity array"] = pairs_df.intensity.values
     params = {}
     params["TITLE"] = "RawFile: {} Index: 10 precursor: {} Charge: {} FeatureIntensity: {} Feature#: {} RtApex: {}".format(os.path.basename(CONVERTED_DATABASE_NAME).split('.')[0], feature_df.precursor_id, feature_df.charge, feature_df.intensity, feature_df.feature_id, round(feature_df.rt_apex,2))
     params["INSTRUMENT"] = "ESI-QUAD-TOF"
-    # params["PEPMASS"] = "{} {}".format(round(feature_df.monoisotopic_mass,6), feature_df.intensity)
-    params["PEPMASS"] = "{} {}".format(round(feature_df.monoisotopic_mass-PROTON_MASS,6), feature_df.intensity)
+    params["PEPMASS"] = "{} {}".format(round(feature_df.monoisotopic_mz,6), feature_df.intensity)
     params["CHARGE"] = "{}+".format(feature_df.charge)
     params["RTINSECONDS"] = "{}".format(round(feature_df.rt_apex,2))
     params["SCANS"] = "{}".format(int(feature_df.rt_apex))
