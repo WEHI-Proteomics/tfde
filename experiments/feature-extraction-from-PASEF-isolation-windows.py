@@ -325,7 +325,7 @@ def find_features(window_number, window_df):
 
             if len(isolation_windows_overlapping_feature_df) > 0:
                 ms2_frames = list(isolation_windows_overlapping_feature_df.Frame)
-                ms1_characteristics_l.append(feature_monoisotopic_mz, feature_charge, feature_intensity, feature_scan_apex, mobility_curve_fit, round(feature_rt_apex,2), rt_curve_fit, precursor_id, ms2_frames)
+                ms1_characteristics_l.append((feature_monoisotopic_mz, feature_charge, feature_intensity, feature_scan_apex, mobility_curve_fit, round(feature_rt_apex,2), rt_curve_fit, precursor_id, ms2_frames))
 
     ms1_characteristics_df = pd.DataFrame(ms1_characteristics_l, columns=['monoisotopic_mz', 'charge', 'intensity', 'scan_apex', 'scan_curve_fit', 'rt_apex', 'rt_curve_fit', 'precursor_id', 'ms2_frames'])
     return ms1_characteristics_df
