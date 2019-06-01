@@ -32,6 +32,8 @@ parser.add_argument('-ms1f','--ms1_features_filename', type=str, default='./ms1_
 parser.add_argument('-nms1f','--new_ms1_features', action='store_true', help='Create a new ms1 features file.')
 parser.add_argument('-ddms1','--dedup_ms1_filename', type=str, default='./ms1_deduped_df.pkl', help='File containing de-duped ms1 features.', required=False)
 parser.add_argument('-nddms1','--new_dedup_ms1_features', action='store_true', help='Create a new de-duped ms1 features file.')
+parser.add_argument('-mgfn','--mgf_spectra_filename', type=str, default='./mgf_spectra.pkl', help='File containing mgf spectra.', required=False)
+parser.add_argument('-nmgf','--new_mgf_spectra', action='store_true', help='Create a new mgf spectra file.')
 parser.add_argument('-cl','--cluster_mode', action='store_true', help='Run on a cluster.')
 parser.add_argument('-tm','--test_mode', action='store_true', help='A small subset of the data for testing purposes.')
 args = parser.parse_args()
@@ -86,6 +88,14 @@ else:
         print("The de-duped ms1 features file is required but doesn't exist: {}".format(args.dedup_ms1_filename))
         sys.exit(1)
 
+if args.new_mgf_spectra:
+    if os.path.isfile(args.mgf_spectra_filename):
+        os.remove(args.mgf_spectra_filename)
+else:
+    if not os.path.isfile(args.mgf_spectra_filename):
+        print("The mgf spectra file is required but doesn't exist: {}".format(args.mgf_spectra_filename))
+        sys.exit(1)
+
 PROTON_MASS = 1.0073  # Mass of a proton in unified atomic mass units, or Da. For calculating the monoisotopic mass.
 
 # ms1 duplicate tolerances
@@ -105,6 +115,8 @@ db_conn.close()
 db_conn = sqlite3.connect(RAW_DATABASE_NAME)
 isolation_window_df = pd.read_sql_query("select * from PasefFrameMsMsInfo", db_conn)
 db_conn.close()
+
+print("loaded {} isolation windows from {}".format(len(isolation_window_df), RAW_DATABASE_NAME))
 
 # add-in the retention time for the isolation windows and filter out the windows not in range
 isolation_window_df = pd.merge(isolation_window_df, ms2_frame_properties_df, how='left', left_on=['Frame'], right_on=['frame_id'])
@@ -483,19 +495,24 @@ else:
     binned_ms2_df = pd.read_pickle(args.pre_binned_ms2_filename)
     print("loaded {} pre-binned points".format(len(binned_ms2_df)))
 
-# find ms2 peaks for each feature found in ms1, and collate the spectra for the MGF
-print("finding peaks in ms2 for each feature")
-ms1_deduped_df.reset_index(drop=True, inplace=True)
-mgf_spectra_l = ray.get([deconvolute_ms2.remote(feature_df=feature_df, binned_ms2_for_feature=binned_ms2_df[binned_ms2_df.frame_id.isin(feature_df.ms2_frames)], idx=idx, total=len(ms1_deduped_df)) for idx,feature_df in ms1_deduped_df.iterrows()])
-# write out the results for analysis
-with open('./mgf_spectra.pkl', 'wb') as f:
-    pickle.dump(mgf_spectra_l, f)
+if args.new_mgf_spectra:
+    # find ms2 peaks for each feature found in ms1, and collate the spectra for the MGF
+    print("finding peaks in ms2 for each feature")
+    ms1_deduped_df.reset_index(drop=True, inplace=True)
+    mgf_spectra_l = ray.get([deconvolute_ms2.remote(feature_df=feature_df, binned_ms2_for_feature=binned_ms2_df[binned_ms2_df.frame_id.isin(feature_df.ms2_frames)], idx=idx, total=len(ms1_deduped_df)) for idx,feature_df in ms1_deduped_df.iterrows()])
+    # write out the results for analysis
+    with open('./mgf_spectra.pkl', 'wb') as f:
+        pickle.dump(mgf_spectra_l, f)
+else:
+    # load previously saved mgf spectra
+    with open('./mgf_spectra.pkl', 'rb') as f:
+        mgf_spectra_l = pickle.load(f)
 
 # generate the MGF for all the features
 print("generating the MGF: {}".format(args.mgf_filename))
 if os.path.isfile(args.mgf_filename):
     os.remove(args.mgf_filename)
-mgf.write(output=args.mgf_filename, spectra=mgf_spectra)
+mgf.write(output=args.mgf_filename, spectra=mgf_spectra_l)
 
 stop_run = time.time()
 info.append(("run processing time (sec)", stop_run-start_run))
