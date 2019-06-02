@@ -233,19 +233,20 @@ def find_features(window_number, window_df):
     for peak in deconvoluted_peaks:
         # discard a monoisotopic peak that has either of the first two peaks as placeholders (indicated by intensity of 1)
         if ((len(peak.envelope) >= 3) and (peak.envelope[0][1] > 1) and (peak.envelope[1][1] > 1)):
-            monoisotopic_peak_mz = peak.envelope[0][0]
+            mono_peak_mz = peak.envelope[0][0]
+            mono_intensity = peak.envelope[0][1]
             second_peak_mz = peak.envelope[1][0]
-            ms1_deconvoluted_peaks_l.append((monoisotopic_peak_mz, second_peak_mz, peak.neutral_mass, peak.intensity, peak.score, peak.signal_to_noise, peak.charge))
+            ms1_deconvoluted_peaks_l.append((mono_peak_mz, second_peak_mz, mono_intensity, peak.score, peak.signal_to_noise, peak.charge))
 
-    ms1_deconvoluted_peaks_df = pd.DataFrame(ms1_deconvoluted_peaks_l, columns=['mono_mz','second_peak_mz','neutral_mass','intensity','score','SN','charge'])
+    ms1_deconvoluted_peaks_df = pd.DataFrame(ms1_deconvoluted_peaks_l, columns=['mono_mz','second_peak_mz','intensity','score','SN','charge'])
 
     # For each monoisotopic peak found, find its apex in RT and mobility
     print("window {}, processing {} monoisotopics".format(window_number, len(ms1_deconvoluted_peaks_df)))
     for monoisotopic_idx in range(len(ms1_deconvoluted_peaks_df)):
         feature_monoisotopic_mz = ms1_deconvoluted_peaks_df.iloc[monoisotopic_idx].mono_mz
+        feature_intensity = int(ms1_deconvoluted_peaks_df.iloc[monoisotopic_idx].intensity)
         second_peak_mz = ms1_deconvoluted_peaks_df.iloc[monoisotopic_idx].second_peak_mz
         feature_charge = int(ms1_deconvoluted_peaks_df.iloc[monoisotopic_idx].charge)
-        feature_intensity = int(ms1_deconvoluted_peaks_df.iloc[monoisotopic_idx].intensity)
 
         # Get the raw points for the monoisotopic peak (constrained by the fragmentation event)
         MZ_TOLERANCE_PPM = 20
@@ -403,8 +404,9 @@ def deconvolute_ms2_peaks_for_feature(binned_ms2_df):
     for peak in ms2_deconvoluted_peaks:
         # discard a monoisotopic peak that has either of the first two peaks as placeholders (indicated by intensity of 1)
         if ((len(peak.envelope) >= 3) and (peak.envelope[0][1] > 1) and (peak.envelope[1][1] > 1)):
-            mz_h = peak.envelope[0][0] + PROTON_MASS
-            ms2_deconvoluted_peaks_l.append((round(mz_h, 4), int(peak.charge), int(peak.intensity), peak.score, peak.signal_to_noise))
+            mono_mz_h = peak.envelope[0][0] + PROTON_MASS
+            mono_intensity = peak.envelope[0][1]
+            ms2_deconvoluted_peaks_l.append((round(mono_mz_h, 4), int(peak.charge), int(mono_intensity), peak.score, peak.signal_to_noise))
 
     ms2_deconvoluted_peaks_df = pd.DataFrame(ms2_deconvoluted_peaks_l, columns=['mz_h','charge','intensity','score','SN'])
     print("{} peaks after quality filtering".format(len(ms2_deconvoluted_peaks_df)))
