@@ -14,6 +14,7 @@ import pickle
 parser = argparse.ArgumentParser(description='Extract ms1 features from PASEF isolation windows.')
 parser.add_argument('-cdbb','--converted_database_base', type=str, help='base path to the converted database.', required=True)
 parser.add_argument('-rdbb','--raw_database_base', type=str, help='base path to the raw database.', required=True)
+parser.add_argument('-mqtb','--maxquant_text_base', type=str, help='base path to MaxQuant text directory.', required=True)
 parser.add_argument('-mgf','--mgf_filename', type=str, help='File name of the MGF to be generated.', required=True)
 parser.add_argument('-rtl','--rt_lower', type=float, help='The lower limit of retention time (secs).', required=True)
 parser.add_argument('-rtu','--rt_upper', type=float, help='The upper limit of retention time (secs).', required=True)
@@ -95,6 +96,25 @@ else:
     if not os.path.isfile(args.mgf_spectra_filename):
         print("The mgf spectra file is required but doesn't exist: {}".format(args.mgf_spectra_filename))
         sys.exit(1)
+
+ALLPEPTIDES_FILENAME = '{}/allPeptides.txt'.format(args.maxquant_text_base)
+if not os.path.isfile(ALLPEPTIDES_FILENAME):
+    print("The allPeptides file is required but doesn't exist: {}".format(ALLPEPTIDES_FILENAME))
+    sys.exit(1)
+
+PASEF_MSMS_SCANS_FILENAME = '{}/pasefMsmsScans.txt'.format(args.maxquant_text_base)
+if not os.path.isfile(PASEF_MSMS_SCANS_FILENAME):
+    print("The pasef msms scans file is required but doesn't exist: {}".format(PASEF_MSMS_SCANS_FILENAME))
+    sys.exit(1)
+
+# load the pasef msms scans
+pasef_msms_scans_df = pd.read_csv(PASEF_MSMS_SCANS_FILENAME, sep='\t')
+
+# load the allPeptides
+allpeptides_df = pd.read_csv(ALLPEPTIDES_FILENAME, sep='\t')
+allpeptides_df.rename(columns={'Number of isotopic peaks':'isotope_count', 'm/z':'mz', 'Number of data points':'number_data_points', 'Intensity':'intensity', 'Ion mobility index':'scan', 'Ion mobility index length':'scan_length', 'Ion mobility index length (FWHM)':'scan_length_fwhm', 'Retention time':'rt', 'Retention length':'rt_length', 'Retention length (FWHM)':'rt_length_fwhm', 'Charge':'charge_state', 'Number of pasef MS/MS':'number_pasef_ms2_ids', 'Pasef MS/MS IDs':'pasef_msms_ids', 'MS/MS scan number':'msms_scan_number', 'Isotope correlation':'isotope_correlation'}, inplace=True)
+allpeptides_df = allpeptides_df[allpeptides_df.intensity.notnull() & allpeptides_df.pasef_msms_ids.notnull()].copy()
+allpeptides_df.msms_scan_number = allpeptides_df.msms_scan_number.apply(lambda x: int(x))
 
 PROTON_MASS = 1.0073  # Mass of a proton in unified atomic mass units, or Da. For calculating the monoisotopic mass.
 
@@ -438,7 +458,8 @@ def collate_spectra_for_feature(feature_df, ms2_deconvoluted_df):
     spectrum["m/z array"] = pairs_df.mz_h.values
     spectrum["intensity array"] = pairs_df.intensity.values
     params = {}
-    params["TITLE"] = "RawFile: {} Index: 10 precursor: {} Charge: {} FeatureIntensity: {} Feature#: {} RtApex: {}".format(os.path.basename(CONVERTED_DATABASE_NAME).split('.')[0], feature_df.precursor_id, feature_df.charge, feature_df.intensity, feature_df.feature_id, round(feature_df.rt_apex,2))
+    msms_scan_number = msms_scan_number_from_precursor(feature_df.precursor_id)
+    params["TITLE"] = "RawFile: {} Index: {} precursor: {} Charge: {} FeatureIntensity: {} Feature#: {} RtApex: {}".format(os.path.basename(CONVERTED_DATABASE_NAME).split('.')[0], msms_scan_number, feature_df.precursor_id, feature_df.charge, feature_df.intensity, feature_df.feature_id, round(feature_df.rt_apex,2))
     params["INSTRUMENT"] = "ESI-QUAD-TOF"
     params["PEPMASS"] = "{} {}".format(round(feature_df.monoisotopic_mz,6), feature_df.intensity)
     params["CHARGE"] = "{}+".format(feature_df.charge)
@@ -458,6 +479,22 @@ def deconvolute_ms2(feature_df, binned_ms2_for_feature, idx, total):
     feature_spectra = collate_spectra_for_feature(feature_df, ms2_deconvoluted_df)
     return feature_spectra
 
+def msms_scan_number_from_precursor(precursor_id):
+    msms_scan_number = None
+    rows = pasef_msms_scans_df[pasef_msms_scans_df.Precursor == precursor_id].Index
+    if len(rows) == 1:
+        pasef_msms_id = rows.iloc[0]
+        rows = allpeptides_df[allpeptides_df.pasef_msms_ids_list.apply(lambda x: pasef_msms_id in x)].msms_scan_number
+        if len(rows) == 1:
+            msms_scan_number = rows.iloc[0]
+        else:
+            print("Error: expecting one msms_scan_number for this precursor (found {})".format(len(rows)))
+    else:
+        print("Error: expecting one index for this precursor (found {})".format(len(rows)))
+    return msms_scan_number
+
+
+#########################################################
 if args.new_ms1_features:
     # find ms1 features for each unique precursor ID
     print("finding ms1 features")
