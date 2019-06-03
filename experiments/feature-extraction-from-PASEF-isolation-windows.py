@@ -451,6 +451,20 @@ def find_ms2_peaks_for_feature(feature_df, binned_ms2_for_feature_df):
     combined_ms2_df.point_count = combined_ms2_df.point_count.astype(int)
     return combined_ms2_df
 
+def msms_scan_number_from_precursor(precursor_id):
+    msms_scan_number = None
+    rows = pasef_msms_scans_df[pasef_msms_scans_df.Precursor == precursor_id].Index
+    if len(rows) == 1:
+        pasef_msms_id = rows.iloc[0]
+        rows = allpeptides_df[allpeptides_df.pasef_msms_ids_list.apply(lambda x: pasef_msms_id in x)].msms_scan_number
+        if len(rows) == 1:
+            msms_scan_number = rows.iloc[0]
+        else:
+            print("Error: expecting one msms_scan_number for this precursor (found {})".format(len(rows)))
+    else:
+        print("Error: expecting one index for this precursor (found {})".format(len(rows)))
+    return msms_scan_number
+
 def collate_spectra_for_feature(feature_df, ms2_deconvoluted_df):
     # append the monoisotopic and the ms2 fragments to the list for MGF creation
     pairs_df = ms2_deconvoluted_df[['mz_h', 'intensity']].copy().sort_values(by=['intensity'], ascending=False)
@@ -478,20 +492,6 @@ def deconvolute_ms2(feature_df, binned_ms2_for_feature, idx, total):
     # package it up for the MGF
     feature_spectra = collate_spectra_for_feature(feature_df, ms2_deconvoluted_df)
     return feature_spectra
-
-def msms_scan_number_from_precursor(precursor_id):
-    msms_scan_number = None
-    rows = pasef_msms_scans_df[pasef_msms_scans_df.Precursor == precursor_id].Index
-    if len(rows) == 1:
-        pasef_msms_id = rows.iloc[0]
-        rows = allpeptides_df[allpeptides_df.pasef_msms_ids_list.apply(lambda x: pasef_msms_id in x)].msms_scan_number
-        if len(rows) == 1:
-            msms_scan_number = rows.iloc[0]
-        else:
-            print("Error: expecting one msms_scan_number for this precursor (found {})".format(len(rows)))
-    else:
-        print("Error: expecting one index for this precursor (found {})".format(len(rows)))
-    return msms_scan_number
 
 
 #########################################################
