@@ -455,7 +455,7 @@ def find_ms2_peaks_for_feature(feature_df, binned_ms2_for_feature_df):
 def msms_scan_number_from_precursor(precursor_id):
     msms_scan_number = None
     rows = pasef_msms_scans_df[pasef_msms_scans_df.Precursor == precursor_id].Index
-    if len(rows) == 1:
+    if len(rows) >= 1:
         pasef_msms_id = rows.iloc[0]
         rows = allpeptides_df[allpeptides_df.pasef_msms_ids_list.apply(lambda x: pasef_msms_id in x)].msms_scan_number
         if len(rows) == 1:
@@ -463,7 +463,7 @@ def msms_scan_number_from_precursor(precursor_id):
         else:
             print("Error: expecting one msms_scan_number for precursor {} (found {})".format(precursor_id, len(rows)))
     else:
-        print("Error: expecting one index for precursor {} (found {})".format(precursor_id, len(rows)))
+        print("Error: found no index for precursor {}".format(precursor_id))
     return msms_scan_number
 
 def collate_spectra_for_feature(feature_df, ms2_deconvoluted_df):
