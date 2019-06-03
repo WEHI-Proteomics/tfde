@@ -461,9 +461,9 @@ def msms_scan_number_from_precursor(precursor_id):
         if len(rows) == 1:
             msms_scan_number = rows.iloc[0]
         else:
-            print("Error: expecting one msms_scan_number for this precursor (found {})".format(len(rows)))
+            print("Error: expecting one msms_scan_number for precursor {} (found {})".format(precursor_id, len(rows)))
     else:
-        print("Error: expecting one index for this precursor (found {})".format(len(rows)))
+        print("Error: expecting one index for precursor {} (found {})".format(precursor_id, len(rows)))
     return msms_scan_number
 
 def collate_spectra_for_feature(feature_df, ms2_deconvoluted_df):
