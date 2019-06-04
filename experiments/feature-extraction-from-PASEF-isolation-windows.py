@@ -417,7 +417,7 @@ def deconvolute_ms2_peaks_for_feature(binned_ms2_df):
     print("{} ms2 peaks prior to deconvolution".format(len(ms2_peaks_df)))
 
     # deconvolute the peaks
-    ms2_deconvoluted_peaks, _ = deconvolute_peaks(ms2_peaks_l, averagine=averagine.peptide, charge_range=(1,5), scorer=scoring.MSDeconVFitter(10.0), truncate_after=0.8)
+    ms2_deconvoluted_peaks, _ = deconvolute_peaks(ms2_peaks_l, averagine=averagine.peptide, charge_range=(1,5), scorer=scoring.MSDeconVFitter(10.0), truncate_after=0.95)
 
     print("{} ms2 peaks after deconvolution".format(len(ms2_deconvoluted_peaks)))
 
@@ -425,12 +425,9 @@ def deconvolute_ms2_peaks_for_feature(binned_ms2_df):
     for peak in ms2_deconvoluted_peaks:
         # discard a monoisotopic peak that has either of the first two peaks as placeholders (indicated by intensity of 1)
         if ((len(peak.envelope) >= 3) and (peak.envelope[0][1] > 1) and (peak.envelope[1][1] > 1)):
-            mono_mz = peak.envelope[0][0]
-            mono_intensity = peak.envelope[0][1]
-            neutral_mass_plus_h = peak.neutral_mass + PROTON_MASS
-            ms2_deconvoluted_peaks_l.append((round(mono_mz, 4), int(peak.charge), int(mono_intensity), round(neutral_mass_plus_h, 4), peak.score, peak.signal_to_noise))
+            ms2_deconvoluted_peaks_l.append((round(peak.mz, 4), int(peak.charge), int(peak.intensity), peak.score, peak.signal_to_noise))
 
-    ms2_deconvoluted_peaks_df = pd.DataFrame(ms2_deconvoluted_peaks_l, columns=['mz','charge','intensity','neutral_mass_plus_h','score','SN'])
+    ms2_deconvoluted_peaks_df = pd.DataFrame(ms2_deconvoluted_peaks_l, columns=['mz','charge','intensity','score','SN'])
     print("{} peaks after quality filtering".format(len(ms2_deconvoluted_peaks_df)))
 
     return ms2_deconvoluted_peaks_df
@@ -469,9 +466,9 @@ def msms_scan_number_from_precursor(precursor_id):
 
 def collate_spectra_for_feature(feature_df, ms2_deconvoluted_df):
     # append the monoisotopic and the ms2 fragments to the list for MGF creation
-    pairs_df = ms2_deconvoluted_df[['neutral_mass_plus_h', 'intensity']].copy().sort_values(by=['intensity'], ascending=False)
+    pairs_df = ms2_deconvoluted_df[['mz', 'intensity']].copy().sort_values(by=['intensity'], ascending=False)
     spectrum = {}
-    spectrum["m/z array"] = pairs_df.neutral_mass_plus_h.values
+    spectrum["m/z array"] = pairs_df.mz.values
     spectrum["intensity array"] = pairs_df.intensity.values
     params = {}
     msms_scan_number = msms_scan_number_from_precursor(feature_df.precursor_id)
