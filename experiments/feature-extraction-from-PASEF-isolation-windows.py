@@ -425,9 +425,9 @@ def deconvolute_ms2_peaks_for_feature(binned_ms2_df):
     for peak in ms2_deconvoluted_peaks:
         # discard a monoisotopic peak that has either of the first two peaks as placeholders (indicated by intensity of 1)
         if ((len(peak.envelope) >= 3) and (peak.envelope[0][1] > 1) and (peak.envelope[1][1] > 1)):
-            ms2_deconvoluted_peaks_l.append((round(peak.mz, 4), int(peak.charge), int(peak.intensity), peak.score, peak.signal_to_noise))
+            ms2_deconvoluted_peaks_l.append((round(peak.mz, 4), round(peak.mz+PROTON_MASS, 4), int(peak.charge), int(peak.intensity), peak.score, peak.signal_to_noise))
 
-    ms2_deconvoluted_peaks_df = pd.DataFrame(ms2_deconvoluted_peaks_l, columns=['mz','charge','intensity','score','SN'])
+    ms2_deconvoluted_peaks_df = pd.DataFrame(ms2_deconvoluted_peaks_l, columns=['mz','mz_plus_h','charge','intensity','score','SN'])
     print("{} peaks after quality filtering".format(len(ms2_deconvoluted_peaks_df)))
 
     return ms2_deconvoluted_peaks_df
@@ -466,9 +466,9 @@ def msms_scan_number_from_precursor(precursor_id):
 
 def collate_spectra_for_feature(feature_df, ms2_deconvoluted_df):
     # append the monoisotopic and the ms2 fragments to the list for MGF creation
-    pairs_df = ms2_deconvoluted_df[['mz', 'intensity']].copy().sort_values(by=['intensity'], ascending=False)
+    pairs_df = ms2_deconvoluted_df[['mz_plus_h', 'intensity']].copy().sort_values(by=['intensity'], ascending=False)
     spectrum = {}
-    spectrum["m/z array"] = pairs_df.mz.values
+    spectrum["m/z array"] = pairs_df.mz_plus_h.values
     spectrum["intensity array"] = pairs_df.intensity.values
     params = {}
     msms_scan_number = msms_scan_number_from_precursor(feature_df.precursor_id)
