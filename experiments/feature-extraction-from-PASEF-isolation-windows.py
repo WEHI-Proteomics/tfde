@@ -484,7 +484,6 @@ def collate_spectra_for_feature(feature_df, ms2_deconvoluted_df):
 @ray.remote
 def deconvolute_ms2(feature_df, binned_ms2_for_feature, idx, total):
     print("processing feature idx {} of {}".format(idx, total))
-    print("feature {}, ms2 frames {}".format(feature_df, binned_ms2_for_feature.frame_id.unique()))
     # detect peaks
     ms2_peaks_df = find_ms2_peaks_for_feature(feature_df, binned_ms2_for_feature)
     # deconvolve the peaks
