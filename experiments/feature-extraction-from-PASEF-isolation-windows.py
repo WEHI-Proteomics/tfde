@@ -442,6 +442,7 @@ def calc_centroid(bin_df):
     d['mz_centroid'] = peakutils.centroid(bin_df.mz, bin_df.intensity)
     d['summed_intensity'] = bin_df.intensity.sum()
     d['point_count'] = len(bin_df)
+    print("bin_idx taken for the centroid {}, unique idxs in the bin {}".format(d['bin_idx'],bin_df.bin_idx.unique()))
     return pd.Series(d, index=['bin_idx','mz_centroid','summed_intensity','point_count'])
 
 # sum and centroid the ms2 bins for this feature
