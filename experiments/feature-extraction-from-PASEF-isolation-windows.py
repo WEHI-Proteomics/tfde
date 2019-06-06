@@ -345,6 +345,9 @@ def find_features(window_number, window_df):
                                    ]
             isolation_windows_overlapping_feature_df = isolation_window_df.loc[indexes]
 
+            print('feature mz {}, 2nd mz {}, scan {}, rtl {}, rtu {}'.format(feature_monoisotopic_mz,second_peak_mz,feature_scan_apex,feature_rt_base_lower,feature_rt_base_upper))
+            print('overlapping isolation windows:\n{}\n'.format(isolation_windows_overlapping_feature_df))
+
             if len(isolation_windows_overlapping_feature_df) > 0:
                 ms2_frames = list(isolation_windows_overlapping_feature_df.Frame)
                 ms1_characteristics_l.append((feature_monoisotopic_mz, feature_charge, feature_intensity, feature_scan_apex, mobility_curve_fit, round(feature_rt_apex,2), rt_curve_fit, precursor_id, ms2_frames))
