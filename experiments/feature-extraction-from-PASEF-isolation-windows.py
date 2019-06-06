@@ -446,6 +446,7 @@ def calc_centroid(bin_df):
 
 # sum and centroid the ms2 bins for this feature
 def find_ms2_peaks_for_feature(feature_df, binned_ms2_for_feature_df):
+    print("unique ms2 frames being centroided for the feature: {}".format(binned_ms2_for_feature_df.frame_id.unique()))
     # calculate the bin centroid and summed intensity for the combined frames
     combined_ms2_df = binned_ms2_for_feature_df.groupby(['bin_idx'], as_index=False).apply(calc_centroid)
     combined_ms2_df.summed_intensity = combined_ms2_df.summed_intensity.astype(int)
