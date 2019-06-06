@@ -438,9 +438,9 @@ def deconvolute_ms2_peaks_for_feature(binned_ms2_df):
 # calculate the centroid, intensity of a bin
 def calc_centroid(bin_df):
     d = {}
-    d['bin_idx'] = bin_df.iloc[0].bin_idx
+    d['bin_idx'] = int(bin_df.iloc[0].bin_idx)
     d['mz_centroid'] = peakutils.centroid(bin_df.mz, bin_df.intensity)
-    d['summed_intensity'] = bin_df.intensity.sum()
+    d['summed_intensity'] = int(bin_df.intensity.sum())
     d['point_count'] = len(bin_df)
     print("bin_idx taken for the centroid {}, unique idxs in the bin {}".format(d['bin_idx'],bin_df.bin_idx.unique()))
     return pd.Series(d, index=['bin_idx','mz_centroid','summed_intensity','point_count'])
