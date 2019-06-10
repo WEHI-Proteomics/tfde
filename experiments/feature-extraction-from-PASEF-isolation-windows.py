@@ -470,7 +470,7 @@ def msms_scan_number_from_precursor(precursor_id):
 
 def collate_spectra_for_feature(feature_df, ms2_deconvoluted_df):
     # append the monoisotopic and the ms2 fragments to the list for MGF creation
-    pairs_df = ms2_deconvoluted_df[['mz_plus_h', 'intensity']].copy().sort_values(by=['intensity'], ascending=False)
+    pairs_df = ms2_deconvoluted_df[['mz_plus_h', 'intensity']].copy().sort_values(by=['mz_plus_h'], ascending=True)
     spectrum = {}
     spectrum["m/z array"] = pairs_df.mz_plus_h.values
     spectrum["intensity array"] = pairs_df.intensity.values
