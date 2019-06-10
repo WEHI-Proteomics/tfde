@@ -346,9 +346,6 @@ def find_features(window_number, window_df):
             isolation_windows_overlapping_feature_df = isolation_window_df.loc[indexes]
 
             if len(isolation_windows_overlapping_feature_df) > 0:
-                print('feature mz {}, 2nd mz {}, scan {}, rtl {}, rtu {}'.format(feature_monoisotopic_mz,second_peak_mz,feature_scan_apex,feature_rt_base_lower,feature_rt_base_upper))
-                print('overlapping isolation windows:\n{}\n'.format(isolation_windows_overlapping_feature_df.to_string()))
-
                 ms2_frames = list(isolation_windows_overlapping_feature_df.Frame)
                 ms1_characteristics_l.append((feature_monoisotopic_mz, feature_charge, feature_intensity, feature_scan_apex, mobility_curve_fit, round(feature_rt_apex,2), rt_curve_fit, precursor_id, ms2_frames))
 
@@ -378,13 +375,14 @@ def remove_ms1_duplicates(ms1_features_df):
         # find the matches within these tolerances
         cond_1 = (scratch_df.monoisotopic_mz >= mz_lower) & (scratch_df.monoisotopic_mz <= mz_upper) & (scratch_df.scan_apex >= scan_lower) & (scratch_df.scan_apex <= scan_upper) & (scratch_df.rt_apex >= rt_lower) & (scratch_df.rt_apex <= rt_upper)
         matching_rows = scratch_df.loc[cond_1, :]
-        for i in range(len(matching_rows)):
-            print('{}\n'.format(matching_rows.iloc[i].to_string()))
         # of those, find the most intense
         cond_2 = (matching_rows.intensity == matching_rows.intensity.max())
         most_intense_row = matching_rows.loc[cond_2, :].copy()
         most_intense_row['duplicates'] = len(matching_rows)
-        print('selected {}'.format(most_intense_row.to_string()))
+        if len(matching_rows) > 1:
+            for i in range(len(matching_rows)):
+                print('{}'.format(matching_rows.iloc[i].to_string()))
+            print('selected {}\n'.format(most_intense_row.to_string()))
         # add it to the list
         ms1_features_l.append(tuple(most_intense_row.iloc[0]))
         # drop the duplicates
