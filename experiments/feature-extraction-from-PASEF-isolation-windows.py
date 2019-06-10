@@ -221,7 +221,7 @@ def find_features(window_number, window_df):
             mz_values_for_bin = np.array([ list[0] for list in ms1_mz_values_array[bin_idx]])
             intensity_values_for_bin = np.array([ list[1] for list in ms1_mz_values_array[bin_idx]]).astype(int)
             mz_centroid = peakutils.centroid(mz_values_for_bin, intensity_values_for_bin)
-            summed_intensity = intensity_values_for_bin.sum()
+            summed_intensity = intensity_values_for_bin.max()
             binned_ms1_l.append((mz_centroid,summed_intensity))
 
     binned_ms1_df = pd.DataFrame(binned_ms1_l, columns=['mz_centroid','summed_intensity'])
@@ -239,7 +239,7 @@ def find_features(window_number, window_df):
         peak_raw_points_df = raw_scratch_df[(raw_scratch_df.mz_centroid >= peak_mz_lower) & (raw_scratch_df.mz_centroid <= peak_mz_upper)]
         if len(peak_raw_points_df) > 0:
             mz_centroid = peakutils.centroid(peak_raw_points_df.mz_centroid, peak_raw_points_df.summed_intensity)
-            summed_intensity = peak_raw_points_df.summed_intensity.sum()
+            summed_intensity = peak_raw_points_df.summed_intensity.max()
             ms1_peaks_l.append((mz_centroid, summed_intensity))
 
             # remove the raw points assigned to this peak
@@ -409,7 +409,7 @@ def deconvolute_ms2_peaks_for_feature(binned_ms2_df):
         peak_raw_points_df = raw_scratch_df[(raw_scratch_df.mz_centroid >= peak_mz_lower) & (raw_scratch_df.mz_centroid <= peak_mz_upper)]
         if len(peak_raw_points_df) > 0:
             mz_centroid = peakutils.centroid(peak_raw_points_df.mz_centroid, peak_raw_points_df.summed_intensity)
-            summed_intensity = peak_raw_points_df.summed_intensity.sum()
+            summed_intensity = peak_raw_points_df.summed_intensity.max()
             ms2_peaks_l.append((mz_centroid, summed_intensity))
 
             # remove the raw points assigned to this peak
@@ -440,7 +440,7 @@ def calc_centroid(bin_df):
     d = {}
     d['bin_idx'] = int(bin_df.iloc[0].bin_idx)
     d['mz_centroid'] = peakutils.centroid(bin_df.mz, bin_df.intensity)
-    d['summed_intensity'] = int(bin_df.intensity.sum())
+    d['summed_intensity'] = int(bin_df.intensity.max())
     d['point_count'] = len(bin_df)
     return pd.Series(d, index=['bin_idx','mz_centroid','summed_intensity','point_count'])
 
