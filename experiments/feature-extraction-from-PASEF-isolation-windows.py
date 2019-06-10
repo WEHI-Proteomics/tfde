@@ -378,10 +378,13 @@ def remove_ms1_duplicates(ms1_features_df):
         # find the matches within these tolerances
         cond_1 = (scratch_df.monoisotopic_mz >= mz_lower) & (scratch_df.monoisotopic_mz <= mz_upper) & (scratch_df.scan_apex >= scan_lower) & (scratch_df.scan_apex <= scan_upper) & (scratch_df.rt_apex >= rt_lower) & (scratch_df.rt_apex <= rt_upper)
         matching_rows = scratch_df.loc[cond_1, :]
+        for i in range(len(matching_rows)):
+            print('{}\n'.format(matching_rows.iloc[i].to_string()))
         # of those, find the most intense
         cond_2 = (matching_rows.intensity == matching_rows.intensity.max())
         most_intense_row = matching_rows.loc[cond_2, :].copy()
         most_intense_row['duplicates'] = len(matching_rows)
+        print('selected {}'.format(most_intense_row.to_string()))
         # add it to the list
         ms1_features_l.append(tuple(most_intense_row.iloc[0]))
         # drop the duplicates
@@ -442,12 +445,10 @@ def calc_centroid(bin_df):
     d['mz_centroid'] = peakutils.centroid(bin_df.mz, bin_df.intensity)
     d['summed_intensity'] = int(bin_df.intensity.sum())
     d['point_count'] = len(bin_df)
-    print("bin_idx taken for the centroid {}, unique idxs in the bin {}".format(d['bin_idx'],bin_df.bin_idx.unique()))
     return pd.Series(d, index=['bin_idx','mz_centroid','summed_intensity','point_count'])
 
 # sum and centroid the ms2 bins for this feature
 def find_ms2_peaks_for_feature(feature_df, binned_ms2_for_feature_df):
-    print("unique ms2 frames being centroided for the feature: {}".format(binned_ms2_for_feature_df.frame_id.unique()))
     # calculate the bin centroid and summed intensity for the combined frames
     combined_ms2_df = binned_ms2_for_feature_df.groupby(['bin_idx'], as_index=False).apply(calc_centroid)
     combined_ms2_df.summed_intensity = combined_ms2_df.summed_intensity.astype(int)
