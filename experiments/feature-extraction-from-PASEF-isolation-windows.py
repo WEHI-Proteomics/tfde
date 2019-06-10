@@ -381,7 +381,6 @@ def remove_ms1_duplicates(ms1_features_df):
         most_intense_row['duplicates'] = len(matching_rows)
         # take the union of the ms2 frames
         if len(matching_rows) > 1:
-            print(matching_rows.ms2_frames.to_list())
             most_intense_row.iloc[0].ms2_frames = list(np.unique(matching_rows.ms2_frames.to_list()))
         # add it to the list
         ms1_features_l.append(tuple(most_intense_row.iloc[0]))
