@@ -453,20 +453,6 @@ def find_ms2_peaks_for_feature(feature_df, binned_ms2_for_feature_df):
     combined_ms2_df.point_count = combined_ms2_df.point_count.astype(int)
     return combined_ms2_df
 
-def msms_scan_number_from_precursor(precursor_id):
-    msms_scan_number = None
-    rows = pasef_msms_scans_df[pasef_msms_scans_df.Precursor == precursor_id].Index
-    if len(rows) >= 1:
-        pasef_msms_id = rows.iloc[0]
-        rows = allpeptides_df[allpeptides_df.pasef_msms_ids_list.apply(lambda x: pasef_msms_id in x)].msms_scan_number
-        if len(rows) == 1:
-            msms_scan_number = rows.iloc[0]
-        else:
-            print("Error: expecting one msms_scan_number for precursor {} (found {})".format(precursor_id, len(rows)))
-    else:
-        print("Error: found no index for precursor {}".format(precursor_id))
-    return msms_scan_number
-
 def collate_spectra_for_feature(feature_df, ms2_deconvoluted_df):
     # append the monoisotopic and the ms2 fragments to the list for MGF creation
     pairs_df = ms2_deconvoluted_df[['mz_plus_h', 'intensity']].copy().sort_values(by=['mz_plus_h'], ascending=True)
@@ -474,8 +460,7 @@ def collate_spectra_for_feature(feature_df, ms2_deconvoluted_df):
     spectrum["m/z array"] = pairs_df.mz_plus_h.values
     spectrum["intensity array"] = pairs_df.intensity.values
     params = {}
-    msms_scan_number = msms_scan_number_from_precursor(feature_df.precursor_id)
-    params["TITLE"] = "RawFile: {} Index: {} precursor: {} Charge: {} FeatureIntensity: {} Feature#: {} RtApex: {}".format(os.path.basename(CONVERTED_DATABASE_NAME).split('.')[0], msms_scan_number, feature_df.precursor_id, feature_df.charge, feature_df.intensity, feature_df.feature_id, round(feature_df.rt_apex,2))
+    params["TITLE"] = "RawFile: {} Charge: {} FeatureIntensity: {} Feature#: {} RtApex: {}".format(os.path.basename(CONVERTED_DATABASE_NAME).split('.')[0], feature_df.charge, feature_df.intensity, feature_df.feature_id, round(feature_df.rt_apex,2))
     params["INSTRUMENT"] = "ESI-QUAD-TOF"
     params["PEPMASS"] = "{} {}".format(round(feature_df.monoisotopic_mz,6), feature_df.intensity)
     params["CHARGE"] = "{}+".format(feature_df.charge)
