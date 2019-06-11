@@ -472,6 +472,7 @@ def collate_spectra_for_feature(feature_df, ms2_deconvoluted_df):
 def deconvolute_ms2(feature_df, binned_ms2_for_feature, idx, total):
     print("processing feature idx {} of {}".format(idx, total))
     feature_spectra = []
+    print("there are {} ms2 frames for feature {}".format(len(feature_df.ms2_frames), feature_df.feature_id))
     for ms2_frame_id in feature_df.ms2_frames:
         # get the binned ms2 values for this frame
         ms2_frame_df = binned_ms2_for_feature[binned_ms2_for_feature.frame_id == ms2_frame_id]
