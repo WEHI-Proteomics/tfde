@@ -347,9 +347,9 @@ def find_features(window_number, window_df):
 
             if len(isolation_windows_overlapping_feature_df) > 0:
                 ms2_frames = list(isolation_windows_overlapping_feature_df.Frame)
-                ms1_characteristics_l.append((feature_monoisotopic_mz, feature_charge, feature_intensity, feature_scan_apex, mobility_curve_fit, round(feature_rt_apex,2), rt_curve_fit, precursor_id, ms2_frames))
+                ms1_characteristics_l.append((feature_monoisotopic_mz, feature_charge, feature_intensity, feature_scan_apex, mobility_curve_fit, feature_scan_lower, feature_scan_upper, round(feature_rt_apex,2), rt_curve_fit, precursor_id, ms2_frames))
 
-    ms1_characteristics_df = pd.DataFrame(ms1_characteristics_l, columns=['monoisotopic_mz', 'charge', 'intensity', 'scan_apex', 'scan_curve_fit', 'rt_apex', 'rt_curve_fit', 'precursor_id', 'ms2_frames'])
+    ms1_characteristics_df = pd.DataFrame(ms1_characteristics_l, columns=['monoisotopic_mz', 'charge', 'intensity', 'scan_apex', 'scan_curve_fit', 'scan_lower', 'scan_upper', 'rt_apex', 'rt_curve_fit', 'precursor_id', 'ms2_frames'])
     return ms1_characteristics_df
 
 def remove_ms1_duplicates(ms1_features_df):
@@ -476,8 +476,10 @@ def deconvolute_ms2(feature_df, binned_ms2_for_feature, idx, total):
     feature_spectra = []
     print("there are {} ms2 frames for feature {}".format(len(feature_df.ms2_frames), feature_df.feature_id))
     for ms2_frame_id in feature_df.ms2_frames:
-        # get the binned ms2 values for this frame
-        ms2_frame_df = binned_ms2_for_feature[binned_ms2_for_feature.frame_id == ms2_frame_id]
+        # get the binned ms2 values for this frame and mobility range
+        scan_lower = feature_df.scan_lower
+        scan_upper = feature_df.scan_upper
+        ms2_frame_df = binned_ms2_for_feature[(binned_ms2_for_feature.frame_id == ms2_frame_id) & (binned_ms2_for_feature.scan >= scan_lower) & (binned_ms2_for_feature.scan <= scan_upper)]
         # detect peaks
         ms2_peaks_df = find_ms2_peaks_for_feature(feature_df, ms2_frame_df)
         # deconvolve the peaks
