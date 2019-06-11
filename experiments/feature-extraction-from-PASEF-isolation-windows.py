@@ -465,7 +465,6 @@ def collate_spectra_for_feature(feature_df, ms2_deconvoluted_df):
     params["PEPMASS"] = "{} {}".format(round(feature_df.monoisotopic_mz,6), feature_df.intensity)
     params["CHARGE"] = "{}+".format(feature_df.charge)
     params["RTINSECONDS"] = "{}".format(round(feature_df.rt_apex,2))
-    params["SCANS"] = "{}".format(int(feature_df.rt_apex))
     spectrum["params"] = params
     return spectrum
 
