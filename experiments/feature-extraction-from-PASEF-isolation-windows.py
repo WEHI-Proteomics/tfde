@@ -480,12 +480,14 @@ def deconvolute_ms2(feature_df, binned_ms2_for_feature, idx, total):
         scan_lower = feature_df.scan_lower
         scan_upper = feature_df.scan_upper
         ms2_frame_df = binned_ms2_for_feature[(binned_ms2_for_feature.frame_id == ms2_frame_id) & (binned_ms2_for_feature.scan >= scan_lower) & (binned_ms2_for_feature.scan <= scan_upper)]
-        # detect peaks
-        ms2_peaks_df = find_ms2_peaks_for_feature(feature_df, ms2_frame_df)
-        # deconvolve the peaks
-        ms2_deconvoluted_df = deconvolute_ms2_peaks_for_feature(ms2_peaks_df)
-        # package it up for the MGF
-        feature_spectra.append(collate_spectra_for_feature(feature_df, ms2_deconvoluted_df))
+        if len(ms2_frame_df) > 0:
+            # detect peaks
+            ms2_peaks_df = find_ms2_peaks_for_feature(feature_df, ms2_frame_df)
+            if len(ms2_peaks_df) > 0:
+                # deconvolve the peaks
+                ms2_deconvoluted_df = deconvolute_ms2_peaks_for_feature(ms2_peaks_df)
+                # package it up for the MGF
+                feature_spectra.append(collate_spectra_for_feature(feature_df, ms2_deconvoluted_df))
     return feature_spectra
 
 
