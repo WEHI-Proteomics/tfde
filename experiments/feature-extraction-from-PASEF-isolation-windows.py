@@ -490,6 +490,8 @@ def deconvolute_ms2(feature_df, binned_ms2_for_feature, idx, total):
                 ms2_deconvoluted_df = deconvolute_ms2_peaks_for_feature(ms2_peaks_df)
                 # package it up for the MGF
                 feature_spectra.append(collate_spectra_for_feature(feature_df, ms2_deconvoluted_df))
+        else:
+            print("found no points for frame {}".format(ms2_frame_id))
     return feature_spectra
 
 
