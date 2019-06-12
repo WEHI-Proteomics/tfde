@@ -480,6 +480,7 @@ def deconvolute_ms2(feature_df, binned_ms2_for_feature, idx, total):
         ms2_frame_id = ms2_frame[0]
         scan_lower = ms2_frame[1]
         scan_upper = ms2_frame[2]
+        print("ms2 frame {}, scan lower {}, scan upper {}".format(ms2_frame_id, scan_lower, scan_upper))
         ms2_frame_df = binned_ms2_for_feature[(binned_ms2_for_feature.frame_id == ms2_frame_id) & (binned_ms2_for_feature.scan >= scan_lower) & (binned_ms2_for_feature.scan <= scan_upper)]
         if len(ms2_frame_df) > 0:
             # detect peaks
