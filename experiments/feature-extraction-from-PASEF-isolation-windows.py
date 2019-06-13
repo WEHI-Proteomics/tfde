@@ -11,6 +11,15 @@ import ray
 import time
 import pickle
 
+PROTON_MASS = 1.0073  # Mass of a proton in unified atomic mass units, or Da. For calculating the monoisotopic mass.
+
+# ms1 duplicate tolerances
+# +/- these amounts
+MZ_TOLERANCE_PPM = 5
+MZ_TOLERANCE_PERCENT = MZ_TOLERANCE_PPM * 10**-4
+SCAN_TOLERANCE = 10
+RT_TOLERANCE = 0.1
+
 parser = argparse.ArgumentParser(description='Extract ms1 features from PASEF isolation windows.')
 parser.add_argument('-cdbb','--converted_database_base', type=str, help='base path to the converted database.', required=True)
 parser.add_argument('-rdbb','--raw_database_base', type=str, help='base path to the raw database.', required=True)
@@ -116,15 +125,6 @@ allpeptides_df.rename(columns={'Number of isotopic peaks':'isotope_count', 'm/z'
 allpeptides_df = allpeptides_df[allpeptides_df.intensity.notnull() & allpeptides_df.pasef_msms_ids.notnull()].copy()
 allpeptides_df.msms_scan_number = allpeptides_df.msms_scan_number.apply(lambda x: int(x))
 allpeptides_df['pasef_msms_ids_list'] = allpeptides_df.pasef_msms_ids.str.split(";").apply(lambda x: [int(i) for i in x])
-
-PROTON_MASS = 1.0073  # Mass of a proton in unified atomic mass units, or Da. For calculating the monoisotopic mass.
-
-# ms1 duplicate tolerances
-# +/- these amounts
-MZ_TOLERANCE_PPM = 5
-MZ_TOLERANCE_PERCENT = MZ_TOLERANCE_PPM * 10**-4
-SCAN_TOLERANCE = 10
-RT_TOLERANCE = 0.1
 
 print("reading converted raw data from {}".format(CONVERTED_DATABASE_NAME))
 db_conn = sqlite3.connect(CONVERTED_DATABASE_NAME)
