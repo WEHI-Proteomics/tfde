@@ -284,7 +284,11 @@ def find_features(window_number, window_df):
 
             mobility_curve_fit = False
             try:
-                scan_apex = peakutils.peak.gaussian_fit(scan_df.scan, scan_df.intensity, center_only=True)
+                guassian_params = peakutils.peak.gaussian_fit(scan_df.scan, scan_df.intensity, center_only=False)
+                scan_apex = guassian_params[1]
+                scan_side_width = 3 * guassian_params[2]  # number of standard deviations either side of the apex
+                scan_lower = scan_apex - scan_side_width
+                scan_upper = scan_apex + scan_side_width
                 if (scan_apex >= wide_scan_lower) and (scan_apex <= wide_scan_upper):
                     mobility_curve_fit = True
             except:
@@ -293,10 +297,8 @@ def find_features(window_number, window_df):
             # if we couldn't fit a curve to the mobility dimension, take the intensity-weighted centroid
             if not mobility_curve_fit:
                 scan_apex = peakutils.centroid(scan_df.scan, scan_df.intensity)
-
-            feature_scan_apex = scan_apex
-            feature_scan_lower = wide_scan_lower
-            feature_scan_upper = wide_scan_upper
+                scan_lower = wide_scan_lower
+                scan_upper = wide_scan_upper
 
             # In the RT dimension, look wider to find the apex of the peak closest to the fragmentation event
             wide_rt_monoisotopic_raw_points_df = ms1_raw_points_df[(ms1_raw_points_df.mz >= monoisotopic_mz_lower) & (ms1_raw_points_df.mz <= monoisotopic_mz_upper)]
@@ -338,8 +340,8 @@ def find_features(window_number, window_df):
             indexes = isolation_window_df.index[
                                         (((isolation_window_df.mz_upper >= feature_monoisotopic_mz) & (isolation_window_df.mz_lower <= feature_monoisotopic_mz)) |
                                         ((isolation_window_df.mz_upper >= second_peak_mz) & (isolation_window_df.mz_lower <= second_peak_mz))) &
-                                        (isolation_window_df.ScanNumEnd >= feature_scan_apex) &
-                                        (isolation_window_df.ScanNumBegin <= feature_scan_apex) &
+                                        (isolation_window_df.ScanNumEnd >= scan_apex) &
+                                        (isolation_window_df.ScanNumBegin <= scan_apex) &
                                         (isolation_window_df.retention_time_secs >= feature_rt_base_lower) &
                                         (isolation_window_df.retention_time_secs <= feature_rt_base_upper)
                                    ]
@@ -347,7 +349,7 @@ def find_features(window_number, window_df):
 
             if len(isolation_windows_overlapping_feature_df) > 0:
                 ms2_frames = list(isolation_windows_overlapping_feature_df.Frame)
-                ms1_characteristics_l.append((feature_monoisotopic_mz, feature_charge, feature_intensity, feature_scan_apex, mobility_curve_fit, feature_scan_lower, feature_scan_upper, round(feature_rt_apex,2), rt_curve_fit, precursor_id, ms2_frames))
+                ms1_characteristics_l.append((feature_monoisotopic_mz, feature_charge, feature_intensity, scan_apex, mobility_curve_fit, scan_lower, scan_upper, round(feature_rt_apex,2), rt_curve_fit, precursor_id, ms2_frames))
 
     ms1_characteristics_df = pd.DataFrame(ms1_characteristics_l, columns=['monoisotopic_mz', 'charge', 'intensity', 'scan_apex', 'scan_curve_fit', 'scan_lower', 'scan_upper', 'rt_apex', 'rt_curve_fit', 'precursor_id', 'ms2_frames'])
     return ms1_characteristics_df
