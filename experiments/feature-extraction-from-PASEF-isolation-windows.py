@@ -18,7 +18,7 @@ PROTON_MASS = 1.0073  # Mass of a proton in unified atomic mass units, or Da. Fo
 MZ_TOLERANCE_PPM = 5
 MZ_TOLERANCE_PERCENT = MZ_TOLERANCE_PPM * 10**-4
 SCAN_TOLERANCE = 10
-RT_TOLERANCE = 0.1
+RT_TOLERANCE = 0.5
 
 parser = argparse.ArgumentParser(description='Extract ms1 features from PASEF isolation windows.')
 parser.add_argument('-cdbb','--converted_database_base', type=str, help='base path to the converted database.', required=True)
