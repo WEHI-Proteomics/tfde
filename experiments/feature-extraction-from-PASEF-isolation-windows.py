@@ -295,8 +295,8 @@ def find_features(window_number, window_df):
                 scan_apex = peakutils.centroid(scan_df.scan, scan_df.intensity)
 
             feature_scan_apex = scan_apex
-            feature_scan_lower = window_df.ScanNumBegin
-            feature_scan_upper = window_df.ScanNumEnd
+            feature_scan_lower = wide_scan_lower
+            feature_scan_upper = wide_scan_upper
 
             # In the RT dimension, look wider to find the apex of the peak closest to the fragmentation event
             wide_rt_monoisotopic_raw_points_df = ms1_raw_points_df[(ms1_raw_points_df.mz >= monoisotopic_mz_lower) & (ms1_raw_points_df.mz <= monoisotopic_mz_upper)]
