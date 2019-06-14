@@ -340,7 +340,7 @@ def find_features(window_number, window_df):
     return ms1_characteristics_df
 
 def remove_ms1_duplicates(ms1_features_df):
-    scratch_df = ms1_features_df.copy().sort_values(by=['intensity'], ascending=False, inplace=True) # take a copy because we're going to delete stuff
+    scratch_df = ms1_features_df.copy().sort_values(by=['intensity'], ascending=False) # take a copy because we're going to delete stuff
     ms1_features_l = []
     while len(scratch_df) > 0:
         scratch_df.reset_index(drop=True, inplace=True)
