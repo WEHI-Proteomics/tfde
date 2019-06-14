@@ -340,7 +340,7 @@ def find_features(window_number, window_df):
     return ms1_characteristics_df
 
 def remove_ms1_duplicates(ms1_features_df):
-    scratch_df = ms1_features_df.copy() # take a copy because we're going to delete stuff
+    scratch_df = ms1_features_df.copy().sort_values(by=['intensity'], ascending=False, inplace=True) # take a copy because we're going to delete stuff
     ms1_features_l = []
     while len(scratch_df) > 0:
         scratch_df.reset_index(drop=True, inplace=True)
@@ -354,10 +354,10 @@ def remove_ms1_duplicates(ms1_features_df):
         mz_ppm_tolerance = mz * MZ_TOLERANCE_PERCENT / 100
         mz_lower = mz - mz_ppm_tolerance
         mz_upper = mz + mz_ppm_tolerance
-        scan_lower = scan - SCAN_TOLERANCE
-        scan_upper = scan + SCAN_TOLERANCE
-        rt_lower = rt - RT_TOLERANCE
-        rt_upper = rt + RT_TOLERANCE
+        scan_lower = row.scan_lower
+        scan_upper = row.scan_upper
+        rt_lower = row.rt_lower
+        rt_upper = row.rt_upper
 
         # find the matches within these tolerances
         cond_1 = (scratch_df.monoisotopic_mz >= mz_lower) & (scratch_df.monoisotopic_mz <= mz_upper) & (scratch_df.scan_apex >= scan_lower) & (scratch_df.scan_apex <= scan_upper) & (scratch_df.rt_apex >= rt_lower) & (scratch_df.rt_apex <= rt_upper)
