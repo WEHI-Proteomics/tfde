@@ -286,7 +286,7 @@ def find_features(window_number, window_df):
             try:
                 guassian_params = peakutils.peak.gaussian_fit(scan_df.scan, scan_df.intensity, center_only=False)
                 scan_apex = guassian_params[1]
-                scan_side_width = 1 * guassian_params[2]  # number of standard deviations either side of the apex
+                scan_side_width = 2 * guassian_params[2]  # number of standard deviations either side of the apex
                 scan_lower = scan_apex - scan_side_width
                 scan_upper = scan_apex + scan_side_width
                 if (scan_apex >= wide_scan_lower) and (scan_apex <= wide_scan_upper):
