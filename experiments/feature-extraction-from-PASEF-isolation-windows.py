@@ -315,7 +315,7 @@ def find_features(window_number, window_df):
             except:
                 pass
 
-            # if we couldn't fit a curve to the mobility dimension, take the intensity-weighted centroid
+            # if we couldn't fit a curve to the RT dimension, take the intensity-weighted centroid
             if not rt_curve_fit:
                 rt_apex = peakutils.centroid(rt_df.retention_time_secs, rt_df.intensity)
                 rt_lower = wide_rt_lower
