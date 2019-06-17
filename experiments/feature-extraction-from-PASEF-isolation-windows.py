@@ -254,8 +254,8 @@ def find_features(window_number, window_df):
     for peak in deconvoluted_peaks:
         # discard a monoisotopic peak that has either of the first two peaks as placeholders (indicated by intensity of 1)
         if ((len(peak.envelope) >= 3) and (peak.envelope[0][1] > 1) and (peak.envelope[1][1] > 1)):
-            mono_peak_mz = peak.envelope[0][0]
-            mono_intensity = peak.envelope[0][1]
+            mono_peak_mz = peak.mz
+            mono_intensity = peak.intensity
             second_peak_mz = peak.envelope[1][0]
             ms1_deconvoluted_peaks_l.append((mono_peak_mz, second_peak_mz, mono_intensity, peak.score, peak.signal_to_noise, peak.charge))
 
@@ -416,8 +416,8 @@ def deconvolute_ms2_peaks_for_feature(binned_ms2_df):
     for peak in ms2_deconvoluted_peaks:
         # discard a monoisotopic peak that has either of the first two peaks as placeholders (indicated by intensity of 1)
         if ((len(peak.envelope) >= 3) and (peak.envelope[0][1] > 1) and (peak.envelope[1][1] > 1)):
-            mono_peak_mz = peak.envelope[0][0]
-            mono_intensity = peak.envelope[0][1]
+            mono_peak_mz = peak.mz
+            mono_intensity = peak.intensity
             ms2_deconvoluted_peaks_l.append((round(mono_peak_mz, 4), round(mono_peak_mz+PROTON_MASS, 4), int(peak.charge), int(mono_intensity), peak.score, peak.signal_to_noise))
 
     ms2_deconvoluted_peaks_df = pd.DataFrame(ms2_deconvoluted_peaks_l, columns=['mz','mz_plus_h','charge','intensity','score','SN'])
