@@ -408,7 +408,7 @@ def deconvolute_ms2_peaks_for_feature(binned_ms2_df):
     print("{} ms2 peaks prior to deconvolution".format(len(ms2_peaks_df)))
 
     # deconvolute the peaks
-    ms2_deconvoluted_peaks, _ = deconvolute_peaks(ms2_peaks_l, averagine=averagine.peptide, charge_range=(1,5), scorer=scoring.MSDeconVFitter(10.0), truncate_after=0.95)
+    ms2_deconvoluted_peaks, _ = deconvolute_peaks(ms2_peaks_l, averagine=averagine.peptide, charge_range=(1,5), scorer=scoring.MSDeconVFitter(10.0), truncate_after=0.8)
 
     print("{} ms2 peaks after deconvolution".format(len(ms2_deconvoluted_peaks)))
 
@@ -418,9 +418,9 @@ def deconvolute_ms2_peaks_for_feature(binned_ms2_df):
         if ((len(peak.envelope) >= 3) and (peak.envelope[0][1] > 1) and (peak.envelope[1][1] > 1)):
             mono_peak_mz = peak.mz
             mono_intensity = peak.intensity
-            ms2_deconvoluted_peaks_l.append((round(mono_peak_mz, 4), round(mono_peak_mz+PROTON_MASS, 4), int(peak.charge), int(mono_intensity), peak.score, peak.signal_to_noise))
+            ms2_deconvoluted_peaks_l.append((round(mono_peak_mz, 4), int(peak.charge), int(mono_intensity), peak.score, peak.signal_to_noise))
 
-    ms2_deconvoluted_peaks_df = pd.DataFrame(ms2_deconvoluted_peaks_l, columns=['mz','mz_plus_h','charge','intensity','score','SN'])
+    ms2_deconvoluted_peaks_df = pd.DataFrame(ms2_deconvoluted_peaks_l, columns=['mz','charge','intensity','score','SN'])
     print("{} peaks after quality filtering".format(len(ms2_deconvoluted_peaks_df)))
 
     return ms2_deconvoluted_peaks_df
@@ -445,9 +445,9 @@ def find_ms2_peaks_for_feature(feature_df, binned_ms2_for_feature_df):
 
 def collate_spectra_for_feature(feature_df, ms2_deconvoluted_df):
     # append the monoisotopic and the ms2 fragments to the list for MGF creation
-    pairs_df = ms2_deconvoluted_df[['mz_plus_h', 'intensity']].copy().sort_values(by=['mz_plus_h'], ascending=True)
+    pairs_df = ms2_deconvoluted_df[['mz', 'intensity']].copy().sort_values(by=['mz'], ascending=True)
     spectrum = {}
-    spectrum["m/z array"] = pairs_df.mz_plus_h.values
+    spectrum["m/z array"] = pairs_df.mz.values
     spectrum["intensity array"] = pairs_df.intensity.values
     params = {}
     params["TITLE"] = "RawFile: {} Charge: {} FeatureIntensity: {} Feature#: {} RtApex: {}".format(os.path.basename(CONVERTED_DATABASE_NAME).split('.')[0], feature_df.charge, feature_df.intensity, feature_df.feature_id, round(feature_df.rt_apex,2))
