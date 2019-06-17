@@ -474,8 +474,9 @@ def deconvolute_ms2(feature_df, binned_ms2_for_feature, idx, total):
             if len(ms2_peaks_df) > 0:
                 # deconvolve the peaks
                 ms2_deconvoluted_df = deconvolute_ms2_peaks_for_feature(ms2_peaks_df)
-                # package it up for the MGF
-                feature_spectra.append(collate_spectra_for_feature(feature_df, ms2_deconvoluted_df))
+                if len(ms2_deconvoluted_df) >= 2:
+                    # package it up for the MGF
+                    feature_spectra.append(collate_spectra_for_feature(feature_df, ms2_deconvoluted_df))
     return feature_spectra
 
 
