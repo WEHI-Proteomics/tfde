@@ -468,6 +468,7 @@ def deconvolute_ms2(feature_df, binned_ms2_for_feature, idx, total):
         # get the binned ms2 values for this frame and mobility range
         scan_lower = feature_df.ms2_scan_ranges[idx][0]
         scan_upper = feature_df.ms2_scan_ranges[idx][1]
+        print("extracting from ms2 frame {} in mobility {}..{}".format(ms2_frame_id, scan_lower, scan_upper))
         ms2_frame_df = binned_ms2_for_feature[(binned_ms2_for_feature.frame_id == ms2_frame_id) & (binned_ms2_for_feature.scan >= scan_lower) & (binned_ms2_for_feature.scan <= scan_upper)]
         if len(ms2_frame_df) > 0:
             # detect peaks
