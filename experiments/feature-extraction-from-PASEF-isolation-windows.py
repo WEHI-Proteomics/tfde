@@ -420,6 +420,8 @@ def deconvolute_ms2_peaks_for_feature(binned_ms2_df):
             mono_peak_mz = peak.mz
             mono_intensity = peak.intensity
             ms2_deconvoluted_peaks_l.append((round(mono_peak_mz, 4), int(peak.charge), int(mono_intensity), peak.score, peak.signal_to_noise))
+        else:
+            print("discarding peak with envelope {}".format(envelope))
 
     ms2_deconvoluted_peaks_df = pd.DataFrame(ms2_deconvoluted_peaks_l, columns=['mz','charge','intensity','score','SN'])
     print("{} peaks after quality filtering".format(len(ms2_deconvoluted_peaks_df)))
