@@ -416,7 +416,7 @@ def deconvolute_ms2_peaks_for_feature(binned_ms2_df):
     ms2_deconvoluted_peaks_l = []
     for peak in ms2_deconvoluted_peaks:
         # discard a monoisotopic peak that has either of the first two peaks as placeholders (indicated by intensity of 1)
-        if ((len(peak.envelope) >= 3) and (peak.envelope[0][1] > 1) and (peak.envelope[1][1] > 1)):
+        if ((len(peak.envelope) >= 1) and (peak.envelope[0][1] > 1)):
             mono_peak_mz = peak.mz
             mono_intensity = peak.intensity
             ms2_deconvoluted_peaks_l.append((round(mono_peak_mz, 4), int(peak.charge), int(mono_intensity), peak.score, peak.signal_to_noise))
