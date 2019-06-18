@@ -334,9 +334,10 @@ def find_features(window_number, window_df):
 
             if len(isolation_windows_overlapping_feature_df) > 0:
                 ms2_frames = list(isolation_windows_overlapping_feature_df.Frame)
-                ms1_characteristics_l.append((feature_monoisotopic_mz, feature_charge, feature_intensity, round(scan_apex,2), mobility_curve_fit, round(scan_lower,2), round(scan_upper,2), round(rt_apex,2), rt_curve_fit, round(rt_lower,2), round(rt_upper,2), precursor_id, ms2_frames))
+                ms2_scan_ranges = [tuple(x) for x in isolation_windows_overlapping_feature_df[['ScanNumBegin','ScanNumEnd']].values]
+                ms1_characteristics_l.append((feature_monoisotopic_mz, feature_charge, feature_intensity, round(scan_apex,2), mobility_curve_fit, round(scan_lower,2), round(scan_upper,2), round(rt_apex,2), rt_curve_fit, round(rt_lower,2), round(rt_upper,2), precursor_id, ms2_frames, ms2_scan_ranges))
 
-    ms1_characteristics_df = pd.DataFrame(ms1_characteristics_l, columns=['monoisotopic_mz', 'charge', 'intensity', 'scan_apex', 'scan_curve_fit', 'scan_lower', 'scan_upper', 'rt_apex', 'rt_curve_fit', 'rt_lower', 'rt_upper', 'precursor_id', 'ms2_frames'])
+    ms1_characteristics_df = pd.DataFrame(ms1_characteristics_l, columns=['monoisotopic_mz', 'charge', 'intensity', 'scan_apex', 'scan_curve_fit', 'scan_lower', 'scan_upper', 'rt_apex', 'rt_curve_fit', 'rt_lower', 'rt_upper', 'precursor_id', 'ms2_frames', 'ms2_scan_ranges'])
     return ms1_characteristics_df
 
 def remove_ms1_duplicates(ms1_features_df):
@@ -368,8 +369,8 @@ def remove_ms1_duplicates(ms1_features_df):
         most_intense_row = matching_rows.loc[cond_2, :].copy()
         most_intense_row['duplicates'] = len(matching_rows)
         # take the union of the ms2 frames
-        if len(matching_rows) > 1:
-            most_intense_row.iloc[0].ms2_frames = list(np.unique(matching_rows.ms2_frames.to_list()))
+        # if len(matching_rows) > 1:
+        #     most_intense_row.iloc[0].ms2_frames = list(np.unique(matching_rows.ms2_frames.to_list()))
         # add it to the list
         ms1_features_l.append(tuple(most_intense_row.iloc[0]))
         # drop the duplicates
@@ -463,10 +464,10 @@ def deconvolute_ms2(feature_df, binned_ms2_for_feature, idx, total):
     print("processing feature idx {} of {}".format(idx, total))
     feature_spectra = []
     print("there are {} ms2 frames for feature {}".format(len(feature_df.ms2_frames), feature_df.feature_id))
-    for ms2_frame_id in feature_df.ms2_frames:
+    for idx,ms2_frame_id in enumerate(feature_df.ms2_frames):
         # get the binned ms2 values for this frame and mobility range
-        scan_lower = feature_df.scan_lower
-        scan_upper = feature_df.scan_upper
+        scan_lower = feature_df.ms2_scan_ranges[idx][0]
+        scan_upper = feature_df.ms2_scan_ranges[idx][1]
         ms2_frame_df = binned_ms2_for_feature[(binned_ms2_for_feature.frame_id == ms2_frame_id) & (binned_ms2_for_feature.scan >= scan_lower) & (binned_ms2_for_feature.scan <= scan_upper)]
         if len(ms2_frame_df) > 0:
             # detect peaks
