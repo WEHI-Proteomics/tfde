@@ -422,7 +422,7 @@ def deconvolute_ms2_peaks_for_feature(feature_id, ms2_frame_id, binned_ms2_df):
             mono_intensity = peak.intensity
             ms2_deconvoluted_peaks_l.append((round(mono_peak_mz, 4), int(peak.charge), int(mono_intensity), peak.score, peak.signal_to_noise))
         else:
-            print("discarding peak with envelope {}".format(envelope))
+            print("discarding peak with envelope {}".format(peak.envelope))
 
     ms2_deconvoluted_peaks_df = pd.DataFrame(ms2_deconvoluted_peaks_l, columns=['mz','charge','intensity','score','SN'])
     ms2_deconvoluted_peaks_df.to_csv('./feature-{}-frame-{}-ms2-peaks-after-deconvolution.csv'.format(feature_id, ms2_frame_id), index=False, header=True)
