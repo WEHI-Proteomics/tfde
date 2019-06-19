@@ -416,11 +416,7 @@ def deconvolute_ms2_peaks_for_feature(feature_id, ms2_frame_id, binned_ms2_df):
 
     ms2_deconvoluted_peaks_l = []
     for peak in ms2_deconvoluted_peaks:
-        # discard a monoisotopic peak that has either of the first two peaks as placeholders (indicated by intensity of 1)
-        if len(peak.envelope) >= 1:
-            ms2_deconvoluted_peaks_l.append((round(peak.neutral_mass+PROTON_MASS, 4), int(peak.charge), peak.intensity, peak.score, peak.signal_to_noise))
-        else:
-            print("discarding peak with envelope {}".format(peak.envelope))
+        ms2_deconvoluted_peaks_l.append((round(peak.neutral_mass+PROTON_MASS, 4), int(peak.charge), peak.intensity, peak.score, peak.signal_to_noise))
 
     ms2_deconvoluted_peaks_df = pd.DataFrame(ms2_deconvoluted_peaks_l, columns=['mz','charge','intensity','score','SN'])
     ms2_deconvoluted_peaks_df.to_csv('./feature-{}-frame-{}-ms2-peaks-after-deconvolution.csv'.format(feature_id, ms2_frame_id), index=False, header=True)
