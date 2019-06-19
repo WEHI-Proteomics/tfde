@@ -407,12 +407,8 @@ def deconvolute_ms2_peaks_for_feature(feature_id, ms2_frame_id, binned_ms2_df):
     ms2_peaks_df = pd.DataFrame(ms2_peaks_l, columns=['mz','intensity'])
     ms2_peaks_df.to_csv('./feature-{}-frame-{}-ms2-peaks-before-deconvolution.csv'.format(feature_id, ms2_frame_id), index=False, header=True)
 
-    print("{} ms2 peaks prior to deconvolution".format(len(ms2_peaks_df)))
-
     # deconvolute the peaks
     ms2_deconvoluted_peaks, _ = deconvolute_peaks(ms2_peaks_l, averagine=averagine.peptide, charge_range=(1,5), scorer=scoring.MSDeconVFitter(minimum_score=8, mass_error_tolerance=0.1), error_tolerance=4e-5, truncate_after=0.6)
-
-    print("{} ms2 peaks after deconvolution".format(len(ms2_deconvoluted_peaks)))
 
     ms2_deconvoluted_peaks_l = []
     for peak in ms2_deconvoluted_peaks:
@@ -420,7 +416,6 @@ def deconvolute_ms2_peaks_for_feature(feature_id, ms2_frame_id, binned_ms2_df):
 
     ms2_deconvoluted_peaks_df = pd.DataFrame(ms2_deconvoluted_peaks_l, columns=['mz','charge','intensity','score','SN'])
     ms2_deconvoluted_peaks_df.to_csv('./feature-{}-frame-{}-ms2-peaks-after-deconvolution.csv'.format(feature_id, ms2_frame_id), index=False, header=True)
-    print("{} peaks after quality filtering".format(len(ms2_deconvoluted_peaks_df)))
 
     return ms2_deconvoluted_peaks_df
 
