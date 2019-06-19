@@ -32,7 +32,7 @@ parser.add_argument('-rtfe','--rt_fragment_event_delta_secs', type=float, defaul
 parser.add_argument('-ms1ce','--ms1_collision_energy', type=float, default=10.0, help='Collision energy used in ms1 frames.', required=False)
 parser.add_argument('-ms1bw','--ms1_bin_width', type=float, default=0.00001, help='Width of ms1 bins, in Thomsons.', required=False)
 parser.add_argument('-ms2bw','--ms2_bin_width', type=float, default=0.001, help='Width of ms2 bins, in Thomsons.', required=False)
-parser.add_argument('-ms1dt','--ms1_peak_delta', type=float, default=0.01, help='How far either side of a peak in ms1 to include when calculating its centroid and intensity, in Thomsons.', required=False)
+parser.add_argument('-ms1dt','--ms1_peak_delta', type=float, default=0.1, help='How far either side of a peak in ms1 to include when calculating its centroid and intensity, in Thomsons.', required=False)
 parser.add_argument('-ms2dt','--ms2_peak_delta', type=float, default=0.01, help='How far either side of a peak in ms2 to include when calculating its centroid and intensity, in Thomsons.', required=False)
 parser.add_argument('-ms2l','--ms2_lower', type=float, default=90.0, help='Lower limit of m/z range in ms2.', required=False)
 parser.add_argument('-ms2u','--ms2_upper', type=float, default=1750.0, help='Upper limit of m/z range in ms2.', required=False)
@@ -226,6 +226,7 @@ def find_features(window_number, window_df):
 
     binned_ms1_df = pd.DataFrame(binned_ms1_l, columns=['mz_centroid','summed_intensity'])
     raw_scratch_df = binned_ms1_df.copy() # take a copy because we're going to delete stuff
+    binned_ms1_df.to_csv('./ms1-peaks-window-{}-before-intensity-descent.csv'.format(window_number), index=False, header=True)
 
     ms1_peaks_l = []
     while len(raw_scratch_df) > 0:
@@ -246,6 +247,7 @@ def find_features(window_number, window_df):
             raw_scratch_df = raw_scratch_df[~raw_scratch_df.isin(peak_raw_points_df)].dropna(how = 'all')
 
     ms1_peaks_df = pd.DataFrame(ms1_peaks_l, columns=['mz','intensity'])
+    ms1_peaks_df.to_csv('./ms1-peaks-window-{}-after-intensity-descent.csv'.format(window_number), index=False, header=True)
 
     # see https://github.com/mobiusklein/ms_deisotope/blob/ee4b083ad7ab5f77722860ce2d6fdb751886271e/ms_deisotope/deconvolution/api.py#L17
     deconvoluted_peaks, _priority_targets = deconvolute_peaks(ms1_peaks_l, averagine=averagine.peptide, charge_range=(1,5), scorer=scoring.MSDeconVFitter(10.0), truncate_after=0.95)
@@ -320,6 +322,9 @@ def find_features(window_number, window_df):
                 rt_apex = peakutils.centroid(rt_df.retention_time_secs, rt_df.intensity)
                 rt_lower = wide_rt_lower
                 rt_upper = wide_rt_upper
+
+            # check whether there is the actual monoisotopic peak out to the left (checking its peak height is the expected ratio)
+
 
             # find the isolation windows overlapping the feature's mono or second peak, plus scan and RT
             indexes = isolation_window_df.index[
