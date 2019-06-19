@@ -13,7 +13,7 @@ import time
 MS1_CE = 10
 
 parser = argparse.ArgumentParser(description='Create the tiles from raw data.')
-parser.add_argument('-cdbb','--converted_database_base', type=str, help='Path to the base directory of the raw converted database.', required=True)
+parser.add_argument('-cdb','--converted_database', type=str, help='Path to the raw converted database.', required=True)
 parser.add_argument('-tb','--tile_base', type=str, help='Path to the base directory of the training set.', required=True)
 parser.add_argument('-mqb','--maxquant_base', type=str, help='Path to the base directory of the MaxQuant files.', required=True)
 parser.add_argument('-rtl','--rt_lower', type=int, help='Lower bound of the RT range.', required=True)
@@ -21,7 +21,6 @@ parser.add_argument('-rtu','--rt_upper', type=int, help='Upper bound of the RT r
 parser.add_argument('-tm','--test_mode', action='store_true', help='A small subset of the data for testing purposes.')
 args = parser.parse_args()
 
-CONVERTED_DATABASE_NAME = '{}/HeLa_20KInt.sqlite'.format(args.converted_database_base)
 ALLPEPTIDES_FILENAME = '{}/txt/allPeptides.txt'.format(args.maxquant_base)
 
 PRE_ASSIGNED_FILES_DIR = '{}/pre-assigned'.format(args.tile_base)
@@ -39,8 +38,8 @@ for arg in vars(args):
 
 print("{} info: {}".format(parser.prog, info))
 
-print("opening {}".format(CONVERTED_DATABASE_NAME))
-db_conn = sqlite3.connect(CONVERTED_DATABASE_NAME)
+print("opening {}".format(args.converted_database))
+db_conn = sqlite3.connect(args.converted_database)
 ms1_frame_properties_df = pd.read_sql_query("select frame_id,retention_time_secs from frame_properties where retention_time_secs >= {} and retention_time_secs <= {} and collision_energy == {}".format(args.rt_lower, args.rt_upper, MS1_CE), db_conn)
 db_conn.close()
 
@@ -183,7 +182,7 @@ def render_tile_for_frame(frame_r):
     allpeptides_frame_overlap_df = allpeptides_df[(allpeptides_df.rt_lower <= frame_rt) & (allpeptides_df.rt_upper >= frame_rt)].copy()
 
     # load the raw frame points
-    db_conn = sqlite3.connect(CONVERTED_DATABASE_NAME)
+    db_conn = sqlite3.connect(args.converted_database)
     raw_points_df = pd.read_sql_query("select mz,scan,intensity from frames where frame_id == {}".format(frame_id), db_conn)
     db_conn.close()
 
