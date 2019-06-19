@@ -382,7 +382,7 @@ def remove_ms1_duplicates(ms1_features_df):
     ms1_deduped_df["feature_id"] = np.arange(start=1, stop=len(ms1_deduped_df)+1)
     return ms1_deduped_df
 
-def deconvolute_ms2_peaks_for_feature(feature_id, binned_ms2_df):
+def deconvolute_ms2_peaks_for_feature(feature_id, ms2_frame_id, binned_ms2_df):
     raw_scratch_df = binned_ms2_df.copy() # take a copy because we're going to delete stuff
 
     # do intensity descent to find the peaks
@@ -405,7 +405,7 @@ def deconvolute_ms2_peaks_for_feature(feature_id, binned_ms2_df):
             raw_scratch_df = raw_scratch_df[~raw_scratch_df.isin(peak_raw_points_df)].dropna(how = 'all')
 
     ms2_peaks_df = pd.DataFrame(ms2_peaks_l, columns=['mz','intensity'])
-    ms2_peaks_df.to_csv('./feature-{}-ms2-peaks-before-deconvolution.csv'.format(feature_id), index=False, header=True)
+    ms2_peaks_df.to_csv('./feature-{}-frame-{}-ms2-peaks-before-deconvolution.csv'.format(feature_id, ms2_frame_id), index=False, header=True)
 
     print("{} ms2 peaks prior to deconvolution".format(len(ms2_peaks_df)))
 
@@ -425,7 +425,7 @@ def deconvolute_ms2_peaks_for_feature(feature_id, binned_ms2_df):
             print("discarding peak with envelope {}".format(envelope))
 
     ms2_deconvoluted_peaks_df = pd.DataFrame(ms2_deconvoluted_peaks_l, columns=['mz','charge','intensity','score','SN'])
-    ms2_deconvoluted_peaks_df.to_csv('./feature-{}-ms2-peaks-after-deconvolution.csv'.format(feature_id), index=False, header=True)
+    ms2_deconvoluted_peaks_df.to_csv('./feature-{}-frame-{}-ms2-peaks-after-deconvolution.csv'.format(feature_id, ms2_frame_id), index=False, header=True)
     print("{} peaks after quality filtering".format(len(ms2_deconvoluted_peaks_df)))
 
     return ms2_deconvoluted_peaks_df
@@ -479,7 +479,7 @@ def deconvolute_ms2(feature_df, binned_ms2_for_feature, idx, total):
             ms2_peaks_df = find_ms2_peaks_for_feature(feature_df, ms2_frame_df)
             if len(ms2_peaks_df) > 0:
                 # deconvolve the peaks
-                ms2_deconvoluted_df = deconvolute_ms2_peaks_for_feature(feature_df.feature_id, ms2_peaks_df)
+                ms2_deconvoluted_df = deconvolute_ms2_peaks_for_feature(feature_df.feature_id, ms2_frame_id, ms2_peaks_df)
                 if len(ms2_deconvoluted_df) >= 2:
                     # package it up for the MGF
                     feature_spectra.append(collate_spectra_for_feature(feature_df, ms2_deconvoluted_df))
