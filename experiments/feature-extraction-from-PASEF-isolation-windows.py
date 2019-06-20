@@ -27,6 +27,7 @@ parser.add_argument('-ms1bw','--ms1_bin_width', type=float, default=0.00001, hel
 parser.add_argument('-ms2bw','--ms2_bin_width', type=float, default=0.001, help='Width of ms2 bins, in Thomsons.', required=False)
 parser.add_argument('-ms1dt','--ms1_peak_delta', type=float, default=0.1, help='How far either side of a peak in ms1 to include when calculating its centroid and intensity, in Thomsons.', required=False)
 parser.add_argument('-ms2dt','--ms2_peak_delta', type=float, default=0.01, help='How far either side of a peak in ms2 to include when calculating its centroid and intensity, in Thomsons.', required=False)
+parser.add_argument('-ms1ddmz','--ms1_dedup_mz_tolerance_ppm', type=float, default=5.0, help='Tolerance in m/z ppm for de-duping features in ms1.', required=False)
 parser.add_argument('-ms2l','--ms2_lower', type=float, default=90.0, help='Lower limit of m/z range in ms2.', required=False)
 parser.add_argument('-ms2u','--ms2_upper', type=float, default=1750.0, help='Upper limit of m/z range in ms2.', required=False)
 parser.add_argument('-pbms2','--pre_binned_ms2_filename', type=str, default='./pre_binned_ms2.pkl', help='File containing previously pre-binned ms2 frames.', required=False)
@@ -339,6 +340,7 @@ def find_features(window_number, window_df):
 def remove_ms1_duplicates(ms1_features_df):
     scratch_df = ms1_features_df.copy() # take a copy because we're going to delete stuff
     scratch_df.sort_values(by=['intensity'], ascending=False, inplace=True)
+    MZ_TOLERANCE_PERCENT = args.ms1_dedup_mz_tolerance_ppm * 10**-4
     ms1_features_l = []
     while len(scratch_df) > 0:
         scratch_df.reset_index(drop=True, inplace=True)
