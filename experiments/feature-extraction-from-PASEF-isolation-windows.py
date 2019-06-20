@@ -251,9 +251,9 @@ def find_features(window_number, window_df):
             mono_peak_mz = peak.mz
             mono_intensity = peak.intensity
             second_peak_mz = peak.envelope[1][0]
-            ms1_deconvoluted_peaks_l.append((mono_peak_mz, second_peak_mz, mono_intensity, peak.score, peak.signal_to_noise, peak.charge))
+            ms1_deconvoluted_peaks_l.append((mono_peak_mz, second_peak_mz, mono_intensity, peak.score, peak.signal_to_noise, peak.charge, peak.envelope))
 
-    ms1_deconvoluted_peaks_df = pd.DataFrame(ms1_deconvoluted_peaks_l, columns=['mono_mz','second_peak_mz','intensity','score','SN','charge'])
+    ms1_deconvoluted_peaks_df = pd.DataFrame(ms1_deconvoluted_peaks_l, columns=['mono_mz','second_peak_mz','intensity','score','SN','charge','envelope'])
 
     # For each monoisotopic peak found, find its apex in RT and mobility
     print("window {}, processing {} monoisotopics".format(window_number, len(ms1_deconvoluted_peaks_df)))
@@ -314,9 +314,6 @@ def find_features(window_number, window_df):
                 rt_apex = peakutils.centroid(rt_df.retention_time_secs, rt_df.intensity)
                 rt_lower = wide_rt_lower
                 rt_upper = wide_rt_upper
-
-            # check whether there is the actual monoisotopic peak out to the left (checking its peak height is the expected ratio)
-
 
             # find the isolation windows overlapping the feature's mono or second peak, plus scan and RT
             indexes = isolation_window_df.index[
