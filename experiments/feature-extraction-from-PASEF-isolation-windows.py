@@ -36,11 +36,17 @@ parser.add_argument('-ms1f','--ms1_features_filename', type=str, default='./ms1_
 parser.add_argument('-nms1f','--new_ms1_features', action='store_true', help='Create a new ms1 features file.')
 parser.add_argument('-ddms1','--dedup_ms1_filename', type=str, default='./ms1_deduped_df.pkl', help='File containing de-duped ms1 features.', required=False)
 parser.add_argument('-nddms1','--new_dedup_ms1_features', action='store_true', help='Create a new de-duped ms1 features file.')
-parser.add_argument('-mgfn','--mgf_spectra_filename', type=str, default='./mgf_spectra.pkl', help='File containing mgf spectra.', required=False)
+parser.add_argument('-ddms1','--dedup_ms1_filename', type=str, default='./ms1_deduped_df.pkl', help='File containing de-duped ms1 features.', required=False)
+parser.add_argument('-cmms1','--check_ms1_mono_peak', action='store_true', help='Check the monoisotopic peak for each feature, moving it if necessary.')
+parser.add_argument('-cmms1fn','--checked_ms1_mono_peak_filename', type=str, default='./checked_ms1_features.pkl', help='File containing mono-checked features.', required=False)
 parser.add_argument('-nmgf','--new_mgf_spectra', action='store_true', help='Create a new mgf spectra file.')
 parser.add_argument('-cl','--cluster_mode', action='store_true', help='Run on a cluster.')
 parser.add_argument('-tm','--test_mode', action='store_true', help='A small subset of the data for testing purposes.')
 args = parser.parse_args()
+
+
+
+
 
 # initialise Ray
 if not ray.is_initialized():
@@ -378,6 +384,140 @@ def remove_ms1_duplicates(ms1_features_df):
     ms1_deduped_df["feature_id"] = np.arange(start=1, stop=len(ms1_deduped_df)+1)
     return ms1_deduped_df
 
+INSTRUMENT_RESOLUTION = 40000.0
+
+# The FWHM is the m/z / instrument resolution. Std dev is FWHM / 2.35482. See https://en.wikipedia.org/wiki/Full_width_at_half_maximum
+def standard_deviation(mz):
+    FWHM = mz / INSTRUMENT_RESOLUTION
+    return FWHM / 2.35482
+
+# calculate the centroid, intensity of a bin
+def calc_centroid(bin_df):
+    d = {}
+    d['bin_idx'] = int(bin_df.iloc[0].bin_idx)
+    d['mz_centroid'] = peakutils.centroid(bin_df.mz, bin_df.intensity)
+    d['summed_intensity'] = int(bin_df.intensity.sum())
+    d['point_count'] = len(bin_df)
+    return pd.Series(d, index=['bin_idx','mz_centroid','summed_intensity','point_count'])
+
+# sum and centroid the bins
+def find_ms1_peaks(binned_ms1_df):
+    # calculate the bin centroid and summed intensity for the combined frames
+    combined_ms2_df = binned_ms1_df.groupby(['bin_idx'], as_index=False).apply(calc_centroid)
+    combined_ms2_df.summed_intensity = combined_ms2_df.summed_intensity.astype(int)
+    combined_ms2_df.bin_idx = combined_ms2_df.bin_idx.astype(int)
+    combined_ms2_df.point_count = combined_ms2_df.point_count.astype(int)
+    return combined_ms2_df
+
+# From "A Model-Based Method for the Prediction of the Isotopic Distribution of Peptides", Dirk Valkenborg,
+# Ivy Jansen, and Tomasz Burzykowski, J Am Soc Mass Spectrom 2008, 19, 703–712
+
+MAX_NUMBER_OF_SULPHUR_ATOMS = 3
+MAX_NUMBER_OF_PREDICTED_RATIOS = 6
+
+S0_r = np.empty(MAX_NUMBER_OF_PREDICTED_RATIOS+1, dtype=object)
+S0_r[1] = [-0.00142320578040, 0.53158267080224, 0.00572776591574, -0.00040226083326, -0.00007968737684]
+S0_r[2] = [0.06258138406507, 0.24252967352808, 0.01729736525102, -0.00427641490976, 0.00038011211412]
+S0_r[3] = [0.03092092306220, 0.22353930450345, -0.02630395501009, 0.00728183023772, -0.00073155573939]
+S0_r[4] = [-0.02490747037406, 0.26363266501679, -0.07330346656184, 0.01876886839392, -0.00176688757979]
+S0_r[5] = [-0.19423148776489, 0.45952477474223, -0.18163820209523, 0.04173579115885, -0.00355426505742]
+S0_r[6] = [0.04574408690798, -0.05092121193598, 0.13874539944789, -0.04344815868749, 0.00449747222180]
+
+S1_r = np.empty(MAX_NUMBER_OF_PREDICTED_RATIOS+1, dtype=object)
+S1_r[1] = [-0.01040584267474, 0.53121149663696, 0.00576913817747, -0.00039325152252, -0.00007954180489]
+S1_r[2] = [0.37339166598255, -0.15814640001919, 0.24085046064819, -0.06068695741919, 0.00563606634601]
+S1_r[3] = [0.06969331604484, 0.28154425636993, -0.08121643989151, 0.02372741957255, -0.00238998426027]
+S1_r[4] = [0.04462649178239, 0.23204790123388, -0.06083969521863, 0.01564282892512, -0.00145145206815]
+S1_r[5] = [-0.20727547407753, 0.53536509500863, -0.22521649838170, 0.05180965157326, -0.00439750995163]
+S1_r[6] = [0.27169670700251, -0.37192045082925, 0.31939855191976, -0.08668833166842, 0.00822975581940]
+
+S2_r = np.empty(MAX_NUMBER_OF_PREDICTED_RATIOS+1, dtype=object)
+S2_r[1] = [-0.01937823810470, 0.53084210514216, 0.00580573751882, -0.00038281138203, -0.00007958217070]
+S2_r[2] = [0.68496829280011, -0.54558176102022, 0.44926662609767, -0.11154849560657, 0.01023294598884]
+S2_r[3] = [0.04215807391059, 0.40434195078925, -0.15884974959493, 0.04319968814535, -0.00413693825139]
+S2_r[4] = [0.14015578207913, 0.14407679007180, -0.01310480312503, 0.00362292256563, -0.00034189078786]
+S2_r[5] = [-0.02549241716294, 0.32153542852101, -0.11409513283836, 0.02617210469576, -0.00221816103608]
+S2_r[6] = [-0.14490868030324, 0.33629928307361, -0.08223564735018, 0.01023410734015, -0.00027717589598]
+
+model_params = np.empty(MAX_NUMBER_OF_SULPHUR_ATOMS, dtype=object)
+model_params[0] = S0_r
+model_params[1] = S1_r
+model_params[2] = S2_r
+
+# Find the ratio of H(peak_number)/H(peak_number-1) for peak_number=1..6
+# peak_number = 0 refers to the monoisotopic peak
+# number_of_sulphur = number of sulphur atoms in the molecule
+def peak_ratio(monoisotopic_mass, peak_number, number_of_sulphur):
+    ratio = None
+    if (((1 <= peak_number <= 3) & (((number_of_sulphur == 0) & (498 <= monoisotopic_mass <= 3915)) |
+                                    ((number_of_sulphur == 1) & (530 <= monoisotopic_mass <= 3947)) |
+                                    ((number_of_sulphur == 2) & (562 <= monoisotopic_mass <= 3978)))) |
+       ((peak_number == 4) & (((number_of_sulphur == 0) & (907 <= monoisotopic_mass <= 3915)) |
+                              ((number_of_sulphur == 1) & (939 <= monoisotopic_mass <= 3947)) |
+                              ((number_of_sulphur == 2) & (971 <= monoisotopic_mass <= 3978)))) |
+       ((peak_number == 5) & (((number_of_sulphur == 0) & (1219 <= monoisotopic_mass <= 3915)) |
+                              ((number_of_sulphur == 1) & (1251 <= monoisotopic_mass <= 3947)) |
+                              ((number_of_sulphur == 2) & (1283 <= monoisotopic_mass <= 3978)))) |
+       ((peak_number == 6) & (((number_of_sulphur == 0) & (1559 <= monoisotopic_mass <= 3915)) |
+                              ((number_of_sulphur == 1) & (1591 <= monoisotopic_mass <= 3947)) |
+                              ((number_of_sulphur == 2) & (1623 <= monoisotopic_mass <= 3978))))):
+        beta0 = model_params[number_of_sulphur][peak_number][0]
+        beta1 = model_params[number_of_sulphur][peak_number][1]
+        beta2 = model_params[number_of_sulphur][peak_number][2]
+        beta3 = model_params[number_of_sulphur][peak_number][3]
+        beta4 = model_params[number_of_sulphur][peak_number][4]
+        scaled_m = monoisotopic_mass / 1000.0
+        ratio = beta0 + (beta1*scaled_m) + beta2*(scaled_m**2) + beta3*(scaled_m**3) + beta4*(scaled_m**4)
+    return ratio
+
+@ray.remote
+def check_for_missed_monoisotopic_peak(feature, idx, total):
+    modified = False
+
+    expected_spacing_mz = DELTA_MZ / feature.charge
+    # m/z delta to look either side
+    mz_delta = standard_deviation(feature.monoisotopic_mz) * number_of_std_dev_mz
+    mz_lower = feature.monoisotopic_mz - expected_spacing_mz - mz_delta
+    mz_upper = feature.monoisotopic_mz - expected_spacing_mz + mz_delta
+    ms1_collision_energy = 10.0
+    ms1_bin_width = 1e-5
+
+    rt_lower = feature.rt_lower
+    rt_upper = feature.rt_upper
+    scan_lower = feature.scan_lower
+    scan_upper = feature.scan_upper
+
+    # find the ms1 frame ids for the feature's extent in RT
+    ms1_frame_ids = tuple(ms1_frame_properties_df.frame_id)
+
+    db_conn = sqlite3.connect(args.converted_database_base)
+    ms1_raw_points_df = pd.read_sql_query("select frame_id,mz,scan,intensity from frames where frame_id in {} and mz >= {} and mz <= {} and scan >= {} and scan <= {} and intensity > 0".format(ms1_frame_ids, mz_lower, mz_upper, scan_lower, scan_upper), db_conn)
+    db_conn.close()
+
+    # arrange the points into bins
+    ms1_bins = np.arange(start=mz_lower, stop=mz_upper+ms1_bin_width, step=ms1_bin_width)  # go slightly wider to accomodate the maximum value
+    ms1_raw_points_df['bin_idx'] = np.digitize(ms1_raw_points_df.mz, ms1_bins).astype(int)
+
+    unresolved_peaks_df = find_ms1_peaks(ms1_raw_points_df)
+
+    candidate_mz_centroid = peakutils.centroid(unresolved_peaks_df.mz_centroid, unresolved_peaks_df.summed_intensity)
+    candidate_summed_intensity = unresolved_peaks_df.summed_intensity.sum()
+    candidate_monoisotopic_mass = candidate_mz_centroid * feature.charge
+
+    expected_ratio = peak_ratio(monoisotopic_mass=candidate_monoisotopic_mass, peak_number=1, number_of_sulphur=0)
+    candidate_ratio = feature.envelope[0][1] / candidate_summed_intensity
+
+    if (abs(expected_ratio - candidate_ratio) / expected_ratio) <= 0.25:
+        feature.monoisotopic_mz = candidate_mz_centroid
+        feature.intensity = candidate_summed_intensity
+        modified = True
+
+    print("checked the monoisotopic peak for feature {} ({} of {}): moved {}".format(feature.feature_id, idx+1, total, modified))
+
+    feature_l = feature.tolist()
+    feature_l.append(modified)
+    return feature_l
+
 def deconvolute_ms2_peaks_for_feature(feature_id, ms2_frame_id, binned_ms2_df):
     raw_scratch_df = binned_ms2_df.copy() # take a copy because we're going to delete stuff
 
@@ -489,7 +629,7 @@ else:
     ms1_df = pd.read_pickle(args.ms1_features_filename)
     print("loaded {} features".format(len(ms1_df)))
 
-if args.new_dedup_ms1_features:
+if args.new_dedup_ms1_features or args.new_ms1_features:
     # remove duplicates in ms1
     print("removing duplicates")
     ms1_deduped_df = remove_ms1_duplicates(ms1_df)
@@ -501,25 +641,38 @@ else:
     ms1_deduped_df = pd.read_pickle(args.dedup_ms1_filename)
     print("loaded {} features".format(len(ms1_deduped_df)))
 
+if args.check_ms1_mono_peak or args.new_dedup_ms1_features or args.new_ms1_features:
+    print("checking ms1 monoisotopic peaks")
+    checked_features_l = ray.get([check_for_missed_monoisotopic_peak.remote(feature=feature, idx=idx, total=len(ms1_deduped_df)) for idx,feature in ms1_deduped_df.iterrows()])
+    checked_features_l = [item for sublist in checked_features_l for item in sublist]  # flatten the list of lists into a list
+    cols = ms1_deduped_df.columns.tolist()
+    cols.append('mono_adjusted')
+    checked_features_df = pd.DataFrame(checked_features_l, columns=cols)
+    checked_features_df.to_pickle(args.checked_ms1_mono_peak_filename)
+else:
+    # load previously checked monoisotopic peaks
+    print("loading checked ms1 monoisotopic peaks")
+    checked_features_df = pd.read_pickle(args.checked_ms1_mono_peak_filename)
+
 if args.new_prebin_ms2:
     # bin ms2 frames
     print("binning ms2 frames")
     binned_ms2_df = bin_ms2_frames()
     binned_ms2_df.to_pickle(args.pre_binned_ms2_filename)
-    print("binned {} points".format(len(binned_ms2_df)))
+    print("binned {} ms2 points".format(len(binned_ms2_df)))
 else:
     # load previously binned ms2
     print("loading pre-binned ms2 frames")
     binned_ms2_df = pd.read_pickle(args.pre_binned_ms2_filename)
-    print("loaded {} pre-binned points".format(len(binned_ms2_df)))
+    print("loaded {} pre-binned ms2 points".format(len(binned_ms2_df)))
 
-if args.new_mgf_spectra:
+if args.new_mgf_spectra or args.check_ms1_mono_peak or args.new_dedup_ms1_features or args.new_ms1_features or args.new_prebin_ms2:
     # find ms2 peaks for each feature found in ms1, and collate the spectra for the MGF
     print("finding peaks in ms2 for each feature")
-    ms1_deduped_df.reset_index(drop=True, inplace=True)
+    checked_features_df.reset_index(drop=True, inplace=True)
     if args.test_mode:
-        ms1_deduped_df = ms1_deduped_df[ms1_deduped_df.feature_id == 822]
-    mgf_spectra_l = ray.get([deconvolute_ms2.remote(feature_df=feature_df, binned_ms2_for_feature=binned_ms2_df[binned_ms2_df.frame_id.isin(feature_df.ms2_frames)], idx=idx, total=len(ms1_deduped_df)) for idx,feature_df in ms1_deduped_df.iterrows()])
+        checked_features_df = checked_features_df[checked_features_df.feature_id == 822]
+    mgf_spectra_l = ray.get([deconvolute_ms2.remote(feature_df=feature_df, binned_ms2_for_feature=binned_ms2_df[binned_ms2_df.frame_id.isin(feature_df.ms2_frames)], idx=idx, total=len(checked_features_df)) for idx,feature_df in checked_features_df.iterrows()])
     # mgf_spectra_l is a list of lists, so we need to flatten it (https://stackoverflow.com/a/40813764/1184799)
     mgf_spectra_l = [item for sublist in mgf_spectra_l for item in sublist]
     # write out the results for analysis
