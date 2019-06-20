@@ -262,6 +262,7 @@ def find_features(window_number, window_df):
         feature_intensity = int(ms1_deconvoluted_peaks_df.iloc[monoisotopic_idx].intensity)
         second_peak_mz = ms1_deconvoluted_peaks_df.iloc[monoisotopic_idx].second_peak_mz
         feature_charge = int(ms1_deconvoluted_peaks_df.iloc[monoisotopic_idx].charge)
+        feature_envelope = ms1_deconvoluted_peaks_df.iloc[monoisotopic_idx].envelope
 
         # Get the raw points for the monoisotopic peak (constrained by the fragmentation event)
         MZ_TOLERANCE_PPM = 20
@@ -329,9 +330,9 @@ def find_features(window_number, window_df):
             if len(isolation_windows_overlapping_feature_df) > 0:
                 ms2_frames = list(isolation_windows_overlapping_feature_df.Frame)
                 ms2_scan_ranges = [tuple(x) for x in isolation_windows_overlapping_feature_df[['ScanNumBegin','ScanNumEnd']].values]
-                ms1_characteristics_l.append((feature_monoisotopic_mz, feature_charge, feature_intensity, round(scan_apex,2), mobility_curve_fit, round(scan_lower,2), round(scan_upper,2), round(rt_apex,2), rt_curve_fit, round(rt_lower,2), round(rt_upper,2), precursor_id, ms2_frames, ms2_scan_ranges))
+                ms1_characteristics_l.append((feature_monoisotopic_mz, feature_charge, feature_intensity, round(scan_apex,2), mobility_curve_fit, round(scan_lower,2), round(scan_upper,2), round(rt_apex,2), rt_curve_fit, round(rt_lower,2), round(rt_upper,2), precursor_id, ms2_frames, ms2_scan_ranges, feature_envelope))
 
-    ms1_characteristics_df = pd.DataFrame(ms1_characteristics_l, columns=['monoisotopic_mz', 'charge', 'intensity', 'scan_apex', 'scan_curve_fit', 'scan_lower', 'scan_upper', 'rt_apex', 'rt_curve_fit', 'rt_lower', 'rt_upper', 'precursor_id', 'ms2_frames', 'ms2_scan_ranges'])
+    ms1_characteristics_df = pd.DataFrame(ms1_characteristics_l, columns=['monoisotopic_mz', 'charge', 'intensity', 'scan_apex', 'scan_curve_fit', 'scan_lower', 'scan_upper', 'rt_apex', 'rt_curve_fit', 'rt_lower', 'rt_upper', 'precursor_id', 'ms2_frames', 'ms2_scan_ranges','envelope'])
     return ms1_characteristics_df
 
 def remove_ms1_duplicates(ms1_features_df):
