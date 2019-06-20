@@ -13,13 +13,6 @@ import pickle
 
 PROTON_MASS = 1.0073  # Mass of a proton in unified atomic mass units, or Da. For calculating the monoisotopic mass.
 
-# ms1 duplicate tolerances
-# +/- these amounts
-MZ_TOLERANCE_PPM = 5
-MZ_TOLERANCE_PERCENT = MZ_TOLERANCE_PPM * 10**-4
-SCAN_TOLERANCE = 10
-RT_TOLERANCE = 0.5
-
 parser = argparse.ArgumentParser(description='Extract ms1 features from PASEF isolation windows.')
 parser.add_argument('-cdbb','--converted_database_base', type=str, help='base path to the converted database.', required=True)
 parser.add_argument('-rdbb','--raw_database_base', type=str, help='base path to the raw database.', required=True)
@@ -152,10 +145,6 @@ isolation_window_df['fe_rt_upper'] = isolation_window_df.retention_time_secs + a
 
 # filter out isolation windows that don't fit in the database subset we have loaded
 isolation_window_df = isolation_window_df[(isolation_window_df.wide_rt_lower >= args.rt_lower) & (isolation_window_df.wide_rt_upper <= args.rt_upper)]
-if args.test_mode:
-    isolation_window_df = isolation_window_df[:2]
-
-print("There are {} precursor unique isolation windows.".format(isolation_window_df.Precursor.nunique()))
 
 def bin_ms2_frames():
     # get the raw points for all ms2 frames
@@ -226,7 +215,8 @@ def find_features(window_number, window_df):
 
     binned_ms1_df = pd.DataFrame(binned_ms1_l, columns=['mz_centroid','summed_intensity'])
     raw_scratch_df = binned_ms1_df.copy() # take a copy because we're going to delete stuff
-    binned_ms1_df.to_csv('./ms1-peaks-window-{}-before-intensity-descent.csv'.format(window_number), index=False, header=True)
+    if args.test_mode:
+        binned_ms1_df.to_csv('./ms1-peaks-window-{}-before-intensity-descent.csv'.format(window_number), index=False, header=True)
 
     ms1_peaks_l = []
     while len(raw_scratch_df) > 0:
@@ -247,7 +237,8 @@ def find_features(window_number, window_df):
             raw_scratch_df = raw_scratch_df[~raw_scratch_df.isin(peak_raw_points_df)].dropna(how = 'all')
 
     ms1_peaks_df = pd.DataFrame(ms1_peaks_l, columns=['mz','intensity'])
-    ms1_peaks_df.to_csv('./ms1-peaks-window-{}-after-intensity-descent.csv'.format(window_number), index=False, header=True)
+    if args.test_mode:
+        ms1_peaks_df.to_csv('./ms1-peaks-window-{}-after-intensity-descent.csv'.format(window_number), index=False, header=True)
 
     # see https://github.com/mobiusklein/ms_deisotope/blob/ee4b083ad7ab5f77722860ce2d6fdb751886271e/ms_deisotope/deconvolution/api.py#L17
     deconvoluted_peaks, _priority_targets = deconvolute_peaks(ms1_peaks_l, averagine=averagine.peptide, charge_range=(1,5), scorer=scoring.MSDeconVFitter(10.0), truncate_after=0.95)
@@ -410,7 +401,8 @@ def deconvolute_ms2_peaks_for_feature(feature_id, ms2_frame_id, binned_ms2_df):
             raw_scratch_df = raw_scratch_df[~raw_scratch_df.isin(peak_raw_points_df)].dropna(how = 'all')
 
     ms2_peaks_df = pd.DataFrame(ms2_peaks_l, columns=['mz','intensity'])
-    ms2_peaks_df.to_csv('./feature-{}-frame-{}-ms2-peaks-before-deconvolution.csv'.format(feature_id, ms2_frame_id), index=False, header=True)
+    if args.test_mode:
+        ms2_peaks_df.to_csv('./feature-{}-frame-{}-ms2-peaks-before-deconvolution.csv'.format(feature_id, ms2_frame_id), index=False, header=True)
 
     # deconvolute the peaks
     ms2_deconvoluted_peaks, _ = deconvolute_peaks(ms2_peaks_l, averagine=averagine.peptide, charge_range=(1,5), scorer=scoring.MSDeconVFitter(minimum_score=8, mass_error_tolerance=0.1), error_tolerance=4e-5, truncate_after=0.6)
@@ -420,7 +412,8 @@ def deconvolute_ms2_peaks_for_feature(feature_id, ms2_frame_id, binned_ms2_df):
         ms2_deconvoluted_peaks_l.append((round(peak.neutral_mass+PROTON_MASS, 4), int(peak.charge), peak.intensity, peak.score, peak.signal_to_noise))
 
     ms2_deconvoluted_peaks_df = pd.DataFrame(ms2_deconvoluted_peaks_l, columns=['mz','charge','intensity','score','SN'])
-    ms2_deconvoluted_peaks_df.to_csv('./feature-{}-frame-{}-ms2-peaks-after-deconvolution.csv'.format(feature_id, ms2_frame_id), index=False, header=True)
+    if args.test_mode:
+        ms2_deconvoluted_peaks_df.to_csv('./feature-{}-frame-{}-ms2-peaks-after-deconvolution.csv'.format(feature_id, ms2_frame_id), index=False, header=True)
 
     return ms2_deconvoluted_peaks_df
 
@@ -484,6 +477,8 @@ def deconvolute_ms2(feature_df, binned_ms2_for_feature, idx, total):
 if args.new_ms1_features:
     # find ms1 features for each unique precursor ID
     print("finding ms1 features")
+    if args.test_mode:
+        isolation_window_df = isolation_window_df[:2]
     ms1_df_l = ray.get([find_features.remote(window_number=idx+1, window_df=group_df.iloc[0]) for idx,group_df in isolation_window_df.groupby('Precursor')])
     ms1_df = pd.concat(ms1_df_l)  # combines a list of dataframes into a single dataframe
     ms1_df.to_pickle(args.ms1_features_filename)
