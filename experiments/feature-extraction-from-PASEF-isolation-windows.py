@@ -517,11 +517,11 @@ def check_for_missed_monoisotopic_peak(feature, idx, total):
 
     print("checked the monoisotopic peak for feature {} ({} of {}): moved {}".format(feature.feature_id, idx+1, total, modified))
 
-    feature_l = feature.tolist()
-    print("feature_l: {}".format(feature_l))
-    feature_l.append(modified)
-    print("feature_l with mod: {}".format(feature_l))
-    return feature_l
+    feature_d = feature.to_dict()
+    print("feature_d: {}".format(feature_d))
+    feature_d['mono_adjusted'] = modified
+    print("feature_d with mod: {}".format(feature_d))
+    return feature_d
 
 def deconvolute_ms2_peaks_for_feature(feature_id, ms2_frame_id, binned_ms2_df):
     raw_scratch_df = binned_ms2_df.copy() # take a copy because we're going to delete stuff
@@ -646,18 +646,20 @@ else:
     ms1_deduped_df = pd.read_pickle(args.dedup_ms1_filename)
     print("loaded {} features".format(len(ms1_deduped_df)))
 
-if args.check_ms1_mono_peak or args.new_dedup_ms1_features or args.new_ms1_features:
-    print("checking ms1 monoisotopic peaks")
-    checked_features_l = ray.get([check_for_missed_monoisotopic_peak.remote(feature=feature, idx=idx, total=len(ms1_deduped_df)) for idx,feature in ms1_deduped_df.iterrows()])
-    checked_features_l = [item for sublist in checked_features_l for item in sublist]  # flatten the list of lists into a list
-    cols = ms1_deduped_df.columns.tolist()
-    cols.append('mono_adjusted')
-    checked_features_df = pd.DataFrame(checked_features_l, columns=cols)
-    checked_features_df.to_pickle(args.checked_ms1_mono_peak_filename)
-else:
-    # load previously checked monoisotopic peaks
-    print("loading checked ms1 monoisotopic peaks")
-    checked_features_df = pd.read_pickle(args.checked_ms1_mono_peak_filename)
+# if args.check_ms1_mono_peak or args.new_dedup_ms1_features or args.new_ms1_features:
+#     print("checking ms1 monoisotopic peaks")
+#     checked_features_l = ray.get([check_for_missed_monoisotopic_peak.remote(feature=feature, idx=idx, total=len(ms1_deduped_df)) for idx,feature in ms1_deduped_df.iterrows()])
+#     checked_features_l = [item for sublist in checked_features_l for item in sublist]  # flatten the list of lists into a list
+#     cols = ms1_deduped_df.columns.tolist()
+#     cols.append('mono_adjusted')
+#
+#     checked_features_df = pd.DataFrame(checked_features_l, columns=cols)
+#     checked_features_df.to_pickle(args.checked_ms1_mono_peak_filename)
+# else:
+#     # load previously checked monoisotopic peaks
+#     print("loading checked ms1 monoisotopic peaks")
+#     checked_features_df = pd.read_pickle(args.checked_ms1_mono_peak_filename)
+checked_features_df = ms1_deduped_df
 
 if args.new_prebin_ms2:
     # bin ms2 frames
