@@ -518,7 +518,9 @@ def check_for_missed_monoisotopic_peak(feature, idx, total):
     print("checked the monoisotopic peak for feature {} ({} of {}): moved {}".format(feature.feature_id, idx+1, total, modified))
 
     feature_l = feature.tolist()
+    print("feature_l: {}".format(feature_l))
     feature_l.append(modified)
+    print("feature_l with mod: {}".format(feature_l))
     return feature_l
 
 def deconvolute_ms2_peaks_for_feature(feature_id, ms2_frame_id, binned_ms2_df):
