@@ -493,7 +493,7 @@ def check_for_missed_monoisotopic_peak(feature, idx, total):
     # find the ms1 frame ids for the feature's extent in RT
     ms1_frame_ids = tuple(ms1_frame_properties_df.frame_id)
 
-    db_conn = sqlite3.connect(args.converted_database_base)
+    db_conn = sqlite3.connect(CONVERTED_DATABASE_NAME)
     ms1_raw_points_df = pd.read_sql_query("select frame_id,mz,scan,intensity from frames where frame_id in {} and mz >= {} and mz <= {} and scan >= {} and scan <= {} and intensity > 0".format(ms1_frame_ids, mz_lower, mz_upper, scan_lower, scan_upper), db_conn)
     db_conn.close()
 
