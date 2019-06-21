@@ -18,6 +18,7 @@ parser.add_argument('-cdbb','--converted_database_base', type=str, help='base pa
 parser.add_argument('-rdbb','--raw_database_base', type=str, help='base path to the raw database.', required=True)
 parser.add_argument('-mqtb','--maxquant_text_base', type=str, help='base path to MaxQuant text directory.', required=True)
 parser.add_argument('-mgf','--mgf_filename', type=str, help='File name of the MGF to be generated.', required=True)
+# parameters
 parser.add_argument('-rtl','--rt_lower', type=float, help='The lower limit of retention time (secs).', required=True)
 parser.add_argument('-rtu','--rt_upper', type=float, help='The upper limit of retention time (secs).', required=True)
 parser.add_argument('-rtpw','--rt_base_peak_width_secs', type=float, default=30.0, help='How broad to look in RT for the peak apex (secs).', required=False)
@@ -30,23 +31,25 @@ parser.add_argument('-ms2dt','--ms2_peak_delta', type=float, default=0.01, help=
 parser.add_argument('-ms1ddmz','--ms1_dedup_mz_tolerance_ppm', type=float, default=5.0, help='Tolerance in m/z ppm for de-duping features in ms1.', required=False)
 parser.add_argument('-ms2l','--ms2_lower', type=float, default=90.0, help='Lower limit of m/z range in ms2.', required=False)
 parser.add_argument('-ms2u','--ms2_upper', type=float, default=1750.0, help='Upper limit of m/z range in ms2.', required=False)
-parser.add_argument('-pbms2','--pre_binned_ms2_filename', type=str, default='./pre_binned_ms2.pkl', help='File containing previously pre-binned ms2 frames.', required=False)
+# commands
 parser.add_argument('-npbms2','--new_prebin_ms2', action='store_true', help='Create a new pre-bin file for ms2 frames.')
-parser.add_argument('-ms1f','--ms1_features_filename', type=str, default='./ms1_df.pkl', help='File containing ms1 features.', required=False)
+parser.add_argument('-pbms2fn','--pre_binned_ms2_filename', type=str, default='./pre_binned_ms2.pkl', help='File containing previously pre-binned ms2 frames.', required=False)
+#
 parser.add_argument('-nms1f','--new_ms1_features', action='store_true', help='Create a new ms1 features file.')
-parser.add_argument('-ddms1','--dedup_ms1_filename', type=str, default='./ms1_deduped_df.pkl', help='File containing de-duped ms1 features.', required=False)
+parser.add_argument('-ms1ffn','--ms1_features_filename', type=str, default='./ms1_df.pkl', help='File containing ms1 features.', required=False)
+#
 parser.add_argument('-nddms1','--new_dedup_ms1_features', action='store_true', help='Create a new de-duped ms1 features file.')
-parser.add_argument('-ddms1','--dedup_ms1_filename', type=str, default='./ms1_deduped_df.pkl', help='File containing de-duped ms1 features.', required=False)
+parser.add_argument('-ddms1fn','--dedup_ms1_filename', type=str, default='./ms1_deduped_df.pkl', help='File containing de-duped ms1 features.', required=False)
+#
 parser.add_argument('-cmms1','--check_ms1_mono_peak', action='store_true', help='Check the monoisotopic peak for each feature, moving it if necessary.')
 parser.add_argument('-cmms1fn','--checked_ms1_mono_peak_filename', type=str, default='./checked_ms1_features.pkl', help='File containing mono-checked features.', required=False)
+#
 parser.add_argument('-nmgf','--new_mgf_spectra', action='store_true', help='Create a new mgf spectra file.')
+parser.add_argument('-mgffn','--mgf_spectra_filename', type=str, default='./mgf_spectra.pkl', help='File containing mgf spectra.', required=False)
+# modes
 parser.add_argument('-cl','--cluster_mode', action='store_true', help='Run on a cluster.')
 parser.add_argument('-tm','--test_mode', action='store_true', help='A small subset of the data for testing purposes.')
 args = parser.parse_args()
-
-
-
-
 
 # initialise Ray
 if not ray.is_initialized():
