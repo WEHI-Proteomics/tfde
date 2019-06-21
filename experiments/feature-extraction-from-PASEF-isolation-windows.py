@@ -32,6 +32,7 @@ parser.add_argument('-ms2dt','--ms2_peak_delta', type=float, default=0.01, help=
 parser.add_argument('-ms1ddmz','--ms1_dedup_mz_tolerance_ppm', type=float, default=5.0, help='Tolerance in m/z ppm for de-duping features in ms1.', required=False)
 parser.add_argument('-ms2l','--ms2_lower', type=float, default=90.0, help='Lower limit of m/z range in ms2.', required=False)
 parser.add_argument('-ms2u','--ms2_upper', type=float, default=1750.0, help='Upper limit of m/z range in ms2.', required=False)
+parser.add_argument('-nstddevmz','--number_of_std_dev_mz', type=float, default=3.0, help='Number of standard deviations to look either side of the expected isotopic spacing.', required=False)
 # commands
 parser.add_argument('-npbms2','--new_prebin_ms2', action='store_true', help='Create a new pre-bin file for ms2 frames.')
 parser.add_argument('-pbms2fn','--pre_binned_ms2_filename', type=str, default='./pre_binned_ms2.pkl', help='File containing previously pre-binned ms2 frames.', required=False)
@@ -479,12 +480,10 @@ def check_for_missed_monoisotopic_peak(feature, idx, total):
     modified = False
 
     expected_spacing_mz = DELTA_MZ / feature.charge
-    # m/z delta to look either side
-    mz_delta = standard_deviation(feature.monoisotopic_mz) * number_of_std_dev_mz
-    mz_lower = feature.monoisotopic_mz - expected_spacing_mz - mz_delta
-    mz_upper = feature.monoisotopic_mz - expected_spacing_mz + mz_delta
-    ms1_collision_energy = 10.0
-    ms1_bin_width = 1e-5
+    # m/z delta to look either side of where we expect an isotope to be
+    mz_delta = standard_deviation(feature.monoisotopic_mz) * args.number_of_std_dev_mz
+    mz_lower = (feature.monoisotopic_mz - expected_spacing_mz) - mz_delta
+    mz_upper = (feature.monoisotopic_mz - expected_spacing_mz) + mz_delta
 
     rt_lower = feature.rt_lower
     rt_upper = feature.rt_upper
@@ -499,7 +498,7 @@ def check_for_missed_monoisotopic_peak(feature, idx, total):
     db_conn.close()
 
     # arrange the points into bins
-    ms1_bins = np.arange(start=mz_lower, stop=mz_upper+ms1_bin_width, step=ms1_bin_width)  # go slightly wider to accomodate the maximum value
+    ms1_bins = np.arange(start=mz_lower, stop=mz_upper+args.ms1_bin_width, step=args.ms1_bin_width)  # go slightly wider to accomodate the maximum value
     ms1_raw_points_df['bin_idx'] = np.digitize(ms1_raw_points_df.mz, ms1_bins).astype(int)
 
     unresolved_peaks_df = find_ms1_peaks(ms1_raw_points_df)
