@@ -33,6 +33,8 @@ parser.add_argument('-ms1ddmz','--ms1_dedup_mz_tolerance_ppm', type=float, defau
 parser.add_argument('-ms2l','--ms2_lower', type=float, default=90.0, help='Lower limit of m/z range in ms2.', required=False)
 parser.add_argument('-ms2u','--ms2_upper', type=float, default=1750.0, help='Upper limit of m/z range in ms2.', required=False)
 parser.add_argument('-nstddevmz','--number_of_std_dev_mz', type=float, default=3.0, help='Number of standard deviations to look either side of the expected isotopic spacing.', required=False)
+parser.add_argument('-ms1phre','--max_ms1_peak_height_ratio_error', type=float, default=0.3, help='Maximum error for a feature\'s monoisotopic peak height ration.', required=False)
+
 # commands
 parser.add_argument('-npbms2','--new_prebin_ms2', action='store_true', help='Create a new pre-bin file for ms2 frames.')
 parser.add_argument('-pbms2fn','--pre_binned_ms2_filename', type=str, default='./pre_binned_ms2.pkl', help='File containing previously pre-binned ms2 frames.', required=False)
@@ -476,51 +478,64 @@ def peak_ratio(monoisotopic_mass, peak_number, number_of_sulphur):
     return ratio
 
 @ray.remote
-def check_for_missed_monoisotopic_peak(feature, idx, total):
-    modified = False
-
-    expected_spacing_mz = DELTA_MZ / feature.charge
-    # m/z delta to look either side of where we expect an isotope to be
-    mz_delta = standard_deviation(feature.monoisotopic_mz) * args.number_of_std_dev_mz
-    mz_lower = (feature.monoisotopic_mz - expected_spacing_mz) - mz_delta
-    mz_upper = (feature.monoisotopic_mz - expected_spacing_mz) + mz_delta
-
-    rt_lower = feature.rt_lower
-    rt_upper = feature.rt_upper
-    scan_lower = feature.scan_lower
-    scan_upper = feature.scan_upper
-
-    # find the ms1 frame ids for the feature's extent in RT
-    ms1_frame_ids = tuple(ms1_frame_properties_df.frame_id)
-
-    db_conn = sqlite3.connect(CONVERTED_DATABASE_NAME)
-    ms1_raw_points_df = pd.read_sql_query("select frame_id,mz,scan,intensity from frames where frame_id in {} and mz >= {} and mz <= {} and scan >= {} and scan <= {} and intensity > 0".format(ms1_frame_ids, mz_lower, mz_upper, scan_lower, scan_upper), db_conn)
-    db_conn.close()
-
-    # arrange the points into bins
-    ms1_bins = np.arange(start=mz_lower, stop=mz_upper+args.ms1_bin_width, step=args.ms1_bin_width)  # go slightly wider to accomodate the maximum value
-    ms1_raw_points_df['bin_idx'] = np.digitize(ms1_raw_points_df.mz, ms1_bins).astype(int)
-
-    unresolved_peaks_df = find_ms1_peaks(ms1_raw_points_df)
-
-    candidate_mz_centroid = peakutils.centroid(unresolved_peaks_df.mz_centroid, unresolved_peaks_df.summed_intensity)
-    candidate_summed_intensity = unresolved_peaks_df.summed_intensity.sum()
-    candidate_monoisotopic_mass = candidate_mz_centroid * feature.charge
-
-    expected_ratio = peak_ratio(monoisotopic_mass=candidate_monoisotopic_mass, peak_number=1, number_of_sulphur=0)
-    candidate_ratio = feature.envelope[0][1] / candidate_summed_intensity
-
-    if (abs(expected_ratio - candidate_ratio) / expected_ratio) <= 0.25:
-        feature.monoisotopic_mz = candidate_mz_centroid
-        feature.intensity = candidate_summed_intensity
-        modified = True
-
-    print("checked the monoisotopic peak for feature {} ({} of {}): moved {}".format(feature.feature_id, idx+1, total, modified))
-
+def check_monoisotopic_peak(feature, idx, total):
+    adjusted = False
     feature_d = feature.to_dict()
-    print("feature_d: {}".format(feature_d))
-    feature_d['mono_adjusted'] = modified
-    print("feature_d with mod: {}".format(feature_d))
+    candidate_phr_error = None
+
+    # calculate the PHR error for peak 1 (first isotope) and peak 0 (what we think is the monoisotopic)
+    observed_ratio = feature.envelope[1][1] / feature.envelope[0][1]
+    monoisotopic_mass = feature.monoisotopic_mz * feature.charge
+    expected_ratio = peak_ratio(monoisotopic_mass=monoisotopic_mass, peak_number=1, number_of_sulphur=0)
+    original_phr_error = (observed_ratio - expected_ratio) / expected_ratio
+    if original_phr_error > args.max_ms1_peak_height_ratio_error:
+        print("feature {}/{}: PHR error {} - looking for the correct monoisotopic".format(idx+1,total,original_phr_error))
+        # probably missed the monoisotopic - need to search for it
+        expected_spacing_mz = DELTA_MZ / feature.charge
+        # m/z delta to look either side of where we expect an isotope to be
+        mz_delta = standard_deviation(feature.monoisotopic_mz) * args.number_of_std_dev_mz
+        mz_lower = (feature.monoisotopic_mz - expected_spacing_mz) - mz_delta
+        mz_upper = (feature.monoisotopic_mz - expected_spacing_mz) + mz_delta
+
+        rt_lower = feature.rt_lower
+        rt_upper = feature.rt_upper
+        scan_lower = feature.scan_lower
+        scan_upper = feature.scan_upper
+
+        # find the ms1 frame ids for the feature's extent in RT
+        ms1_frame_ids = tuple(ms1_frame_properties_df.frame_id)
+
+        db_conn = sqlite3.connect(CONVERTED_DATABASE_NAME)
+        ms1_raw_points_df = pd.read_sql_query("select frame_id,mz,scan,intensity from frames where frame_id in {} and mz >= {} and mz <= {} and scan >= {} and scan <= {} and intensity > 0".format(ms1_frame_ids, mz_lower, mz_upper, scan_lower, scan_upper), db_conn)
+        db_conn.close()
+
+        # arrange the points into bins
+        ms1_bins = np.arange(start=mz_lower, stop=mz_upper+args.ms1_bin_width, step=args.ms1_bin_width)  # go slightly wider to accomodate the maximum value
+        ms1_raw_points_df['bin_idx'] = np.digitize(ms1_raw_points_df.mz, ms1_bins).astype(int)
+
+        unresolved_peaks_df = find_ms1_peaks(ms1_raw_points_df)
+
+        candidate_mz_centroid = peakutils.centroid(unresolved_peaks_df.mz_centroid, unresolved_peaks_df.summed_intensity)
+        candidate_summed_intensity = unresolved_peaks_df.summed_intensity.sum()
+        candidate_monoisotopic_mass = candidate_mz_centroid * feature.charge
+
+        expected_ratio = peak_ratio(monoisotopic_mass=candidate_monoisotopic_mass, peak_number=1, number_of_sulphur=0)
+        candidate_ratio = feature.envelope[0][1] / candidate_summed_intensity
+        candidate_phr_error = (candidate_ratio - expected_ratio) / expected_ratio
+        feature_d['candidate_phr_error'] = candidate_phr_error
+
+        if candidate_phr_error <= args.max_ms1_peak_height_ratio_error:
+            feature_d['monoisotopic_mz'] = candidate_mz_centroid
+            feature_d['intensity'] = candidate_summed_intensity
+            updated_envelope = []
+            updated_envelope.append((candidate_mz_centroid, candidate_summed_intensity))
+            updated_envelope += feature.envelope
+            feature_d['envelope'] = updated_envelope
+            adjusted = True
+
+    feature_d['mono_adjusted'] = adjusted
+    feature_d['original_phr_error'] = original_phr_error
+    feature_d['candidate_phr_error'] = candidate_phr_error
     return feature_d
 
 def deconvolute_ms2_peaks_for_feature(feature_id, ms2_frame_id, binned_ms2_df):
@@ -634,32 +649,27 @@ else:
     ms1_df = pd.read_pickle(args.ms1_features_filename)
     print("loaded {} features".format(len(ms1_df)))
 
+if args.check_ms1_mono_peak or args.new_ms1_features:
+    print("checking ms1 monoisotopic peaks")
+    checked_features_l = ray.get([check_monoisotopic_peak.remote(feature=feature, idx=idx, total=len(ms1_df)) for idx,feature in ms1_df.iterrows()])
+    checked_features_df = pd.DataFrame(checked_features_l)
+    checked_features_df.to_pickle(args.checked_ms1_mono_peak_filename)
+else:
+    # load previously checked monoisotopic peaks
+    print("loading checked ms1 monoisotopic peaks")
+    checked_features_df = pd.read_pickle(args.checked_ms1_mono_peak_filename)
+
 if args.new_dedup_ms1_features or args.new_ms1_features:
     # remove duplicates in ms1
     print("removing duplicates")
-    ms1_deduped_df = remove_ms1_duplicates(ms1_df)
+    ms1_deduped_df = remove_ms1_duplicates(checked_features_df)
     ms1_deduped_df.to_pickle(args.dedup_ms1_filename)
-    print("removed {} duplicates - processing {} features".format(len(ms1_df)-len(ms1_deduped_df), len(ms1_deduped_df)))
+    print("removed {} duplicates - processing {} features".format(len(checked_features_df)-len(ms1_deduped_df), len(ms1_deduped_df)))
 else:
     # load previously de-duped ms1 features
     print("loading de-duped ms1 features")
     ms1_deduped_df = pd.read_pickle(args.dedup_ms1_filename)
     print("loaded {} features".format(len(ms1_deduped_df)))
-
-# if args.check_ms1_mono_peak or args.new_dedup_ms1_features or args.new_ms1_features:
-#     print("checking ms1 monoisotopic peaks")
-#     checked_features_l = ray.get([check_for_missed_monoisotopic_peak.remote(feature=feature, idx=idx, total=len(ms1_deduped_df)) for idx,feature in ms1_deduped_df.iterrows()])
-#     checked_features_l = [item for sublist in checked_features_l for item in sublist]  # flatten the list of lists into a list
-#     cols = ms1_deduped_df.columns.tolist()
-#     cols.append('mono_adjusted')
-#
-#     checked_features_df = pd.DataFrame(checked_features_l, columns=cols)
-#     checked_features_df.to_pickle(args.checked_ms1_mono_peak_filename)
-# else:
-#     # load previously checked monoisotopic peaks
-#     print("loading checked ms1 monoisotopic peaks")
-#     checked_features_df = pd.read_pickle(args.checked_ms1_mono_peak_filename)
-checked_features_df = ms1_deduped_df
 
 if args.new_prebin_ms2:
     # bin ms2 frames
