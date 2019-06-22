@@ -659,7 +659,7 @@ else:
     print("loading checked ms1 monoisotopic peaks")
     checked_features_df = pd.read_pickle(args.checked_ms1_mono_peak_filename)
 
-if args.new_dedup_ms1_features or args.new_ms1_features:
+if args.new_dedup_ms1_features or args.check_ms1_mono_peak or args.new_ms1_features:
     # remove duplicates in ms1
     print("removing duplicates")
     ms1_deduped_df = remove_ms1_duplicates(checked_features_df)
