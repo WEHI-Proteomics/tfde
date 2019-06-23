@@ -412,6 +412,7 @@ def find_ms1_peaks(binned_ms1_df):
     # calculate the bin centroid and summed intensity for the combined frames
     combined_ms1_df = binned_ms1_df.groupby(['bin_idx'], as_index=False).apply(calc_bin_centroid)
     # convert the bin attributes to the right type
+    print(combined_ms1_df.head(2))
     combined_ms1_df.summed_intensity = combined_ms1_df.summed_intensity.astype(int)
     combined_ms1_df.bin_idx = combined_ms1_df.bin_idx.astype(int)
     combined_ms1_df.point_count = combined_ms1_df.point_count.astype(int)
@@ -643,6 +644,9 @@ else:
 
 if args.check_ms1_mono_peak or args.new_ms1_features:
     print("checking ms1 monoisotopic peaks")
+    ms1_df.reset_index(drop=True, inplace=True)
+    if args.test_mode:
+        ms1_df = ms1_df[:2]
     checked_features_l = ray.get([check_monoisotopic_peak.remote(feature=feature, idx=idx, total=len(ms1_df)) for idx,feature in ms1_df.iterrows()])
     checked_features_df = pd.DataFrame(checked_features_l)
     checked_features_df.to_pickle(args.checked_ms1_mono_peak_filename)
