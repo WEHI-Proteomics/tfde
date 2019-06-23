@@ -412,7 +412,6 @@ def find_ms1_peaks(binned_ms1_df):
     # calculate the bin centroid and summed intensity for the combined frames
     combined_ms1_df = binned_ms1_df.groupby(['bin_idx'], as_index=False).apply(calc_bin_centroid)
     # convert the bin attributes to the right type
-    print(combined_ms1_df.head(2))
     combined_ms1_df.summed_intensity = combined_ms1_df.summed_intensity.astype(int)
     combined_ms1_df.bin_idx = combined_ms1_df.bin_idx.astype(int)
     combined_ms1_df.point_count = combined_ms1_df.point_count.astype(int)
@@ -511,29 +510,30 @@ def check_monoisotopic_peak(feature, idx, total):
         ms1_raw_points_df = pd.read_sql_query("select frame_id,mz,scan,intensity from frames where frame_id in {} and mz >= {} and mz <= {} and scan >= {} and scan <= {} and intensity > 0".format(ms1_frame_ids, mz_lower, mz_upper, scan_lower, scan_upper), db_conn)
         db_conn.close()
 
-        # arrange the points into bins
-        ms1_bins = np.arange(start=mz_lower, stop=mz_upper+args.ms1_bin_width, step=args.ms1_bin_width)  # go slightly wider to accomodate the maximum value
-        ms1_raw_points_df['bin_idx'] = np.digitize(ms1_raw_points_df.mz, ms1_bins).astype(int)
+        if len(ms1_raw_points_df) > 0:
+            # arrange the points into bins
+            ms1_bins = np.arange(start=mz_lower, stop=mz_upper+args.ms1_bin_width, step=args.ms1_bin_width)  # go slightly wider to accomodate the maximum value
+            ms1_raw_points_df['bin_idx'] = np.digitize(ms1_raw_points_df.mz, ms1_bins).astype(int)
 
-        unresolved_peaks_df = find_ms1_peaks(ms1_raw_points_df)
+            unresolved_peaks_df = find_ms1_peaks(ms1_raw_points_df)
 
-        candidate_mz_centroid = peakutils.centroid(unresolved_peaks_df.mz_centroid, unresolved_peaks_df.summed_intensity)
-        candidate_summed_intensity = unresolved_peaks_df.summed_intensity.sum()
-        candidate_monoisotopic_mass = candidate_mz_centroid * feature.charge
+            candidate_mz_centroid = peakutils.centroid(unresolved_peaks_df.mz_centroid, unresolved_peaks_df.summed_intensity)
+            candidate_summed_intensity = unresolved_peaks_df.summed_intensity.sum()
+            candidate_monoisotopic_mass = candidate_mz_centroid * feature.charge
 
-        expected_ratio = peak_ratio(monoisotopic_mass=candidate_monoisotopic_mass, peak_number=1, number_of_sulphur=0)
-        candidate_ratio = feature.envelope[0][1] / candidate_summed_intensity
-        candidate_phr_error = (candidate_ratio - expected_ratio) / expected_ratio
-        feature_d['candidate_phr_error'] = candidate_phr_error
+            expected_ratio = peak_ratio(monoisotopic_mass=candidate_monoisotopic_mass, peak_number=1, number_of_sulphur=0)
+            candidate_ratio = feature.envelope[0][1] / candidate_summed_intensity
+            candidate_phr_error = (candidate_ratio - expected_ratio) / expected_ratio
+            feature_d['candidate_phr_error'] = candidate_phr_error
 
-        if candidate_phr_error <= args.max_ms1_peak_height_ratio_error:
-            feature_d['monoisotopic_mz'] = candidate_mz_centroid
-            feature_d['intensity'] = candidate_summed_intensity
-            updated_envelope = []
-            updated_envelope.append((candidate_mz_centroid, candidate_summed_intensity))
-            updated_envelope += feature.envelope
-            feature_d['envelope'] = updated_envelope
-            adjusted = True
+            if candidate_phr_error <= args.max_ms1_peak_height_ratio_error:
+                feature_d['monoisotopic_mz'] = candidate_mz_centroid
+                feature_d['intensity'] = candidate_summed_intensity
+                updated_envelope = []
+                updated_envelope.append((candidate_mz_centroid, candidate_summed_intensity))
+                updated_envelope += feature.envelope
+                feature_d['envelope'] = updated_envelope
+                adjusted = True
 
     feature_d['mono_adjusted'] = adjusted
     feature_d['original_phr_error'] = original_phr_error
