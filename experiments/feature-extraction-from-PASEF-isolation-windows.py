@@ -489,7 +489,7 @@ def check_monoisotopic_peak(feature, idx, total):
     monoisotopic_mass = feature.monoisotopic_mz * feature.charge
     expected_ratio = peak_ratio(monoisotopic_mass=monoisotopic_mass, peak_number=1, number_of_sulphur=0)
     original_phr_error = (observed_ratio - expected_ratio) / expected_ratio
-    if original_phr_error > args.max_ms1_peak_height_ratio_error:
+    if abs(original_phr_error) > args.max_ms1_peak_height_ratio_error:
         print("feature {}/{}: PHR error {} - looking for the correct monoisotopic".format(idx+1,total,original_phr_error))
         # probably missed the monoisotopic - need to search for it
         expected_spacing_mz = DELTA_MZ / feature.charge
@@ -526,7 +526,7 @@ def check_monoisotopic_peak(feature, idx, total):
             candidate_phr_error = (candidate_ratio - expected_ratio) / expected_ratio
             feature_d['candidate_phr_error'] = candidate_phr_error
 
-            if candidate_phr_error <= args.max_ms1_peak_height_ratio_error:
+            if (abs(candidate_phr_error) <= abs(original_phr_error)) and (abs(candidate_phr_error) <= args.max_ms1_peak_height_ratio_error):
                 feature_d['monoisotopic_mz'] = candidate_mz_centroid
                 feature_d['intensity'] = candidate_summed_intensity
                 updated_envelope = []
