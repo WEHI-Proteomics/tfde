@@ -490,8 +490,9 @@ def peak_ratio(monoisotopic_mass, peak_number, number_of_sulphur):
 def calculate_raw_peak_intensity_at_mz(centre_mz, feature):
     result = None
 
-    mz_lower = (centre_mz - expected_spacing_mz) - mz_delta
-    mz_upper = (centre_mz - expected_spacing_mz) + mz_delta
+    mz_delta = standard_deviation(centre_mz) * args.number_of_std_dev_mz
+    mz_lower = centre_mz - mz_delta
+    mz_upper = centre_mz + mz_delta
 
     rt_lower = feature.rt_lower
     rt_upper = feature.rt_upper
@@ -537,8 +538,6 @@ def check_monoisotopic_peak(feature, idx, total):
         print("feature {}/{}: PHR error {} - looking for the correct monoisotopic".format(idx+1,total,original_phr_error))
         # probably missed the monoisotopic - need to search for it
         expected_spacing_mz = DELTA_MZ / feature.charge
-        # m/z delta to look either side of where we expect an isotope to be
-        mz_delta = standard_deviation(centre_mz) * args.number_of_std_dev_mz
         centre_mz = feature.monoisotopic_mz - expected_spacing_mz
         (candidate_mz_centroid, candidate_raw_intensity) = calculate_raw_peak_intensity_at_mz(centre_mz, feature)
         if (candidate_mz_centroid is not None) and (candidate_raw_intensity is not None):
