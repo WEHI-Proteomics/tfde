@@ -573,6 +573,7 @@ def check_monoisotopic_peak(feature, idx, total):
     feature_d['mono_adjusted'] = adjusted
     feature_d['original_phr_error'] = original_phr_error
     feature_d['candidate_phr_error'] = candidate_phr_error
+    feature_d['original_phr'] = observed_ratio
     return feature_d
 
 def deconvolute_ms2_peaks_for_feature(feature_id, ms2_frame_id, binned_ms2_df):
