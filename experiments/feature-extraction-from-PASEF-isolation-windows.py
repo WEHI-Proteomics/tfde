@@ -646,7 +646,7 @@ if args.check_ms1_mono_peak or args.new_ms1_features:
     print("checking ms1 monoisotopic peaks")
     ms1_df.reset_index(drop=True, inplace=True)
     if args.test_mode:
-        ms1_df = ms1_df[:2]
+        ms1_df = ms1_df[:100]
     checked_features_l = ray.get([check_monoisotopic_peak.remote(feature=feature, idx=idx, total=len(ms1_df)) for idx,feature in ms1_df.iterrows()])
     checked_features_df = pd.DataFrame(checked_features_l)
     checked_features_df.to_pickle(args.checked_ms1_mono_peak_filename)
