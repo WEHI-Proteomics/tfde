@@ -405,12 +405,13 @@ def calc_centroid(bin_df):
     d['mz_centroid'] = peakutils.centroid(bin_df.mz, bin_df.intensity)
     d['summed_intensity'] = int(bin_df.intensity.sum())
     d['point_count'] = len(bin_df)
-    return pd.Series(d, index=['bin_idx','mz_centroid','summed_intensity','point_count'])
+    return pd.Series(d, index=d.keys())
 
 # sum and centroid the bins
 def find_ms1_peaks(binned_ms1_df):
     # calculate the bin centroid and summed intensity for the combined frames
     combined_ms2_df = binned_ms1_df.groupby(['bin_idx'], as_index=False).apply(calc_centroid)
+    # convert the bin attributes to the right type
     combined_ms2_df.summed_intensity = combined_ms2_df.summed_intensity.astype(int)
     combined_ms2_df.bin_idx = combined_ms2_df.bin_idx.astype(int)
     combined_ms2_df.point_count = combined_ms2_df.point_count.astype(int)
@@ -590,6 +591,7 @@ def calc_centroid(bin_df):
 def find_ms2_peaks_for_feature(feature_df, binned_ms2_for_feature_df):
     # calculate the bin centroid and summed intensity for the combined frames
     combined_ms2_df = binned_ms2_for_feature_df.groupby(['bin_idx'], as_index=False).apply(calc_centroid)
+    print(combined_ms2_df.columns)
     combined_ms2_df.summed_intensity = combined_ms2_df.summed_intensity.astype(int)
     combined_ms2_df.bin_idx = combined_ms2_df.bin_idx.astype(int)
     combined_ms2_df.point_count = combined_ms2_df.point_count.astype(int)
