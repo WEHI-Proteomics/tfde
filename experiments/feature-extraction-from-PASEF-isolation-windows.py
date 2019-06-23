@@ -33,7 +33,7 @@ parser.add_argument('-ms1ddmz','--ms1_dedup_mz_tolerance_ppm', type=float, defau
 parser.add_argument('-ms2l','--ms2_lower', type=float, default=90.0, help='Lower limit of m/z range in ms2.', required=False)
 parser.add_argument('-ms2u','--ms2_upper', type=float, default=1750.0, help='Upper limit of m/z range in ms2.', required=False)
 parser.add_argument('-nstddevmz','--number_of_std_dev_mz', type=float, default=3.0, help='Number of standard deviations to look either side of the expected isotopic spacing.', required=False)
-parser.add_argument('-ms1phre','--max_ms1_peak_height_ratio_error', type=float, default=0.3, help='Maximum error for a feature\'s monoisotopic peak height ration.', required=False)
+parser.add_argument('-ms1phre','--max_ms1_peak_height_ratio_error', type=float, default=0.3, help='Maximum error for a feature\'s monoisotopic peak height ratio.', required=False)
 
 # commands
 parser.add_argument('-npbms2','--new_prebin_ms2', action='store_true', help='Create a new pre-bin file for ms2 frames.')
@@ -486,6 +486,41 @@ def peak_ratio(monoisotopic_mass, peak_number, number_of_sulphur):
         ratio = beta0 + (beta1*scaled_m) + beta2*(scaled_m**2) + beta3*(scaled_m**3) + beta4*(scaled_m**4)
     return ratio
 
+# given a centre mz and a feature, calculate themz centroid and summed intensity from the raw points
+def calculate_raw_peak_intensity_at_mz(centre_mz, feature):
+    result = None
+
+    mz_lower = (centre_mz - expected_spacing_mz) - mz_delta
+    mz_upper = (centre_mz - expected_spacing_mz) + mz_delta
+
+    rt_lower = feature.rt_lower
+    rt_upper = feature.rt_upper
+    scan_lower = feature.scan_lower
+    scan_upper = feature.scan_upper
+
+    # find the ms1 frame ids for the feature's extent in RT
+    ms1_frame_ids = tuple(ms1_frame_properties_df.frame_id)
+
+    db_conn = sqlite3.connect(CONVERTED_DATABASE_NAME)
+    ms1_raw_points_df = pd.read_sql_query("select frame_id,mz,scan,intensity from frames where frame_id in {} and mz >= {} and mz <= {} and scan >= {} and scan <= {} and intensity > 0".format(ms1_frame_ids, mz_lower, mz_upper, scan_lower, scan_upper), db_conn)
+    db_conn.close()
+
+    if len(ms1_raw_points_df) > 0:
+        # arrange the points into bins
+        ms1_bins = np.arange(start=mz_lower, stop=mz_upper+args.ms1_bin_width, step=args.ms1_bin_width)  # go slightly wider to accomodate the maximum value
+        ms1_raw_points_df['bin_idx'] = np.digitize(ms1_raw_points_df.mz, ms1_bins).astype(int)
+
+        # find the peaks for each bin
+        unresolved_peaks_df = find_ms1_peaks(ms1_raw_points_df)
+
+        # centroid and sum all the bin peaks, as we are interested in a narrow band of m/z
+        mz_centroid = peakutils.centroid(unresolved_peaks_df.mz_centroid, unresolved_peaks_df.summed_intensity)
+        summed_intensity = unresolved_peaks_df.summed_intensity.sum()
+        monoisotopic_mass = candidate_mz_centroid * feature.charge
+        result = (mz_centroid,summed_intensity)
+
+    return result
+
 @ray.remote
 def check_monoisotopic_peak(feature, idx, total):
     adjusted = False
@@ -497,50 +532,29 @@ def check_monoisotopic_peak(feature, idx, total):
     monoisotopic_mass = feature.monoisotopic_mz * feature.charge
     expected_ratio = peak_ratio(monoisotopic_mass=monoisotopic_mass, peak_number=1, number_of_sulphur=0)
     original_phr_error = (observed_ratio - expected_ratio) / expected_ratio
+
     if abs(original_phr_error) > args.max_ms1_peak_height_ratio_error:
         print("feature {}/{}: PHR error {} - looking for the correct monoisotopic".format(idx+1,total,original_phr_error))
         # probably missed the monoisotopic - need to search for it
         expected_spacing_mz = DELTA_MZ / feature.charge
         # m/z delta to look either side of where we expect an isotope to be
-        mz_delta = standard_deviation(feature.monoisotopic_mz) * args.number_of_std_dev_mz
-        mz_lower = (feature.monoisotopic_mz - expected_spacing_mz) - mz_delta
-        mz_upper = (feature.monoisotopic_mz - expected_spacing_mz) + mz_delta
-
-        rt_lower = feature.rt_lower
-        rt_upper = feature.rt_upper
-        scan_lower = feature.scan_lower
-        scan_upper = feature.scan_upper
-
-        # find the ms1 frame ids for the feature's extent in RT
-        ms1_frame_ids = tuple(ms1_frame_properties_df.frame_id)
-
-        db_conn = sqlite3.connect(CONVERTED_DATABASE_NAME)
-        ms1_raw_points_df = pd.read_sql_query("select frame_id,mz,scan,intensity from frames where frame_id in {} and mz >= {} and mz <= {} and scan >= {} and scan <= {} and intensity > 0".format(ms1_frame_ids, mz_lower, mz_upper, scan_lower, scan_upper), db_conn)
-        db_conn.close()
-
-        if len(ms1_raw_points_df) > 0:
-            # arrange the points into bins
-            ms1_bins = np.arange(start=mz_lower, stop=mz_upper+args.ms1_bin_width, step=args.ms1_bin_width)  # go slightly wider to accomodate the maximum value
-            ms1_raw_points_df['bin_idx'] = np.digitize(ms1_raw_points_df.mz, ms1_bins).astype(int)
-
-            unresolved_peaks_df = find_ms1_peaks(ms1_raw_points_df)
-
-            candidate_mz_centroid = peakutils.centroid(unresolved_peaks_df.mz_centroid, unresolved_peaks_df.summed_intensity)
-            candidate_summed_intensity = unresolved_peaks_df.summed_intensity.sum()
-            candidate_monoisotopic_mass = candidate_mz_centroid * feature.charge
-
-            expected_ratio = peak_ratio(monoisotopic_mass=candidate_monoisotopic_mass, peak_number=1, number_of_sulphur=0)
-            candidate_ratio = feature.envelope[0][1] / candidate_summed_intensity
+        mz_delta = standard_deviation(centre_mz) * args.number_of_std_dev_mz
+        centre_mz = feature.monoisotopic_mz - expected_spacing_mz
+        (candidate_mz_centroid, candidate_raw_intensity) = calculate_raw_peak_intensity_at_mz(centre_mz, feature)
+        if (candidate_mz_centroid is not None) and (candidate_raw_intensity is not None):
+            # get the raw intensity for the original monoisotope so we can calculate an accurate ratio
+            (original_mz, original_raw_intensity) = calculate_raw_peak_intensity_at_mz(feature.monoisotopic_mz, feature)
+            candidate_ratio = original_raw_intensity / candidate_raw_intensity
             candidate_phr_error = (candidate_ratio - expected_ratio) / expected_ratio
             feature_d['candidate_phr_error'] = candidate_phr_error
 
             if (abs(candidate_phr_error) <= abs(original_phr_error)) and (abs(candidate_phr_error) <= args.max_ms1_peak_height_ratio_error):
                 feature_d['monoisotopic_mz'] = candidate_mz_centroid
-                feature_d['intensity'] = candidate_summed_intensity
-                updated_envelope = []
-                updated_envelope.append((candidate_mz_centroid, candidate_summed_intensity))
-                updated_envelope += feature.envelope
-                feature_d['envelope'] = updated_envelope
+                feature_d['intensity'] = feature.intensity / candidate_ratio  # scaling to make it the same dimensions as the post-deconvolution peak
+                # updated_envelope = []
+                # updated_envelope.append((candidate_mz_centroid, candidate_summed_intensity))
+                # updated_envelope += feature.envelope
+                # feature_d['envelope'] = updated_envelope
                 adjusted = True
 
     feature_d['mono_adjusted'] = adjusted
