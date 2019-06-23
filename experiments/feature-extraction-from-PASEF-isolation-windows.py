@@ -682,10 +682,10 @@ else:
 if args.new_mgf_spectra or args.check_ms1_mono_peak or args.new_dedup_ms1_features or args.new_ms1_features or args.new_prebin_ms2:
     # find ms2 peaks for each feature found in ms1, and collate the spectra for the MGF
     print("finding peaks in ms2 for each feature")
-    checked_features_df.reset_index(drop=True, inplace=True)
+    ms1_deduped_df.reset_index(drop=True, inplace=True)
     if args.test_mode:
-        checked_features_df = checked_features_df[checked_features_df.feature_id == 822]
-    mgf_spectra_l = ray.get([deconvolute_ms2.remote(feature_df=feature_df, binned_ms2_for_feature=binned_ms2_df[binned_ms2_df.frame_id.isin(feature_df.ms2_frames)], idx=idx, total=len(checked_features_df)) for idx,feature_df in checked_features_df.iterrows()])
+        ms1_deduped_df = ms1_deduped_df[ms1_deduped_df.feature_id == 822]
+    mgf_spectra_l = ray.get([deconvolute_ms2.remote(feature_df=feature_df, binned_ms2_for_feature=binned_ms2_df[binned_ms2_df.frame_id.isin(feature_df.ms2_frames)], idx=idx, total=len(ms1_deduped_df)) for idx,feature_df in ms1_deduped_df.iterrows()])
     # mgf_spectra_l is a list of lists, so we need to flatten it (https://stackoverflow.com/a/40813764/1184799)
     mgf_spectra_l = [item for sublist in mgf_spectra_l for item in sublist]
     # write out the results for analysis
