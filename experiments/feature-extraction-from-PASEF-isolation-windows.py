@@ -126,7 +126,7 @@ if not os.path.isfile(PASEF_MSMS_SCANS_FILENAME):
 # make sure the right indexes are created in the source database
 print("Setting up indexes on {}".format(CONVERTED_DATABASE_NAME))
 db_conn = sqlite3.connect(CONVERTED_DATABASE_NAME)
-src_c = source_conn.cursor()
+src_c = db_conn.cursor()
 src_c.execute("create index if not exists idx_pasef_frames_1 on frames (frame_id, mz, intensity)")
 src_c.execute("create index if not exists idx_pasef_frames_2 on frames (frame_id, mz, scan, retention_time_secs)")
 db_conn.close()
