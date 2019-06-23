@@ -123,6 +123,14 @@ if not os.path.isfile(PASEF_MSMS_SCANS_FILENAME):
     print("The pasef msms scans file is required but doesn't exist: {}".format(PASEF_MSMS_SCANS_FILENAME))
     sys.exit(1)
 
+# make sure the right indexes are created in the source database
+print("Setting up indexes on {}".format(CONVERTED_DATABASE_NAME))
+db_conn = sqlite3.connect(CONVERTED_DATABASE_NAME)
+src_c = source_conn.cursor()
+src_c.execute("create index if not exists idx_pasef_frames_1 on frames (frame_id, mz, intensity)")
+src_c.execute("create index if not exists idx_pasef_frames_2 on frames (frame_id, mz, scan, retention_time_secs)")
+db_conn.close()
+
 # load the pasef msms scans
 pasef_msms_scans_df = pd.read_csv(PASEF_MSMS_SCANS_FILENAME, sep='\t')
 
