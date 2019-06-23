@@ -399,7 +399,7 @@ def standard_deviation(mz):
     return FWHM / 2.35482
 
 # calculate the centroid, intensity of a bin
-def calc_centroid(bin_df):
+def calc_bin_centroid(bin_df):
     d = {}
     d['bin_idx'] = int(bin_df.iloc[0].bin_idx)
     d['mz_centroid'] = peakutils.centroid(bin_df.mz, bin_df.intensity)
@@ -410,12 +410,12 @@ def calc_centroid(bin_df):
 # sum and centroid the bins
 def find_ms1_peaks(binned_ms1_df):
     # calculate the bin centroid and summed intensity for the combined frames
-    combined_ms2_df = binned_ms1_df.groupby(['bin_idx'], as_index=False).apply(calc_centroid)
+    combined_ms1_df = binned_ms1_df.groupby(['bin_idx'], as_index=False).apply(calc_bin_centroid)
     # convert the bin attributes to the right type
-    combined_ms2_df.summed_intensity = combined_ms2_df.summed_intensity.astype(int)
-    combined_ms2_df.bin_idx = combined_ms2_df.bin_idx.astype(int)
-    combined_ms2_df.point_count = combined_ms2_df.point_count.astype(int)
-    return combined_ms2_df
+    combined_ms1_df.summed_intensity = combined_ms1_df.summed_intensity.astype(int)
+    combined_ms1_df.bin_idx = combined_ms1_df.bin_idx.astype(int)
+    combined_ms1_df.point_count = combined_ms1_df.point_count.astype(int)
+    return combined_ms1_df
 
 # From "A Model-Based Method for the Prediction of the Isotopic Distribution of Peptides", Dirk Valkenborg,
 # Ivy Jansen, and Tomasz Burzykowski, J Am Soc Mass Spectrom 2008, 19, 703–712
@@ -578,20 +578,10 @@ def deconvolute_ms2_peaks_for_feature(feature_id, ms2_frame_id, binned_ms2_df):
 
     return ms2_deconvoluted_peaks_df
 
-# calculate the centroid, intensity of a bin
-def calc_centroid(bin_df):
-    d = {}
-    d['bin_idx'] = int(bin_df.iloc[0].bin_idx)
-    d['mz_centroid'] = peakutils.centroid(bin_df.mz, bin_df.intensity)
-    d['summed_intensity'] = int(bin_df.intensity.sum())
-    d['point_count'] = len(bin_df)
-    return pd.Series(d, index=['bin_idx','mz_centroid','summed_intensity','point_count'])
-
 # sum and centroid the ms2 bins for this feature
 def find_ms2_peaks_for_feature(feature_df, binned_ms2_for_feature_df):
     # calculate the bin centroid and summed intensity for the combined frames
-    combined_ms2_df = binned_ms2_for_feature_df.groupby(['bin_idx'], as_index=False).apply(calc_centroid)
-    print(combined_ms2_df.columns)
+    combined_ms2_df = binned_ms2_for_feature_df.groupby(['bin_idx'], as_index=False).apply(calc_bin_centroid)
     combined_ms2_df.summed_intensity = combined_ms2_df.summed_intensity.astype(int)
     combined_ms2_df.bin_idx = combined_ms2_df.bin_idx.astype(int)
     combined_ms2_df.point_count = combined_ms2_df.point_count.astype(int)
