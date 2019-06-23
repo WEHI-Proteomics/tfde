@@ -488,7 +488,7 @@ def peak_ratio(monoisotopic_mass, peak_number, number_of_sulphur):
 
 # given a centre mz and a feature, calculate themz centroid and summed intensity from the raw points
 def calculate_raw_peak_intensity_at_mz(centre_mz, feature):
-    result = None
+    result = (-1, -1)
 
     mz_delta = standard_deviation(centre_mz) * args.number_of_std_dev_mz
     mz_lower = centre_mz - mz_delta
@@ -539,21 +539,22 @@ def check_monoisotopic_peak(feature, idx, total):
         expected_spacing_mz = DELTA_MZ / feature.charge
         centre_mz = feature.monoisotopic_mz - expected_spacing_mz
         candidate_mz_centroid, candidate_raw_intensity = calculate_raw_peak_intensity_at_mz(centre_mz, feature)
-        if (candidate_mz_centroid is not None) and (candidate_raw_intensity is not None):
+        if (candidate_mz_centroid != -1) and (candidate_raw_intensity != -1):
             # get the raw intensity for the original monoisotope so we can calculate an accurate ratio
             original_mz, original_raw_intensity = calculate_raw_peak_intensity_at_mz(feature.monoisotopic_mz, feature)
-            candidate_ratio = original_raw_intensity / candidate_raw_intensity
-            candidate_phr_error = (candidate_ratio - expected_ratio) / expected_ratio
-            feature_d['candidate_phr_error'] = candidate_phr_error
+            if (original_mz != -1) and (original_raw_intensity != -1):
+                candidate_ratio = original_raw_intensity / candidate_raw_intensity
+                candidate_phr_error = (candidate_ratio - expected_ratio) / expected_ratio
+                feature_d['candidate_phr_error'] = candidate_phr_error
 
-            if (abs(candidate_phr_error) <= abs(original_phr_error)) and (abs(candidate_phr_error) <= args.max_ms1_peak_height_ratio_error):
-                feature_d['monoisotopic_mz'] = candidate_mz_centroid
-                feature_d['intensity'] = feature.intensity / candidate_ratio  # scaling to make it the same dimensions as the post-deconvolution peak
-                # updated_envelope = []
-                # updated_envelope.append((candidate_mz_centroid, candidate_summed_intensity))
-                # updated_envelope += feature.envelope
-                # feature_d['envelope'] = updated_envelope
-                adjusted = True
+                if (abs(candidate_phr_error) <= abs(original_phr_error)) and (abs(candidate_phr_error) <= args.max_ms1_peak_height_ratio_error):
+                    feature_d['monoisotopic_mz'] = candidate_mz_centroid
+                    feature_d['intensity'] = feature.intensity / candidate_ratio  # scaling to make it the same dimensions as the post-deconvolution peak
+                    # updated_envelope = []
+                    # updated_envelope.append((candidate_mz_centroid, candidate_summed_intensity))
+                    # updated_envelope += feature.envelope
+                    # feature_d['envelope'] = updated_envelope
+                    adjusted = True
 
     feature_d['mono_adjusted'] = adjusted
     feature_d['original_phr_error'] = original_phr_error
