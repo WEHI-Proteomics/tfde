@@ -538,10 +538,10 @@ def check_monoisotopic_peak(feature, idx, total):
         # probably missed the monoisotopic - need to search for it
         expected_spacing_mz = DELTA_MZ / feature.charge
         centre_mz = feature.monoisotopic_mz - expected_spacing_mz
-        (candidate_mz_centroid, candidate_raw_intensity) = calculate_raw_peak_intensity_at_mz(centre_mz, feature)
+        candidate_mz_centroid, candidate_raw_intensity = calculate_raw_peak_intensity_at_mz(centre_mz, feature)
         if (candidate_mz_centroid is not None) and (candidate_raw_intensity is not None):
             # get the raw intensity for the original monoisotope so we can calculate an accurate ratio
-            (original_mz, original_raw_intensity) = calculate_raw_peak_intensity_at_mz(feature.monoisotopic_mz, feature)
+            original_mz, original_raw_intensity = calculate_raw_peak_intensity_at_mz(feature.monoisotopic_mz, feature)
             candidate_ratio = original_raw_intensity / candidate_raw_intensity
             candidate_phr_error = (candidate_ratio - expected_ratio) / expected_ratio
             feature_d['candidate_phr_error'] = candidate_phr_error
