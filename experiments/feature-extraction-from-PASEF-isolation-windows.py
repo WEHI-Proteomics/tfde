@@ -517,8 +517,7 @@ def calculate_raw_peak_intensity_at_mz(centre_mz, feature):
         # centroid and sum all the bin peaks, as we are interested in a narrow band of m/z
         mz_centroid = peakutils.centroid(unresolved_peaks_df.mz_centroid, unresolved_peaks_df.summed_intensity)
         summed_intensity = unresolved_peaks_df.summed_intensity.sum()
-        monoisotopic_mass = candidate_mz_centroid * feature.charge
-        result = (mz_centroid,summed_intensity)
+        result = (mz_centroid, summed_intensity)
 
     return result
 
