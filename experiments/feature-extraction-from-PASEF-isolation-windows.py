@@ -594,7 +594,7 @@ def deconvolute_ms2_peaks_for_feature(feature_id, ms2_frame_id, binned_ms2_df):
         if len(peak_raw_points_df) > 0:
             mz_centroid = peakutils.centroid(peak_raw_points_df.mz_centroid, peak_raw_points_df.summed_intensity)
             summed_intensity = peak_raw_points_df.summed_intensity.sum()
-            ms2_peaks_l.append((mz_centroid, summed_intensity))
+            ms2_peaks_l.append({'mz':mz_centroid, 'intensity':summed_intensity})
 
             # remove the raw points assigned to this peak
             raw_scratch_df = raw_scratch_df[~raw_scratch_df.isin(peak_raw_points_df)].dropna(how = 'all')
