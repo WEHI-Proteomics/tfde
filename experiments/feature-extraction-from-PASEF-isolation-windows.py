@@ -265,7 +265,7 @@ def find_features(window_number, window_df):
         ms1_peaks_df.to_csv('./ms1-peaks-window-{}-after-intensity-descent.csv'.format(window_number), index=False, header=True)
 
     # see https://github.com/mobiusklein/ms_deisotope/blob/ee4b083ad7ab5f77722860ce2d6fdb751886271e/ms_deisotope/deconvolution/api.py#L17
-    deconvoluted_peaks, _priority_targets = deconvolute_peaks(ms1_peaks_l, averagine=averagine.peptide, charge_range=(1,5), scorer=scoring.MSDeconVFitter(10.0), truncate_after=0.95)
+    deconvoluted_peaks, _priority_targets = deconvolute_peaks(ms1_peaks_l, use_quick_charge=True, averagine=averagine.peptide, charge_range=(1,5), scorer=scoring.MSDeconVFitter(10.0), truncate_after=0.95)
 
     ms1_deconvoluted_peaks_l = []
     for peak in deconvoluted_peaks:
