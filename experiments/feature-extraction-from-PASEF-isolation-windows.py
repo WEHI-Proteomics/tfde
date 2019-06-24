@@ -609,7 +609,7 @@ def deconvolute_ms2_peaks_for_feature(feature_id, ms2_frame_id, binned_ms2_df):
     # deconvolute the peaks
     # see https://github.com/mobiusklein/ms_deisotope/blob/ee4b083ad7ab5f77722860ce2d6fdb751886271e/ms_deisotope/deconvolution/api.py#L17
     # see https://github.com/mobiusklein/ms_deisotope/blob/68e88e0ece3e76abdb2833ac82dca1800fe5bde1/ms_deisotope/deconvolution/peak_retention_strategy.py#L141
-    ms2_deconvoluted_peaks, _ = deconvolute_peaks(ms2_peaks_l, averagine=averagine.peptide, charge_range=(1,5), scorer=scoring.MSDeconVFitter(minimum_score=8, mass_error_tolerance=0.1), error_tolerance=4e-5, truncate_after=0.6, retention_strategy=peak_retention_strategy.TopNRetentionStrategy(n_peaks=100, base_peak_coefficient=0.0001, max_mass=850.0))
+    ms2_deconvoluted_peaks, _ = deconvolute_peaks(ms2_peaks_l, averagine=averagine.peptide, charge_range=(1,5), scorer=scoring.MSDeconVFitter(minimum_score=8, mass_error_tolerance=0.1), error_tolerance=4e-5, truncate_after=0.6, retention_strategy=peak_retention_strategy.TopNRetentionStrategy(n_peaks=100, base_peak_coefficient=1e-6, max_mass=850.0))
 
     ms2_deconvoluted_peaks_l = []
     for peak in ms2_deconvoluted_peaks:
