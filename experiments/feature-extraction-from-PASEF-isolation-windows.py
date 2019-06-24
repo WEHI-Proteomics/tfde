@@ -4,7 +4,7 @@ import numpy as np
 import sys
 import peakutils
 from ms_deisotope import deconvolute_peaks, averagine, scoring
-import deconvolution.peak_retention_strategy as peak_retention_strategy
+from ms_deisotope.deconvolution import peak_retention_strategy
 from pyteomics import mgf
 import os.path
 import argparse
