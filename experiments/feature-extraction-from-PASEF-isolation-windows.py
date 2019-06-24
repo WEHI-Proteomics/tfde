@@ -3,7 +3,7 @@ import pandas as pd
 import numpy as np
 import sys
 import peakutils
-from ms_deisotope import deconvolute_peaks, averagine, scoring, deconvolution.peak_retention_strategy
+from ms_deisotope import deconvolute_peaks, averagine, scoring, deconvolution
 from pyteomics import mgf
 import os.path
 import argparse
