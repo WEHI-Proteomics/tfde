@@ -596,12 +596,14 @@ def deconvolute_ms2_peaks_for_feature(feature_id, ms2_frame_id, binned_ms2_df):
             mz_centroid = peakutils.centroid(peak_raw_points_df.mz_centroid, peak_raw_points_df.summed_intensity)
             summed_intensity = peak_raw_points_df.summed_intensity.sum()
             ms2_peaks_l.append(simple_peak(mz=mz_centroid, intensity=summed_intensity))
-
             # remove the raw points assigned to this peak
             raw_scratch_df = raw_scratch_df[~raw_scratch_df.isin(peak_raw_points_df)].dropna(how = 'all')
 
-    ms2_peaks_df = pd.DataFrame(ms2_peaks_l, columns=['mz','intensity'])
     if args.test_mode:
+        l = []
+        for p in ms2_peaks_l:
+            l.append((p.mz, p.intensity))
+        ms2_peaks_df = pd.DataFrame(l, columns=['mz','intensity'])
         ms2_peaks_df.to_csv('./feature-{}-frame-{}-ms2-peaks-before-deconvolution.csv'.format(feature_id, ms2_frame_id), index=False, header=True)
 
     # deconvolute the peaks
