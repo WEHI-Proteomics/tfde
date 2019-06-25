@@ -648,7 +648,7 @@ def collate_spectra_for_feature(feature_df, ms2_deconvoluted_df):
 @ray.remote
 def deconvolute_ms2(feature_df, binned_ms2_for_feature, idx, total):
     result = {}
-    print("processing feature idx {} of {}".format(idx, total))
+    print("processing feature idx {} of {}".format(idx+1, total))
     ms2_frames_l = []
     for idx,ms2_frame_id in enumerate(feature_df.ms2_frames):
         # get the binned ms2 values for this frame and mobility range
