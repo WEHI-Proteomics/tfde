@@ -647,25 +647,29 @@ def collate_spectra_for_feature(feature_df, ms2_deconvoluted_df):
 
 @ray.remote
 def deconvolute_ms2(feature_df, binned_ms2_for_feature, idx, total):
+    result = {}
     print("processing feature idx {} of {}".format(idx, total))
-    feature_spectra = []
-    print("there are {} ms2 frames for feature {}".format(len(feature_df.ms2_frames), feature_df.feature_id))
+    ms2_frames_l = []
     for idx,ms2_frame_id in enumerate(feature_df.ms2_frames):
         # get the binned ms2 values for this frame and mobility range
         scan_lower = feature_df.ms2_scan_ranges[idx][0]
         scan_upper = feature_df.ms2_scan_ranges[idx][1]
-        print("extracting from ms2 frame {} in mobility {}..{}".format(ms2_frame_id, scan_lower, scan_upper))
-        ms2_frame_df = binned_ms2_for_feature[(binned_ms2_for_feature.frame_id == ms2_frame_id) & (binned_ms2_for_feature.scan >= scan_lower) & (binned_ms2_for_feature.scan <= scan_upper)]
-        if len(ms2_frame_df) > 0:
-            # detect peaks
-            ms2_peaks_df = find_ms2_peaks_for_feature(feature_df, ms2_frame_df)
-            if len(ms2_peaks_df) > 0:
-                # deconvolve the peaks
-                ms2_deconvoluted_df = deconvolute_ms2_peaks_for_feature(feature_df.feature_id, ms2_frame_id, ms2_peaks_df)
-                if len(ms2_deconvoluted_df) >= 2:
-                    # package it up for the MGF
-                    feature_spectra.append(collate_spectra_for_feature(feature_df, ms2_deconvoluted_df))
-    return feature_spectra
+        ms2_frames_l.append(binned_ms2_for_feature[(binned_ms2_for_feature.frame_id == ms2_frame_id) & (binned_ms2_for_feature.scan >= scan_lower) & (binned_ms2_for_feature.scan <= scan_upper)])
+
+    # join the list of dataframes into a single dataframe
+    ms2_frame_df = pd.concat(ms2_frames_l)
+
+    # derive the spectra
+    if len(ms2_frame_df) > 0:
+        # detect peaks
+        ms2_peaks_df = find_ms2_peaks_for_feature(feature_df, ms2_frame_df)
+        if len(ms2_peaks_df) > 0:
+            # deconvolve the peaks
+            ms2_deconvoluted_df = deconvolute_ms2_peaks_for_feature(feature_df.feature_id, ms2_frame_id, ms2_peaks_df)
+            if len(ms2_deconvoluted_df) >= 2:
+                # package it up for the MGF
+                result = collate_spectra_for_feature(feature_df, ms2_deconvoluted_df)
+    return result
 
 
 #########################################################
@@ -727,9 +731,8 @@ if args.new_mgf_spectra or args.check_ms1_mono_peak or args.new_dedup_ms1_featur
     ms1_deduped_df.reset_index(drop=True, inplace=True)
     if args.test_mode:
         ms1_deduped_df = ms1_deduped_df[ms1_deduped_df.feature_id == 822]
+    # mgf_spectra_l is a list of dictionaries
     mgf_spectra_l = ray.get([deconvolute_ms2.remote(feature_df=feature_df, binned_ms2_for_feature=binned_ms2_df[binned_ms2_df.frame_id.isin(feature_df.ms2_frames)], idx=idx, total=len(ms1_deduped_df)) for idx,feature_df in ms1_deduped_df.iterrows()])
-    # mgf_spectra_l is a list of lists, so we need to flatten it (https://stackoverflow.com/a/40813764/1184799)
-    mgf_spectra_l = [item for sublist in mgf_spectra_l for item in sublist]
     # write out the results for analysis
     with open(args.mgf_spectra_filename, 'wb') as f:
         pickle.dump(mgf_spectra_l, f)
