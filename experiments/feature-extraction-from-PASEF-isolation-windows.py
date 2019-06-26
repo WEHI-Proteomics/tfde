@@ -293,7 +293,6 @@ def find_features(group_number, group_df):
     ms1_deconvoluted_peaks_df = pd.DataFrame(ms1_deconvoluted_peaks_l, columns=['mono_mz','second_peak_mz','intensity','score','SN','charge','envelope'])
 
     # For each monoisotopic peak found, find its apex in RT and mobility
-    print("window {}, processing {} monoisotopics".format(window_number, len(ms1_deconvoluted_peaks_df)))
     for monoisotopic_idx in range(len(ms1_deconvoluted_peaks_df)):
         feature_monoisotopic_mz = ms1_deconvoluted_peaks_df.iloc[monoisotopic_idx].mono_mz
         feature_intensity = int(ms1_deconvoluted_peaks_df.iloc[monoisotopic_idx].intensity)
