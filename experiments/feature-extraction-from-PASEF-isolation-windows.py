@@ -194,7 +194,6 @@ def find_ms1_frames_for_ms2_frame_range(ms2_frame_ids, number_either_side):
 
 @ray.remote
 def find_features(group_number, group_df):
-    print("group {}".format(group_number))
     # find the ms1 features in this isolation window
     ms1_characteristics_l = []
 
@@ -213,8 +212,7 @@ def find_features(group_number, group_df):
 
     # get the ms1 frame IDs for the range of this precursor's ms2 frames
     isolation_window_ms1_frame_ids = find_ms1_frames_for_ms2_frame_range(ms2_frame_ids=list(group_df.Frame), number_either_side=args.rt_fragment_event_delta_frames)
-    print("found ms1 frames {} for ms2 frames {}".format(isolation_window_ms1_frame_ids, list(group_df.Frame)))
-
+    # all the ms1 frames
     ms1_frame_ids = tuple(ms1_frame_properties_df.frame_id)
 
     # load the cube's raw ms1 points
