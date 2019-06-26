@@ -438,7 +438,6 @@ def find_ms1_peaks(binned_ms1_df):
     combined_ms1_df.point_count = combined_ms1_df.point_count.astype(int)
     return combined_ms1_df
 
-# From "A Model-Based Method for the Prediction of the Isotopic Distribution of Peptides", Dirk Valkenborg, Ivy Jansen, and Tomasz Burzykowski, J Am Soc Mass Spectrom 2008, 19, 703–712
 
 MAX_NUMBER_OF_SULPHUR_ATOMS = 3
 MAX_NUMBER_OF_PREDICTED_RATIOS = 6
