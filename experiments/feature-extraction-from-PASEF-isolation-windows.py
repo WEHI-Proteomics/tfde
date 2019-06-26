@@ -162,8 +162,6 @@ isolation_window_df.drop(['CollisionEnergy'], axis=1, inplace=True)
 isolation_window_df.dropna(subset=['retention_time_secs'], inplace=True)
 isolation_window_df['mz_lower'] = isolation_window_df.IsolationMz - (isolation_window_df.IsolationWidth / 2) - 0.7
 isolation_window_df['mz_upper'] = isolation_window_df.IsolationMz + (isolation_window_df.IsolationWidth / 2) + 0.7
-# filter out isolation windows that don't fit in the database subset we have loaded
-isolation_window_df = isolation_window_df[(isolation_window_df.wide_rt_lower >= args.rt_lower) & (isolation_window_df.wide_rt_upper <= args.rt_upper)]
 
 def bin_ms2_frames():
     # get the raw points for all ms2 frames
