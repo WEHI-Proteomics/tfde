@@ -162,6 +162,7 @@ isolation_window_df['mz_lower'] = isolation_window_df.IsolationMz - (isolation_w
 isolation_window_df['mz_upper'] = isolation_window_df.IsolationMz + (isolation_window_df.IsolationWidth / 2) + 0.7
 # filter out isolation windows that don't fit in the database subset we have loaded
 isolation_window_df = isolation_window_df[(isolation_window_df.retention_time_secs >= (args.rt_lower - args.rt_base_peak_width_secs)) & (isolation_window_df.retention_time_secs <= (args.rt_upper + args.rt_base_peak_width_secs))]
+isolation_window_df['Precursor'] = isolation_window_df['Precursor'].apply(np.int64)
 print("loaded {} isolation windows from {}".format(len(isolation_window_df), RAW_DATABASE_NAME))
 
 def bin_ms2_frames():
