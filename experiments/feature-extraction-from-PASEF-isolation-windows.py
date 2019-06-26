@@ -254,7 +254,7 @@ def find_features(group_number, group_df):
     binned_ms1_df = pd.DataFrame(binned_ms1_l, columns=['mz_centroid','summed_intensity'])
     raw_scratch_df = binned_ms1_df.copy() # take a copy because we're going to delete stuff
     if args.test_mode:
-        binned_ms1_df.to_csv('./ms1-peaks-window-{}-before-intensity-descent.csv'.format(window_number), index=False, header=True)
+        binned_ms1_df.to_csv('./ms1-peaks-group-{}-before-intensity-descent.csv'.format(group_number), index=False, header=True)
 
     ms1_peaks_l = []
     while len(raw_scratch_df) > 0:
@@ -276,7 +276,7 @@ def find_features(group_number, group_df):
 
     ms1_peaks_df = pd.DataFrame(ms1_peaks_l, columns=['mz','intensity'])
     if args.test_mode:
-        ms1_peaks_df.to_csv('./ms1-peaks-window-{}-after-intensity-descent.csv'.format(window_number), index=False, header=True)
+        ms1_peaks_df.to_csv('./ms1-peaks-group-{}-after-intensity-descent.csv'.format(group_number), index=False, header=True)
 
     # see https://github.com/mobiusklein/ms_deisotope/blob/ee4b083ad7ab5f77722860ce2d6fdb751886271e/ms_deisotope/deconvolution/api.py#L17
     deconvoluted_peaks, _priority_targets = deconvolute_peaks(ms1_peaks_l, use_quick_charge=True, averagine=averagine.peptide, charge_range=(1,5), scorer=scoring.MSDeconVFitter(10.0), truncate_after=0.95)
