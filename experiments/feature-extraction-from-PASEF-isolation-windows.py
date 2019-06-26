@@ -25,7 +25,7 @@ parser.add_argument('-mgf','--mgf_filename', type=str, help='File name of the MG
 parser.add_argument('-rtl','--rt_lower', type=float, help='The lower limit of retention time (secs).', required=True)
 parser.add_argument('-rtu','--rt_upper', type=float, help='The upper limit of retention time (secs).', required=True)
 parser.add_argument('-rtpw','--rt_base_peak_width_secs', type=float, default=30.0, help='How broad to look in RT for the peak apex (secs).', required=False)
-parser.add_argument('-rtfe','--rt_fragment_event_delta_secs', type=float, default=3.5, help='How wide to look around the region of the fragmentation event (secs).', required=False)
+parser.add_argument('-rtfe','--rt_fragment_event_delta_frames', type=int, default=2, help='Number of ms1 frames to look either side of the fragmentation event.', required=False)
 parser.add_argument('-ms1ce','--ms1_collision_energy', type=float, default=10.0, help='Collision energy used in ms1 frames.', required=False)
 parser.add_argument('-ms1bw','--ms1_bin_width', type=float, default=0.00001, help='Width of ms1 bins, in Thomsons.', required=False)
 parser.add_argument('-ms2bw','--ms2_bin_width', type=float, default=0.001, help='Width of ms2 bins, in Thomsons.', required=False)
@@ -145,8 +145,8 @@ allpeptides_df['pasef_msms_ids_list'] = allpeptides_df.pasef_msms_ids.str.split(
 
 print("reading converted raw data from {}".format(CONVERTED_DATABASE_NAME))
 db_conn = sqlite3.connect(CONVERTED_DATABASE_NAME)
-ms1_frame_properties_df = pd.read_sql_query("select frame_id,retention_time_secs from frame_properties where retention_time_secs >= {} and retention_time_secs <= {} and collision_energy == {}".format(args.rt_lower, args.rt_upper, args.ms1_collision_energy), db_conn)
-ms2_frame_properties_df = pd.read_sql_query("select frame_id,retention_time_secs from frame_properties where retention_time_secs >= {} and retention_time_secs <= {} and collision_energy <> {}".format(args.rt_lower, args.rt_upper, args.ms1_collision_energy), db_conn)
+ms1_frame_properties_df = pd.read_sql_query("select frame_id,retention_time_secs from frame_properties where retention_time_secs >= {} and retention_time_secs <= {} and collision_energy == {} order by retention_time_secs".format(args.rt_lower, args.rt_upper, args.ms1_collision_energy), db_conn)
+ms2_frame_properties_df = pd.read_sql_query("select frame_id,retention_time_secs from frame_properties where retention_time_secs >= {} and retention_time_secs <= {} and collision_energy <> {} order by retention_time_secs".format(args.rt_lower, args.rt_upper, args.ms1_collision_energy), db_conn)
 db_conn.close()
 
 # get all the isolation windows
@@ -158,15 +158,10 @@ print("loaded {} isolation windows from {}".format(len(isolation_window_df), RAW
 
 # add-in the retention time for the isolation windows and filter out the windows not in range
 isolation_window_df = pd.merge(isolation_window_df, ms2_frame_properties_df, how='left', left_on=['Frame'], right_on=['frame_id'])
-isolation_window_df.drop(['frame_id', 'CollisionEnergy'], axis=1, inplace=True)
+isolation_window_df.drop(['CollisionEnergy'], axis=1, inplace=True)
 isolation_window_df.dropna(subset=['retention_time_secs'], inplace=True)
 isolation_window_df['mz_lower'] = isolation_window_df.IsolationMz - (isolation_window_df.IsolationWidth / 2) - 0.7
 isolation_window_df['mz_upper'] = isolation_window_df.IsolationMz + (isolation_window_df.IsolationWidth / 2) + 0.7
-isolation_window_df['wide_rt_lower'] = isolation_window_df.retention_time_secs - args.rt_base_peak_width_secs
-isolation_window_df['wide_rt_upper'] = isolation_window_df.retention_time_secs + args.rt_base_peak_width_secs
-isolation_window_df['fe_rt_lower'] = isolation_window_df.retention_time_secs - args.rt_fragment_event_delta_secs
-isolation_window_df['fe_rt_upper'] = isolation_window_df.retention_time_secs + args.rt_fragment_event_delta_secs
-
 # filter out isolation windows that don't fit in the database subset we have loaded
 isolation_window_df = isolation_window_df[(isolation_window_df.wide_rt_lower >= args.rt_lower) & (isolation_window_df.wide_rt_upper <= args.rt_upper)]
 
@@ -182,25 +177,44 @@ def bin_ms2_frames():
     ms2_raw_points_df['bin_idx'] = np.digitize(ms2_raw_points_df.mz, ms2_bins).astype(int)
     return ms2_raw_points_df
 
+def find_ms1_frames_for_ms2_frame_range(ms2_frame_ids, number_either_side):
+    lower_ms2_frame = min(ms2_frame_ids)
+    upper_ms2_frame = max(ms2_frame_ids)
+    # calculate the deltas
+    ms1_frame_properties_df['delta_l'] = abs(ms1_frame_properties_df.frame_id - lower_ms2_frame)
+    ms1_frame_properties_df['delta_u'] = abs(ms1_frame_properties_df.frame_id - upper_ms2_frame)
+    # find the closest
+    closest_index_lower = ms1_frame_properties_df.delta_l.idxmin()
+    closest_index_upper = ms1_frame_properties_df.delta_u.idxmin()
+    # get the ms1 frames in the range
+    ms1_frame_ids = tuple(ms1_frame_properties_df.loc[closest_index_lower-number_either_side:closest_index_upper+number_either_side].frame_id)
+    # clean up
+    ms1_frame_properties_df.drop('delta_l', axis=1, inplace=True)
+    ms1_frame_properties_df.drop('delta_u', axis=1, inplace=True)
+    return ms1_frame_ids
+
 @ray.remote
-def find_features(window_number, window_df):
+def find_features(group_number, group_df):
     # find the ms1 features in this isolation window
     ms1_characteristics_l = []
 
-    window_mz_lower = window_df.mz_lower
-    window_mz_upper = window_df.mz_upper
-    scan_width = int(window_df.ScanNumEnd - window_df.ScanNumBegin)
-    wide_scan_lower = int(window_df.ScanNumBegin - scan_width)
-    wide_scan_upper = int(window_df.ScanNumEnd + scan_width)
-    fe_scan_lower = int(window_df.ScanNumBegin)
-    fe_scan_upper = int(window_df.ScanNumEnd)
-    wide_rt_lower = window_df.wide_rt_lower
-    wide_rt_upper = window_df.wide_rt_upper
-    fe_rt_lower = window_df.fe_rt_lower
-    fe_rt_upper = window_df.fe_rt_upper
-    precursor_id = int(window_df.Precursor)
+    window = group_df.iloc[0]
+    window_mz_lower = window.mz_lower
+    window_mz_upper = window.mz_upper
+    scan_width = int(window.ScanNumEnd - window.ScanNumBegin)
+    wide_scan_lower = int(window.ScanNumBegin - scan_width)
+    wide_scan_upper = int(window.ScanNumEnd + scan_width)
+    fe_scan_lower = int(window.ScanNumBegin)
+    fe_scan_upper = int(window.ScanNumEnd)
+    precursor_id = int(window.Precursor)
 
-    # get the ms1 frame IDs
+    wide_rt_lower = group_df.retention_time_secs.min() - args.rt_base_peak_width_secs
+    wide_rt_upper = group_df.retention_time_secs.max() + args.rt_base_peak_width_secs
+
+    # get the ms1 frame IDs for the range of this precursor's ms2 frames
+    isolation_window_ms1_frame_ids = find_ms1_frames_for_ms2_frame_range(ms2_frame_ids=list(group_df.Frame), number_either_side=args.rt_fragment_event_delta_frames)
+    print("found ms1 frames {} for ms2 frames {}".format(isolation_window_ms1_frame_ids, list(group_df.Frame)))
+
     ms1_frame_ids = tuple(ms1_frame_properties_df.frame_id)
 
     # load the cube's raw ms1 points
@@ -208,8 +222,8 @@ def find_features(window_number, window_df):
     ms1_raw_points_df = pd.read_sql_query("select frame_id,mz,scan,intensity,retention_time_secs from frames where mz >= {} and mz <= {} and scan >= {} and scan <= {} and retention_time_secs >= {} and retention_time_secs <= {} and frame_id in {}".format(window_mz_lower, window_mz_upper, wide_scan_lower, wide_scan_upper, wide_rt_lower, wide_rt_upper, ms1_frame_ids), db_conn)
     db_conn.close()
 
-    # get the raw points constrained to the fragmentation event's RT
-    fe_raw_points_df = ms1_raw_points_df[(ms1_raw_points_df.retention_time_secs >= fe_rt_lower) & (ms1_raw_points_df.retention_time_secs <= fe_rt_upper)]
+    # get the raw points constrained to the fragmentation event's extent in ms1 frames
+    fe_raw_points_df = ms1_raw_points_df[ms1_raw_points_df.isin(isolation_window_ms1_frame_ids)]
 
     ms1_bins = np.arange(start=window_mz_lower, stop=window_mz_upper+args.ms1_bin_width, step=args.ms1_bin_width)  # go slightly wider to accomodate the maximum value
     MZ_BIN_COUNT = len(ms1_bins)
@@ -678,7 +692,7 @@ if args.new_ms1_features:
     print("finding ms1 features")
     if args.test_mode:
         isolation_window_df = isolation_window_df[:2]
-    ms1_df_l = ray.get([find_features.remote(window_number=idx+1, window_df=group_df.iloc[0]) for idx,group_df in isolation_window_df.groupby('Precursor')])
+    ms1_df_l = ray.get([find_features.remote(group_number=idx+1, group_df=group_df) for idx,group_df in isolation_window_df.groupby('Precursor')])
     ms1_df = pd.concat(ms1_df_l)  # combines a list of dataframes into a single dataframe
     ms1_df.to_pickle(args.ms1_features_filename)
     print("detected {} features".format(len(ms1_df)))
