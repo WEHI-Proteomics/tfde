@@ -154,8 +154,6 @@ db_conn = sqlite3.connect(RAW_DATABASE_NAME)
 isolation_window_df = pd.read_sql_query("select * from PasefFrameMsMsInfo", db_conn)
 db_conn.close()
 
-print("loaded {} isolation windows from {}".format(len(isolation_window_df), RAW_DATABASE_NAME))
-
 # add-in the retention time for the isolation windows and filter out the windows not in range
 isolation_window_df = pd.merge(isolation_window_df, ms2_frame_properties_df, how='left', left_on=['Frame'], right_on=['frame_id'])
 isolation_window_df.drop(['CollisionEnergy'], axis=1, inplace=True)
@@ -164,6 +162,7 @@ isolation_window_df['mz_lower'] = isolation_window_df.IsolationMz - (isolation_w
 isolation_window_df['mz_upper'] = isolation_window_df.IsolationMz + (isolation_window_df.IsolationWidth / 2) + 0.7
 # filter out isolation windows that don't fit in the database subset we have loaded
 isolation_window_df = isolation_window_df[(isolation_window_df.retention_time_secs >= (args.rt_lower - args.rt_base_peak_width_secs)) & (isolation_window_df.retention_time_secs <= (args.rt_upper + args.rt_base_peak_width_secs))]
+print("loaded {} isolation windows from {}".format(len(isolation_window_df), RAW_DATABASE_NAME))
 
 def bin_ms2_frames():
     # get the raw points for all ms2 frames
