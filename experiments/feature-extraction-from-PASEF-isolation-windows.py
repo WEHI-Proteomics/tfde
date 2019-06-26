@@ -223,7 +223,7 @@ def find_features(group_number, group_df):
     db_conn.close()
 
     # get the raw points constrained to the fragmentation event's extent in ms1 frames
-    fe_raw_points_df = ms1_raw_points_df[ms1_raw_points_df.isin(isolation_window_ms1_frame_ids)]
+    fe_raw_points_df = ms1_raw_points_df[ms1_raw_points_df.frame_id.isin(isolation_window_ms1_frame_ids)]
 
     ms1_bins = np.arange(start=window_mz_lower, stop=window_mz_upper+args.ms1_bin_width, step=args.ms1_bin_width)  # go slightly wider to accomodate the maximum value
     MZ_BIN_COUNT = len(ms1_bins)
