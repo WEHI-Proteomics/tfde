@@ -192,6 +192,86 @@ def find_ms1_frames_for_ms2_frame_range(ms2_frame_ids, number_either_side):
     ms1_frame_properties_df.drop('delta_u', axis=1, inplace=True)
     return ms1_frame_ids
 
+# returns a tuple with the characteristics of the feature in the specified row
+def collate_feature_characteristics(row):
+    result = None
+
+    feature_monoisotopic_mz = row.mono_mz
+    feature_intensity = int(row.intensity)
+    second_peak_mz = row.second_peak_mz
+    feature_charge = int(row.charge)
+    feature_envelope = row.envelope
+
+    # Get the raw points for the monoisotopic peak (constrained by the fragmentation event)
+    MZ_TOLERANCE_PPM = 20
+    MZ_TOLERANCE_PERCENT = MZ_TOLERANCE_PPM * 10**-4
+
+    monoisotopic_mz_ppm_tolerance = feature_monoisotopic_mz * MZ_TOLERANCE_PERCENT / 100
+    monoisotopic_mz_lower = feature_monoisotopic_mz - monoisotopic_mz_ppm_tolerance
+    monoisotopic_mz_upper = feature_monoisotopic_mz + monoisotopic_mz_ppm_tolerance
+
+    monoisotopic_raw_points_df = fe_raw_points_df[(fe_raw_points_df.mz >= monoisotopic_mz_lower) & (fe_raw_points_df.mz <= monoisotopic_mz_upper)]
+    if len(monoisotopic_raw_points_df) > 0:
+        # collapsing the monoisotopic's summed points onto the mobility dimension
+        scan_df = monoisotopic_raw_points_df.groupby(['scan'], as_index=False).intensity.sum()
+
+        mobility_curve_fit = False
+        try:
+            guassian_params = peakutils.peak.gaussian_fit(scan_df.scan, scan_df.intensity, center_only=False)
+            scan_apex = guassian_params[1]
+            scan_side_width = 2 * abs(guassian_params[2])  # number of standard deviations either side of the apex
+            scan_lower = scan_apex - scan_side_width
+            scan_upper = scan_apex + scan_side_width
+            if (scan_apex >= wide_scan_lower) and (scan_apex <= wide_scan_upper):
+                mobility_curve_fit = True
+        except:
+            pass
+
+        # if we couldn't fit a curve to the mobility dimension, take the intensity-weighted centroid
+        if not mobility_curve_fit:
+            scan_apex = peakutils.centroid(scan_df.scan, scan_df.intensity)
+            scan_lower = wide_scan_lower
+            scan_upper = wide_scan_upper
+
+        # In the RT dimension, look wider to find the apex
+        wide_rt_monoisotopic_raw_points_df = ms1_raw_points_df[(ms1_raw_points_df.mz >= monoisotopic_mz_lower) & (ms1_raw_points_df.mz <= monoisotopic_mz_upper)]
+        rt_df = wide_rt_monoisotopic_raw_points_df.groupby(['frame_id','retention_time_secs'], as_index=False).intensity.sum()
+        rt_curve_fit = False
+        try:
+            guassian_params = peakutils.peak.gaussian_fit(rt_df.retention_time_secs, rt_df.intensity, center_only=False)
+            rt_apex = guassian_params[1]
+            rt_side_width = 3 * abs(guassian_params[2])  # number of standard deviations either side of the apex
+            rt_lower = rt_apex - rt_side_width
+            rt_upper = rt_apex + rt_side_width
+            if (rt_apex >= wide_rt_lower) and (rt_apex <= wide_rt_upper):
+                rt_curve_fit = True
+        except:
+            pass
+
+        # if we couldn't fit a curve to the RT dimension, take the intensity-weighted centroid
+        if not rt_curve_fit:
+            rt_apex = peakutils.centroid(rt_df.retention_time_secs, rt_df.intensity)
+            rt_lower = wide_rt_lower
+            rt_upper = wide_rt_upper
+
+        # find the isolation windows overlapping the feature's mono or second peak, plus scan and RT
+        indexes = isolation_window_df.index[
+                                    (((isolation_window_df.mz_upper >= feature_monoisotopic_mz) & (isolation_window_df.mz_lower <= feature_monoisotopic_mz)) |
+                                    ((isolation_window_df.mz_upper >= second_peak_mz) & (isolation_window_df.mz_lower <= second_peak_mz))) &
+                                    (isolation_window_df.ScanNumEnd >= scan_apex) &
+                                    (isolation_window_df.ScanNumBegin <= scan_apex) &
+                                    (isolation_window_df.retention_time_secs >= rt_lower) &
+                                    (isolation_window_df.retention_time_secs <= rt_upper)
+                               ]
+        isolation_windows_overlapping_feature_df = isolation_window_df.loc[indexes]
+
+        if len(isolation_windows_overlapping_feature_df) > 0:
+            ms2_frames = list(isolation_windows_overlapping_feature_df.Frame)
+            ms2_scan_ranges = [tuple(x) for x in isolation_windows_overlapping_feature_df[['ScanNumBegin','ScanNumEnd']].values]
+            result = (feature_monoisotopic_mz, feature_charge, feature_intensity, round(scan_apex,2), mobility_curve_fit, round(scan_lower,2), round(scan_upper,2), round(rt_apex,2), rt_curve_fit, round(rt_lower,2), round(rt_upper,2), precursor_id, ms2_frames, ms2_scan_ranges, feature_envelope)
+
+    return result
+
 @ray.remote
 def find_features(group_number, group_df):
     # find the ms1 features in this isolation window
@@ -289,84 +369,9 @@ def find_features(group_number, group_df):
             ms1_deconvoluted_peaks_l.append((mono_peak_mz, second_peak_mz, mono_intensity, peak.score, peak.signal_to_noise, peak.charge, peak.envelope))
 
     ms1_deconvoluted_peaks_df = pd.DataFrame(ms1_deconvoluted_peaks_l, columns=['mono_mz','second_peak_mz','intensity','score','SN','charge','envelope'])
-
-    # For each monoisotopic peak found, find its apex in RT and mobility
-    for monoisotopic_idx in range(len(ms1_deconvoluted_peaks_df)):
-        feature_monoisotopic_mz = ms1_deconvoluted_peaks_df.iloc[monoisotopic_idx].mono_mz
-        feature_intensity = int(ms1_deconvoluted_peaks_df.iloc[monoisotopic_idx].intensity)
-        second_peak_mz = ms1_deconvoluted_peaks_df.iloc[monoisotopic_idx].second_peak_mz
-        feature_charge = int(ms1_deconvoluted_peaks_df.iloc[monoisotopic_idx].charge)
-        feature_envelope = ms1_deconvoluted_peaks_df.iloc[monoisotopic_idx].envelope
-
-        # Get the raw points for the monoisotopic peak (constrained by the fragmentation event)
-        MZ_TOLERANCE_PPM = 20
-        MZ_TOLERANCE_PERCENT = MZ_TOLERANCE_PPM * 10**-4
-
-        monoisotopic_mz_ppm_tolerance = feature_monoisotopic_mz * MZ_TOLERANCE_PERCENT / 100
-        monoisotopic_mz_lower = feature_monoisotopic_mz - monoisotopic_mz_ppm_tolerance
-        monoisotopic_mz_upper = feature_monoisotopic_mz + monoisotopic_mz_ppm_tolerance
-
-        monoisotopic_raw_points_df = fe_raw_points_df[(fe_raw_points_df.mz >= monoisotopic_mz_lower) & (fe_raw_points_df.mz <= monoisotopic_mz_upper)]
-        if len(monoisotopic_raw_points_df) > 0:
-            # collapsing the monoisotopic's summed points onto the mobility dimension
-            scan_df = monoisotopic_raw_points_df.groupby(['scan'], as_index=False).intensity.sum()
-
-            mobility_curve_fit = False
-            try:
-                guassian_params = peakutils.peak.gaussian_fit(scan_df.scan, scan_df.intensity, center_only=False)
-                scan_apex = guassian_params[1]
-                scan_side_width = 2 * abs(guassian_params[2])  # number of standard deviations either side of the apex
-                scan_lower = scan_apex - scan_side_width
-                scan_upper = scan_apex + scan_side_width
-                if (scan_apex >= wide_scan_lower) and (scan_apex <= wide_scan_upper):
-                    mobility_curve_fit = True
-            except:
-                pass
-
-            # if we couldn't fit a curve to the mobility dimension, take the intensity-weighted centroid
-            if not mobility_curve_fit:
-                scan_apex = peakutils.centroid(scan_df.scan, scan_df.intensity)
-                scan_lower = wide_scan_lower
-                scan_upper = wide_scan_upper
-
-            # In the RT dimension, look wider to find the apex
-            wide_rt_monoisotopic_raw_points_df = ms1_raw_points_df[(ms1_raw_points_df.mz >= monoisotopic_mz_lower) & (ms1_raw_points_df.mz <= monoisotopic_mz_upper)]
-            rt_df = wide_rt_monoisotopic_raw_points_df.groupby(['frame_id','retention_time_secs'], as_index=False).intensity.sum()
-            rt_curve_fit = False
-            try:
-                guassian_params = peakutils.peak.gaussian_fit(rt_df.retention_time_secs, rt_df.intensity, center_only=False)
-                rt_apex = guassian_params[1]
-                rt_side_width = 3 * abs(guassian_params[2])  # number of standard deviations either side of the apex
-                rt_lower = rt_apex - rt_side_width
-                rt_upper = rt_apex + rt_side_width
-                if (rt_apex >= wide_rt_lower) and (rt_apex <= wide_rt_upper):
-                    rt_curve_fit = True
-            except:
-                pass
-
-            # if we couldn't fit a curve to the RT dimension, take the intensity-weighted centroid
-            if not rt_curve_fit:
-                rt_apex = peakutils.centroid(rt_df.retention_time_secs, rt_df.intensity)
-                rt_lower = wide_rt_lower
-                rt_upper = wide_rt_upper
-
-            # find the isolation windows overlapping the feature's mono or second peak, plus scan and RT
-            indexes = isolation_window_df.index[
-                                        (((isolation_window_df.mz_upper >= feature_monoisotopic_mz) & (isolation_window_df.mz_lower <= feature_monoisotopic_mz)) |
-                                        ((isolation_window_df.mz_upper >= second_peak_mz) & (isolation_window_df.mz_lower <= second_peak_mz))) &
-                                        (isolation_window_df.ScanNumEnd >= scan_apex) &
-                                        (isolation_window_df.ScanNumBegin <= scan_apex) &
-                                        (isolation_window_df.retention_time_secs >= rt_lower) &
-                                        (isolation_window_df.retention_time_secs <= rt_upper)
-                                   ]
-            isolation_windows_overlapping_feature_df = isolation_window_df.loc[indexes]
-
-            if len(isolation_windows_overlapping_feature_df) > 0:
-                ms2_frames = list(isolation_windows_overlapping_feature_df.Frame)
-                ms2_scan_ranges = [tuple(x) for x in isolation_windows_overlapping_feature_df[['ScanNumBegin','ScanNumEnd']].values]
-                ms1_characteristics_l.append((feature_monoisotopic_mz, feature_charge, feature_intensity, round(scan_apex,2), mobility_curve_fit, round(scan_lower,2), round(scan_upper,2), round(rt_apex,2), rt_curve_fit, round(rt_lower,2), round(rt_upper,2), precursor_id, ms2_frames, ms2_scan_ranges, feature_envelope))
-
+    ms1_characteristics_l = list(ms1_deconvoluted_peaks_df.apply(lambda row: collate_feature_characteristics(row), axis=1).values)
     ms1_characteristics_df = pd.DataFrame(ms1_characteristics_l, columns=['monoisotopic_mz', 'charge', 'intensity', 'scan_apex', 'scan_curve_fit', 'scan_lower', 'scan_upper', 'rt_apex', 'rt_curve_fit', 'rt_lower', 'rt_upper', 'precursor_id', 'ms2_frames', 'ms2_scan_ranges','envelope'])
+
     return ms1_characteristics_df
 
 def remove_ms1_duplicates(ms1_features_df):
