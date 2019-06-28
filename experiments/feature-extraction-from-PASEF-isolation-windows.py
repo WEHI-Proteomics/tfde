@@ -193,7 +193,7 @@ def find_ms1_frames_for_ms2_frame_range(ms2_frame_ids, number_either_side):
     return ms1_frame_ids
 
 # returns a tuple with the characteristics of the feature in the specified row
-def collate_feature_characteristics(row):
+def collate_feature_characteristics(row, fe_raw_points_df):
     result = None
 
     feature_monoisotopic_mz = row.mono_mz
@@ -369,7 +369,7 @@ def find_features(group_number, group_df):
             ms1_deconvoluted_peaks_l.append((mono_peak_mz, second_peak_mz, mono_intensity, peak.score, peak.signal_to_noise, peak.charge, peak.envelope))
 
     ms1_deconvoluted_peaks_df = pd.DataFrame(ms1_deconvoluted_peaks_l, columns=['mono_mz','second_peak_mz','intensity','score','SN','charge','envelope'])
-    ms1_characteristics_l = list(ms1_deconvoluted_peaks_df.apply(lambda row: collate_feature_characteristics(row), axis=1).values)
+    ms1_characteristics_l = list(ms1_deconvoluted_peaks_df.apply(lambda row: collate_feature_characteristics(row, fe_raw_points_df), axis=1).values)
     ms1_characteristics_df = pd.DataFrame(ms1_characteristics_l, columns=['monoisotopic_mz', 'charge', 'intensity', 'scan_apex', 'scan_curve_fit', 'scan_lower', 'scan_upper', 'rt_apex', 'rt_curve_fit', 'rt_lower', 'rt_upper', 'precursor_id', 'ms2_frames', 'ms2_scan_ranges','envelope'])
 
     return ms1_characteristics_df
