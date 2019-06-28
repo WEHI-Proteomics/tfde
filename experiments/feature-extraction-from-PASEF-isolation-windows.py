@@ -282,6 +282,7 @@ def collate_feature_characteristics(row, group_df, fe_raw_points_df, ms1_raw_poi
             ms2_scan_ranges = [tuple(x) for x in isolation_windows_overlapping_feature_df[['ScanNumBegin','ScanNumEnd']].values]
             result = (feature_monoisotopic_mz, feature_charge, feature_intensity, round(scan_apex,2), mobility_curve_fit, round(scan_lower,2), round(scan_upper,2), round(rt_apex,2), rt_curve_fit, round(rt_lower,2), round(rt_upper,2), precursor_id, ms2_frames, ms2_scan_ranges, feature_envelope)
 
+    print(result)
     return result
 
 @ray.remote
