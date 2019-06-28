@@ -382,7 +382,10 @@ def find_features(group_number, group_df):
     ms1_deconvoluted_peaks_df = pd.DataFrame(ms1_deconvoluted_peaks_l, columns=['mono_mz','second_peak_mz','intensity','score','SN','charge','envelope'])
     ms1_characteristics_l = list(ms1_deconvoluted_peaks_df.apply(lambda row: collate_feature_characteristics(row, group_df, fe_raw_points_df, ms1_raw_points_df), axis=1).values)
     ms1_characteristics_l = [x for x in ms1_characteristics_l if x != None]  # clean up empty rows
-    ms1_characteristics_df = pd.DataFrame(ms1_characteristics_l, columns=['monoisotopic_mz', 'charge', 'intensity', 'scan_apex', 'scan_curve_fit', 'scan_lower', 'scan_upper', 'rt_apex', 'rt_curve_fit', 'rt_lower', 'rt_upper', 'precursor_id', 'ms2_frames', 'ms2_scan_ranges','envelope'])
+    if len(ms1_characteristics_l) > 0:
+        ms1_characteristics_df = pd.DataFrame(ms1_characteristics_l, columns=['monoisotopic_mz', 'charge', 'intensity', 'scan_apex', 'scan_curve_fit', 'scan_lower', 'scan_upper', 'rt_apex', 'rt_curve_fit', 'rt_lower', 'rt_upper', 'precursor_id', 'ms2_frames', 'ms2_scan_ranges','envelope'])
+    else:
+        ms1_characteristics_l = None
 
     return ms1_characteristics_df
 
