@@ -64,6 +64,7 @@ features_df = pd.read_pickle(args.features_file)
 features_df['mz_lower'] = features_df.envelope.apply(lambda x: x[0][0])
 features_df['mz_upper'] = features_df.envelope.apply(lambda x: x[len(x)-1][0])
 features_df['isotope_count'] = features_df.envelope.apply(lambda x: len(x))
+features_df = features_df[(features_df.isotope_count > 2) & ((features_df.scan_upper - features_df.scan_lower) > SCAN_LENGTH_MINIMUM)]
 
 print("charge states: {} to {}".format(features_df.charge.min(), features_df.charge.max()))
 
