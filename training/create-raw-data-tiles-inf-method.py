@@ -88,7 +88,7 @@ for r in zip(features_df.feature_id,features_df.charge,features_df.isotope_count
     scan_upper = r[6]
 
     # determine the bounding box coordinates for m/z and scan in real space
-    mz_ppm_tolerance = mq_feature_mz * MZ_TOLERANCE_PERCENT / 100
+    mz_ppm_tolerance = mz_lower * MZ_TOLERANCE_PERCENT / 100
     mz_ppm_tolerance_l.append((mz_ppm_tolerance))
 
     # find the bin edges for the feature's mz
@@ -238,14 +238,14 @@ def render_tile_for_frame(frame_r):
             y = (y0 + ((y1 - y0) / 2)) / TILE_HEIGHT
             width = (x1 - x0) / TILE_WIDTH
             height = (y1 - y0) / TILE_HEIGHT
-            object_class = mq_feature_charge_state-1
+            object_class = feature_charge_state-1
             # object_class = 0
             # draw the MQ feature if its centre is within the tile
             if ((x > 0) and (x < 1) and (y > 0) and (y < 1)):
                 draw.rectangle(xy=[(x0, y0), (x1, y1)], fill=None, outline='red')
-                draw.text((x0, y0-12), "{}, +{}, {} iso".format(mq_feature_id,mq_feature_charge_state,isotope_count), font=feature_label, fill='red')
+                draw.text((x0, y0-12), "{}, +{}, {} iso".format(feature_id,feature_charge_state,isotope_count), font=feature_label, fill='red')
                 feature_coordinates.append(("{} {:.6f} {:.6f} {:.6f} {:.6f}".format(object_class, x, y, width, height)))
-                instances_df.loc[(instances_df.charge == mq_feature_charge_state),'instances'] += 1
+                instances_df.loc[(instances_df.charge == feature_charge_state),'instances'] += 1
 
         # write them out
         train_filename = '{}/frame-{}-tile-{}-mz-{}-{}.png'.format(PRE_ASSIGNED_FILES_DIR, frame_id, tile_idx, int(tile_base_mz), int(tile_base_mz+tile_width_mz))
