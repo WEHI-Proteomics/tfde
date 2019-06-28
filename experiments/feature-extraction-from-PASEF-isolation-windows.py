@@ -193,7 +193,7 @@ def find_ms1_frames_for_ms2_frame_range(ms2_frame_ids, number_either_side):
     return ms1_frame_ids
 
 # returns a tuple with the characteristics of the feature in the specified row
-def collate_feature_characteristics(row, fe_raw_points_df):
+def collate_feature_characteristics(row, group_df, fe_raw_points_df):
     result = None
 
     feature_monoisotopic_mz = row.mono_mz
@@ -201,6 +201,18 @@ def collate_feature_characteristics(row, fe_raw_points_df):
     second_peak_mz = row.second_peak_mz
     feature_charge = int(row.charge)
     feature_envelope = row.envelope
+
+    window = group_df.iloc[0]
+    window_mz_lower = window.mz_lower
+    window_mz_upper = window.mz_upper
+    scan_width = int(window.ScanNumEnd - window.ScanNumBegin)
+    wide_scan_lower = int(window.ScanNumBegin - scan_width)
+    wide_scan_upper = int(window.ScanNumEnd + scan_width)
+    fe_scan_lower = int(window.ScanNumBegin)
+    fe_scan_upper = int(window.ScanNumEnd)
+    precursor_id = int(window.Precursor)
+    wide_rt_lower = group_df.retention_time_secs.min() - args.rt_base_peak_width_secs
+    wide_rt_upper = group_df.retention_time_secs.max() + args.rt_base_peak_width_secs
 
     # Get the raw points for the monoisotopic peak (constrained by the fragmentation event)
     MZ_TOLERANCE_PPM = 20
@@ -286,7 +298,6 @@ def find_features(group_number, group_df):
     fe_scan_lower = int(window.ScanNumBegin)
     fe_scan_upper = int(window.ScanNumEnd)
     precursor_id = int(window.Precursor)
-
     wide_rt_lower = group_df.retention_time_secs.min() - args.rt_base_peak_width_secs
     wide_rt_upper = group_df.retention_time_secs.max() + args.rt_base_peak_width_secs
 
@@ -369,7 +380,7 @@ def find_features(group_number, group_df):
             ms1_deconvoluted_peaks_l.append((mono_peak_mz, second_peak_mz, mono_intensity, peak.score, peak.signal_to_noise, peak.charge, peak.envelope))
 
     ms1_deconvoluted_peaks_df = pd.DataFrame(ms1_deconvoluted_peaks_l, columns=['mono_mz','second_peak_mz','intensity','score','SN','charge','envelope'])
-    ms1_characteristics_l = list(ms1_deconvoluted_peaks_df.apply(lambda row: collate_feature_characteristics(row, fe_raw_points_df), axis=1).values)
+    ms1_characteristics_l = list(ms1_deconvoluted_peaks_df.apply(lambda row: collate_feature_characteristics(row, group_df, fe_raw_points_df), axis=1).values)
     ms1_characteristics_df = pd.DataFrame(ms1_characteristics_l, columns=['monoisotopic_mz', 'charge', 'intensity', 'scan_apex', 'scan_curve_fit', 'scan_lower', 'scan_upper', 'rt_apex', 'rt_curve_fit', 'rt_lower', 'rt_upper', 'precursor_id', 'ms2_frames', 'ms2_scan_ranges','envelope'])
 
     return ms1_characteristics_df
