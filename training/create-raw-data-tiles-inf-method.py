@@ -217,15 +217,14 @@ def render_tile_for_frame(frame_r):
         # get the features that fully fit in the tile
         feature_coordinates = []
         ap_df = features_frame_overlap_df
-        for feature_r in zip(ap_df.feature_id, ap_df.mz, ap_df.charge, ap_df.isotope_count, ap_df.binned_rect_mz_idx_lower, ap_df.binned_rect_mz_idx_upper, ap_df.scan_lower, ap_df.scan_upper):
+        for feature_r in zip(ap_df.feature_id, ap_df.charge, ap_df.isotope_count, ap_df.binned_rect_mz_idx_lower, ap_df.binned_rect_mz_idx_upper, ap_df.scan_lower, ap_df.scan_upper):
             feature_id = int(feature_r[0])
-            feature_mz = feature_r[1]
-            feature_charge_state = int(feature_r[2])
-            isotope_count = int(feature_r[3])
-            binned_rect_mz_idx_lower = int(feature_r[4]) - 1  # go a bit wider in m/z to make sure we get the whole width
-            binned_rect_mz_idx_upper = int(feature_r[5]) + 1
-            scan_lower = int(feature_r[6]) - 2  # and a bit wider in mobility for a bigger margin
-            scan_upper = int(feature_r[7]) + 2
+            feature_charge_state = int(feature_r[1])
+            isotope_count = int(feature_r[2])
+            binned_rect_mz_idx_lower = int(feature_r[3]) - 1  # go a bit wider in m/z to make sure we get the whole width
+            binned_rect_mz_idx_upper = int(feature_r[4]) + 1
+            scan_lower = int(feature_r[5]) - 2  # and a bit wider in mobility for a bigger margin
+            scan_upper = int(feature_r[6]) + 2
 
             # draw the features overlay
             draw = ImageDraw.Draw(stretched_tile_with_overlay)
