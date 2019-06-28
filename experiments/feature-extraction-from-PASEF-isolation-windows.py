@@ -194,7 +194,7 @@ def find_ms1_frames_for_ms2_frame_range(ms2_frame_ids, number_either_side):
 
 # returns a tuple with the characteristics of the feature in the specified row
 def collate_feature_characteristics(row, group_df, fe_raw_points_df, ms1_raw_points_df):
-    result = ()
+    result = None
 
     feature_monoisotopic_mz = row.mono_mz
     feature_intensity = int(row.intensity)
