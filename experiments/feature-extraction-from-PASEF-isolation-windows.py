@@ -556,50 +556,52 @@ def calculate_raw_peak_intensity_at_mz(centre_mz, feature):
 def check_monoisotopic_peak(feature, idx, total):
     adjusted = False
     feature_d = feature.to_dict()
+    original_phr_error = None
     candidate_phr_error = None
+    observed_ratio = None
 
     # calculate the PHR error for peak 1 (first isotope) and peak 0 (what we think is the monoisotopic)
     observed_ratio = feature.envelope[1][1] / feature.envelope[0][1]
     monoisotopic_mass = feature.monoisotopic_mz * feature.charge
     expected_ratio = peak_ratio(monoisotopic_mass=monoisotopic_mass, peak_number=1, number_of_sulphur=0)
-    original_phr_error = (observed_ratio - expected_ratio) / expected_ratio
-
-    if abs(original_phr_error) > args.max_ms1_peak_height_ratio_error:
-        print("feature {}/{}: PHR error {} - looking for the correct monoisotopic".format(idx+1,total,original_phr_error))
-        # probably missed the monoisotopic - need to search for it
-        expected_spacing_mz = DELTA_MZ / feature.charge
-        centre_mz = feature.monoisotopic_mz - expected_spacing_mz
-        candidate_mz_centroid, candidate_raw_intensity = calculate_raw_peak_intensity_at_mz(centre_mz, feature)
-        if (candidate_mz_centroid != -1) and (candidate_raw_intensity != -1):
-            # get the raw intensity for the original monoisotope so we can calculate an accurate ratio
-            original_mz, original_raw_intensity = calculate_raw_peak_intensity_at_mz(feature.monoisotopic_mz, feature)
-            if (original_mz != -1) and (original_raw_intensity != -1):
-                candidate_ratio = original_raw_intensity / candidate_raw_intensity
-                candidate_phr_error = (candidate_ratio - expected_ratio) / expected_ratio
-                feature_d['candidate_phr_error'] = candidate_phr_error
-                if (abs(candidate_phr_error) <= abs(original_phr_error)) and (abs(candidate_phr_error) <= args.max_ms1_peak_height_ratio_error):
-                    # update the envelope with the adjusted monoisotopic peak
-                    env_peak_0_intensity = feature.envelope[0][1]
-                    new_env_peak_0_intensity = env_peak_0_intensity / candidate_ratio
-                    updated_envelope = []
-                    updated_envelope.append((candidate_mz_centroid, new_env_peak_0_intensity))
-                    updated_envelope += feature.envelope
-                    feature_d['envelope'] = updated_envelope
-                    # the intensity is the sum of the envelope intensities
-                    envelope_intensity = 0
-                    for i in range(len(updated_envelope)):
-                        envelope_intensity += updated_envelope[i][1]
-                    feature_d['intensity'] = envelope_intensity
-                    # the monoisotopic mz is the deisotoped mz
-                    envelope_deisotoped_mzs = []
-                    envelope_deisotoped_intensities = []
-                    for isotope_number in range(len(updated_envelope)):
-                        deisotoped_mz = updated_envelope[isotope_number][0] - (isotope_number * expected_spacing_mz)
-                        envelope_deisotoped_mzs.append(deisotoped_mz)
-                        envelope_deisotoped_intensities.append(updated_envelope[isotope_number][1])
-                    # take the intensity-weighted centroid of the mzs in the list
-                    feature_d['monoisotopic_mz'] = peakutils.centroid(np.array(envelope_deisotoped_mzs), np.array(envelope_deisotoped_intensities))
-                    adjusted = True
+    if expected_ratio is not None:
+        original_phr_error = (observed_ratio - expected_ratio) / expected_ratio
+        if abs(original_phr_error) > args.max_ms1_peak_height_ratio_error:
+            print("feature {}/{}: PHR error {} - looking for the correct monoisotopic".format(idx+1,total,original_phr_error))
+            # probably missed the monoisotopic - need to search for it
+            expected_spacing_mz = DELTA_MZ / feature.charge
+            centre_mz = feature.monoisotopic_mz - expected_spacing_mz
+            candidate_mz_centroid, candidate_raw_intensity = calculate_raw_peak_intensity_at_mz(centre_mz, feature)
+            if (candidate_mz_centroid != -1) and (candidate_raw_intensity != -1):
+                # get the raw intensity for the original monoisotope so we can calculate an accurate ratio
+                original_mz, original_raw_intensity = calculate_raw_peak_intensity_at_mz(feature.monoisotopic_mz, feature)
+                if (original_mz != -1) and (original_raw_intensity != -1):
+                    candidate_ratio = original_raw_intensity / candidate_raw_intensity
+                    candidate_phr_error = (candidate_ratio - expected_ratio) / expected_ratio
+                    feature_d['candidate_phr_error'] = candidate_phr_error
+                    if (abs(candidate_phr_error) <= abs(original_phr_error)) and (abs(candidate_phr_error) <= args.max_ms1_peak_height_ratio_error):
+                        # update the envelope with the adjusted monoisotopic peak
+                        env_peak_0_intensity = feature.envelope[0][1]
+                        new_env_peak_0_intensity = env_peak_0_intensity / candidate_ratio
+                        updated_envelope = []
+                        updated_envelope.append((candidate_mz_centroid, new_env_peak_0_intensity))
+                        updated_envelope += feature.envelope
+                        feature_d['envelope'] = updated_envelope
+                        # the intensity is the sum of the envelope intensities
+                        envelope_intensity = 0
+                        for i in range(len(updated_envelope)):
+                            envelope_intensity += updated_envelope[i][1]
+                        feature_d['intensity'] = envelope_intensity
+                        # the monoisotopic mz is the deisotoped mz
+                        envelope_deisotoped_mzs = []
+                        envelope_deisotoped_intensities = []
+                        for isotope_number in range(len(updated_envelope)):
+                            deisotoped_mz = updated_envelope[isotope_number][0] - (isotope_number * expected_spacing_mz)
+                            envelope_deisotoped_mzs.append(deisotoped_mz)
+                            envelope_deisotoped_intensities.append(updated_envelope[isotope_number][1])
+                        # take the intensity-weighted centroid of the mzs in the list
+                        feature_d['monoisotopic_mz'] = peakutils.centroid(np.array(envelope_deisotoped_mzs), np.array(envelope_deisotoped_intensities))
+                        adjusted = True
 
     feature_d['mono_adjusted'] = adjusted
     feature_d['original_phr_error'] = original_phr_error
