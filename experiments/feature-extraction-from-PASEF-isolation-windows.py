@@ -1,3 +1,4 @@
+from numba import jit
 import sqlite3
 import pandas as pd
 import numpy as np
@@ -12,6 +13,7 @@ import argparse
 import ray
 import time
 import pickle
+
 
 PROTON_MASS = 1.0073  # Mass of a proton in unified atomic mass units, or Da. For calculating the monoisotopic mass.
 DELTA_MZ = 1.003355     # Mass difference between Carbon-12 and Carbon-13 isotopes, in Da. For calculating the spacing between isotopic peaks.
@@ -62,7 +64,10 @@ if not ray.is_initialized():
     if args.cluster_mode:
         ray.init(redis_address="localhost:6379")
     else:
-        ray.init(object_store_memory=100000000000)
+        if args.test_mode:
+            ray.init()
+        else:
+            ray.init(object_store_memory=100000000000)
 
 start_run = time.time()
 
@@ -127,42 +132,58 @@ if not os.path.isfile(PASEF_MSMS_SCANS_FILENAME):
 
 # make sure the right indexes are created in the source database
 print("Setting up indexes on {}".format(CONVERTED_DATABASE_NAME))
-db_conn = sqlite3.connect(CONVERTED_DATABASE_NAME)
-src_c = db_conn.cursor()
-src_c.execute("create index if not exists idx_pasef_frames_1 on frames (frame_id, mz, intensity)")
-src_c.execute("create index if not exists idx_pasef_frames_2 on frames (frame_id, mz, scan, retention_time_secs)")
-db_conn.close()
+with ray.profile("create database indexes"):
+    db_conn = sqlite3.connect(CONVERTED_DATABASE_NAME)
+    src_c = db_conn.cursor()
+    src_c.execute("create index if not exists idx_pasef_frames_1 on frames (frame_id, mz, intensity)")
+    src_c.execute("create index if not exists idx_pasef_frames_2 on frames (frame_id, mz, scan, retention_time_secs)")
+    db_conn.close()
 
 # load the pasef msms scans
-pasef_msms_scans_df = pd.read_csv(PASEF_MSMS_SCANS_FILENAME, sep='\t')
+with ray.profile("load PASEF MSMS scans file"):
+    pasef_msms_scans_df = pd.read_csv(PASEF_MSMS_SCANS_FILENAME, sep='\t')
 
 # load the allPeptides
-allpeptides_df = pd.read_csv(ALLPEPTIDES_FILENAME, sep='\t')
-allpeptides_df.rename(columns={'Number of isotopic peaks':'isotope_count', 'm/z':'mz', 'Number of data points':'number_data_points', 'Intensity':'intensity', 'Ion mobility index':'scan', 'Ion mobility index length':'scan_length', 'Ion mobility index length (FWHM)':'scan_length_fwhm', 'Retention time':'rt', 'Retention length':'rt_length', 'Retention length (FWHM)':'rt_length_fwhm', 'Charge':'charge_state', 'Number of pasef MS/MS':'number_pasef_ms2_ids', 'Pasef MS/MS IDs':'pasef_msms_ids', 'MS/MS scan number':'msms_scan_number', 'Isotope correlation':'isotope_correlation'}, inplace=True)
-allpeptides_df = allpeptides_df[allpeptides_df.intensity.notnull() & allpeptides_df.pasef_msms_ids.notnull()].copy()
-allpeptides_df.msms_scan_number = allpeptides_df.msms_scan_number.apply(lambda x: int(x))
-allpeptides_df['pasef_msms_ids_list'] = allpeptides_df.pasef_msms_ids.str.split(";").apply(lambda x: [int(i) for i in x])
+with ray.profile("load allPeptides file"):
+    allpeptides_df = pd.read_csv(ALLPEPTIDES_FILENAME, sep='\t')
+    allpeptides_df.rename(columns={'Number of isotopic peaks':'isotope_count', 'm/z':'mz', 'Number of data points':'number_data_points', 'Intensity':'intensity', 'Ion mobility index':'scan', 'Ion mobility index length':'scan_length', 'Ion mobility index length (FWHM)':'scan_length_fwhm', 'Retention time':'rt', 'Retention length':'rt_length', 'Retention length (FWHM)':'rt_length_fwhm', 'Charge':'charge_state', 'Number of pasef MS/MS':'number_pasef_ms2_ids', 'Pasef MS/MS IDs':'pasef_msms_ids', 'MS/MS scan number':'msms_scan_number', 'Isotope correlation':'isotope_correlation'}, inplace=True)
+    allpeptides_df = allpeptides_df[allpeptides_df.intensity.notnull() & allpeptides_df.pasef_msms_ids.notnull()].copy()
+    allpeptides_df.msms_scan_number = allpeptides_df.msms_scan_number.apply(lambda x: int(x))
+    allpeptides_df['pasef_msms_ids_list'] = allpeptides_df.pasef_msms_ids.str.split(";").apply(lambda x: [int(i) for i in x])
 
 print("reading converted raw data from {}".format(CONVERTED_DATABASE_NAME))
-db_conn = sqlite3.connect(CONVERTED_DATABASE_NAME)
-ms1_frame_properties_df = pd.read_sql_query("select frame_id,retention_time_secs from frame_properties where retention_time_secs >= {} and retention_time_secs <= {} and collision_energy == {} order by retention_time_secs".format(args.rt_lower, args.rt_upper, args.ms1_collision_energy), db_conn)
-ms2_frame_properties_df = pd.read_sql_query("select frame_id,retention_time_secs from frame_properties where retention_time_secs >= {} and retention_time_secs <= {} and collision_energy <> {} order by retention_time_secs".format(args.rt_lower, args.rt_upper, args.ms1_collision_energy), db_conn)
-db_conn.close()
+with ray.profile("load frames information"):
+    db_conn = sqlite3.connect(CONVERTED_DATABASE_NAME)
+    ms1_frame_properties_df = pd.read_sql_query("select frame_id,retention_time_secs from frame_properties where retention_time_secs >= {} and retention_time_secs <= {} and collision_energy == {} order by retention_time_secs".format(args.rt_lower, args.rt_upper, args.ms1_collision_energy), db_conn)
+    ms2_frame_properties_df = pd.read_sql_query("select frame_id,retention_time_secs from frame_properties where retention_time_secs >= {} and retention_time_secs <= {} and collision_energy <> {} order by retention_time_secs".format(args.rt_lower, args.rt_upper, args.ms1_collision_energy), db_conn)
+    db_conn.close()
 
 # get all the isolation windows
-db_conn = sqlite3.connect(RAW_DATABASE_NAME)
-isolation_window_df = pd.read_sql_query("select * from PasefFrameMsMsInfo", db_conn)
-db_conn.close()
+with ray.profile("load isolation window information"):
+    db_conn = sqlite3.connect(RAW_DATABASE_NAME)
+    isolation_window_df = pd.read_sql_query("select * from PasefFrameMsMsInfo", db_conn)
+    db_conn.close()
+    # add-in the retention time for the isolation windows and filter out the windows not in range
+    isolation_window_df = pd.merge(isolation_window_df, ms2_frame_properties_df, how='left', left_on=['Frame'], right_on=['frame_id'])
+    isolation_window_df.drop(['CollisionEnergy'], axis=1, inplace=True)
+    isolation_window_df.dropna(subset=['retention_time_secs'], inplace=True)
+    isolation_window_df['mz_lower'] = isolation_window_df.IsolationMz - (isolation_window_df.IsolationWidth / 2) - 0.7
+    isolation_window_df['mz_upper'] = isolation_window_df.IsolationMz + (isolation_window_df.IsolationWidth / 2) + 0.7
+    # filter out isolation windows that don't fit in the database subset we have loaded
+    isolation_window_df = isolation_window_df[(isolation_window_df.retention_time_secs >= (args.rt_lower - args.rt_base_peak_width_secs)) & (isolation_window_df.retention_time_secs <= (args.rt_upper + args.rt_base_peak_width_secs))]
+    print("loaded {} isolation windows from {}".format(len(isolation_window_df), RAW_DATABASE_NAME))
 
-# add-in the retention time for the isolation windows and filter out the windows not in range
-isolation_window_df = pd.merge(isolation_window_df, ms2_frame_properties_df, how='left', left_on=['Frame'], right_on=['frame_id'])
-isolation_window_df.drop(['CollisionEnergy'], axis=1, inplace=True)
-isolation_window_df.dropna(subset=['retention_time_secs'], inplace=True)
-isolation_window_df['mz_lower'] = isolation_window_df.IsolationMz - (isolation_window_df.IsolationWidth / 2) - 0.7
-isolation_window_df['mz_upper'] = isolation_window_df.IsolationMz + (isolation_window_df.IsolationWidth / 2) + 0.7
-# filter out isolation windows that don't fit in the database subset we have loaded
-isolation_window_df = isolation_window_df[(isolation_window_df.retention_time_secs >= (args.rt_lower - args.rt_base_peak_width_secs)) & (isolation_window_df.retention_time_secs <= (args.rt_upper + args.rt_base_peak_width_secs))]
-print("loaded {} isolation windows from {}".format(len(isolation_window_df), RAW_DATABASE_NAME))
+def time_this(f):
+    def timed_wrapper(*args, **kw):
+        start_time = time.time()
+        result = f(*args, **kw)
+        end_time = time.time()
+
+        # Time taken = end_time - start_time
+        print('| func:%r args:[%r, %r] took: %2.4f seconds |' % \
+              (f.__name__, args, kw, end_time - start_time))
+        return result
+    return timed_wrapper
 
 def bin_ms2_frames():
     # get the raw points for all ms2 frames
@@ -439,25 +460,17 @@ def standard_deviation(mz):
     FWHM = mz / INSTRUMENT_RESOLUTION
     return FWHM / 2.35482
 
+# @jit(nopython=True)
+def mz_centroid(_int_f, _mz_f):
+    return ((_int_f/_int_f.sum()) * _mz_f).sum()
+
 # calculate the centroid, intensity of a bin
 def calc_bin_centroid(bin_df):
     d = {}
     d['bin_idx'] = int(bin_df.iloc[0].bin_idx)
-    d['mz_centroid'] = peakutils.centroid(bin_df.mz, bin_df.intensity)
+    d['mz_centroid'] = mz_centroid(bin_df.intensity.to_numpy(), bin_df.mz.to_numpy())
     d['summed_intensity'] = int(bin_df.intensity.sum())
-    d['point_count'] = len(bin_df)
     return pd.Series(d, index=d.keys())
-
-# sum and centroid the bins
-def find_ms1_peaks(binned_ms1_df):
-    # calculate the bin centroid and summed intensity for the combined frames
-    combined_ms1_df = binned_ms1_df.groupby(['bin_idx'], as_index=False).apply(calc_bin_centroid)
-    # convert the bin attributes to the right type
-    combined_ms1_df.summed_intensity = combined_ms1_df.summed_intensity.astype(int)
-    combined_ms1_df.bin_idx = combined_ms1_df.bin_idx.astype(int)
-    combined_ms1_df.point_count = combined_ms1_df.point_count.astype(int)
-    return combined_ms1_df
-
 
 MAX_NUMBER_OF_SULPHUR_ATOMS = 3
 MAX_NUMBER_OF_PREDICTED_RATIOS = 6
@@ -517,7 +530,7 @@ def peak_ratio(monoisotopic_mass, peak_number, number_of_sulphur):
         ratio = beta0 + (beta1*scaled_m) + beta2*(scaled_m**2) + beta3*(scaled_m**3) + beta4*(scaled_m**4)
     return ratio
 
-# given a centre mz and a feature, calculate themz centroid and summed intensity from the raw points
+# given a centre mz and a feature, calculate the mz centroid and summed intensity from the raw points
 def calculate_raw_peak_intensity_at_mz(centre_mz, feature):
     result = (-1, -1)
 
@@ -543,7 +556,7 @@ def calculate_raw_peak_intensity_at_mz(centre_mz, feature):
         ms1_raw_points_df['bin_idx'] = np.digitize(ms1_raw_points_df.mz, ms1_bins).astype(int)
 
         # find the peaks for each bin
-        unresolved_peaks_df = find_ms1_peaks(ms1_raw_points_df)
+        unresolved_peaks_df = ms1_raw_points_df.groupby(['bin_idx'], as_index=False).apply(calc_bin_centroid)
 
         # centroid and sum all the bin peaks, as we are interested in a narrow band of m/z
         mz_centroid = peakutils.centroid(unresolved_peaks_df.mz_centroid, unresolved_peaks_df.summed_intensity)
@@ -658,7 +671,6 @@ def find_ms2_peaks_for_feature(feature_df, binned_ms2_for_feature_df):
     combined_ms2_df = binned_ms2_for_feature_df.groupby(['bin_idx'], as_index=False).apply(calc_bin_centroid)
     combined_ms2_df.summed_intensity = combined_ms2_df.summed_intensity.astype(int)
     combined_ms2_df.bin_idx = combined_ms2_df.bin_idx.astype(int)
-    combined_ms2_df.point_count = combined_ms2_df.point_count.astype(int)
     return combined_ms2_df
 
 def collate_spectra_for_feature(feature_df, ms2_deconvoluted_df):
@@ -708,7 +720,7 @@ if args.new_ms1_features:
     # find ms1 features for each unique precursor ID
     print("finding ms1 features")
     if args.test_mode:
-        isolation_window_df = isolation_window_df[:2]
+        isolation_window_df = isolation_window_df[:10]
     ms1_df_l = ray.get([find_features.remote(group_number=idx+1, group_df=group_df) for idx,group_df in isolation_window_df.groupby('Precursor')])
     ms1_df = pd.concat(ms1_df_l)  # combines a list of dataframes into a single dataframe
     ms1_df.to_pickle(args.ms1_features_filename)
@@ -722,8 +734,8 @@ else:
 if args.check_ms1_mono_peak or args.new_ms1_features:
     print("checking ms1 monoisotopic peaks")
     ms1_df.reset_index(drop=True, inplace=True)
-    if args.test_mode:
-        ms1_df = ms1_df[:100]
+    # if args.test_mode:
+    #     ms1_df = ms1_df[:100]
     checked_features_l = ray.get([check_monoisotopic_peak.remote(feature=feature, idx=idx, total=len(ms1_df)) for idx,feature in ms1_df.iterrows()])
     checked_features_df = pd.DataFrame(checked_features_l)
     checked_features_df.to_pickle(args.checked_ms1_mono_peak_filename)
@@ -747,8 +759,9 @@ else:
 if args.new_prebin_ms2:
     # bin ms2 frames
     print("binning ms2 frames")
-    binned_ms2_df = bin_ms2_frames()
-    binned_ms2_df.to_pickle(args.pre_binned_ms2_filename)
+    with ray.profile("bin_ms2_frames"):
+        binned_ms2_df = bin_ms2_frames()
+        binned_ms2_df.to_pickle(args.pre_binned_ms2_filename)
     print("binned {} ms2 points".format(len(binned_ms2_df)))
 else:
     # load previously binned ms2
@@ -759,14 +772,17 @@ else:
 if args.new_mgf_spectra or args.check_ms1_mono_peak or args.new_dedup_ms1_features or args.new_ms1_features or args.new_prebin_ms2:
     # find ms2 peaks for each feature found in ms1, and collate the spectra for the MGF
     print("finding peaks in ms2 for each feature")
+    start_time = time.time()
     ms1_deduped_df.reset_index(drop=True, inplace=True)
-    if args.test_mode:
-        ms1_deduped_df = ms1_deduped_df[ms1_deduped_df.feature_id == 822]
+    # if args.test_mode:
+    #     ms1_deduped_df = ms1_deduped_df[ms1_deduped_df.feature_id == 822]
     # mgf_spectra_l is a list of dictionaries
     mgf_spectra_l = ray.get([deconvolute_ms2.remote(feature_df=feature_df, binned_ms2_for_feature=binned_ms2_df[binned_ms2_df.frame_id.isin(feature_df.ms2_frames)], idx=idx, total=len(ms1_deduped_df)) for idx,feature_df in ms1_deduped_df.iterrows()])
     # write out the results for analysis
     with open(args.mgf_spectra_filename, 'wb') as f:
         pickle.dump(mgf_spectra_l, f)
+    stop_time = time.time()
+    print("new_mgf_spectra: {} seconds".format(round(stop_time-start_time,1)))
 else:
     # load previously saved mgf spectra
     with open(args.mgf_spectra_filename, 'rb') as f:
@@ -775,15 +791,17 @@ else:
 
 # generate the MGF for all the features
 print("generating the MGF: {}".format(args.mgf_filename))
-if os.path.isfile(args.mgf_filename):
-    os.remove(args.mgf_filename)
-mgf.write(output=args.mgf_filename, spectra=mgf_spectra_l)
+with ray.profile("write MGF"):
+    if os.path.isfile(args.mgf_filename):
+        os.remove(args.mgf_filename)
+    mgf.write(output=args.mgf_filename, spectra=mgf_spectra_l)
 
 stop_run = time.time()
-info.append(("run processing time (sec)", stop_run-start_run))
+info.append(("run processing time (sec)", round(stop_run-start_run,1)))
 info.append(("processed", time.ctime()))
 info.append(("processor", parser.prog))
 print("{} info: {}".format(parser.prog, info))
 
 print("shutting down ray")
+ray.timeline(filename="./ray-timeline.json")
 ray.shutdown()
