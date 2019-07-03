@@ -665,7 +665,6 @@ def collate_spectra_for_feature(feature_df, ms2_deconvoluted_df):
     spectrum["params"] = params
     return spectrum
 
-@profile
 @ray.remote
 def deconvolute_ms2(feature_df, binned_ms2_for_feature, idx, total):
     result = {}
