@@ -450,6 +450,7 @@ def remove_ms1_duplicates(ms1_features_df):
     return ms1_deduped_df
 
 # calculate the centroid, intensity of a bin
+@profile
 def calc_bin_centroid(bin_df):
     d = {}
     d['bin_idx'] = int(bin_df.iloc[0].bin_idx)
