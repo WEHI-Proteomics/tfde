@@ -23,7 +23,6 @@ INSTRUMENT_RESOLUTION = 40000.0
 parser = argparse.ArgumentParser(description='Extract ms1 features from PASEF isolation windows.')
 parser.add_argument('-cdbb','--converted_database_base', type=str, help='base path to the converted database.', required=True)
 parser.add_argument('-rdbb','--raw_database_base', type=str, help='base path to the raw database.', required=True)
-parser.add_argument('-mqtb','--maxquant_text_base', type=str, help='base path to MaxQuant text directory.', required=True)
 parser.add_argument('-mgf','--mgf_filename', type=str, help='File name of the MGF to be generated.', required=True)
 # parameters
 parser.add_argument('-rtl','--rt_lower', type=float, help='The lower limit of retention time (secs).', required=True)
@@ -121,16 +120,6 @@ else:
     if not os.path.isfile(args.mgf_spectra_filename):
         print("The mgf spectra file is required but doesn't exist: {}".format(args.mgf_spectra_filename))
         sys.exit(1)
-
-ALLPEPTIDES_FILENAME = '{}/allPeptides.txt'.format(args.maxquant_text_base)
-if not os.path.isfile(ALLPEPTIDES_FILENAME):
-    print("The allPeptides file is required but doesn't exist: {}".format(ALLPEPTIDES_FILENAME))
-    sys.exit(1)
-
-PASEF_MSMS_SCANS_FILENAME = '{}/pasefMsmsScans.txt'.format(args.maxquant_text_base)
-if not os.path.isfile(PASEF_MSMS_SCANS_FILENAME):
-    print("The pasef msms scans file is required but doesn't exist: {}".format(PASEF_MSMS_SCANS_FILENAME))
-    sys.exit(1)
 
 # make sure the right indexes are created in the source database
 print("Setting up indexes on {}".format(CONVERTED_DATABASE_NAME))
