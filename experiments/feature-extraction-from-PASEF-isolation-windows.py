@@ -599,6 +599,7 @@ def check_monoisotopic_peak(feature, idx, total):
     feature_d['original_phr'] = observed_ratio
     return feature_d
 
+@profile
 def deconvolute_ms2_peaks_for_feature(feature_id, ms2_frame_id, binned_ms2_df):
     raw_scratch_df = binned_ms2_df.copy() # take a copy because we're going to delete stuff
 
