@@ -19,6 +19,13 @@ PROTON_MASS = 1.0073  # Mass of a proton in unified atomic mass units, or Da. Fo
 DELTA_MZ = 1.003355     # Mass difference between Carbon-12 and Carbon-13 isotopes, in Da. For calculating the spacing between isotopic peaks.
 INSTRUMENT_RESOLUTION = 40000.0
 
+# so we can use profiling without removing @profile
+try:
+    __builtin__.profile
+except AttributeError:
+    # No line profiler, provide a pass-through version
+    def profile(func): return func
+    __builtin__.profile = profile
 
 parser = argparse.ArgumentParser(description='Extract ms1 features from PASEF isolation windows.')
 parser.add_argument('-cdbb','--converted_database_base', type=str, help='base path to the converted database.', required=True)
