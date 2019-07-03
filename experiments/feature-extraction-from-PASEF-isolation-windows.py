@@ -66,7 +66,7 @@ if not ray.is_initialized():
         ray.init(redis_address="localhost:6379")
     else:
         if args.test_mode:
-            ray.init()
+            ray.init(local_mode=True)
         else:
             ray.init(object_store_memory=100000000000)
 
@@ -646,7 +646,7 @@ def deconvolute_ms2_peaks_for_feature(feature_id, ms2_frame_id, binned_ms2_df):
 def find_ms2_peaks_for_feature(feature_df, binned_ms2_for_feature_df):
     # calculate the bin centroid and summed intensity for the combined frames
     combined_ms2_df = binned_ms2_for_feature_df.groupby(['bin_idx'], as_index=False).apply(calc_bin_centroid)
-    # combined_ms2_df.summed_intensity = combined_ms2_df.summed_intensity.astype(int)
+    combined_ms2_df.summed_intensity = combined_ms2_df.summed_intensity.astype(int)
     combined_ms2_df.bin_idx = combined_ms2_df.bin_idx.astype(int)
     return combined_ms2_df
 
