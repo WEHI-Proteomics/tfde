@@ -169,7 +169,7 @@ def standard_deviation(mz):
     FWHM = mz / INSTRUMENT_RESOLUTION
     return FWHM / 2.35482
 
-# @njit(fastmath=True)
+@njit(fastmath=True)
 def mz_centroid(_int_f, _mz_f):
     return ((_int_f/_int_f.sum()) * _mz_f).sum()
 
