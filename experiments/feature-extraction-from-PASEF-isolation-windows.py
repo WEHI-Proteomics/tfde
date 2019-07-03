@@ -1,4 +1,4 @@
-from numba import jit
+from numba import njit
 import sqlite3
 import pandas as pd
 import numpy as np
@@ -17,6 +17,8 @@ import pickle
 
 PROTON_MASS = 1.0073  # Mass of a proton in unified atomic mass units, or Da. For calculating the monoisotopic mass.
 DELTA_MZ = 1.003355     # Mass difference between Carbon-12 and Carbon-13 isotopes, in Da. For calculating the spacing between isotopic peaks.
+INSTRUMENT_RESOLUTION = 40000.0
+
 
 parser = argparse.ArgumentParser(description='Extract ms1 features from PASEF isolation windows.')
 parser.add_argument('-cdbb','--converted_database_base', type=str, help='base path to the converted database.', required=True)
@@ -139,18 +141,6 @@ with ray.profile("create database indexes"):
     src_c.execute("create index if not exists idx_pasef_frames_2 on frames (frame_id, mz, scan, retention_time_secs)")
     db_conn.close()
 
-# load the pasef msms scans
-with ray.profile("load PASEF MSMS scans file"):
-    pasef_msms_scans_df = pd.read_csv(PASEF_MSMS_SCANS_FILENAME, sep='\t')
-
-# load the allPeptides
-with ray.profile("load allPeptides file"):
-    allpeptides_df = pd.read_csv(ALLPEPTIDES_FILENAME, sep='\t')
-    allpeptides_df.rename(columns={'Number of isotopic peaks':'isotope_count', 'm/z':'mz', 'Number of data points':'number_data_points', 'Intensity':'intensity', 'Ion mobility index':'scan', 'Ion mobility index length':'scan_length', 'Ion mobility index length (FWHM)':'scan_length_fwhm', 'Retention time':'rt', 'Retention length':'rt_length', 'Retention length (FWHM)':'rt_length_fwhm', 'Charge':'charge_state', 'Number of pasef MS/MS':'number_pasef_ms2_ids', 'Pasef MS/MS IDs':'pasef_msms_ids', 'MS/MS scan number':'msms_scan_number', 'Isotope correlation':'isotope_correlation'}, inplace=True)
-    allpeptides_df = allpeptides_df[allpeptides_df.intensity.notnull() & allpeptides_df.pasef_msms_ids.notnull()].copy()
-    allpeptides_df.msms_scan_number = allpeptides_df.msms_scan_number.apply(lambda x: int(x))
-    allpeptides_df['pasef_msms_ids_list'] = allpeptides_df.pasef_msms_ids.str.split(";").apply(lambda x: [int(i) for i in x])
-
 print("reading converted raw data from {}".format(CONVERTED_DATABASE_NAME))
 with ray.profile("load frames information"):
     db_conn = sqlite3.connect(CONVERTED_DATABASE_NAME)
@@ -184,6 +174,15 @@ def time_this(f):
               (f.__name__, args, kw, end_time - start_time))
         return result
     return timed_wrapper
+
+# The FWHM is the m/z / instrument resolution. Std dev is FWHM / 2.35482. See https://en.wikipedia.org/wiki/Full_width_at_half_maximum
+def standard_deviation(mz):
+    FWHM = mz / INSTRUMENT_RESOLUTION
+    return FWHM / 2.35482
+
+# @njit(fastmath=True)
+def mz_centroid(_int_f, _mz_f):
+    return ((_int_f/_int_f.sum()) * _mz_f).sum()
 
 def bin_ms2_frames():
     # get the raw points for all ms2 frames
@@ -262,7 +261,7 @@ def collate_feature_characteristics(row, group_df, fe_raw_points_df, ms1_raw_poi
 
         # if we couldn't fit a curve to the mobility dimension, take the intensity-weighted centroid
         if not mobility_curve_fit:
-            scan_apex = peakutils.centroid(scan_df.scan, scan_df.intensity)
+            scan_apex = mz_centroid(scan_df.intensity.to_numpy(), scan_df.scan.to_numpy())
             scan_lower = wide_scan_lower
             scan_upper = wide_scan_upper
 
@@ -283,7 +282,7 @@ def collate_feature_characteristics(row, group_df, fe_raw_points_df, ms1_raw_poi
 
         # if we couldn't fit a curve to the RT dimension, take the intensity-weighted centroid
         if not rt_curve_fit:
-            rt_apex = peakutils.centroid(rt_df.retention_time_secs, rt_df.intensity)
+            rt_apex = mz_centroid(rt_df.intensity.to_numpy(), rt_df.retention_time_secs.to_numpy())
             rt_lower = wide_rt_lower
             rt_upper = wide_rt_upper
 
@@ -357,9 +356,9 @@ def find_features(group_number, group_df):
         if len(ms1_mz_values_array[bin_idx]) > 0:
             mz_values_for_bin = np.array([ list[0] for list in ms1_mz_values_array[bin_idx]])
             intensity_values_for_bin = np.array([ list[1] for list in ms1_mz_values_array[bin_idx]]).astype(int)
-            mz_centroid = peakutils.centroid(mz_values_for_bin, intensity_values_for_bin)
+            mz_cent = mz_centroid(intensity_values_for_bin, mz_values_for_bin)
             summed_intensity = intensity_values_for_bin.sum()
-            binned_ms1_l.append((mz_centroid,summed_intensity))
+            binned_ms1_l.append((mz_cent,summed_intensity))
 
     binned_ms1_df = pd.DataFrame(binned_ms1_l, columns=['mz_centroid','summed_intensity'])
     raw_scratch_df = binned_ms1_df.copy() # take a copy because we're going to delete stuff
@@ -377,9 +376,9 @@ def find_features(group_number, group_df):
         # get all the raw points within this m/z region
         peak_raw_points_df = raw_scratch_df[(raw_scratch_df.mz_centroid >= peak_mz_lower) & (raw_scratch_df.mz_centroid <= peak_mz_upper)]
         if len(peak_raw_points_df) > 0:
-            mz_centroid = peakutils.centroid(peak_raw_points_df.mz_centroid, peak_raw_points_df.summed_intensity)
+            mz_cent = mz_centroid(peak_raw_points_df.summed_intensity.to_numpy(), peak_raw_points_df.mz_centroid.to_numpy())
             summed_intensity = peak_raw_points_df.summed_intensity.sum()
-            ms1_peaks_l.append((mz_centroid, summed_intensity))
+            ms1_peaks_l.append((mz_cent, summed_intensity))
 
             # remove the raw points assigned to this peak
             raw_scratch_df = raw_scratch_df[~raw_scratch_df.isin(peak_raw_points_df)].dropna(how = 'all')
@@ -452,17 +451,6 @@ def remove_ms1_duplicates(ms1_features_df):
     ms1_deduped_df.sort_values(by=['intensity'], ascending=False, inplace=True)
     ms1_deduped_df["feature_id"] = np.arange(start=1, stop=len(ms1_deduped_df)+1)
     return ms1_deduped_df
-
-INSTRUMENT_RESOLUTION = 40000.0
-
-# The FWHM is the m/z / instrument resolution. Std dev is FWHM / 2.35482. See https://en.wikipedia.org/wiki/Full_width_at_half_maximum
-def standard_deviation(mz):
-    FWHM = mz / INSTRUMENT_RESOLUTION
-    return FWHM / 2.35482
-
-# @jit(nopython=True)
-def mz_centroid(_int_f, _mz_f):
-    return ((_int_f/_int_f.sum()) * _mz_f).sum()
 
 # calculate the centroid, intensity of a bin
 def calc_bin_centroid(bin_df):
@@ -559,9 +547,9 @@ def calculate_raw_peak_intensity_at_mz(centre_mz, feature):
         unresolved_peaks_df = ms1_raw_points_df.groupby(['bin_idx'], as_index=False).apply(calc_bin_centroid)
 
         # centroid and sum all the bin peaks, as we are interested in a narrow band of m/z
-        mz_centroid = peakutils.centroid(unresolved_peaks_df.mz_centroid, unresolved_peaks_df.summed_intensity)
+        mz_cent = mz_centroid(unresolved_peaks_df.summed_intensity.to_numpy(), unresolved_peaks_df.mz_centroid.to_numpy())
         summed_intensity = unresolved_peaks_df.summed_intensity.sum()
-        result = (mz_centroid, summed_intensity)
+        result = (mz_cent, summed_intensity)
 
     return result
 
@@ -613,7 +601,7 @@ def check_monoisotopic_peak(feature, idx, total):
                             envelope_deisotoped_mzs.append(deisotoped_mz)
                             envelope_deisotoped_intensities.append(updated_envelope[isotope_number][1])
                         # take the intensity-weighted centroid of the mzs in the list
-                        feature_d['monoisotopic_mz'] = peakutils.centroid(np.array(envelope_deisotoped_mzs), np.array(envelope_deisotoped_intensities))
+                        feature_d['monoisotopic_mz'] = mz_centroid(np.array(envelope_deisotoped_intensities), np.array(envelope_deisotoped_mzs))
                         adjusted = True
 
     feature_d['mono_adjusted'] = adjusted
@@ -637,9 +625,9 @@ def deconvolute_ms2_peaks_for_feature(feature_id, ms2_frame_id, binned_ms2_df):
         # get all the raw points within this m/z region
         peak_raw_points_df = raw_scratch_df[(raw_scratch_df.mz_centroid >= peak_mz_lower) & (raw_scratch_df.mz_centroid <= peak_mz_upper)]
         if len(peak_raw_points_df) > 0:
-            mz_centroid = peakutils.centroid(peak_raw_points_df.mz_centroid, peak_raw_points_df.summed_intensity)
+            mz_cent = mz_centroid(peak_raw_points_df.summed_intensity.to_numpy(), peak_raw_points_df.mz_centroid.to_numpy())
             summed_intensity = peak_raw_points_df.summed_intensity.sum()
-            ms2_peaks_l.append(simple_peak(mz=mz_centroid, intensity=summed_intensity))
+            ms2_peaks_l.append(simple_peak(mz=mz_cent, intensity=summed_intensity))
             # remove the raw points assigned to this peak
             raw_scratch_df = raw_scratch_df[~raw_scratch_df.isin(peak_raw_points_df)].dropna(how = 'all')
 
