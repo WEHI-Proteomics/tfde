@@ -780,5 +780,6 @@ info.append(("processor", parser.prog))
 print("{} info: {}".format(parser.prog, info))
 
 print("shutting down ray")
-ray.timeline(filename="./ray-timeline.json")
+if not args.test_mode:
+    ray.timeline(filename="./ray-timeline.json")
 ray.shutdown()
