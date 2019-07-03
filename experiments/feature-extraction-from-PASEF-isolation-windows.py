@@ -13,6 +13,7 @@ import argparse
 import ray
 import time
 import pickle
+import __builtin__
 
 
 PROTON_MASS = 1.0073  # Mass of a proton in unified atomic mass units, or Da. For calculating the monoisotopic mass.
@@ -26,6 +27,7 @@ except AttributeError:
     # No line profiler, provide a pass-through version
     def profile(func): return func
     __builtin__.profile = profile
+
 
 parser = argparse.ArgumentParser(description='Extract ms1 features from PASEF isolation windows.')
 parser.add_argument('-cdbb','--converted_database_base', type=str, help='base path to the converted database.', required=True)
