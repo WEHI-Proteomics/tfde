@@ -369,15 +369,15 @@ def find_features(group_number, group_df):
         peak_mz_upper = peak_mz + args.ms1_peak_delta
 
         # get all the raw points within this m/z region
-        peak_rows = (raw_scratch_df.mz_centroid >= peak_mz_lower) & (raw_scratch_df.mz_centroid <= peak_mz_upper)
-        peak_raw_points_df = raw_scratch_df[peak_rows]
+        peak_rows = np.where((raw_scratch_df.mz_centroid >= peak_mz_lower) & (raw_scratch_df.mz_centroid <= peak_mz_upper))
+        peak_raw_points_df = raw_scratch_df.iloc[peak_rows]
         if len(peak_raw_points_df) > 0:
             mz_cent = mz_centroid(peak_raw_points_df.summed_intensity.to_numpy(), peak_raw_points_df.mz_centroid.to_numpy())
             summed_intensity = peak_raw_points_df.summed_intensity.sum()
             ms1_peaks_l.append((mz_cent, summed_intensity))
 
             # remove the raw points assigned to this peak
-            raw_scratch_df.drop(labels=raw_scratch_df[peak_rows].index.tolist(), inplace=True)
+            raw_scratch_df.drop(labels=raw_scratch_df.index[peak_rows], inplace=True)
 
 
     ms1_peaks_df = pd.DataFrame(ms1_peaks_l, columns=['mz','intensity'])
