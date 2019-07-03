@@ -169,7 +169,7 @@ def standard_deviation(mz):
     FWHM = mz / INSTRUMENT_RESOLUTION
     return FWHM / 2.35482
 
-@njit(fastmath=True)
+# @njit(fastmath=True)
 def mz_centroid(_int_f, _mz_f):
     return ((_int_f/_int_f.sum()) * _mz_f).sum()
 
@@ -697,7 +697,7 @@ if args.new_ms1_features:
     # find ms1 features for each unique precursor ID
     print("finding ms1 features")
     if args.test_mode:
-        isolation_window_df = isolation_window_df[:10]
+        isolation_window_df = isolation_window_df[:20]
     ms1_df_l = ray.get([find_features.remote(group_number=idx+1, group_df=group_df) for idx,group_df in isolation_window_df.groupby('Precursor')])
     ms1_df = pd.concat(ms1_df_l)  # combines a list of dataframes into a single dataframe
     ms1_df.to_pickle(args.ms1_features_filename)
