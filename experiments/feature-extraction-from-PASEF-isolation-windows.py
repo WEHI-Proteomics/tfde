@@ -300,6 +300,7 @@ def collate_feature_characteristics(row, group_df, fe_raw_points_df, ms1_raw_poi
     return result
 
 @ray.remote
+@profile
 def find_features(group_number, group_df):
     # find the ms1 features in this isolation window
     ms1_characteristics_l = []
@@ -603,7 +604,6 @@ def check_monoisotopic_peak(feature, idx, total):
     feature_d['original_phr'] = observed_ratio
     return feature_d
 
-@profile
 # mzs and intensities are numpy arrays containing the peaks for this feature
 def deconvolute_ms2_peaks_for_feature(feature_id, ms2_frame_id, mzs, intensities):
     # do intensity descent to find the peaks
@@ -648,7 +648,6 @@ def deconvolute_ms2_peaks_for_feature(feature_id, ms2_frame_id, mzs, intensities
     return ms2_deconvoluted_peaks_df
 
 # sum and centroid the ms2 bins for this feature
-@profile
 def find_ms2_peaks_for_feature(binned_ms2_for_feature_df):
     # calculate the bin centroid and summed intensity for the combined frames
     # Peppe's code fragment - tempDF_results is tempDF_results is a numpy array; Column 0: m/z, Column 1: Intensity, Column 2: ID for the bin index
@@ -683,7 +682,6 @@ def collate_spectra_for_feature(feature_df, ms2_deconvoluted_df):
     return spectrum
 
 @ray.remote
-@profile
 def deconvolute_ms2(feature_df, binned_ms2_for_feature, idx, total):
     result = {}
     print("processing feature idx {} of {}".format(idx+1, total))
