@@ -617,7 +617,8 @@ def deconvolute_ms2_peaks_for_feature(feature_id, ms2_frame_id, binned_ms2_df):
         peak_mz_upper = peak_mz + args.ms2_peak_delta
 
         # get all the raw points within this m/z region
-        peak_rows = np.where((raw_scratch_df.mz_centroid >= peak_mz_lower) & (raw_scratch_df.mz_centroid <= peak_mz_upper))
+        mzs = raw_scratch_df.mz_centroid.to_numpy()
+        peak_rows = np.where((mzs >= peak_mz_lower) & (mzs <= peak_mz_upper))
         peak_raw_points_df = raw_scratch_df.iloc[peak_rows]
         if len(peak_raw_points_df) > 0:
             mz_cent = mz_centroid(peak_raw_points_df.summed_intensity.to_numpy(), peak_raw_points_df.mz_centroid.to_numpy())
