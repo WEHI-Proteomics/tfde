@@ -605,27 +605,27 @@ def check_monoisotopic_peak(feature, idx, total):
 
 @profile
 def deconvolute_ms2_peaks_for_feature(feature_id, ms2_frame_id, binned_ms2_df):
-    raw_scratch_df = binned_ms2_df.copy() # take a copy because we're going to delete stuff
+    intensities = binned_ms2_df.summed_intensity.to_numpy()
+    mzs = binned_ms2_df.mz_centroid.to_numpy()
 
     # do intensity descent to find the peaks
     ms2_peaks_l = []
-    while len(raw_scratch_df) > 0:
+    while len(mzs) > 0:
         # find the most intense point
-        peak_df = raw_scratch_df.loc[raw_scratch_df.summed_intensity.idxmax()]
-        peak_mz = peak_df.mz_centroid
+        max_intensity_index = np.argmax(intensities)
+        peak_mz = mzs[max_intensity_index]
         peak_mz_lower = peak_mz - args.ms2_peak_delta
         peak_mz_upper = peak_mz + args.ms2_peak_delta
 
         # get all the raw points within this m/z region
-        mzs = raw_scratch_df.mz_centroid.to_numpy()
-        peak_rows = np.where((mzs >= peak_mz_lower) & (mzs <= peak_mz_upper))
-        peak_raw_points_df = raw_scratch_df.iloc[peak_rows]
-        if len(peak_raw_points_df) > 0:
-            mz_cent = mz_centroid(peak_raw_points_df.summed_intensity.to_numpy(), peak_raw_points_df.mz_centroid.to_numpy())
-            summed_intensity = peak_raw_points_df.summed_intensity.sum()
+        peak_indexes = np.where((mzs >= peak_mz_lower) & (mzs <= peak_mz_upper))
+        if len(peak_indexes) > 0:
+            mz_cent = mz_centroid(intensities[peak_indexes], mzs[peak_indexes])
+            summed_intensity = intensities[peak_indexes].sum()
             ms2_peaks_l.append(simple_peak(mz=mz_cent, intensity=summed_intensity))
             # remove the raw points assigned to this peak
-            raw_scratch_df.drop(labels=raw_scratch_df.index[peak_rows], inplace=True)
+            intensities = np.delete(intensities, peak_indexes)
+            mzs = np.delete(mzs, peak_indexes)
 
     if args.test_mode:
         l = []
