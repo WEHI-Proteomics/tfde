@@ -604,10 +604,8 @@ def check_monoisotopic_peak(feature, idx, total):
     return feature_d
 
 @profile
-def deconvolute_ms2_peaks_for_feature(feature_id, ms2_frame_id, binned_ms2_df):
-    intensities = binned_ms2_df.summed_intensity.to_numpy()
-    mzs = binned_ms2_df.mz_centroid.to_numpy()
-
+# mzs and intensities are numpy arrays containing the peaks for this feature
+def deconvolute_ms2_peaks_for_feature(feature_id, ms2_frame_id, mzs, intensities):
     # do intensity descent to find the peaks
     ms2_peaks_l = []
     while len(mzs) > 0:
@@ -651,12 +649,24 @@ def deconvolute_ms2_peaks_for_feature(feature_id, ms2_frame_id, binned_ms2_df):
 
 # sum and centroid the ms2 bins for this feature
 @profile
-def find_ms2_peaks_for_feature(feature_df, binned_ms2_for_feature_df):
+def find_ms2_peaks_for_feature(binned_ms2_for_feature_df):
+
     # calculate the bin centroid and summed intensity for the combined frames
-    combined_ms2_df = binned_ms2_for_feature_df.groupby(['bin_idx'], as_index=False).apply(calc_bin_centroid)
-    combined_ms2_df.summed_intensity = combined_ms2_df.summed_intensity.astype(int)
-    combined_ms2_df.bin_idx = combined_ms2_df.bin_idx.astype(int)
-    return combined_ms2_df
+    # Peppe's code fragment - tempDF_results is tempDF_results is a numpy array; Column 0: m/z, Column 1: Intensity, Column 2: ID for the bin index
+    tempDF_results = binned_ms2_for_feature_df[['mz_centroid', 'summed_intensity', 'bin_idx']].to_numpy()
+    unique_subrank_array = np.unique(tempDF_results[:,2])
+
+    int_weightArray = np.asarray([[value]*tempDF_results.shape[0] for value in tempDF_results[:,2]])
+    int_weightArray = ((int_weightArray == tempDF_results[:,2])*tempDF_results[:,1]).sum(axis=1)
+    int_weightArray = tempDF_results[:,1]/int_weightArray
+
+    mz_meanArray = np.asarray([[value]*tempDF_results.shape[0] for value in unique_subrank_array])
+    mz_meanArray = ((mz_meanArray == tempDF_results[:,2])*(tempDF_results[:,0]*int_weightArray)).sum(axis=1)
+
+    int_sumArray = np.asarray([[value] * prop_array.shape[0] for value in unique_subrank_array])
+    int_sumArray = ((int_sumArray == prop_array[:, 9]) * prop_array[:, 2]).sum(axis=1)
+
+    return mz_meanArray, int_sumArray
 
 def collate_spectra_for_feature(feature_df, ms2_deconvoluted_df):
     # append the monoisotopic and the ms2 fragments to the list for MGF creation
@@ -691,10 +701,10 @@ def deconvolute_ms2(feature_df, binned_ms2_for_feature, idx, total):
     # derive the spectra
     if len(ms2_frame_df) > 0:
         # detect peaks
-        ms2_peaks_df = find_ms2_peaks_for_feature(feature_df, ms2_frame_df)
+        mz_array, intensity_array = find_ms2_peaks_for_feature(ms2_frame_df)
         if len(ms2_peaks_df) > 0:
             # deconvolve the peaks
-            ms2_deconvoluted_df = deconvolute_ms2_peaks_for_feature(feature_df.feature_id, ms2_frame_id, ms2_peaks_df)
+            ms2_deconvoluted_df = deconvolute_ms2_peaks_for_feature(feature_df.feature_id, ms2_frame_id, mz_array, intensity_array)
             if len(ms2_deconvoluted_df) >= 2:
                 # package it up for the MGF
                 result = collate_spectra_for_feature(feature_df, ms2_deconvoluted_df)
