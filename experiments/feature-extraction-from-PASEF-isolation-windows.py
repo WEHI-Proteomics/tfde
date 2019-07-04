@@ -650,21 +650,20 @@ def deconvolute_ms2_peaks_for_feature(feature_id, ms2_frame_id, mzs, intensities
 # sum and centroid the ms2 bins for this feature
 @profile
 def find_ms2_peaks_for_feature(binned_ms2_for_feature_df):
-
     # calculate the bin centroid and summed intensity for the combined frames
     # Peppe's code fragment - tempDF_results is tempDF_results is a numpy array; Column 0: m/z, Column 1: Intensity, Column 2: ID for the bin index
     tempDF_results = binned_ms2_for_feature_df[['mz', 'intensity', 'bin_idx']].to_numpy()
     unique_subrank_array = np.unique(tempDF_results[:,2])
 
-    int_weightArray = np.asarray([[value]*tempDF_results.shape[0] for value in tempDF_results[:,2]])
-    int_weightArray = ((int_weightArray == tempDF_results[:,2])*tempDF_results[:,1]).sum(axis=1)
+    int_weightArray = np.asarray([[value] * tempDF_results.shape[0] for value in tempDF_results[:,2]])
+    int_weightArray = ((int_weightArray == tempDF_results[:,2]) * tempDF_results[:,1]).sum(axis=1)
     int_weightArray = tempDF_results[:,1]/int_weightArray
 
-    mz_meanArray = np.asarray([[value]*tempDF_results.shape[0] for value in unique_subrank_array])
-    mz_meanArray = ((mz_meanArray == tempDF_results[:,2])*(tempDF_results[:,0]*int_weightArray)).sum(axis=1)
+    mz_meanArray = np.asarray([[value] * tempDF_results.shape[0] for value in unique_subrank_array])
+    mz_meanArray = ((mz_meanArray == tempDF_results[:,2]) * (tempDF_results[:,0]*int_weightArray)).sum(axis=1)
 
     int_sumArray = np.asarray([[value] * tempDF_results.shape[0] for value in unique_subrank_array])
-    int_sumArray = ((int_sumArray == tempDF_results[:, 9]) * tempDF_results[:, 2]).sum(axis=1)
+    int_sumArray = ((int_sumArray == tempDF_results[:,1]) * tempDF_results[:,2]).sum(axis=1)
 
     return mz_meanArray, int_sumArray
 
