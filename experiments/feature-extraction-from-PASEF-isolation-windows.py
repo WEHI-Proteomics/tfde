@@ -663,7 +663,7 @@ def find_ms2_peaks_for_feature(binned_ms2_for_feature_df):
     mz_meanArray = ((mz_meanArray == tempDF_results[:,2]) * (tempDF_results[:,0]*int_weightArray)).sum(axis=1)
 
     int_sumArray = np.asarray([[value] * tempDF_results.shape[0] for value in unique_subrank_array])
-    int_sumArray = ((int_sumArray == tempDF_results[:,1]) * tempDF_results[:,2]).sum(axis=1)
+    int_sumArray = ((int_sumArray == tempDF_results[:,2]) * tempDF_results[:,1]).sum(axis=1)
 
     return mz_meanArray, int_sumArray
 
