@@ -381,8 +381,11 @@ def find_features(group_number, group_df):
             intensities = np.delete(intensities, peak_indexes)
             mzs = np.delete(mzs, peak_indexes)
 
-    ms1_peaks_df = pd.DataFrame(ms1_peaks_l, columns=['mz','intensity'])
     if args.test_mode:
+        l = []
+        for p in ms1_peaks_l:
+            l.append((p.mz, p.intensity))
+        ms1_peaks_df = pd.DataFrame(l, columns=['mz','intensity'])
         ms1_peaks_df.to_csv('./ms1-peaks-group-{}-after-intensity-descent.csv'.format(group_number), index=False, header=True)
 
     # see https://github.com/mobiusklein/ms_deisotope/blob/ee4b083ad7ab5f77722860ce2d6fdb751886271e/ms_deisotope/deconvolution/api.py#L17
