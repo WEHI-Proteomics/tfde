@@ -715,11 +715,14 @@ def deconvolute_ms2(feature_df, binned_ms2_for_feature, idx, total):
 if args.new_ms1_features:
     # find ms1 features for each unique precursor ID
     print("finding ms1 features")
+    start_time = time.time()
     if args.test_mode:
         isolation_window_df = isolation_window_df[:20]
     ms1_df_l = ray.get([find_features.remote(group_number=idx+1, group_df=group_df) for idx,group_df in isolation_window_df.groupby('Precursor')])
     ms1_df = pd.concat(ms1_df_l)  # combines a list of dataframes into a single dataframe
     ms1_df.to_pickle(args.ms1_features_filename)
+    stop_time = time.time()
+    print("new_ms1_features: {} seconds".format(round(stop_time-start_time,1)))
     print("detected {} features".format(len(ms1_df)))
 else:
     # load previously detected ms1 features
@@ -729,12 +732,13 @@ else:
 
 if args.check_ms1_mono_peak or args.new_ms1_features:
     print("checking ms1 monoisotopic peaks")
+    start_time = time.time()
     ms1_df.reset_index(drop=True, inplace=True)
-    # if args.test_mode:
-    #     ms1_df = ms1_df[:100]
     checked_features_l = ray.get([check_monoisotopic_peak.remote(feature=feature, idx=idx, total=len(ms1_df)) for idx,feature in ms1_df.iterrows()])
     checked_features_df = pd.DataFrame(checked_features_l)
     checked_features_df.to_pickle(args.checked_ms1_mono_peak_filename)
+    stop_time = time.time()
+    print("check_ms1_mono_peak: {} seconds".format(round(stop_time-start_time,1)))
 else:
     # load previously checked monoisotopic peaks
     print("loading checked ms1 monoisotopic peaks")
@@ -743,8 +747,11 @@ else:
 if args.new_dedup_ms1_features or args.check_ms1_mono_peak or args.new_ms1_features:
     # remove duplicates in ms1
     print("removing duplicates")
+    start_time = time.time()
     ms1_deduped_df = remove_ms1_duplicates(checked_features_df)
     ms1_deduped_df.to_pickle(args.dedup_ms1_filename)
+    stop_time = time.time()
+    print("new_dedup_ms1_features: {} seconds".format(round(stop_time-start_time,1)))
     print("removed {} duplicates - processing {} features".format(len(checked_features_df)-len(ms1_deduped_df), len(ms1_deduped_df)))
 else:
     # load previously de-duped ms1 features
@@ -755,9 +762,12 @@ else:
 if args.new_prebin_ms2:
     # bin ms2 frames
     print("binning ms2 frames")
+    start_time = time.time()
     with ray.profile("bin_ms2_frames"):
         binned_ms2_df = bin_ms2_frames()
         binned_ms2_df.to_pickle(args.pre_binned_ms2_filename)
+    stop_time = time.time()
+    print("new_prebin_ms2: {} seconds".format(round(stop_time-start_time,1)))
     print("binned {} ms2 points".format(len(binned_ms2_df)))
 else:
     # load previously binned ms2
