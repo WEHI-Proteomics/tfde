@@ -450,13 +450,8 @@ def remove_ms1_duplicates(ms1_features_df):
     return ms1_deduped_df
 
 # calculate the centroid, intensity of a bin
-@profile
 def calc_bin_centroid(bin_df):
-    d = {}
-    d['bin_idx'] = int(bin_df.iloc[0].bin_idx)
-    d['mz_centroid'] = mz_centroid(bin_df.intensity.to_numpy(), bin_df.mz.to_numpy())
-    d['summed_intensity'] = int(bin_df.intensity.sum())
-    return pd.Series(d, index=d.keys())
+    return pd.Series(np.array([bin_df.iloc[0].bin_idx, mz_centroid(bin_df.intensity.to_numpy(), bin_df.mz.to_numpy()), bin_df.intensity.sum()]), ['bin_idx', 'mz_centroid', 'summed_intensity'])
 
 MAX_NUMBER_OF_SULPHUR_ATOMS = 3
 MAX_NUMBER_OF_PREDICTED_RATIOS = 6
