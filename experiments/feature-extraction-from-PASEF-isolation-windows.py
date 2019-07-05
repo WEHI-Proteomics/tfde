@@ -687,20 +687,30 @@ def collate_spectra_for_feature(feature_df, ms2_deconvoluted_df):
 
 @profile
 @ray.remote
+# binned_ms2_for_feature contains the whole binned ms2 frames for the feature - the band of mobility for each frame must be selected here
 def deconvolute_ms2(feature_df, binned_ms2_for_feature, idx, total):
     result = {}
     print("processing feature idx {} of {}".format(idx+1, total))
     ms2_frames_l = []
+    ms2_frames_raw_l = []
     for idx,ms2_frame_id in enumerate(feature_df.ms2_frames):
         # get the binned ms2 values for this frame and mobility range
         scan_lower = feature_df.ms2_scan_ranges[idx][0]
         scan_upper = feature_df.ms2_scan_ranges[idx][1]
         ms2_frames_l.append(binned_ms2_for_feature[(binned_ms2_for_feature.frame_id == ms2_frame_id) & (binned_ms2_for_feature.scan >= scan_lower) & (binned_ms2_for_feature.scan <= scan_upper)])
+        if args.test_mode:
+            # for debug, temporarily select the raw points from the ms2 frame for this mobility range as well
+            db_conn = sqlite3.connect(CONVERTED_DATABASE_NAME)
+            ms2_raw_points_df = pd.read_sql_query("select frame_id,mz,intensity from frames where frame_id == {} and scan >= {} and scan <= {} and intensity > 0".format(ms2_frame_id, scan_lower, scan_upper), db_conn)
+            db_conn.close()
+            ms2_frames_raw_l.append(ms2_raw_points_df)
 
     # join the list of dataframes into a single dataframe
     ms2_frame_df = pd.concat(ms2_frames_l)
+
     if args.test_mode:
-        ms2_frame_df.to_csv('./feature-{}-ms2-points-before-binning.csv'.format(feature_df.feature_id), index=False, header=True)
+        ms2_frames_raw_df = pd.concat(ms2_frames_raw_l)
+        ms2_frames_raw_df.to_pickle('./feature-{}-ms2-raw-points.pkl'.format(feature_id))
 
     # derive the spectra
     if len(ms2_frame_df) > 0:
