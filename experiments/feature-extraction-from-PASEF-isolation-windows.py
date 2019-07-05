@@ -699,6 +699,8 @@ def deconvolute_ms2(feature_df, binned_ms2_for_feature, idx, total):
 
     # join the list of dataframes into a single dataframe
     ms2_frame_df = pd.concat(ms2_frames_l)
+    if args.test_mode:
+        ms2_frame_df.to_csv('./feature-{}-ms2-points-before-binning.csv'.format(feature_id), index=False, header=True)
 
     # derive the spectra
     if len(ms2_frame_df) > 0:
