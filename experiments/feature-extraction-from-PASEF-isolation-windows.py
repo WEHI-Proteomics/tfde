@@ -300,7 +300,6 @@ def collate_feature_characteristics(row, group_df, fe_raw_points_df, ms1_raw_poi
     return result
 
 @ray.remote
-@profile
 def find_features(group_number, group_df):
     # find the ms1 features in this isolation window
     ms1_characteristics_l = []
@@ -684,6 +683,7 @@ def collate_spectra_for_feature(feature_df, ms2_deconvoluted_df):
     spectrum["params"] = params
     return spectrum
 
+@profile
 @ray.remote
 def deconvolute_ms2(feature_df, binned_ms2_for_feature, idx, total):
     result = {}
