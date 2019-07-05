@@ -609,6 +609,8 @@ def check_monoisotopic_peak(feature, idx, total):
 # mzs and intensities are numpy arrays containing the peaks for this feature
 def deconvolute_ms2_peaks_for_feature(feature_id, mzs, intensities):
     # do intensity descent to find the peaks
+    df = pd.DataFrame({'mz':mzs,'intensity':intensities})
+    df.to_csv('./feature-{}-ms2-peaks-before-intensity-descent.csv'.format(feature_id), index=False, header=True)
     ms2_peaks_l = []
     while len(mzs) > 0:
         # find the most intense point
@@ -702,8 +704,6 @@ def deconvolute_ms2(feature_df, binned_ms2_for_feature, idx, total):
     if len(ms2_frame_df) > 0:
         # detect peaks
         mz_array, intensity_array = find_ms2_peaks_for_feature(ms2_frame_df)
-        df = pd.DataFrame({'mz':mz_array,'intensity':intensity_array})
-        df.to_csv('./feature-{}-ms2-peaks-before-intensity-descent.csv'.format(feature_df.feature_id), index=False, header=True)
         if len(mz_array) > 0:
             # deconvolve the peaks
             ms2_deconvoluted_df = deconvolute_ms2_peaks_for_feature(feature_df.feature_id, ms2_frame_id, mz_array, intensity_array)
