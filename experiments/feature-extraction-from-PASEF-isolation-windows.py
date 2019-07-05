@@ -710,7 +710,7 @@ def deconvolute_ms2(feature_df, binned_ms2_for_feature, idx, total):
 
     if args.test_mode:
         ms2_frames_raw_df = pd.concat(ms2_frames_raw_l)
-        ms2_frames_raw_df.to_pickle('./feature-{}-ms2-raw-points.pkl'.format(feature_id))
+        ms2_frames_raw_df.to_pickle('./feature-{}-ms2-raw-points.pkl'.format(feature_df.feature_id))
 
     # derive the spectra
     if len(ms2_frame_df) > 0:
