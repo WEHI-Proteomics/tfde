@@ -74,7 +74,9 @@ if not ray.is_initialized():
         if args.test_mode:
             ray.init(local_mode=True)
         else:
-            ray.init(object_store_memory=60000000000, redis_max_memory=25000000000)
+            ray.init(object_store_memory=40000000000,
+                        redis_max_memory=25000000000,
+                        num_cpus=25)
 
 start_run = time.time()
 
