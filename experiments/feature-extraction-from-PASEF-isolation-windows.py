@@ -74,7 +74,7 @@ if not ray.is_initialized():
         if args.test_mode:
             ray.init(local_mode=True)
         else:
-            ray.init(object_store_memory=200000000000)
+            ray.init(object_store_memory=150000000000)
 
 start_run = time.time()
 
