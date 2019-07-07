@@ -75,8 +75,7 @@ if not ray.is_initialized():
             ray.init(local_mode=True)
         else:
             ray.init(object_store_memory=40000000000,
-                        redis_max_memory=25000000000,
-                        num_cpus=10)
+                        redis_max_memory=25000000000)
 
 start_run = time.time()
 
@@ -658,6 +657,7 @@ def find_ms2_peaks_for_feature(binned_ms2_for_feature_df):
     # calculate the bin centroid and summed intensity for the combined frames
     # Peppe's code fragment - tempDF_results is tempDF_results is a numpy array; Column 0: m/z, Column 1: Intensity, Column 2: ID for the bin index
     tempDF_results = binned_ms2_for_feature_df[['mz', 'intensity', 'bin_idx']].to_numpy()
+    print("allocating {} bytes for the centroid function".format(getsizeof(tempDF_results)))
     unique_subrank_array = np.unique(tempDF_results[:,2])
 
     int_weightArray = np.asarray([[value] * tempDF_results.shape[0] for value in tempDF_results[:,2]])
