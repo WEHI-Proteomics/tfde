@@ -213,6 +213,8 @@ def find_ms1_frames_for_ms2_frame_range(ms2_frame_ids, number_either_side):
 def collate_feature_characteristics(row, group_df, fe_raw_points_df, ms1_raw_points_df):
     result = None
 
+    CURVE_FIT_OFFSET = 100
+
     feature_monoisotopic_mz = row.mono_mz
     feature_intensity = int(row.intensity)
     second_peak_mz = row.second_peak_mz
@@ -246,7 +248,7 @@ def collate_feature_characteristics(row, group_df, fe_raw_points_df, ms1_raw_poi
 
         mobility_curve_fit = False
         try:
-            guassian_params = peakutils.peak.gaussian_fit(scan_df.scan, scan_df.intensity, center_only=False)
+            guassian_params = peakutils.peak.gaussian_fit(scan_df.scan, scan_df.intensity+CURVE_FIT_OFFSET, center_only=False)
             scan_apex = guassian_params[1]
             scan_side_width = 2 * abs(guassian_params[2])  # number of standard deviations either side of the apex
             scan_lower = scan_apex - scan_side_width
@@ -267,7 +269,7 @@ def collate_feature_characteristics(row, group_df, fe_raw_points_df, ms1_raw_poi
         rt_df = wide_rt_monoisotopic_raw_points_df.groupby(['frame_id','retention_time_secs'], as_index=False).intensity.sum()
         rt_curve_fit = False
         try:
-            guassian_params = peakutils.peak.gaussian_fit(rt_df.retention_time_secs, rt_df.intensity, center_only=False)
+            guassian_params = peakutils.peak.gaussian_fit(rt_df.retention_time_secs, rt_df.intensity+CURVE_FIT_OFFSET, center_only=False)
             rt_apex = guassian_params[1]
             rt_side_width = 3 * abs(guassian_params[2])  # number of standard deviations either side of the apex
             rt_lower = rt_apex - rt_side_width
