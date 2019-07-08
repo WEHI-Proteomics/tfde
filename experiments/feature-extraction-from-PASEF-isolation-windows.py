@@ -128,12 +128,6 @@ else:
         print("The mgf spectra file is required but doesn't exist: {}".format(args.mgf_spectra_filename))
         sys.exit(1)
 
-PRE_DECONVOLUTION_MS2_FILE = './pre-deconvolution-ms2.h5'
-
-if os.path.isfile(PRE_DECONVOLUTION_MS2_FILE):
-    os.remove(PRE_DECONVOLUTION_MS2_FILE)
-
-
 # make sure the right indexes are created in the source database
 print("Setting up indexes on {}".format(CONVERTED_DATABASE_NAME))
 with ray.profile("create database indexes"):
@@ -640,9 +634,7 @@ def deconvolute_ms2_peaks_for_feature(feature_id, mzs, intensities):
     for p in ms2_peaks_l:
         l.append((p.mz, p.intensity))
     ms2_peaks_df = pd.DataFrame(l, columns=['mz','intensity'])
-    ms2_peaks_df.to_hdf(PRE_DECONVOLUTION_MS2_FILE, mode='a', key='feature_id_{}'.format(feature_id))
-    if args.test_mode:
-        ms2_peaks_df.to_csv('./feature-{}-ms2-peaks-before-deconvolution.csv'.format(feature_id), index=False, header=True)
+    ms2_peaks_df.to_csv('./feature-{}-ms2-peaks-before-deconvolution.csv'.format(feature_id), index=False, header=True)
 
     # deconvolute the peaks
     # see https://github.com/mobiusklein/ms_deisotope/blob/ee4b083ad7ab5f77722860ce2d6fdb751886271e/ms_deisotope/deconvolution/api.py#L17
