@@ -128,6 +128,12 @@ else:
         print("The mgf spectra file is required but doesn't exist: {}".format(args.mgf_spectra_filename))
         sys.exit(1)
 
+PRE_DECONVOLUTION_MS2_FILE = './pre-deconvolution-ms2.h5'
+
+if os.path.isfile(PRE_DECONVOLUTION_MS2_FILE):
+    os.remove(PRE_DECONVOLUTION_MS2_FILE)
+
+
 # make sure the right indexes are created in the source database
 print("Setting up indexes on {}".format(CONVERTED_DATABASE_NAME))
 with ray.profile("create database indexes"):
@@ -630,11 +636,12 @@ def deconvolute_ms2_peaks_for_feature(feature_id, mzs, intensities):
             intensities = np.delete(intensities, peak_indexes)
             mzs = np.delete(mzs, peak_indexes)
 
+    l = []
+    for p in ms2_peaks_l:
+        l.append((p.mz, p.intensity))
+    ms2_peaks_df = pd.DataFrame(l, columns=['mz','intensity'])
+    ms2_peaks_df.to_hdf(PRE_DECONVOLUTION_MS2_FILE, mode='a', key='feature_id_{}'.format(feature_id))
     if args.test_mode:
-        l = []
-        for p in ms2_peaks_l:
-            l.append((p.mz, p.intensity))
-        ms2_peaks_df = pd.DataFrame(l, columns=['mz','intensity'])
         ms2_peaks_df.to_csv('./feature-{}-ms2-peaks-before-deconvolution.csv'.format(feature_id), index=False, header=True)
 
     # deconvolute the peaks
@@ -657,7 +664,7 @@ def find_ms2_peaks_for_feature(binned_ms2_for_feature_df):
     # calculate the bin centroid and summed intensity for the combined frames
     # Peppe's code fragment - tempDF_results is tempDF_results is a numpy array; Column 0: m/z, Column 1: Intensity, Column 2: ID for the bin index
     tempDF_results = binned_ms2_for_feature_df[['mz', 'intensity', 'bin_idx']].to_numpy()
-    print("allocating {} bytes for the centroid function".format(getsizeof(tempDF_results)))
+    # print("allocating {} bytes for the centroid function".format(getsizeof(tempDF_results)))
     unique_subrank_array = np.unique(tempDF_results[:,2])
 
     int_weightArray = np.asarray([[value] * tempDF_results.shape[0] for value in tempDF_results[:,2]])
