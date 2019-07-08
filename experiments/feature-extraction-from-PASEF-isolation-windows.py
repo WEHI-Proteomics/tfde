@@ -64,6 +64,7 @@ parser.add_argument('-mgffn','--mgf_spectra_filename', type=str, default='./mgf_
 # modes
 parser.add_argument('-cl','--cluster_mode', action='store_true', help='Run on a cluster.')
 parser.add_argument('-tm','--test_mode', action='store_true', help='A small subset of the data for testing purposes.')
+parser.add_argument('-idm','--interim_data_mode', action='store_true', help='Write out interim data for debugging full runs.')
 args = parser.parse_args()
 
 # initialise Ray
@@ -357,7 +358,8 @@ def find_features(group_number, group_df):
             binned_ms1_l.append((mz_cent,summed_intensity))
 
     binned_ms1_df = pd.DataFrame(binned_ms1_l, columns=['mz_centroid','summed_intensity'])
-    if args.test_mode:
+
+    if args.interim_data_mode:
         binned_ms1_df.to_csv('./ms1-peaks-group-{}-before-intensity-descent.csv'.format(group_number), index=False, header=True)
 
     # do intensity descent to find the peaks
@@ -381,7 +383,7 @@ def find_features(group_number, group_df):
             intensities = np.delete(intensities, peak_indexes)
             mzs = np.delete(mzs, peak_indexes)
 
-    if args.test_mode:
+    if args.interim_data_mode:
         l = []
         for p in ms1_peaks_l:
             l.append((p.mz, p.intensity))
@@ -610,8 +612,10 @@ def check_monoisotopic_peak(feature, idx, total):
 # mzs and intensities are numpy arrays containing the peaks for this feature
 def deconvolute_ms2_peaks_for_feature(feature_id, mzs, intensities):
     # do intensity descent to find the peaks
-    df = pd.DataFrame({'mz':mzs,'intensity':intensities})
-    df.to_csv('./feature-{}-ms2-peaks-before-intensity-descent.csv'.format(feature_id), index=False, header=True)
+    if args.interim_data_mode:
+        df = pd.DataFrame({'mz':mzs,'intensity':intensities})
+        df.to_csv('./feature-{}-ms2-peaks-before-intensity-descent.csv'.format(feature_id), index=False, header=True)
+
     ms2_peaks_l = []
     while len(mzs) > 0:
         # find the most intense point
@@ -630,11 +634,12 @@ def deconvolute_ms2_peaks_for_feature(feature_id, mzs, intensities):
             intensities = np.delete(intensities, peak_indexes)
             mzs = np.delete(mzs, peak_indexes)
 
-    l = []
-    for p in ms2_peaks_l:
-        l.append((p.mz, p.intensity))
-    ms2_peaks_df = pd.DataFrame(l, columns=['mz','intensity'])
-    ms2_peaks_df.to_csv('./feature-{}-ms2-peaks-before-deconvolution.csv'.format(feature_id), index=False, header=True)
+    if args.interim_data_mode:
+        l = []
+        for p in ms2_peaks_l:
+            l.append((p.mz, p.intensity))
+        ms2_peaks_df = pd.DataFrame(l, columns=['mz','intensity'])
+        ms2_peaks_df.to_csv('./feature-{}-ms2-peaks-before-deconvolution.csv'.format(feature_id), index=False, header=True)
 
     # deconvolute the peaks
     # see https://github.com/mobiusklein/ms_deisotope/blob/ee4b083ad7ab5f77722860ce2d6fdb751886271e/ms_deisotope/deconvolution/api.py#L17
@@ -646,7 +651,8 @@ def deconvolute_ms2_peaks_for_feature(feature_id, mzs, intensities):
         ms2_deconvoluted_peaks_l.append((round(peak.neutral_mass+PROTON_MASS, 4), int(peak.charge), peak.intensity, peak.score, peak.signal_to_noise))
 
     ms2_deconvoluted_peaks_df = pd.DataFrame(ms2_deconvoluted_peaks_l, columns=['mz','charge','intensity','score','SN'])
-    if args.test_mode:
+
+    if args.interim_data_mode:
         ms2_deconvoluted_peaks_df.to_csv('./feature-{}-ms2-peaks-after-deconvolution.csv'.format(feature_id), index=False, header=True)
 
     return ms2_deconvoluted_peaks_df
@@ -709,9 +715,9 @@ def deconvolute_ms2(feature_df, binned_ms2_for_feature, idx, total):
     # join the list of dataframes into a single dataframe
     ms2_frame_df = pd.concat(ms2_frames_l)
 
-    if args.test_mode:
+    if args.interim_data_mode:
         ms2_frames_raw_df = pd.concat(ms2_frames_raw_l)
-        ms2_frames_raw_df.to_pickle('./feature-{}-ms2-raw-points.pkl'.format(feature_df.feature_id))
+        ms2_frames_raw_df.to_csv('./feature-{}-ms2-raw-points.csv'.format(feature_df.feature_id), index=False, header=True)
 
     # derive the spectra
     if len(ms2_frame_df) > 0:
