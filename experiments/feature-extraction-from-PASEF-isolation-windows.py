@@ -705,7 +705,7 @@ def deconvolute_ms2(feature_df, binned_ms2_for_feature, idx, total):
         scan_lower = feature_df.ms2_scan_ranges[idx][0]
         scan_upper = feature_df.ms2_scan_ranges[idx][1]
         ms2_frames_l.append(binned_ms2_for_feature[(binned_ms2_for_feature.frame_id == ms2_frame_id) & (binned_ms2_for_feature.scan >= scan_lower) & (binned_ms2_for_feature.scan <= scan_upper)])
-        if args.test_mode:
+        if args.interim_data_mode:
             # for debug, temporarily select the raw points from the ms2 frame for this mobility range as well
             db_conn = sqlite3.connect(CONVERTED_DATABASE_NAME)
             ms2_raw_points_df = pd.read_sql_query("select frame_id,mz,intensity from frames where frame_id == {} and scan >= {} and scan <= {} and intensity > 0".format(ms2_frame_id, scan_lower, scan_upper), db_conn)
@@ -800,9 +800,9 @@ if args.new_mgf_spectra or args.check_ms1_mono_peak or args.new_dedup_ms1_featur
     # find ms2 peaks for each feature found in ms1, and collate the spectra for the MGF
     print("finding peaks in ms2 for each feature")
     start_time = time.time()
+    if args.test_mode:
+        ms1_deduped_df = ms1_deduped_df[:20]
     ms1_deduped_df.reset_index(drop=True, inplace=True)
-    # if args.test_mode:
-    #     ms1_deduped_df = ms1_deduped_df[ms1_deduped_df.feature_id == 822]
     # mgf_spectra_l is a list of dictionaries
     mgf_spectra_l = ray.get([deconvolute_ms2.remote(feature_df=feature_df, binned_ms2_for_feature=binned_ms2_df[binned_ms2_df.frame_id.isin(feature_df.ms2_frames)], idx=idx, total=len(ms1_deduped_df)) for idx,feature_df in ms1_deduped_df.iterrows()])
     # write out the results for analysis
