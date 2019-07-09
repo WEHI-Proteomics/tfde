@@ -609,9 +609,7 @@ def check_monoisotopic_peak(feature, idx, total):
     feature_d['original_phr'] = observed_ratio
     return feature_d
 
-# mzs and intensities are numpy arrays containing the peaks for this feature
-@profile
-def deconvolute_ms2_peaks_for_feature(feature_id, mzs, intensities):
+def ms2_intensity_descent(feature_id, mzs, intensities):
     # do intensity descent to find the peaks
     if args.interim_data_mode:
         df = pd.DataFrame({'mz':mzs,'intensity':intensities})
@@ -641,8 +639,13 @@ def deconvolute_ms2_peaks_for_feature(feature_id, mzs, intensities):
         for p in ms2_peaks_l:
             l.append((p.mz, p.intensity))
         ms2_peaks_df = pd.DataFrame(l, columns=['mz','intensity'])
-        ms2_peaks_df.to_csv('./feature-{}-ms2-peaks-before-deconvolution.csv'.format(feature_id), index=False, header=True)
+        ms2_peaks_df.to_csv('./feature-{}-ms2-peaks-after-intensity-descent.csv'.format(feature_id), index=False, header=True)
 
+    return ms2_peaks_l
+
+# mzs and intensities are numpy arrays containing the peaks for this feature
+@profile
+def deconvolute_ms2_peaks_for_feature(feature_id, ms2_peaks_l):
     # deconvolute the peaks
     # see https://github.com/mobiusklein/ms_deisotope/blob/ee4b083ad7ab5f77722860ce2d6fdb751886271e/ms_deisotope/deconvolution/api.py#L17
     # see https://github.com/mobiusklein/ms_deisotope/blob/68e88e0ece3e76abdb2833ac82dca1800fe5bde1/ms_deisotope/deconvolution/peak_retention_strategy.py#L141
@@ -661,7 +664,7 @@ def deconvolute_ms2_peaks_for_feature(feature_id, mzs, intensities):
 
 # sum and centroid the ms2 bins for this feature
 @njit(fastmath=True)
-def find_ms2_peaks_for_feature(binned_ms2_for_feature_a):
+def bin_centroids_for_feature(binned_ms2_for_feature_a):
     # calculate the bin centroid and summed intensity for the combined frames
     # Peppe's code fragment - binned_ms2_for_feature_a is a numpy array; column 0: m/z, column 1: intensity, column 2: ID for the bin index
     unique_subrank_array = np.unique(binned_ms2_for_feature_a[:,2])
@@ -723,10 +726,12 @@ def deconvolute_ms2(feature_df, binned_ms2_for_feature, idx, total):
     # derive the spectra
     if len(ms2_frame_df) > 0:
         # detect peaks
-        mz_array, intensity_array = find_ms2_peaks_for_feature(ms2_frame_df[['mz', 'intensity', 'bin_idx']].to_numpy())
+        mz_array, intensity_array = bin_centroids_for_feature(ms2_frame_df[['mz', 'intensity', 'bin_idx']].to_numpy())
         if len(mz_array) > 0:
-            # deconvolve the peaks
-            ms2_deconvoluted_df = deconvolute_ms2_peaks_for_feature(feature_df.feature_id, mz_array, intensity_array)
+            # perform intensity descent to remove binning effects (e.g. peaks split by bin edges)
+            ms2_peaks_l = ms2_intensity_descent(feature_df.feature_id, mz_array, intensity_array)
+            # deconvolute the peaks
+            ms2_deconvoluted_df = deconvolute_ms2_peaks_for_feature(feature_df.feature_id, ms2_peaks_l)
             if len(ms2_deconvoluted_df) >= 2:
                 # package it up for the MGF
                 result = collate_spectra_for_feature(feature_df, ms2_deconvoluted_df)
