@@ -658,6 +658,7 @@ def deconvolute_ms2_peaks_for_feature(feature_id, mzs, intensities):
     return ms2_deconvoluted_peaks_df
 
 # sum and centroid the ms2 bins for this feature
+@profile
 def find_ms2_peaks_for_feature(binned_ms2_for_feature_df):
     # calculate the bin centroid and summed intensity for the combined frames
     # Peppe's code fragment - tempDF_results is tempDF_results is a numpy array; Column 0: m/z, Column 1: Intensity, Column 2: ID for the bin index
