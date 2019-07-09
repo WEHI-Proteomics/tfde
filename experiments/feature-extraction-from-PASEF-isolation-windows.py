@@ -692,9 +692,9 @@ def collate_spectra_for_feature(feature_df, ms2_deconvoluted_df):
     spectrum["params"] = params
     return spectrum
 
-@profile
-@ray.remote
 # binned_ms2_for_feature contains the whole binned ms2 frames for the feature - the band of mobility for each frame must be selected here
+@ray.remote
+@profile
 def deconvolute_ms2(feature_df, binned_ms2_for_feature, idx, total):
     result = {}
     print("processing feature idx {} of {}".format(idx+1, total))
