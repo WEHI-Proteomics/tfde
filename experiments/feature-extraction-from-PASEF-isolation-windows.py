@@ -723,7 +723,7 @@ def deconvolute_ms2(feature_df, binned_ms2_for_feature, idx, total):
     # derive the spectra
     if len(ms2_frame_df) > 0:
         # detect peaks
-        mz_array, intensity_array = find_ms2_peaks_for_feature(binned_ms2_for_feature_df[['mz', 'intensity', 'bin_idx']].to_numpy())
+        mz_array, intensity_array = find_ms2_peaks_for_feature(ms2_frame_df[['mz', 'intensity', 'bin_idx']].to_numpy())
         if len(mz_array) > 0:
             # deconvolve the peaks
             ms2_deconvoluted_df = deconvolute_ms2_peaks_for_feature(feature_df.feature_id, mz_array, intensity_array)
