@@ -661,22 +661,20 @@ def deconvolute_ms2_peaks_for_feature(feature_id, mzs, intensities):
 # sum and centroid the ms2 bins for this feature
 @njit(fastmath=True)
 @profile
-def find_ms2_peaks_for_feature(binned_ms2_for_feature_df):
+def find_ms2_peaks_for_feature(binned_ms2_for_feature_a):
     # calculate the bin centroid and summed intensity for the combined frames
-    # Peppe's code fragment - tempDF_results is tempDF_results is a numpy array; Column 0: m/z, Column 1: Intensity, Column 2: ID for the bin index
-    tempDF_results = binned_ms2_for_feature_df[['mz', 'intensity', 'bin_idx']].to_numpy()
-    # print("allocating {} bytes for the centroid function".format(getsizeof(tempDF_results)))
-    unique_subrank_array = np.unique(tempDF_results[:,2])
+    # Peppe's code fragment - binned_ms2_for_feature_a is a numpy array; column 0: m/z, column 1: intensity, column 2: ID for the bin index
+    unique_subrank_array = np.unique(binned_ms2_for_feature_a[:,2])
 
-    int_weightArray = np.asarray([[value] * tempDF_results.shape[0] for value in tempDF_results[:,2]])
-    int_weightArray = ((int_weightArray == tempDF_results[:,2]) * tempDF_results[:,1]).sum(axis=1)
-    int_weightArray = tempDF_results[:,1]/int_weightArray
+    int_weightArray = np.asarray([[value] * binned_ms2_for_feature_a.shape[0] for value in binned_ms2_for_feature_a[:,2]])
+    int_weightArray = ((int_weightArray == binned_ms2_for_feature_a[:,2]) * binned_ms2_for_feature_a[:,1]).sum(axis=1)
+    int_weightArray = binned_ms2_for_feature_a[:,1]/int_weightArray
 
-    mz_meanArray = np.asarray([[value] * tempDF_results.shape[0] for value in unique_subrank_array])
-    mz_meanArray = ((mz_meanArray == tempDF_results[:,2]) * (tempDF_results[:,0]*int_weightArray)).sum(axis=1)
+    mz_meanArray = np.asarray([[value] * binned_ms2_for_feature_a.shape[0] for value in unique_subrank_array])
+    mz_meanArray = ((mz_meanArray == binned_ms2_for_feature_a[:,2]) * (binned_ms2_for_feature_a[:,0]*int_weightArray)).sum(axis=1)
 
-    int_sumArray = np.asarray([[value] * tempDF_results.shape[0] for value in unique_subrank_array])
-    int_sumArray = ((int_sumArray == tempDF_results[:,2]) * tempDF_results[:,1]).sum(axis=1)
+    int_sumArray = np.asarray([[value] * binned_ms2_for_feature_a.shape[0] for value in unique_subrank_array])
+    int_sumArray = ((int_sumArray == binned_ms2_for_feature_a[:,2]) * binned_ms2_for_feature_a[:,1]).sum(axis=1)
 
     return mz_meanArray, int_sumArray
 
@@ -725,7 +723,7 @@ def deconvolute_ms2(feature_df, binned_ms2_for_feature, idx, total):
     # derive the spectra
     if len(ms2_frame_df) > 0:
         # detect peaks
-        mz_array, intensity_array = find_ms2_peaks_for_feature(ms2_frame_df)
+        mz_array, intensity_array = find_ms2_peaks_for_feature(binned_ms2_for_feature_df[['mz', 'intensity', 'bin_idx']].to_numpy())
         if len(mz_array) > 0:
             # deconvolve the peaks
             ms2_deconvoluted_df = deconvolute_ms2_peaks_for_feature(feature_df.feature_id, mz_array, intensity_array)
