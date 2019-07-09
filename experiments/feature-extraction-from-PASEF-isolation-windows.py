@@ -610,6 +610,7 @@ def check_monoisotopic_peak(feature, idx, total):
     return feature_d
 
 # mzs and intensities are numpy arrays containing the peaks for this feature
+@profile
 def deconvolute_ms2_peaks_for_feature(feature_id, mzs, intensities):
     # do intensity descent to find the peaks
     if args.interim_data_mode:
