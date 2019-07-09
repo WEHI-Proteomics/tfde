@@ -362,7 +362,7 @@ def find_features(group_number, group_df):
     if args.interim_data_mode:
         binned_ms1_df.to_csv('./ms1-peaks-group-{}-before-intensity-descent.csv'.format(group_number), index=False, header=True)
 
-    # do intensity descent to find the peaks
+    # intensity descent
     mzs = binned_ms1_df.mz_centroid.to_numpy()
     intensities = binned_ms1_df.summed_intensity.to_numpy()
     ms1_peaks_l = []
@@ -616,6 +616,7 @@ def deconvolute_ms2_peaks_for_feature(feature_id, mzs, intensities):
         df = pd.DataFrame({'mz':mzs,'intensity':intensities})
         df.to_csv('./feature-{}-ms2-peaks-before-intensity-descent.csv'.format(feature_id), index=False, header=True)
 
+    # intensity descent
     ms2_peaks_l = []
     while len(mzs) > 0:
         # find the most intense point
@@ -658,6 +659,7 @@ def deconvolute_ms2_peaks_for_feature(feature_id, mzs, intensities):
     return ms2_deconvoluted_peaks_df
 
 # sum and centroid the ms2 bins for this feature
+@njit(fastmath=True)
 @profile
 def find_ms2_peaks_for_feature(binned_ms2_for_feature_df):
     # calculate the bin centroid and summed intensity for the combined frames
