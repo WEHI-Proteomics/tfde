@@ -6,6 +6,7 @@ from numba import njit
 import argparse
 import os.path
 from pyteomics import mgf
+import time
 
 # for reading the de-dup pickle
 from ms_deisotope import deconvolute_peaks, averagine, scoring
