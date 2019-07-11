@@ -205,7 +205,7 @@ for idx,feature_df in ms1_deduped_df.iterrows():
     result = collate_spectra_for_feature(feature_df, ms2_deconvoluted_df)
     feature_results.append(result)
 
-print("average deconvolution: {} seconds".format(round(np.average(time_taken),1)))
+print("average deconvolution: {} seconds".format(round(np.average(time_taken),6)))
 # generate the MGF for all the features
 print("generating the MGF: {}".format(args.mgf_filename))
 if os.path.isfile(args.mgf_filename):
