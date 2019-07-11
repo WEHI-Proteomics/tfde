@@ -191,7 +191,7 @@ feature_results = []
 mass_defect_window_bins = generate_mass_defect_windows()
 # load the features we detected
 ms1_deduped_df = pd.read_pickle(args.dedup_ms1_filename)
-for idx,feature_df in ms1_deduped_df[:2].iterrows():
+for idx,feature_df in ms1_deduped_df.iterrows():
     # read the raw ms2 for this feature
     feature_raw_ms2_df = pd.read_csv('{}/feature-{}-ms2-raw-points.csv'.format(args.feature_raw_points_base, feature_df.feature_id))
     feature_raw_ms2_df.sort_values(by=['mz'], ascending=True, inplace=True)
