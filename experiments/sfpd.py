@@ -191,16 +191,20 @@ feature_results = []
 mass_defect_window_bins = generate_mass_defect_windows()
 # load the features we detected
 ms1_deduped_df = pd.read_pickle(args.dedup_ms1_filename)
+time_taken = []
 for idx,feature_df in ms1_deduped_df.iterrows():
     # read the raw ms2 for this feature
     feature_raw_ms2_df = pd.read_csv('{}/feature-{}-ms2-raw-points.csv'.format(args.feature_raw_points_base, feature_df.feature_id))
-    feature_raw_ms2_df.sort_values(by=['mz'], ascending=True, inplace=True)
     # deconvolute the raw points into peaks
+    start_time = time.time()
     ms2_deconvoluted_df = deconvolute_ms2(mass_defect_window_bins, feature_raw_ms2_df)
+    stop_time = time.time()
+    time_taken.append(stop_time-start_time)
     # package the feature and its fragment ions for writing out to the MGF
     result = collate_spectra_for_feature(feature_df, ms2_deconvoluted_df)
     feature_results.append(result)
 
+print("average deconvolution: {} seconds".format(round(np.average(time_taken),1)))
 # generate the MGF for all the features
 print("generating the MGF: {}".format(args.mgf_filename))
 if os.path.isfile(args.mgf_filename):
