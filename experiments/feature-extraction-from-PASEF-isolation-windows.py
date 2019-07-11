@@ -63,7 +63,8 @@ parser.add_argument('-nmgf','--new_mgf_spectra', action='store_true', help='Crea
 parser.add_argument('-mgffn','--mgf_spectra_filename', type=str, default='./mgf_spectra.pkl', help='File containing mgf spectra.', required=False)
 # modes
 parser.add_argument('-cl','--cluster_mode', action='store_true', help='Run on a cluster.')
-parser.add_argument('-tm','--test_mode', action='store_true', help='A small subset of the data for testing purposes.')
+parser.add_argument('-ssm','--small_set_mode', action='store_true', help='A small subset of the data for testing purposes.')
+parser.add_argument('-lm','--local_mode', action='store_true', help='Don\'t use Ray parallelism.')
 parser.add_argument('-idm','--interim_data_mode', action='store_true', help='Write out interim data for debugging full runs.')
 args = parser.parse_args()
 
@@ -72,7 +73,7 @@ if not ray.is_initialized():
     if args.cluster_mode:
         ray.init(redis_address="localhost:6379")
     else:
-        if args.test_mode:
+        if args.local_mode:
             ray.init(local_mode=True)
         else:
             ray.init(object_store_memory=40000000000,
@@ -743,7 +744,7 @@ if args.new_ms1_features:
     # find ms1 features for each unique precursor ID
     print("finding ms1 features")
     start_time = time.time()
-    if args.test_mode:
+    if args.small_set_mode:
         isolation_window_df = isolation_window_df[:20]
     ms1_df_l = ray.get([find_features.remote(group_number=idx+1, group_df=group_df) for idx,group_df in isolation_window_df.groupby('Precursor')])
     ms1_df = pd.concat(ms1_df_l)  # combines a list of dataframes into a single dataframe
@@ -806,7 +807,7 @@ if args.new_mgf_spectra or args.check_ms1_mono_peak or args.new_dedup_ms1_featur
     # find ms2 peaks for each feature found in ms1, and collate the spectra for the MGF
     print("finding peaks in ms2 for each feature")
     start_time = time.time()
-    if args.test_mode:
+    if args.small_set_mode:
         ms1_deduped_df = ms1_deduped_df[:20]
     ms1_deduped_df.reset_index(drop=True, inplace=True)
     # mgf_spectra_l is a list of dictionaries
@@ -836,6 +837,6 @@ info.append(("processor", parser.prog))
 print("{} info: {}".format(parser.prog, info))
 
 print("shutting down ray")
-if not args.test_mode:
+if not args.small_set_mode:
     ray.timeline(filename="./ray-timeline.json")
 ray.shutdown()
