@@ -24,6 +24,7 @@ parser = argparse.ArgumentParser(description='Extract ms1 features from PASEF is
 parser.add_argument('-cdbb','--converted_database_base', type=str, help='base path to the converted database.', required=True)
 parser.add_argument('-mgf','--mgf_filename', type=str, help='File name of the MGF to be generated.', required=True)
 parser.add_argument('-ddms1fn','--dedup_ms1_filename', type=str, default='./ms1_deduped_df.pkl', help='File containing de-duped ms1 features.', required=False)
+parser.add_argument('-frpb','--feature_raw_points_base', type=str, help='Directory for the CSVs for the feature ms2 raw points.', required=True)
 args = parser.parse_args()
 
 CONVERTED_DATABASE_NAME = '{}/HeLa_20KInt.sqlite'.format(args.converted_database_base)
@@ -192,7 +193,7 @@ mass_defect_window_bins = generate_mass_defect_windows()
 ms1_deduped_df = pd.read_pickle(args.dedup_ms1_filename)
 for idx,feature_df in ms1_deduped_df[:2].iterrows():
     # read the raw ms2 for this feature
-    feature_raw_ms2_df = pd.read_csv('/Users/darylwilding-mcbride/Downloads/feature-{}-ms2-raw-points.csv'.format(feature_df.feature_id))
+    feature_raw_ms2_df = pd.read_csv('{}/feature-{}-ms2-raw-points.csv'.format(args.feature_raw_points_base, feature_df.feature_id))
     feature_raw_ms2_df.sort_values(by=['mz'], ascending=True, inplace=True)
     # deconvolute the raw points into peaks
     ms2_deconvoluted_df = deconvolute_ms2(mass_defect_window_bins, feature_raw_ms2_df)
