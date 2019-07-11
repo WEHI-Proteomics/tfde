@@ -811,10 +811,10 @@ if args.new_mgf_spectra or args.check_ms1_mono_peak or args.new_dedup_ms1_featur
     ms1_deduped_df.reset_index(drop=True, inplace=True)
     # mgf_spectra_l is a list of dictionaries
     mgf_spectra_l = ray.get([deconvolute_ms2.remote(feature_df=feature_df, binned_ms2_for_feature=binned_ms2_df[binned_ms2_df.frame_id.isin(feature_df.ms2_frames)], idx=idx, total=len(ms1_deduped_df)) for idx,feature_df in ms1_deduped_df.iterrows()])
+    stop_time = time.time()
     # write out the results for analysis
     with open(args.mgf_spectra_filename, 'wb') as f:
         pickle.dump(mgf_spectra_l, f)
-    stop_time = time.time()
     print("new_mgf_spectra: {} seconds".format(round(stop_time-start_time,1)))
 else:
     # load previously saved mgf spectra
