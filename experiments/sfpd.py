@@ -97,7 +97,7 @@ def deconvolute_ms2(mass_defect_window_bins, feature_raw_ms2_df):
     # cycle through the charge states, from higher to lower
     peaks_l = []
     for charge in charge_states_to_consider[::-1]:
-        decharged_mass_a = ((feature_raw_ms2_df.mz * charge) - (PROTON_MASS * charge).to_numpy()
+        decharged_mass_a = ((feature_raw_ms2_df.mz * charge) - (PROTON_MASS * charge)).to_numpy()
 
         digitised_mass = np.digitize(decharged_mass_a[available_a == True], mass_defect_window_bins)  # an odd index means the point is inside a mass defect window
 
