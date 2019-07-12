@@ -77,7 +77,7 @@ def collate_spectra_for_feature(feature_df, ms2_deconvoluted_df):
     spectrum["params"] = params
     return spectrum
 
-def generate_mass_defect_window():
+def generate_mass_defect_windows():
     bin_edges_l = []
     for nominal_mass in range(DA_MIN, DA_MAX):
         mass_centre = nominal_mass * 1.00048  # from https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3184890/
