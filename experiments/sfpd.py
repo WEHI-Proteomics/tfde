@@ -146,7 +146,6 @@ def deconvolute_ms2(mass_defect_window_bins, feature_raw_ms2_df):
                 peaks_mz_a[i] = peaks_mz_a[i] - (i * expected_peak_spacing)
             deisotoped_mz = np.average(peaks_mz_a, weights=peaks_int_a)
             deisotoped_intensity = peaks_int_a.sum()
-            monoisotopic_mass = (deisotoped_mz - PROTON_MASS) * charge
             # the MGF wants the m/z of the monoisotope (the de-isotoped m/z) as it would be if it was a single-charge ion
             singley_charged_monoisotope_mz = (deisotoped_mz * charge) - (PROTON_MASS * (charge - 1))
             peaks_l.append((series_idx, singley_charged_monoisotope_mz, deisotoped_intensity))
@@ -168,7 +167,6 @@ def deconvolute_ms2(mass_defect_window_bins, feature_raw_ms2_df):
                     peak_indexes = np.where(digitised_mass == index)[0]
                     mz_centroid = np.average(mz_a[peak_indexes], weights=intensity_a[peak_indexes])
                     intensity = np.sum(intensity_a[peak_indexes])
-                    monoisotopic_mass = (mz_centroid - PROTON_MASS) * charge
                     singley_charged_monoisotope_mz = (mz_centroid * charge) - (PROTON_MASS * (charge - 1))
                     peaks_l.append((0, singley_charged_monoisotope_mz, intensity))
                     peak_idx += 1
@@ -190,6 +188,7 @@ for idx,feature_df in ms1_deduped_df.iterrows():
     start_time = time.time()
     ms2_deconvoluted_df = deconvolute_ms2(mass_defect_window_bins, feature_raw_ms2_df)
     stop_time = time.time()
+    ms2_deconvoluted_df.to_csv('./feature-{}-ms2-peaks-after-deconvolution-sfpd.csv'.format(feature_id), index=False, header=True)
     time_taken.append(stop_time-start_time)
     # package the feature and its fragment ions for writing out to the MGF
     result = collate_spectra_for_feature(feature_df, ms2_deconvoluted_df)
