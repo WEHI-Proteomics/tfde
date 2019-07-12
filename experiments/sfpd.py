@@ -64,9 +64,9 @@ def find_runs(x):
 
 def collate_spectra_for_feature(feature_df, ms2_deconvoluted_df):
     # append the monoisotopic and the ms2 fragments to the list for MGF creation
-    pairs_df = ms2_deconvoluted_df[['monoisotopic_mass', 'intensity']].copy().sort_values(by=['monoisotopic_mass'], ascending=True)
+    pairs_df = ms2_deconvoluted_df[['singley_charged_monoisotope_mz', 'intensity']].copy().sort_values(by=['singley_charged_monoisotope_mz'], ascending=True)
     spectrum = {}
-    spectrum["m/z array"] = np.round(pairs_df.monoisotopic_mass.values,4)
+    spectrum["m/z array"] = np.round(pairs_df.singley_charged_monoisotope_mz.values,4)
     spectrum["intensity array"] = pairs_df.intensity.values
     params = {}
     params["TITLE"] = "RawFile: {} Charge: {} FeatureIntensity: {} Feature#: {} RtApex: {}".format(os.path.basename(CONVERTED_DATABASE_NAME).split('.')[0], feature_df.charge, feature_df.intensity, feature_df.feature_id, round(feature_df.rt_apex,2))
@@ -127,36 +127,29 @@ def deconvolute_ms2(mass_defect_window_bins, feature_raw_ms2_df):
             number_of_windows = chunk_sizes[series_idx]
             start_idx = chunk_starts[series_idx]
             index_list = unique_mass_defect_window_indexes[start_idx:start_idx+number_of_windows].tolist()
-            # print("isotope series {} ({} peaks):".format(series_idx+1, number_of_windows))
             mz_l = []
             int_l = []
             for peak_idx,i in enumerate(index_list):
                 lower_mass = round(bins[i-1],4)
                 upper_mass = round(bins[i],4)
-                # print("mass defect window [{}]: {}-{} Da".format(i, lower_mass, upper_mass))
                 # get the raw points allocated to this bin
                 peak_indexes = np.where(digitised_mass == i)[0]
-                # print("\tpeak mass {}".format(np.round(decharged_mass_a[peak_indexes],4)))
-                # print("\tpeak m/z {}".format(np.round(mz_a[peak_indexes],4)))
                 mz_centroid = np.average(mz_a[peak_indexes], weights=intensity_a[peak_indexes])
                 intensity = np.sum(intensity_a[peak_indexes])
                 mz_l.append(mz_centroid)
                 int_l.append(intensity)
-                # print("\tpeak centroid {} m/z, {}".format(np.round(mz_centroid,4), intensity))
                 available_a[peak_indexes] = False
             # de-isotope the peaks
             peaks_mz_a = np.array(mz_l)
             peaks_int_a = np.array(int_l)
             for i in range(len(peaks_mz_a)):
                 peaks_mz_a[i] = peaks_mz_a[i] - (i * expected_peak_spacing)
-            # print("de-isotoped m/z {}".format(np.round(peaks_mz_a,4)))
             deisotoped_mz = np.average(peaks_mz_a, weights=peaks_int_a)
             deisotoped_intensity = peaks_int_a.sum()
-            # print("de-isotoped m/z centroid {}, {}".format(np.round(deisotoped_mz,4), deisotoped_intensity))
             monoisotopic_mass = (deisotoped_mz - PROTON_MASS) * charge
-            # print("monoisotopic mass {} Da".format(np.round(monoisotopic_mass,4)))
-            peaks_l.append((series_idx, monoisotopic_mass, deisotoped_intensity))
-            # print()
+            # the MGF wants the m/z of the monoisotope (the de-isotoped m/z) as it would be if it was a single-charge ion
+            singley_charged_monoisotope_mz = (deisotoped_mz * charge) - (PROTON_MASS * (charge - 1))
+            peaks_l.append((series_idx, singley_charged_monoisotope_mz, deisotoped_intensity))
 
         if charge == 1:
             # process the peaks that are not allocated to an isotopic series - the orphans
@@ -171,19 +164,16 @@ def deconvolute_ms2(mass_defect_window_bins, feature_raw_ms2_df):
                     index = unique_mass_defect_window_indexes[chunk_start+chunk_idx]
                     lower_mass = round(bins[index-1],4)
                     upper_mass = round(bins[index],4)
-                    # print("mass defect window [{}]: {}-{} Da".format(index, lower_mass, upper_mass))
                     # get the raw points allocated to this bin
                     peak_indexes = np.where(digitised_mass == index)[0]
-                    # print("\tpeak mass {}".format(np.round(decharged_mass_a[peak_indexes],4)))
-                    # print("\tpeak m/z {}".format(np.round(mz_a[peak_indexes],4)))
                     mz_centroid = np.average(mz_a[peak_indexes], weights=intensity_a[peak_indexes])
                     intensity = np.sum(intensity_a[peak_indexes])
-                    # print("\tpeak centroid {} m/z, {}".format(np.round(mz_centroid,4), intensity))
                     monoisotopic_mass = (mz_centroid - PROTON_MASS) * charge
-                    peaks_l.append((0, monoisotopic_mass, intensity))
+                    singley_charged_monoisotope_mz = (deisotoped_mz * charge) - (PROTON_MASS * (charge - 1))
+                    peaks_l.append((0, singley_charged_monoisotope_mz, intensity))
                     peak_idx += 1
 
-    peaks_df = pd.DataFrame(peaks_l, columns=['series','monoisotopic_mass','intensity'])
+    peaks_df = pd.DataFrame(peaks_l, columns=['series','singley_charged_monoisotope_mz','intensity'])
     return peaks_df
 
 
@@ -205,7 +195,7 @@ for idx,feature_df in ms1_deduped_df.iterrows():
     result = collate_spectra_for_feature(feature_df, ms2_deconvoluted_df)
     feature_results.append(result)
 
-print("average deconvolution: {} seconds".format(round(np.average(time_taken),6)))
+print("average deconvolution: {} seconds (N={})".format(round(np.average(time_taken),6), len(time_taken)))
 # generate the MGF for all the features
 print("generating the MGF: {}".format(args.mgf_filename))
 if os.path.isfile(args.mgf_filename):
