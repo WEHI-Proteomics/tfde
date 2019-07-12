@@ -124,8 +124,8 @@ def deconvolute_ms2(mass_defect_window_bins, feature_raw_ms2_df):
             mz_l = []
             int_l = []
             for peak_idx,i in enumerate(index_list):
-                lower_mass = round(bins[i-1],4)
-                upper_mass = round(bins[i],4)
+                lower_mass = round(mass_defect_window_bins[i-1],4)
+                upper_mass = round(mass_defect_window_bins[i],4)
                 # get the raw points allocated to this bin
                 peak_indexes = np.where(digitised_mass == i)[0]
                 mz_centroid = np.average(mz_a[peak_indexes], weights=intensity_a[peak_indexes])
@@ -155,8 +155,8 @@ def deconvolute_ms2(mass_defect_window_bins, feature_raw_ms2_df):
                 chunk_start = orphaned_chunk_starts[i]
                 for chunk_idx in range(chunk_size):
                     index = unique_mass_defect_window_indexes[chunk_start+chunk_idx]
-                    lower_mass = round(bins[index-1],4)
-                    upper_mass = round(bins[index],4)
+                    lower_mass = round(mass_defect_window_bins[index-1],4)
+                    upper_mass = round(mass_defect_window_bins[index],4)
                     # get the raw points allocated to this bin
                     peak_indexes = np.where(digitised_mass == index)[0]
                     mz_centroid = np.average(mz_a[peak_indexes], weights=intensity_a[peak_indexes])
