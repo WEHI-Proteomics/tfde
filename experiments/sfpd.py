@@ -188,7 +188,7 @@ for idx,feature_df in ms1_deduped_df.iterrows():
     start_time = time.time()
     ms2_deconvoluted_df = deconvolute_ms2(mass_defect_window_bins, feature_raw_ms2_df)
     stop_time = time.time()
-    ms2_deconvoluted_df.to_csv('./feature-{}-ms2-peaks-after-deconvolution-sfpd.csv'.format(feature_id), index=False, header=True)
+    ms2_deconvoluted_df.to_csv('./feature-{}-ms2-peaks-after-deconvolution-sfpd.csv'.format(feature_df.feature_id), index=False, header=True)
     time_taken.append(stop_time-start_time)
     # package the feature and its fragment ions for writing out to the MGF
     result = collate_spectra_for_feature(feature_df, ms2_deconvoluted_df)
