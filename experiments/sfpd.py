@@ -77,22 +77,17 @@ def collate_spectra_for_feature(feature_df, ms2_deconvoluted_df):
     spectrum["params"] = params
     return spectrum
 
-def generate_mass_defect_windows():
-    # generate a charge-aware mask of mass defect windows
-    mass_defect_window_bins = {}
-    for charge in charge_states_to_consider:
-        bin_edges_l = []
-        for nominal_mass in np.arange(start=DA_MIN, stop=DA_MAX, step=1/charge):
-            proton_mass_adjustment = (charge - 1) * PROTON_MASS
-            mass_centre = (nominal_mass + proton_mass_adjustment) * 1.00048  # from https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3184890/
-            width = (0.19 + (0.0001 * nominal_mass)) / charge
-            lower_mass = mass_centre - (width / 2)
-            upper_mass = mass_centre + (width / 2)
-            bin_edges_l.append(lower_mass)
-            bin_edges_l.append(upper_mass)
-        bins = np.asarray(bin_edges_l)
-        mass_defect_window_bins['charge-{}'.format(charge)] = bins
-    return mass_defect_window_bins
+def generate_mass_defect_window():
+    bin_edges_l = []
+    for nominal_mass in range(DA_MIN, DA_MAX):
+        mass_centre = nominal_mass * 1.00048  # from https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3184890/
+        width = 0.19 + (0.0001 * nominal_mass)
+        lower_mass = mass_centre - (width / 2)
+        upper_mass = mass_centre + (width / 2)
+        bin_edges_l.append(lower_mass)
+        bin_edges_l.append(upper_mass)
+    bins = np.asarray(bin_edges_l)
+    return bins
 
 def deconvolute_ms2(mass_defect_window_bins, feature_raw_ms2_df):
     mz_a = feature_raw_ms2_df.mz.to_numpy()
@@ -102,10 +97,9 @@ def deconvolute_ms2(mass_defect_window_bins, feature_raw_ms2_df):
     # cycle through the charge states, from higher to lower
     peaks_l = []
     for charge in charge_states_to_consider[::-1]:
-        decharged_mass_a = ((feature_raw_ms2_df.mz + PROTON_MASS) * charge).to_numpy()
-        bins = mass_defect_window_bins['charge-{}'.format(charge)]
+        decharged_mass_a = ((feature_raw_ms2_df.mz * charge) - (PROTON_MASS * charge).to_numpy()
 
-        digitised_mass = np.digitize(decharged_mass_a[available_a == True], bins)  # an odd index means the point is inside a mass defect window
+        digitised_mass = np.digitize(decharged_mass_a[available_a == True], mass_defect_window_bins)  # an odd index means the point is inside a mass defect window
 
         # remove all the even indexes - the odd indexes are the mass defect windows
         mass_defect_window_indexes = digitised_mass[(digitised_mass % 2) == 1]
