@@ -169,7 +169,7 @@ def deconvolute_ms2(mass_defect_window_bins, feature_raw_ms2_df):
                     mz_centroid = np.average(mz_a[peak_indexes], weights=intensity_a[peak_indexes])
                     intensity = np.sum(intensity_a[peak_indexes])
                     monoisotopic_mass = (mz_centroid - PROTON_MASS) * charge
-                    singley_charged_monoisotope_mz = (deisotoped_mz * charge) - (PROTON_MASS * (charge - 1))
+                    singley_charged_monoisotope_mz = (mz_centroid * charge) - (PROTON_MASS * (charge - 1))
                     peaks_l.append((0, singley_charged_monoisotope_mz, intensity))
                     peak_idx += 1
 
