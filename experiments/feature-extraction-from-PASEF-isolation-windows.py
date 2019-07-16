@@ -661,18 +661,17 @@ def generate_mass_defect_windows():
     bins = np.asarray(bin_edges_l)
     return bins
 
-# filter out the points that don't sit inside a mass defect window
-# ms2_peaks_a is a numpy array of simple_peak
+vectorise_mz = np.vectorize(lambda obj: obj.mz)
+vectorise_intensity = np.vectorize(lambda obj: obj.intensity)
+
 def remove_points_outside_mass_defect_windows(ms2_peaks_a, mass_defect_window_bins):
-    v = np.vectorize(lambda obj: obj.mz)
-    mz_a = v(ms2_peaks_a)
-    inside_mass_defect_window_a = np.full((len(mz_a)), True)
+    mz_a = vectorise_mz(ms2_peaks_a)
+    inside_mass_defect_window_a = np.full((len(mz_a)), False)
     for charge in [3,2,1]:
         decharged_mass_a = (mz_a * charge) - (PROTON_MASS * charge)
         decharged_mass_bin_indexes = np.digitize(decharged_mass_a, mass_defect_window_bins)  # an odd index means the point is inside a mass defect window
-        # mass_defect_window_indexes = (decharged_mass_bin_indexes % 2) == 1  # odd bin indexes are mass defect windows
-        not_mass_defect_window_indexes = (decharged_mass_bin_indexes % 2) == 0
-        inside_mass_defect_window_a[not_mass_defect_window_indexes] = False
+        mass_defect_window_indexes = (decharged_mass_bin_indexes % 2) == 1  # odd bin indexes are mass defect windows
+        inside_mass_defect_window_a[mass_defect_window_indexes] = True
     result = ms2_peaks_a[inside_mass_defect_window_a]
     return result
 
