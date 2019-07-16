@@ -18,6 +18,8 @@ from sys import getsizeof
 PROTON_MASS = 1.0073  # Mass of a proton in unified atomic mass units, or Da. For calculating the monoisotopic mass.
 DELTA_MZ = 1.003355     # Mass difference between Carbon-12 and Carbon-13 isotopes, in Da. For calculating the spacing between isotopic peaks.
 INSTRUMENT_RESOLUTION = 40000.0
+MASS_DEFECT_WINDOW_DA_MIN = 100  # range in Daltons
+MASS_DEFECT_WINDOW_DA_MAX = 5200
 
 # so we can use profiling without removing @profile
 try:
@@ -65,7 +67,8 @@ parser.add_argument('-mgffn','--mgf_spectra_filename', type=str, default='./mgf_
 parser.add_argument('-cl','--cluster_mode', action='store_true', help='Run on a cluster.')
 parser.add_argument('-ssm','--small_set_mode', action='store_true', help='A small subset of the data for testing purposes.')
 parser.add_argument('-lm','--local_mode', action='store_true', help='Don\'t use Ray parallelism.')
-parser.add_argument('-idm','--interim_data_mode', action='store_true', help='Write out interim data for debugging full runs.')
+parser.add_argument('-idm','--interim_data_mode', action='store_true', help='Write out interim data for debugging.')
+parser.add_argument('-rpmdw','--remove_points_outside_mass_defect_windows', action='store_true', help='Filter out ms2 points that are not inside mass defect windows.')
 args = parser.parse_args()
 
 # initialise Ray
@@ -610,6 +613,7 @@ def check_monoisotopic_peak(feature, idx, total):
     feature_d['original_phr'] = observed_ratio
     return feature_d
 
+# returns a numpy array of simple_peak
 def ms2_intensity_descent(feature_id, mzs, intensities):
     # do intensity descent to find the peaks
     if args.interim_data_mode:
@@ -642,15 +646,43 @@ def ms2_intensity_descent(feature_id, mzs, intensities):
         ms2_peaks_df = pd.DataFrame(l, columns=['mz','intensity'])
         ms2_peaks_df.to_csv('./feature-{}-ms2-peaks-after-intensity-descent.csv'.format(feature_id), index=False, header=True)
 
-    return ms2_peaks_l
+    return np.array(ms2_peaks_l)
 
-# mzs and intensities are numpy arrays containing the peaks for this feature
+# create the bins for mass defect windows in Da space
+def generate_mass_defect_windows():
+    bin_edges_l = []
+    for nominal_mass in range(MASS_DEFECT_WINDOW_DA_MIN, MASS_DEFECT_WINDOW_DA_MAX):
+        mass_centre = nominal_mass * 1.00048  # from https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3184890/
+        width = 0.19 + (0.0001 * nominal_mass)
+        lower_mass = mass_centre - (width / 2)
+        upper_mass = mass_centre + (width / 2)
+        bin_edges_l.append(lower_mass)
+        bin_edges_l.append(upper_mass)
+    bins = np.asarray(bin_edges_l)
+    return bins
+
+# filter out the points that don't sit inside a mass defect window
+# ms2_peaks_a is a numpy array of simple_peak
+def remove_points_outside_mass_defect_windows(ms2_peaks_a, mass_defect_window_bins):
+    v = np.vectorize(lambda obj: obj.mz)
+    mz_a = v(ms2_peaks_a)
+    inside_mass_defect_window_a = np.full((len(mz_a)), True)
+    for charge in [3,2,1]:
+        decharged_mass_a = (mz_a * charge) - (PROTON_MASS * charge)
+        decharged_mass_bin_indexes = np.digitize(decharged_mass_a, mass_defect_window_bins)  # an odd index means the point is inside a mass defect window
+        mass_defect_window_indexes = (decharged_mass_bin_indexes % 2) == 1  # odd bin indexes are mass defect windows
+        not_mass_defect_window_indexes = (decharged_mass_bin_indexes % 2) == 0
+        inside_mass_defect_window_a[not_mass_defect_window_indexes] = False
+    result = ms2_peaks_a[inside_mass_defect_window_a]
+    return result
+
+# ms2_peaks_a is a numpy array of simple_peak containing the peaks for this feature
 @profile
-def deconvolute_ms2_peaks_for_feature(feature_id, ms2_peaks_l):
+def deconvolute_ms2_peaks_for_feature(feature_id, ms2_peaks_a):
     # deconvolute the peaks
     # see https://github.com/mobiusklein/ms_deisotope/blob/ee4b083ad7ab5f77722860ce2d6fdb751886271e/ms_deisotope/deconvolution/api.py#L17
     # see https://github.com/mobiusklein/ms_deisotope/blob/68e88e0ece3e76abdb2833ac82dca1800fe5bde1/ms_deisotope/deconvolution/peak_retention_strategy.py#L141
-    ms2_deconvoluted_peaks, _ = deconvolute_peaks(ms2_peaks_l, use_quick_charge=True, averagine=averagine.peptide, charge_range=(1,5), scorer=scoring.MSDeconVFitter(minimum_score=8, mass_error_tolerance=0.1), error_tolerance=4e-5, truncate_after=0.8, retention_strategy=peak_retention_strategy.TopNRetentionStrategy(n_peaks=100, base_peak_coefficient=1e-6, max_mass=1800.0))
+    ms2_deconvoluted_peaks, _ = deconvolute_peaks(ms2_peaks_a, use_quick_charge=True, averagine=averagine.peptide, charge_range=(1,5), scorer=scoring.MSDeconVFitter(minimum_score=8, mass_error_tolerance=0.1), error_tolerance=4e-5, truncate_after=0.8, retention_strategy=peak_retention_strategy.TopNRetentionStrategy(n_peaks=100, base_peak_coefficient=1e-6, max_mass=1800.0))
 
     ms2_deconvoluted_peaks_l = []
     for peak in ms2_deconvoluted_peaks:
@@ -700,7 +732,7 @@ def collate_spectra_for_feature(feature_df, ms2_deconvoluted_df):
 # binned_ms2_for_feature contains the whole binned ms2 frames for the feature - the band of mobility for each frame must be selected here
 @ray.remote
 @profile
-def deconvolute_ms2(feature_df, binned_ms2_for_feature, idx, total):
+def deconvolute_ms2(feature_df, binned_ms2_for_feature, mass_defect_bins, idx, total):
     result = {}
     print("processing feature idx {} of {}".format(idx+1, total))
     ms2_frames_l = []
@@ -720,6 +752,7 @@ def deconvolute_ms2(feature_df, binned_ms2_for_feature, idx, total):
     # join the list of dataframes into a single dataframe
     ms2_frame_df = pd.concat(ms2_frames_l)
 
+    # write out the raw data we gathered
     if args.interim_data_mode:
         ms2_frames_raw_df = pd.concat(ms2_frames_raw_l)
         ms2_frames_raw_df.to_csv('./feature-{}-ms2-raw-points.csv'.format(feature_df.feature_id), index=False, header=True)
@@ -730,9 +763,12 @@ def deconvolute_ms2(feature_df, binned_ms2_for_feature, idx, total):
         mz_array, intensity_array = bin_centroids_for_feature(ms2_frame_df[['mz', 'intensity', 'bin_idx']].to_numpy())
         if len(mz_array) > 0:
             # perform intensity descent to remove binning effects (e.g. peaks split by bin edges)
-            ms2_peaks_l = ms2_intensity_descent(feature_df.feature_id, mz_array, intensity_array)
+            ms2_peaks_a = ms2_intensity_descent(feature_df.feature_id, mz_array, intensity_array)
+            if args.remove_points_outside_mass_defect_windows:
+                # remove the points that don't sit in a mass defect window
+                ms2_peaks_a = remove_points_outside_mass_defect_windows(ms2_peaks_a, mass_defect_bins)
             # deconvolute the peaks
-            ms2_deconvoluted_df = deconvolute_ms2_peaks_for_feature(feature_df.feature_id, ms2_peaks_l)
+            ms2_deconvoluted_df = deconvolute_ms2_peaks_for_feature(feature_df.feature_id, ms2_peaks_a)
             if len(ms2_deconvoluted_df) >= 2:
                 # package it up for the MGF
                 result = collate_spectra_for_feature(feature_df, ms2_deconvoluted_df)
@@ -810,8 +846,9 @@ if args.new_mgf_spectra or args.check_ms1_mono_peak or args.new_dedup_ms1_featur
     if args.small_set_mode:
         ms1_deduped_df = ms1_deduped_df[:20]
     ms1_deduped_df.reset_index(drop=True, inplace=True)
+    mass_defect_window_bins = generate_mass_defect_windows()
     # mgf_spectra_l is a list of dictionaries
-    mgf_spectra_l = ray.get([deconvolute_ms2.remote(feature_df=feature_df, binned_ms2_for_feature=binned_ms2_df[binned_ms2_df.frame_id.isin(feature_df.ms2_frames)], idx=idx, total=len(ms1_deduped_df)) for idx,feature_df in ms1_deduped_df.iterrows()])
+    mgf_spectra_l = ray.get([deconvolute_ms2.remote(feature_df=feature_df, binned_ms2_for_feature=binned_ms2_df[binned_ms2_df.frame_id.isin(feature_df.ms2_frames)], mass_defect_bins=mass_defect_window_bins, idx=idx, total=len(ms1_deduped_df)) for idx,feature_df in ms1_deduped_df.iterrows()])
     stop_time = time.time()
     # write out the results for analysis
     with open(args.mgf_spectra_filename, 'wb') as f:
