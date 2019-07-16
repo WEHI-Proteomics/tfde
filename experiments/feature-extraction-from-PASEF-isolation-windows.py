@@ -670,7 +670,7 @@ def remove_points_outside_mass_defect_windows(ms2_peaks_a, mass_defect_window_bi
     for charge in [3,2,1]:
         decharged_mass_a = (mz_a * charge) - (PROTON_MASS * charge)
         decharged_mass_bin_indexes = np.digitize(decharged_mass_a, mass_defect_window_bins)  # an odd index means the point is inside a mass defect window
-        mass_defect_window_indexes = (decharged_mass_bin_indexes % 2) == 1  # odd bin indexes are mass defect windows
+        # mass_defect_window_indexes = (decharged_mass_bin_indexes % 2) == 1  # odd bin indexes are mass defect windows
         not_mass_defect_window_indexes = (decharged_mass_bin_indexes % 2) == 0
         inside_mass_defect_window_a[not_mass_defect_window_indexes] = False
     result = ms2_peaks_a[inside_mass_defect_window_a]
