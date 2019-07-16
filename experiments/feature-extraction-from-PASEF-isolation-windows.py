@@ -163,6 +163,7 @@ with ray.profile("load isolation window information"):
     # filter out isolation windows that don't fit in the database subset we have loaded
     isolation_window_df = isolation_window_df[(isolation_window_df.retention_time_secs >= (args.rt_lower - args.rt_base_peak_width_secs)) & (isolation_window_df.retention_time_secs <= (args.rt_upper + args.rt_base_peak_width_secs))]
     print("loaded {} isolation windows from {}".format(len(isolation_window_df), RAW_DATABASE_NAME))
+    isolation_window_df.to_pickle('./isolation_windows.pkl')
 
 def time_this(f):
     def timed_wrapper(*args, **kw):
@@ -664,6 +665,7 @@ def generate_mass_defect_windows():
 vectorise_mz = np.vectorize(lambda obj: obj.mz)
 vectorise_intensity = np.vectorize(lambda obj: obj.intensity)
 
+# return a point if, in its imaginary charge-3, charge-2, or charge-1 de-charged state, it fits inside at least one mass defect window
 def remove_points_outside_mass_defect_windows(ms2_peaks_a, mass_defect_window_bins):
     mz_a = vectorise_mz(ms2_peaks_a)
     inside_mass_defect_window_a = np.full((len(mz_a)), False)
