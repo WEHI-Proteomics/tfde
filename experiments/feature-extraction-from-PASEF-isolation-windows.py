@@ -20,6 +20,7 @@ DELTA_MZ = 1.003355     # Mass difference between Carbon-12 and Carbon-13 isotop
 INSTRUMENT_RESOLUTION = 40000.0
 MASS_DEFECT_WINDOW_DA_MIN = 100  # range in Daltons
 MASS_DEFECT_WINDOW_DA_MAX = 5200
+SATURATION_INTENSITY = 3000
 
 # so we can use profiling without removing @profile
 try:
@@ -289,8 +290,9 @@ def collate_feature_characteristics(row, group_df, fe_raw_points_df, ms1_raw_poi
             rt_lower = wide_rt_lower
             rt_upper = wide_rt_upper
 
-        # now that we have the full extent of the feature in RT, recalculate the feature m/z to gain the most mass accuracy
-        updated_feature_monoisotopic_mz = mz_centroid(wide_rt_monoisotopic_raw_points_df.intensity.to_numpy(), wide_rt_monoisotopic_raw_points_df.mz.to_numpy())
+        # now that we have the full extent of the feature in RT, recalculate the feature m/z to gain the most mass accuracy (without points in saturation)
+        raw_mono_points_without_saturation_df = wide_rt_monoisotopic_raw_points_df[wide_rt_monoisotopic_raw_points_df.intensity < SATURATION_INTENSITY]
+        updated_feature_monoisotopic_mz = mz_centroid(raw_mono_points_without_saturation_df.intensity.to_numpy(), raw_mono_points_without_saturation_df.mz.to_numpy())
         feature_intensity_full_rt_extent = int(wide_rt_monoisotopic_raw_points_df.intensity.sum())
 
         # find the isolation windows overlapping the feature's mono or second peak, plus scan and RT
