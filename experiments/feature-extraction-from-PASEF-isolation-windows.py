@@ -182,6 +182,7 @@ def standard_deviation(mz):
     FWHM = mz / INSTRUMENT_RESOLUTION
     return FWHM / 2.35482
 
+# takes a numpy array of intensity, and another of mz
 @njit(fastmath=True)
 def mz_centroid(_int_f, _mz_f):
     return ((_int_f/_int_f.sum()) * _mz_f).sum()
@@ -219,7 +220,7 @@ def collate_feature_characteristics(row, group_df, fe_raw_points_df, ms1_raw_poi
     result = None
 
     feature_monoisotopic_mz = row.mono_mz
-    feature_intensity = int(row.intensity)
+    feature_intensity_isolation_window = int(row.intensity)
     second_peak_mz = row.second_peak_mz
     feature_charge = int(row.charge)
     feature_envelope = row.envelope
@@ -288,9 +289,13 @@ def collate_feature_characteristics(row, group_df, fe_raw_points_df, ms1_raw_poi
             rt_lower = wide_rt_lower
             rt_upper = wide_rt_upper
 
+        # now that we have the full extent of the feature in RT, recalculate the feature m/z to gain the most mass accuracy
+        updated_feature_monoisotopic_mz = mz_centroid(wide_rt_monoisotopic_raw_points_df.intensity.to_numpy(), wide_rt_monoisotopic_raw_points_df.mz.to_numpy())
+        feature_intensity_full_rt_extent = int(wide_rt_monoisotopic_raw_points_df.intensity.sum())
+
         # find the isolation windows overlapping the feature's mono or second peak, plus scan and RT
         indexes = isolation_window_df.index[
-                                    (((isolation_window_df.mz_upper >= feature_monoisotopic_mz) & (isolation_window_df.mz_lower <= feature_monoisotopic_mz)) |
+                                    (((isolation_window_df.mz_upper >= updated_feature_monoisotopic_mz) & (isolation_window_df.mz_lower <= updated_feature_monoisotopic_mz)) |
                                     ((isolation_window_df.mz_upper >= second_peak_mz) & (isolation_window_df.mz_lower <= second_peak_mz))) &
                                     (isolation_window_df.ScanNumEnd >= scan_apex) &
                                     (isolation_window_df.ScanNumBegin <= scan_apex) &
@@ -302,7 +307,7 @@ def collate_feature_characteristics(row, group_df, fe_raw_points_df, ms1_raw_poi
         if len(isolation_windows_overlapping_feature_df) > 0:
             ms2_frames = list(isolation_windows_overlapping_feature_df.Frame)
             ms2_scan_ranges = [tuple(x) for x in isolation_windows_overlapping_feature_df[['ScanNumBegin','ScanNumEnd']].values]
-            result = (feature_monoisotopic_mz, feature_charge, feature_intensity, round(scan_apex,2), mobility_curve_fit, round(scan_lower,2), round(scan_upper,2), round(rt_apex,2), rt_curve_fit, round(rt_lower,2), round(rt_upper,2), precursor_id, ms2_frames, ms2_scan_ranges, feature_envelope)
+            result = (updated_feature_monoisotopic_mz, feature_charge, feature_intensity_isolation_window, feature_intensity_full_rt_extent, round(scan_apex,2), mobility_curve_fit, round(scan_lower,2), round(scan_upper,2), round(rt_apex,2), rt_curve_fit, round(rt_lower,2), round(rt_upper,2), precursor_id, ms2_frames, ms2_scan_ranges, feature_envelope)
 
     return result
 
@@ -411,7 +416,7 @@ def find_features(group_number, group_df):
     ms1_characteristics_l = list(ms1_deconvoluted_peaks_df.apply(lambda row: collate_feature_characteristics(row, group_df, fe_raw_points_df, ms1_raw_points_df), axis=1).values)
     ms1_characteristics_l = [x for x in ms1_characteristics_l if x != None]  # clean up empty rows
     if len(ms1_characteristics_l) > 0:
-        ms1_characteristics_df = pd.DataFrame(ms1_characteristics_l, columns=['monoisotopic_mz', 'charge', 'intensity', 'scan_apex', 'scan_curve_fit', 'scan_lower', 'scan_upper', 'rt_apex', 'rt_curve_fit', 'rt_lower', 'rt_upper', 'precursor_id', 'ms2_frames', 'ms2_scan_ranges','envelope'])
+        ms1_characteristics_df = pd.DataFrame(ms1_characteristics_l, columns=['monoisotopic_mz', 'charge', 'intensity', 'intensity_full_rt_extent', 'scan_apex', 'scan_curve_fit', 'scan_lower', 'scan_upper', 'rt_apex', 'rt_curve_fit', 'rt_lower', 'rt_upper', 'precursor_id', 'ms2_frames', 'ms2_scan_ranges','envelope'])
     else:
         ms1_characteristics_df = None
 
@@ -720,11 +725,11 @@ def collate_spectra_for_feature(feature_df, ms2_deconvoluted_df):
     pairs_df = ms2_deconvoluted_df[['mz', 'intensity']].copy().sort_values(by=['mz'], ascending=True)
     spectrum = {}
     spectrum["m/z array"] = pairs_df.mz.values
-    spectrum["intensity array"] = pairs_df.intensity.values
+    spectrum["intensity array"] = pairs_df.intensity.values.astype(int)
     params = {}
-    params["TITLE"] = "RawFile: {} Charge: {} FeatureIntensity: {} Feature#: {} RtApex: {}".format(os.path.basename(CONVERTED_DATABASE_NAME).split('.')[0], feature_df.charge, feature_df.intensity, feature_df.feature_id, round(feature_df.rt_apex,2))
+    params["TITLE"] = "RawFile: {} Charge: {} FeatureIntensity: {} IntensityFullExtent: {} Feature#: {} RtApex: {} Precursor: {}".format(os.path.basename(CONVERTED_DATABASE_NAME).split('.')[0], feature_df.charge, round(feature_df.intensity), round(feature_df.intensity_full_rt_extent), feature_df.feature_id, round(feature_df.rt_apex,2), feature_df.precursor_id)
     params["INSTRUMENT"] = "ESI-QUAD-TOF"
-    params["PEPMASS"] = "{} {}".format(round(feature_df.monoisotopic_mz,6), feature_df.intensity)
+    params["PEPMASS"] = "{} {}".format(round(feature_df.monoisotopic_mz,6), round(feature_df.intensity_full_rt_extent))
     params["CHARGE"] = "{}+".format(feature_df.charge)
     params["RTINSECONDS"] = "{}".format(round(feature_df.rt_apex,2))
     spectrum["params"] = params
