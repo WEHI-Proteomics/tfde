@@ -751,50 +751,6 @@ else:
     print("loading checked ms1 monoisotopic peaks")
     checked_features_df = pd.read_pickle(args.checked_ms1_mono_peak_filename)
 
-if args.new_prebin_ms2:
-    # bin ms2 frames
-    print("binning ms2 frames")
-    start_time = time.time()
-    with ray.profile("bin_ms2_frames"):
-        binned_ms2_df = bin_ms2_frames()
-        binned_ms2_df.to_pickle(args.pre_binned_ms2_filename)
-    stop_time = time.time()
-    print("new_prebin_ms2: {} seconds".format(round(stop_time-start_time,1)))
-    print("binned {} ms2 points".format(len(binned_ms2_df)))
-else:
-    # load previously binned ms2
-    print("loading pre-binned ms2 frames")
-    binned_ms2_df = pd.read_pickle(args.pre_binned_ms2_filename)
-    print("loaded {} pre-binned ms2 points".format(len(binned_ms2_df)))
-
-if args.new_mgf_spectra or args.check_ms1_mono_peak or args.new_ms1_features or args.new_prebin_ms2:
-    # find ms2 peaks for each feature found in ms1, and collate the spectra for the MGF
-    print("finding peaks in ms2 for each feature")
-    start_time = time.time()
-    if args.small_set_mode:
-        checked_features_df = checked_features_df[:20]
-    checked_features_df.reset_index(drop=True, inplace=True)
-    mass_defect_window_bins = generate_mass_defect_windows()
-    # mgf_spectra_l is a list of dictionaries
-    mgf_spectra_l = ray.get([deconvolute_ms2.remote(feature_df=feature_df, binned_ms2_for_feature=binned_ms2_df[binned_ms2_df.frame_id.isin(feature_df.ms2_frames)], mass_defect_bins=mass_defect_window_bins, idx=idx, total=len(checked_features_df)) for idx,feature_df in checked_features_df.iterrows()])
-    stop_time = time.time()
-    # write out the results for analysis
-    with open(args.mgf_spectra_filename, 'wb') as f:
-        pickle.dump(mgf_spectra_l, f)
-    print("new_mgf_spectra: {} seconds".format(round(stop_time-start_time,1)))
-else:
-    # load previously saved mgf spectra
-    with open(args.mgf_spectra_filename, 'rb') as f:
-        mgf_spectra_l = pickle.load(f)
-    print("loaded the mgf spectra from {}".format(args.mgf_spectra_filename))
-
-# generate the MGF for all the features
-print("generating the MGF: {}".format(args.mgf_filename))
-with ray.profile("write MGF"):
-    if os.path.isfile(args.mgf_filename):
-        os.remove(args.mgf_filename)
-    mgf.write(output=args.mgf_filename, spectra=mgf_spectra_l)
-
 stop_run = time.time()
 info.append(("run processing time (sec)", round(stop_run-start_run,1)))
 info.append(("processed", time.ctime()))
