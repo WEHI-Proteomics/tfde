@@ -50,17 +50,11 @@ parser.add_argument('-nstddevmz','--number_of_std_dev_mz', type=float, default=3
 parser.add_argument('-ms1phre','--max_ms1_peak_height_ratio_error', type=float, default=0.3, help='Maximum error for a feature\'s monoisotopic peak height ratio.', required=False)
 
 # commands
-parser.add_argument('-npbms2','--new_prebin_ms2', action='store_true', help='Create a new pre-bin file for ms2 frames.')
-parser.add_argument('-pbms2fn','--pre_binned_ms2_filename', type=str, default='./pre_binned_ms2.pkl', help='File containing previously pre-binned ms2 frames.', required=False)
-#
 parser.add_argument('-nms1f','--new_ms1_features', action='store_true', help='Create a new ms1 features file.')
 parser.add_argument('-ms1ffn','--ms1_features_filename', type=str, default='./ms1_df.pkl', help='File containing ms1 features.', required=False)
 #
 parser.add_argument('-cmms1','--check_ms1_mono_peak', action='store_true', help='Check the monoisotopic peak for each feature, moving it if necessary.')
 parser.add_argument('-cmms1fn','--checked_ms1_mono_peak_filename', type=str, default='./checked_ms1_features.pkl', help='File containing mono-checked features.', required=False)
-#
-parser.add_argument('-nmgf','--new_mgf_spectra', action='store_true', help='Create a new mgf spectra file.')
-parser.add_argument('-mgffn','--mgf_spectra_filename', type=str, default='./mgf_spectra.pkl', help='File containing mgf spectra.', required=False)
 # modes
 parser.add_argument('-cl','--cluster_mode', action='store_true', help='Run on a cluster.')
 parser.add_argument('-ssm','--small_set_mode', action='store_true', help='A small subset of the data for testing purposes.')
@@ -99,28 +93,12 @@ if not os.path.isfile(CONVERTED_DATABASE_NAME):
     print("The converted database doesn't exist: {}".format(CONVERTED_DATABASE_NAME))
     sys.exit(1)
 
-if args.new_prebin_ms2:
-    if os.path.isfile(args.pre_binned_ms2_filename):
-        os.remove(args.pre_binned_ms2_filename)
-else:
-    if not os.path.isfile(args.pre_binned_ms2_filename):
-        print("The pre-binned ms2 file is required but doesn't exist: {}".format(args.pre_binned_ms2_filename))
-        sys.exit(1)
-
 if args.new_ms1_features:
     if os.path.isfile(args.ms1_features_filename):
         os.remove(args.ms1_features_filename)
 else:
     if not os.path.isfile(args.ms1_features_filename):
         print("The ms1 features file is required but doesn't exist: {}".format(args.ms1_features_filename))
-        sys.exit(1)
-
-if args.new_mgf_spectra:
-    if os.path.isfile(args.mgf_spectra_filename):
-        os.remove(args.mgf_spectra_filename)
-else:
-    if not os.path.isfile(args.mgf_spectra_filename):
-        print("The mgf spectra file is required but doesn't exist: {}".format(args.mgf_spectra_filename))
         sys.exit(1)
 
 # make sure the right indexes are created in the source database
@@ -176,18 +154,6 @@ def standard_deviation(mz):
 @njit(fastmath=True)
 def mz_centroid(_int_f, _mz_f):
     return ((_int_f/_int_f.sum()) * _mz_f).sum()
-
-def bin_ms2_frames():
-    # get the raw points for all ms2 frames
-    ms2_frame_ids = tuple(ms2_frame_properties_df.frame_id)
-    db_conn = sqlite3.connect(CONVERTED_DATABASE_NAME)
-    ms2_raw_points_df = pd.read_sql_query("select frame_id,mz,scan,intensity from frames where frame_id in {} and mz >= {} and mz <= {} and intensity > 0".format(ms2_frame_ids, args.ms2_lower, args.ms2_upper), db_conn)
-    db_conn.close()
-
-    # arrange the points into bins
-    ms2_bins = np.arange(start=args.ms2_lower, stop=args.ms2_upper+args.ms2_bin_width, step=args.ms2_bin_width)  # go slightly wider to accomodate the maximum value
-    ms2_raw_points_df['bin_idx'] = np.digitize(ms2_raw_points_df.mz, ms2_bins).astype(int)
-    return ms2_raw_points_df
 
 def find_ms1_frames_for_ms2_frame_range(ms2_frame_ids, number_either_side):
     lower_ms2_frame = min(ms2_frame_ids)
@@ -553,41 +519,6 @@ def check_monoisotopic_peak(feature, idx, total):
     feature_d['original_phr'] = observed_ratio
     return feature_d
 
-# returns a numpy array of simple_peak
-def ms2_intensity_descent(feature_id, mzs, intensities):
-    # do intensity descent to find the peaks
-    if args.interim_data_mode:
-        df = pd.DataFrame({'mz':mzs,'intensity':intensities})
-        df.to_csv('./feature-{}-ms2-peaks-before-intensity-descent.csv'.format(feature_id), index=False, header=True)
-
-    # intensity descent
-    ms2_peaks_l = []
-    while len(mzs) > 0:
-        # find the most intense point
-        max_intensity_index = np.argmax(intensities)
-        peak_mz = mzs[max_intensity_index]
-        peak_mz_lower = peak_mz - args.ms2_peak_delta
-        peak_mz_upper = peak_mz + args.ms2_peak_delta
-
-        # get all the raw points within this m/z region
-        peak_indexes = np.where((mzs >= peak_mz_lower) & (mzs <= peak_mz_upper))
-        if len(peak_indexes) > 0:
-            mz_cent = mz_centroid(intensities[peak_indexes], mzs[peak_indexes])
-            summed_intensity = intensities[peak_indexes].sum()
-            ms2_peaks_l.append(simple_peak(mz=mz_cent, intensity=summed_intensity))
-            # remove the raw points assigned to this peak
-            intensities = np.delete(intensities, peak_indexes)
-            mzs = np.delete(mzs, peak_indexes)
-
-    if args.interim_data_mode:
-        l = []
-        for p in ms2_peaks_l:
-            l.append((p.mz, p.intensity))
-        ms2_peaks_df = pd.DataFrame(l, columns=['mz','intensity'])
-        ms2_peaks_df.to_csv('./feature-{}-ms2-peaks-after-intensity-descent.csv'.format(feature_id), index=False, header=True)
-
-    return np.array(ms2_peaks_l)
-
 # create the bins for mass defect windows in Da space
 def generate_mass_defect_windows():
     bin_edges_l = []
@@ -615,105 +546,6 @@ def remove_points_outside_mass_defect_windows(ms2_peaks_a, mass_defect_window_bi
         inside_mass_defect_window_a[mass_defect_window_indexes] = True
     result = ms2_peaks_a[inside_mass_defect_window_a]
     return result
-
-# ms2_peaks_a is a numpy array of simple_peak containing the peaks for this feature
-@profile
-def deconvolute_ms2_peaks_for_feature(feature_id, ms2_peaks_a):
-    # deconvolute the peaks
-    # see https://github.com/mobiusklein/ms_deisotope/blob/ee4b083ad7ab5f77722860ce2d6fdb751886271e/ms_deisotope/deconvolution/api.py#L17
-    # see https://github.com/mobiusklein/ms_deisotope/blob/68e88e0ece3e76abdb2833ac82dca1800fe5bde1/ms_deisotope/deconvolution/peak_retention_strategy.py#L141
-    ms2_deconvoluted_peaks, _ = deconvolute_peaks(ms2_peaks_a, use_quick_charge=True, averagine=averagine.peptide, charge_range=(1,5), scorer=scoring.MSDeconVFitter(minimum_score=8, mass_error_tolerance=0.1), error_tolerance=4e-5, truncate_after=0.8, retention_strategy=peak_retention_strategy.TopNRetentionStrategy(n_peaks=100, base_peak_coefficient=1e-6, max_mass=1800.0))
-
-    ms2_deconvoluted_peaks_l = []
-    for peak in ms2_deconvoluted_peaks:
-        ms2_deconvoluted_peaks_l.append((round(peak.neutral_mass+PROTON_MASS, 4), int(peak.charge), peak.intensity, peak.score, peak.signal_to_noise))
-
-    ms2_deconvoluted_peaks_df = pd.DataFrame(ms2_deconvoluted_peaks_l, columns=['mz','charge','intensity','score','SN'])
-
-    if args.interim_data_mode:
-        ms2_deconvoluted_peaks_df.to_csv('./feature-{}-ms2-peaks-after-deconvolution.csv'.format(feature_id), index=False, header=True)
-
-    return ms2_deconvoluted_peaks_df
-
-# sum and centroid the ms2 bins for this feature
-@njit(fastmath=True)
-def bin_centroids_for_feature(binned_ms2_for_feature_a):
-    # calculate the bin centroid and summed intensity for the combined frames
-    # Peppe's code fragment - binned_ms2_for_feature_a is a numpy array; column 0: m/z, column 1: intensity, column 2: ID for the bin index
-    unique_subrank_array = np.unique(binned_ms2_for_feature_a[:,2])
-
-    int_weightArray = np.asarray([[value] * binned_ms2_for_feature_a.shape[0] for value in binned_ms2_for_feature_a[:,2]])
-    int_weightArray = ((int_weightArray == binned_ms2_for_feature_a[:,2]) * binned_ms2_for_feature_a[:,1]).sum(axis=1)
-    int_weightArray = binned_ms2_for_feature_a[:,1]/int_weightArray
-
-    mz_meanArray = np.asarray([[value] * binned_ms2_for_feature_a.shape[0] for value in unique_subrank_array])
-    mz_meanArray = ((mz_meanArray == binned_ms2_for_feature_a[:,2]) * (binned_ms2_for_feature_a[:,0]*int_weightArray)).sum(axis=1)
-
-    int_sumArray = np.asarray([[value] * binned_ms2_for_feature_a.shape[0] for value in unique_subrank_array])
-    int_sumArray = ((int_sumArray == binned_ms2_for_feature_a[:,2]) * binned_ms2_for_feature_a[:,1]).sum(axis=1)
-
-    return mz_meanArray, int_sumArray
-
-def collate_spectra_for_feature(feature_df, ms2_deconvoluted_df):
-    # append the monoisotopic and the ms2 fragments to the list for MGF creation
-    pairs_df = ms2_deconvoluted_df[['mz', 'intensity']].copy().sort_values(by=['mz'], ascending=True)
-    spectrum = {}
-    spectrum["m/z array"] = pairs_df.mz.values
-    spectrum["intensity array"] = pairs_df.intensity.values.astype(int)
-    params = {}
-    params["TITLE"] = "RawFile: {} Charge: {} FeatureIntensity: {} IntensityFullExtent: {} Feature#: {} RtApex: {} Precursor: {}".format(os.path.basename(CONVERTED_DATABASE_NAME).split('.')[0], feature_df.charge, round(feature_df.intensity), round(feature_df.intensity_full_rt_extent), feature_df.feature_id, round(feature_df.rt_apex,2), feature_df.precursor_id)
-    params["INSTRUMENT"] = "ESI-QUAD-TOF"
-    params["PEPMASS"] = "{} {}".format(round(feature_df.monoisotopic_mz,6), round(feature_df.intensity_full_rt_extent))
-    params["CHARGE"] = "{}+".format(feature_df.charge)
-    params["RTINSECONDS"] = "{}".format(round(feature_df.rt_apex,2))
-    spectrum["params"] = params
-    return spectrum
-
-# binned_ms2_for_feature contains the whole binned ms2 frames for the feature - the band of mobility for each frame must be selected here
-@ray.remote
-@profile
-def deconvolute_ms2(feature_df, binned_ms2_for_feature, mass_defect_bins, idx, total):
-    result = {}
-    print("processing feature idx {} of {}".format(idx+1, total))
-    ms2_frames_l = []
-    ms2_frames_raw_l = []
-    for idx,ms2_frame_id in enumerate(feature_df.ms2_frames):
-        # get the binned ms2 values for this frame and mobility range
-        scan_lower = feature_df.ms2_scan_ranges[idx][0]
-        scan_upper = feature_df.ms2_scan_ranges[idx][1]
-        ms2_frames_l.append(binned_ms2_for_feature[(binned_ms2_for_feature.frame_id == ms2_frame_id) & (binned_ms2_for_feature.scan >= scan_lower) & (binned_ms2_for_feature.scan <= scan_upper)])
-        if args.interim_data_mode:
-            # for debug, temporarily select the raw points from the ms2 frame for this mobility range as well
-            db_conn = sqlite3.connect(CONVERTED_DATABASE_NAME)
-            ms2_raw_points_df = pd.read_sql_query("select frame_id,mz,intensity from frames where frame_id == {} and scan >= {} and scan <= {} and intensity > 0".format(ms2_frame_id, scan_lower, scan_upper), db_conn)
-            db_conn.close()
-            ms2_frames_raw_l.append(ms2_raw_points_df)
-
-    # join the list of dataframes into a single dataframe
-    ms2_frame_df = pd.concat(ms2_frames_l)
-
-    # write out the raw data we gathered
-    if args.interim_data_mode:
-        ms2_frames_raw_df = pd.concat(ms2_frames_raw_l)
-        ms2_frames_raw_df.to_csv('./feature-{}-ms2-raw-points.csv'.format(feature_df.feature_id), index=False, header=True)
-
-    # derive the spectra
-    if len(ms2_frame_df) > 0:
-        # detect peaks
-        mz_array, intensity_array = bin_centroids_for_feature(ms2_frame_df[['mz', 'intensity', 'bin_idx']].to_numpy())
-        if len(mz_array) > 0:
-            # perform intensity descent to remove binning effects (e.g. peaks split by bin edges)
-            ms2_peaks_a = ms2_intensity_descent(feature_df.feature_id, mz_array, intensity_array)
-            if args.remove_points_outside_mass_defect_windows:
-                # remove the points that don't sit in a mass defect window
-                ms2_peaks_a = remove_points_outside_mass_defect_windows(ms2_peaks_a, mass_defect_bins)
-            # deconvolute the peaks
-            ms2_deconvoluted_df = deconvolute_ms2_peaks_for_feature(feature_df.feature_id, ms2_peaks_a)
-            if len(ms2_deconvoluted_df) >= 2:
-                # package it up for the MGF
-                result = collate_spectra_for_feature(feature_df, ms2_deconvoluted_df)
-    return result
-
 
 #########################################################
 if args.new_ms1_features:
