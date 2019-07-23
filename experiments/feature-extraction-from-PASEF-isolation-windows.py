@@ -284,21 +284,7 @@ def collate_feature_characteristics(row, group_df, fe_raw_points_df, ms1_raw_poi
         updated_feature_monoisotopic_mz = mz_centroid(raw_mono_points_without_saturation_df.intensity.to_numpy(), raw_mono_points_without_saturation_df.mz.to_numpy())
         feature_intensity_full_rt_extent = int(wide_rt_monoisotopic_raw_points_df.intensity.sum())
 
-        # find the isolation windows overlapping the feature's mono or second peak, plus scan and RT
-        indexes = isolation_window_df.index[
-                                    (((isolation_window_df.mz_upper >= updated_feature_monoisotopic_mz) & (isolation_window_df.mz_lower <= updated_feature_monoisotopic_mz)) |
-                                    ((isolation_window_df.mz_upper >= second_peak_mz) & (isolation_window_df.mz_lower <= second_peak_mz))) &
-                                    (isolation_window_df.ScanNumEnd >= scan_apex) &
-                                    (isolation_window_df.ScanNumBegin <= scan_apex) &
-                                    (isolation_window_df.retention_time_secs >= rt_lower) &
-                                    (isolation_window_df.retention_time_secs <= rt_upper)
-                               ]
-        isolation_windows_overlapping_feature_df = isolation_window_df.loc[indexes]
-
-        if len(isolation_windows_overlapping_feature_df) > 0:
-            ms2_frames = list(isolation_windows_overlapping_feature_df.Frame)
-            ms2_scan_ranges = [tuple(x) for x in isolation_windows_overlapping_feature_df[['ScanNumBegin','ScanNumEnd']].values]
-            result = (updated_feature_monoisotopic_mz, feature_charge, feature_intensity_isolation_window, feature_intensity_full_rt_extent, round(scan_apex,2), mobility_curve_fit, round(scan_lower,2), round(scan_upper,2), round(rt_apex,2), rt_curve_fit, round(rt_lower,2), round(rt_upper,2), precursor_id, ms2_frames, ms2_scan_ranges, feature_envelope)
+        result = (updated_feature_monoisotopic_mz, feature_charge, feature_intensity_isolation_window, feature_intensity_full_rt_extent, round(scan_apex,2), mobility_curve_fit, round(scan_lower,2), round(scan_upper,2), round(rt_apex,2), rt_curve_fit, round(rt_lower,2), round(rt_upper,2), precursor_id, feature_envelope)
 
     return result
 
@@ -407,7 +393,7 @@ def find_features(group_number, group_df):
     ms1_characteristics_l = list(ms1_deconvoluted_peaks_df.apply(lambda row: collate_feature_characteristics(row, group_df, fe_raw_points_df, ms1_raw_points_df), axis=1).values)
     ms1_characteristics_l = [x for x in ms1_characteristics_l if x != None]  # clean up empty rows
     if len(ms1_characteristics_l) > 0:
-        ms1_characteristics_df = pd.DataFrame(ms1_characteristics_l, columns=['monoisotopic_mz', 'charge', 'intensity', 'intensity_full_rt_extent', 'scan_apex', 'scan_curve_fit', 'scan_lower', 'scan_upper', 'rt_apex', 'rt_curve_fit', 'rt_lower', 'rt_upper', 'precursor_id', 'ms2_frames', 'ms2_scan_ranges','envelope'])
+        ms1_characteristics_df = pd.DataFrame(ms1_characteristics_l, columns=['monoisotopic_mz', 'charge', 'intensity', 'intensity_full_rt_extent', 'scan_apex', 'scan_curve_fit', 'scan_lower', 'scan_upper', 'rt_apex', 'rt_curve_fit', 'rt_lower', 'rt_upper', 'precursor_id', 'envelope'])
     else:
         ms1_characteristics_df = None
 
