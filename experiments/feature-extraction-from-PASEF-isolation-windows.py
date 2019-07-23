@@ -59,9 +59,6 @@ parser.add_argument('-ms1ffn','--ms1_features_filename', type=str, default='./ms
 parser.add_argument('-cmms1','--check_ms1_mono_peak', action='store_true', help='Check the monoisotopic peak for each feature, moving it if necessary.')
 parser.add_argument('-cmms1fn','--checked_ms1_mono_peak_filename', type=str, default='./checked_ms1_features.pkl', help='File containing mono-checked features.', required=False)
 #
-parser.add_argument('-nddms1','--new_dedup_ms1_features', action='store_true', help='Create a new de-duped ms1 features file.')
-parser.add_argument('-ddms1fn','--dedup_ms1_filename', type=str, default='./ms1_deduped_df.pkl', help='File containing de-duped ms1 features.', required=False)
-#
 parser.add_argument('-nmgf','--new_mgf_spectra', action='store_true', help='Create a new mgf spectra file.')
 parser.add_argument('-mgffn','--mgf_spectra_filename', type=str, default='./mgf_spectra.pkl', help='File containing mgf spectra.', required=False)
 # modes
@@ -116,14 +113,6 @@ if args.new_ms1_features:
 else:
     if not os.path.isfile(args.ms1_features_filename):
         print("The ms1 features file is required but doesn't exist: {}".format(args.ms1_features_filename))
-        sys.exit(1)
-
-if args.new_dedup_ms1_features:
-    if os.path.isfile(args.dedup_ms1_filename):
-        os.remove(args.dedup_ms1_filename)
-else:
-    if not os.path.isfile(args.dedup_ms1_filename):
-        print("The de-duped ms1 features file is required but doesn't exist: {}".format(args.dedup_ms1_filename))
         sys.exit(1)
 
 if args.new_mgf_spectra:
@@ -423,49 +412,6 @@ def find_features(group_number, group_df):
         ms1_characteristics_df = None
 
     return ms1_characteristics_df
-
-def remove_ms1_duplicates(ms1_features_df):
-    scratch_df = ms1_features_df.copy() # take a copy because we're going to delete stuff
-    scratch_df.sort_values(by=['intensity'], ascending=False, inplace=True)
-    MZ_TOLERANCE_PERCENT = args.ms1_dedup_mz_tolerance_ppm * 10**-4
-    ms1_features_l = []
-    while len(scratch_df) > 0:
-        scratch_df.reset_index(drop=True, inplace=True)
-        # take the first row
-        row = scratch_df.iloc[0]
-        mz = row.monoisotopic_mz
-        scan = row.scan_apex
-        rt = row.rt_apex
-
-        # calculate the matching bounds
-        mz_ppm_tolerance = mz * MZ_TOLERANCE_PERCENT / 100
-        mz_lower = mz - mz_ppm_tolerance
-        mz_upper = mz + mz_ppm_tolerance
-        scan_lower = row.scan_lower
-        scan_upper = row.scan_upper
-        rt_lower = row.rt_lower
-        rt_upper = row.rt_upper
-
-        # find the matches within these tolerances
-        cond_1 = (scratch_df.monoisotopic_mz >= mz_lower) & (scratch_df.monoisotopic_mz <= mz_upper) & (scratch_df.scan_apex >= scan_lower) & (scratch_df.scan_apex <= scan_upper) & (scratch_df.rt_apex >= rt_lower) & (scratch_df.rt_apex <= rt_upper)
-        matching_rows = scratch_df.loc[cond_1, :].copy()
-        # of those, find the most intense
-        cond_2 = (matching_rows.intensity == matching_rows.intensity.max())
-        most_intense_row = matching_rows.loc[cond_2, :].copy()
-        most_intense_row['duplicates'] = len(matching_rows)
-        # take the union of the ms2 frames
-        # if len(matching_rows) > 1:
-        #     most_intense_row.iloc[0].ms2_frames = list(np.unique(matching_rows.ms2_frames.to_list()))
-        # add it to the list
-        ms1_features_l.append(tuple(most_intense_row.iloc[0]))
-        # drop the duplicates
-        scratch_df.drop(matching_rows.index, inplace=True)
-
-    cols = scratch_df.columns.append(pd.Index(['duplicates']))
-    ms1_deduped_df = pd.DataFrame(ms1_features_l, columns=cols)
-    ms1_deduped_df.sort_values(by=['intensity'], ascending=False, inplace=True)
-    ms1_deduped_df["feature_id"] = np.arange(start=1, stop=len(ms1_deduped_df)+1)
-    return ms1_deduped_df
 
 # calculate the centroid, intensity of a bin
 def calc_bin_centroid(bin_df):
@@ -792,6 +738,9 @@ if args.new_ms1_features:
         isolation_window_df = isolation_window_df[:20]
     ms1_df_l = ray.get([find_features.remote(group_number=idx+1, group_df=group_df) for idx,group_df in isolation_window_df.groupby('Precursor')])
     ms1_df = pd.concat(ms1_df_l)  # combines a list of dataframes into a single dataframe
+    # assign an ID to each feature
+    ms1_df.sort_values(by=['intensity'], ascending=False, inplace=True)
+    ms1_df["feature_id"] = np.arange(start=1, stop=len(ms1_df)+1)
     ms1_df.to_pickle(args.ms1_features_filename)
     stop_time = time.time()
     print("new_ms1_features: {} seconds".format(round(stop_time-start_time,1)))
@@ -816,21 +765,6 @@ else:
     print("loading checked ms1 monoisotopic peaks")
     checked_features_df = pd.read_pickle(args.checked_ms1_mono_peak_filename)
 
-if args.new_dedup_ms1_features or args.check_ms1_mono_peak or args.new_ms1_features:
-    # remove duplicates in ms1
-    print("removing duplicates")
-    start_time = time.time()
-    ms1_deduped_df = remove_ms1_duplicates(checked_features_df)
-    ms1_deduped_df.to_pickle(args.dedup_ms1_filename)
-    stop_time = time.time()
-    print("new_dedup_ms1_features: {} seconds".format(round(stop_time-start_time,1)))
-    print("removed {} duplicates - processing {} features".format(len(checked_features_df)-len(ms1_deduped_df), len(ms1_deduped_df)))
-else:
-    # load previously de-duped ms1 features
-    print("loading de-duped ms1 features")
-    ms1_deduped_df = pd.read_pickle(args.dedup_ms1_filename)
-    print("loaded {} features".format(len(ms1_deduped_df)))
-
 if args.new_prebin_ms2:
     # bin ms2 frames
     print("binning ms2 frames")
@@ -847,16 +781,16 @@ else:
     binned_ms2_df = pd.read_pickle(args.pre_binned_ms2_filename)
     print("loaded {} pre-binned ms2 points".format(len(binned_ms2_df)))
 
-if args.new_mgf_spectra or args.check_ms1_mono_peak or args.new_dedup_ms1_features or args.new_ms1_features or args.new_prebin_ms2:
+if args.new_mgf_spectra or args.check_ms1_mono_peak or args.new_ms1_features or args.new_prebin_ms2:
     # find ms2 peaks for each feature found in ms1, and collate the spectra for the MGF
     print("finding peaks in ms2 for each feature")
     start_time = time.time()
     if args.small_set_mode:
-        ms1_deduped_df = ms1_deduped_df[:20]
-    ms1_deduped_df.reset_index(drop=True, inplace=True)
+        checked_features_df = checked_features_df[:20]
+    checked_features_df.reset_index(drop=True, inplace=True)
     mass_defect_window_bins = generate_mass_defect_windows()
     # mgf_spectra_l is a list of dictionaries
-    mgf_spectra_l = ray.get([deconvolute_ms2.remote(feature_df=feature_df, binned_ms2_for_feature=binned_ms2_df[binned_ms2_df.frame_id.isin(feature_df.ms2_frames)], mass_defect_bins=mass_defect_window_bins, idx=idx, total=len(ms1_deduped_df)) for idx,feature_df in ms1_deduped_df.iterrows()])
+    mgf_spectra_l = ray.get([deconvolute_ms2.remote(feature_df=feature_df, binned_ms2_for_feature=binned_ms2_df[binned_ms2_df.frame_id.isin(feature_df.ms2_frames)], mass_defect_bins=mass_defect_window_bins, idx=idx, total=len(checked_features_df)) for idx,feature_df in checked_features_df.iterrows()])
     stop_time = time.time()
     # write out the results for analysis
     with open(args.mgf_spectra_filename, 'wb') as f:
