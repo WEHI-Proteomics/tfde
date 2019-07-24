@@ -50,6 +50,9 @@ CONVERTED_DATABASE_NAME = config.get(args.operating_system, 'CONVERTED_DATABASE_
 RAW_DATABASE_NAME = config.get(args.operating_system, 'RAW_DATABASE_NAME')
 DECONVOLUTED_MS2_PKL = config.get(args.operating_system, 'DECONVOLUTED_MS2_PKL')
 
+SMALL_SET_MODE = config.getboolean(args.operating_system, 'SMALL_SET_MODE')
+INTERIM_DATA_MODE = config.getboolean('common', 'INTERIM_DATA_MODE')
+
 # create the bins for mass defect windows in Da space
 def generate_mass_defect_windows():
     bin_edges_l = []
@@ -155,7 +158,7 @@ print("Setting up indexes on {}".format(CONVERTED_DATABASE_NAME))
 db_conn = sqlite3.connect(CONVERTED_DATABASE_NAME)
 src_c = db_conn.cursor()
 src_c.execute("create index if not exists idx_pasef_ms2_frames_1 on frames (frame_id, scan, intensity)")
-src_c.execute("create index if not exists idx_pasef_ms2_frame_properties_1 on frame_properties (retention_time_secs, collision_energy)")
+src_c.execute("create index if not exists idx_pasef_frame_properties_1 on frame_properties (retention_time_secs, collision_energy)")
 db_conn.close()
 
 start_run = time.time()
@@ -188,6 +191,7 @@ mass_defect_window_bins = generate_mass_defect_windows()
 ms2_df_l = ray.get([process_ms2.remote(precursor_id=precursor_id, precursor_group_df=precursor_group_df) for precursor_id,precursor_group_df in isolation_window_df.groupby('Precursor')])
 flattened_ms2_df_l = [item for sublist in ms2_df_l for item in sublist]
 
+print("writing {} peaks to {}".format(len(flattened_ms2_df_l), DECONVOLUTED_MS2_PKL))
 ms2_deconvoluted_peaks_df = pd.DataFrame(flattened_ms2_df_l, columns=['precursor','mz','charge','intensity','score','SN'])
 ms2_deconvoluted_peaks_df.to_pickle(DECONVOLUTED_MS2_PKL)
 

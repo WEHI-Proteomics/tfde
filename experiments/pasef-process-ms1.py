@@ -14,13 +14,8 @@ import ray
 import time
 import pickle
 from sys import getsizeof
-
-PROTON_MASS = 1.0073  # Mass of a proton in unified atomic mass units, or Da. For calculating the monoisotopic mass.
-DELTA_MZ = 1.003355     # Mass difference between Carbon-12 and Carbon-13 isotopes, in Da. For calculating the spacing between isotopic peaks.
-INSTRUMENT_RESOLUTION = 40000.0
-MASS_DEFECT_WINDOW_DA_MIN = 100  # range in Daltons
-MASS_DEFECT_WINDOW_DA_MAX = 5200
-SATURATION_INTENSITY = 3000
+import configparser
+from configparser import ExtendedInterpolation
 
 # so we can use profiling without removing @profile
 try:
@@ -30,43 +25,50 @@ except NameError:
 
 
 parser = argparse.ArgumentParser(description='Extract ms1 features from PASEF isolation windows.')
-parser.add_argument('-cdbb','--converted_database_base', type=str, help='base path to the converted database.', required=True)
-parser.add_argument('-rdbb','--raw_database_base', type=str, help='base path to the raw database.', required=True)
-# parameters
-parser.add_argument('-rtl','--rt_lower', type=float, help='The lower limit of retention time (secs).', required=True)
-parser.add_argument('-rtu','--rt_upper', type=float, help='The upper limit of retention time (secs).', required=True)
-parser.add_argument('-rtpw','--rt_base_peak_width_secs', type=float, default=30.0, help='How broad to look in RT for the peak apex (secs).', required=False)
-parser.add_argument('-rtfe','--rt_fragment_event_delta_frames', type=int, default=2, help='Number of ms1 frames to look either side of the fragmentation event.', required=False)
-parser.add_argument('-ms1ce','--ms1_collision_energy', type=float, default=10.0, help='Collision energy used in ms1 frames.', required=False)
-parser.add_argument('-ms1bw','--ms1_bin_width', type=float, default=0.00001, help='Width of ms1 bins, in Thomsons.', required=False)
-parser.add_argument('-ms2bw','--ms2_bin_width', type=float, default=0.001, help='Width of ms2 bins, in Thomsons.', required=False)
-parser.add_argument('-ms1dt','--ms1_peak_delta', type=float, default=0.1, help='How far either side of a peak in ms1 to include when calculating its centroid and intensity, in Thomsons.', required=False)
-parser.add_argument('-ms2dt','--ms2_peak_delta', type=float, default=0.01, help='How far either side of a peak in ms2 to include when calculating its centroid and intensity, in Thomsons.', required=False)
-parser.add_argument('-ms1ddmz','--ms1_dedup_mz_tolerance_ppm', type=float, default=5.0, help='Tolerance in m/z ppm for de-duping features in ms1.', required=False)
-parser.add_argument('-ms2l','--ms2_lower', type=float, default=90.0, help='Lower limit of m/z range in ms2.', required=False)
-parser.add_argument('-ms2u','--ms2_upper', type=float, default=1750.0, help='Upper limit of m/z range in ms2.', required=False)
-parser.add_argument('-nstddevmz','--number_of_std_dev_mz', type=float, default=3.0, help='Number of standard deviations to look either side of the expected isotopic spacing.', required=False)
-parser.add_argument('-ms1phre','--max_ms1_peak_height_ratio_error', type=float, default=0.3, help='Maximum error for a feature\'s monoisotopic peak height ratio.', required=False)
-
-# commands
-parser.add_argument('-nms1f','--new_ms1_features', action='store_true', help='Create a new ms1 features file.')
-parser.add_argument('-ms1ffn','--ms1_features_filename', type=str, default='./ms1_df.pkl', help='File containing ms1 features.', required=False)
-#
-parser.add_argument('-cmms1','--check_ms1_mono_peak', action='store_true', help='Check the monoisotopic peak for each feature, moving it if necessary.')
-parser.add_argument('-cmms1fn','--checked_ms1_mono_peak_filename', type=str, default='./checked_ms1_features.pkl', help='File containing mono-checked features.', required=False)
-# modes
-parser.add_argument('-cl','--cluster_mode', action='store_true', help='Run on a cluster.')
-parser.add_argument('-ssm','--small_set_mode', action='store_true', help='A small subset of the data for testing purposes.')
-parser.add_argument('-lm','--local_mode', action='store_true', help='Don\'t use Ray parallelism.')
-parser.add_argument('-idm','--interim_data_mode', action='store_true', help='Write out interim data for debugging.')
+parser.add_argument('-ini','--ini_file', type=str, help='Path to the config file.', required=True)
+parser.add_argument('-os','--operating_system', type=str, choices=['linux','macos'], help='Operating system name.', required=True)
 args = parser.parse_args()
+
+if not os.path.isfile(args.ini_file):
+    print("The configuration file doesn't exist: {}".format(args.ini_file))
+    sys.exit(1)
+
+config = configparser.ConfigParser(interpolation=ExtendedInterpolation())
+config.read(args.ini_file)
+
+MASS_DEFECT_WINDOW_DA_MIN = config.getint('common', 'MASS_DEFECT_WINDOW_DA_MIN')
+MASS_DEFECT_WINDOW_DA_MAX = config.getint('common', 'MASS_DEFECT_WINDOW_DA_MAX')
+PROTON_MASS = config.getfloat('common', 'PROTON_MASS')
+RT_LOWER = config.getfloat('common', 'RT_LOWER')
+RT_UPPER = config.getfloat('common', 'RT_UPPER')
+RT_BASE_PEAK_WIDTH_SECS = config.getfloat('common', 'RT_BASE_PEAK_WIDTH_SECS')
+MS1_COLLISION_ENERGY = config.getfloat('common', 'MS1_COLLISION_ENERGY')
+SATURATION_INTENSITY = config.getint('common', 'SATURATION_INTENSITY')
+INSTRUMENT_RESOLUTION = config.getfloat('common', 'INSTRUMENT_RESOLUTION')
+MS2_MZ_ISOLATION_WINDOW_EXTENSION = config.getfloat('ms2', 'MS2_MZ_ISOLATION_WINDOW_EXTENSION')
+MS1_PEAK_DELTA = config.getfloat('ms1', 'MS1_PEAK_DELTA')
+CARBON_MASS_DIFFERENCE = config.getfloat('common', 'CARBON_MASS_DIFFERENCE')
+
+CLUSTER_MODE = config.getboolean(args.operating_system, 'CLUSTER_MODE')
+LOCAL_MODE = config.getboolean(args.operating_system, 'LOCAL_MODE')
+CONVERTED_DATABASE_NAME = config.get(args.operating_system, 'CONVERTED_DATABASE_NAME')
+RAW_DATABASE_NAME = config.get(args.operating_system, 'RAW_DATABASE_NAME')
+MS1_PEAK_PKL = config.get(args.operating_system, 'MS1_PEAK_PKL')
+
+RT_FRAGMENT_EVENT_DELTA_FRAMES = config.getint('ms1', 'RT_FRAGMENT_EVENT_DELTA_FRAMES')
+MS1_BIN_WIDTH = config.getfloat('ms1', 'MS1_BIN_WIDTH')
+NUMBER_OF_STD_DEV_MZ = config.getint('ms1', 'NUMBER_OF_STD_DEV_MZ')
+MAX_MS1_PEAK_HEIGHT_RATIO_ERROR = config.getfloat('ms1', 'MAX_MS1_PEAK_HEIGHT_RATIO_ERROR')
+
+SMALL_SET_MODE = config.getboolean(args.operating_system, 'SMALL_SET_MODE')
+INTERIM_DATA_MODE = config.getboolean('common', 'INTERIM_DATA_MODE')
 
 # initialise Ray
 if not ray.is_initialized():
-    if args.cluster_mode:
+    if CLUSTER_MODE:
         ray.init(redis_address="localhost:6379")
     else:
-        if args.local_mode:
+        if LOCAL_MODE:
             ray.init(local_mode=True)
         else:
             ray.init(object_store_memory=40000000000,
@@ -74,59 +76,45 @@ if not ray.is_initialized():
 
 start_run = time.time()
 
-# Store the arguments as metadata for later reference
-info = []
-for arg in vars(args):
-    info.append((arg, getattr(args, arg)))
-
-print("{} info: {}".format(parser.prog, info))
-
-RAW_DATABASE_NAME = "{}/analysis.tdf".format(args.raw_database_base)
 if not os.path.isfile(RAW_DATABASE_NAME):
     print("The raw database doesn't exist: {}".format(RAW_DATABASE_NAME))
     sys.exit(1)
 
-CONVERTED_DATABASE_NAME = '{}/HeLa_20KInt.sqlite'.format(args.converted_database_base)
 if not os.path.isfile(CONVERTED_DATABASE_NAME):
     print("The converted database doesn't exist: {}".format(CONVERTED_DATABASE_NAME))
     sys.exit(1)
-
-if args.new_ms1_features:
-    if os.path.isfile(args.ms1_features_filename):
-        os.remove(args.ms1_features_filename)
-else:
-    if not os.path.isfile(args.ms1_features_filename):
-        print("The ms1 features file is required but doesn't exist: {}".format(args.ms1_features_filename))
-        sys.exit(1)
 
 # make sure the right indexes are created in the source database
 print("Setting up indexes on {}".format(CONVERTED_DATABASE_NAME))
 db_conn = sqlite3.connect(CONVERTED_DATABASE_NAME)
 src_c = db_conn.cursor()
-src_c.execute("create index if not exists idx_pasef_frames_1 on frames (frame_id, mz, intensity)")
+src_c.execute("create index if not exists idx_pasef_frames_1 on frames (frame_id, mz, scan, intensity)")
 src_c.execute("create index if not exists idx_pasef_frames_2 on frames (frame_id, mz, scan, retention_time_secs)")
+src_c.execute("create index if not exists idx_pasef_frame_properties_1 on frame_properties (retention_time_secs, collision_energy)")
 db_conn.close()
 
 print("reading converted raw data from {}".format(CONVERTED_DATABASE_NAME))
-db_conn = sqlite3.connect(CONVERTED_DATABASE_NAME)
-ms1_frame_properties_df = pd.read_sql_query("select frame_id,retention_time_secs from frame_properties where retention_time_secs >= {} and retention_time_secs <= {} and collision_energy == {} order by retention_time_secs".format(args.rt_lower, args.rt_upper, args.ms1_collision_energy), db_conn)
-ms2_frame_properties_df = pd.read_sql_query("select frame_id,retention_time_secs from frame_properties where retention_time_secs >= {} and retention_time_secs <= {} and collision_energy <> {} order by retention_time_secs".format(args.rt_lower, args.rt_upper, args.ms1_collision_energy), db_conn)
-db_conn.close()
-
 # get all the isolation windows
 db_conn = sqlite3.connect(RAW_DATABASE_NAME)
 isolation_window_df = pd.read_sql_query("select * from PasefFrameMsMsInfo", db_conn)
 db_conn.close()
-# add-in the retention time for the isolation windows and filter out the windows not in range
+
+# get the ms2 frames
+db_conn = sqlite3.connect(CONVERTED_DATABASE_NAME)
+ms1_frame_properties_df = pd.read_sql_query("select frame_id,retention_time_secs from frame_properties where retention_time_secs >= {} and retention_time_secs <= {} and collision_energy == {} order by retention_time_secs".format(RT_LOWER, RT_UPPER, MS1_COLLISION_ENERGY), db_conn)
+ms2_frame_properties_df = pd.read_sql_query("select frame_id,retention_time_secs from frame_properties where retention_time_secs >= {} and retention_time_secs <= {} and collision_energy <> {} order by retention_time_secs".format(RT_LOWER, RT_UPPER, MS1_COLLISION_ENERGY), db_conn)
+db_conn.close()
+
+# add-in the retention time for the isolation windows
 isolation_window_df = pd.merge(isolation_window_df, ms2_frame_properties_df, how='left', left_on=['Frame'], right_on=['frame_id'])
 isolation_window_df.drop(['CollisionEnergy'], axis=1, inplace=True)
 isolation_window_df.dropna(subset=['retention_time_secs'], inplace=True)
-isolation_window_df['mz_lower'] = isolation_window_df.IsolationMz - (isolation_window_df.IsolationWidth / 2) - 0.7
-isolation_window_df['mz_upper'] = isolation_window_df.IsolationMz + (isolation_window_df.IsolationWidth / 2) + 0.7
+isolation_window_df['mz_lower'] = isolation_window_df.IsolationMz - (isolation_window_df.IsolationWidth / 2) - MS2_MZ_ISOLATION_WINDOW_EXTENSION
+isolation_window_df['mz_upper'] = isolation_window_df.IsolationMz + (isolation_window_df.IsolationWidth / 2) + MS2_MZ_ISOLATION_WINDOW_EXTENSION
 # filter out isolation windows that don't fit in the database subset we have loaded
-isolation_window_df = isolation_window_df[(isolation_window_df.retention_time_secs >= (args.rt_lower - args.rt_base_peak_width_secs)) & (isolation_window_df.retention_time_secs <= (args.rt_upper + args.rt_base_peak_width_secs))]
+isolation_window_df = isolation_window_df[(isolation_window_df.retention_time_secs >= (RT_LOWER - RT_BASE_PEAK_WIDTH_SECS)) & (isolation_window_df.retention_time_secs <= (RT_UPPER + RT_BASE_PEAK_WIDTH_SECS))]
 print("loaded {} isolation windows from {}".format(len(isolation_window_df), RAW_DATABASE_NAME))
-isolation_window_df.to_pickle('./isolation_windows.pkl')
+isolation_window_df.sort_values(by=['Precursor'], ascending=False, inplace=True)
 
 def time_this(f):
     def timed_wrapper(*args, **kw):
@@ -185,8 +173,8 @@ def collate_feature_characteristics(row, group_df, fe_raw_points_df, ms1_raw_poi
     fe_scan_lower = int(window.ScanNumBegin)
     fe_scan_upper = int(window.ScanNumEnd)
     precursor_id = int(window.Precursor)
-    wide_rt_lower = group_df.retention_time_secs.min() - args.rt_base_peak_width_secs
-    wide_rt_upper = group_df.retention_time_secs.max() + args.rt_base_peak_width_secs
+    wide_rt_lower = group_df.retention_time_secs.min() - RT_BASE_PEAK_WIDTH_SECS
+    wide_rt_upper = group_df.retention_time_secs.max() + RT_BASE_PEAK_WIDTH_SECS
 
     # Get the raw points for the monoisotopic peak (constrained by the fragmentation event)
     MZ_TOLERANCE_PPM = 20
@@ -263,11 +251,11 @@ def find_features(group_number, group_df):
     fe_scan_lower = int(window.ScanNumBegin)
     fe_scan_upper = int(window.ScanNumEnd)
     precursor_id = int(window.Precursor)
-    wide_rt_lower = group_df.retention_time_secs.min() - args.rt_base_peak_width_secs
-    wide_rt_upper = group_df.retention_time_secs.max() + args.rt_base_peak_width_secs
+    wide_rt_lower = group_df.retention_time_secs.min() - RT_BASE_PEAK_WIDTH_SECS
+    wide_rt_upper = group_df.retention_time_secs.max() + RT_BASE_PEAK_WIDTH_SECS
 
     # get the ms1 frame IDs for the range of this precursor's ms2 frames
-    isolation_window_ms1_frame_ids = find_ms1_frames_for_ms2_frame_range(ms2_frame_ids=list(group_df.Frame), number_either_side=args.rt_fragment_event_delta_frames)
+    isolation_window_ms1_frame_ids = find_ms1_frames_for_ms2_frame_range(ms2_frame_ids=list(group_df.Frame), number_either_side=RT_FRAGMENT_EVENT_DELTA_FRAMES)
     # all the ms1 frames
     ms1_frame_ids = tuple(ms1_frame_properties_df.frame_id)
 
@@ -279,7 +267,7 @@ def find_features(group_number, group_df):
     # get the raw points constrained to the fragmentation event's extent in ms1 frames
     fe_raw_points_df = ms1_raw_points_df[ms1_raw_points_df.frame_id.isin(isolation_window_ms1_frame_ids)]
 
-    ms1_bins = np.arange(start=window_mz_lower, stop=window_mz_upper+args.ms1_bin_width, step=args.ms1_bin_width)  # go slightly wider to accomodate the maximum value
+    ms1_bins = np.arange(start=window_mz_lower, stop=window_mz_upper+MS1_BIN_WIDTH, step=MS1_BIN_WIDTH)  # go slightly wider to accomodate the maximum value
     MZ_BIN_COUNT = len(ms1_bins)
 
     # initialise an array of lists to hold the m/z and intensity values allocated to each bin
@@ -307,7 +295,7 @@ def find_features(group_number, group_df):
 
     binned_ms1_df = pd.DataFrame(binned_ms1_l, columns=['mz_centroid','summed_intensity'])
 
-    if args.interim_data_mode:
+    if INTERIM_DATA_MODE:
         binned_ms1_df.to_csv('./ms1-peaks-group-{}-before-intensity-descent.csv'.format(group_number), index=False, header=True)
 
     # intensity descent
@@ -318,8 +306,8 @@ def find_features(group_number, group_df):
         # find the most intense point
         max_intensity_index = np.argmax(intensities)
         peak_mz = mzs[max_intensity_index]
-        peak_mz_lower = peak_mz - args.ms1_peak_delta
-        peak_mz_upper = peak_mz + args.ms1_peak_delta
+        peak_mz_lower = peak_mz - MS1_PEAK_DELTA
+        peak_mz_upper = peak_mz + MS1_PEAK_DELTA
 
         # get all the raw points within this m/z region
         peak_indexes = np.where((mzs >= peak_mz_lower) & (mzs <= peak_mz_upper))
@@ -331,7 +319,7 @@ def find_features(group_number, group_df):
             intensities = np.delete(intensities, peak_indexes)
             mzs = np.delete(mzs, peak_indexes)
 
-    if args.interim_data_mode:
+    if INTERIM_DATA_MODE:
         l = []
         for p in ms1_peaks_l:
             l.append((p.mz, p.intensity))
@@ -426,7 +414,7 @@ def peak_ratio(monoisotopic_mass, peak_number, number_of_sulphur):
 def calculate_raw_peak_intensity_at_mz(centre_mz, feature):
     result = (-1, -1)
 
-    mz_delta = standard_deviation(centre_mz) * args.number_of_std_dev_mz
+    mz_delta = standard_deviation(centre_mz) * NUMBER_OF_STD_DEV_MZ
     mz_lower = centre_mz - mz_delta
     mz_upper = centre_mz + mz_delta
 
@@ -444,7 +432,7 @@ def calculate_raw_peak_intensity_at_mz(centre_mz, feature):
 
     if len(ms1_raw_points_df) > 0:
         # arrange the points into bins
-        ms1_bins = np.arange(start=mz_lower, stop=mz_upper+args.ms1_bin_width, step=args.ms1_bin_width)  # go slightly wider to accomodate the maximum value
+        ms1_bins = np.arange(start=mz_lower, stop=mz_upper+MS1_BIN_WIDTH, step=MS1_BIN_WIDTH)  # go slightly wider to accomodate the maximum value
         ms1_raw_points_df['bin_idx'] = np.digitize(ms1_raw_points_df.mz, ms1_bins).astype(int)
 
         # find the peaks for each bin
@@ -471,10 +459,10 @@ def check_monoisotopic_peak(feature, idx, total):
     expected_ratio = peak_ratio(monoisotopic_mass=monoisotopic_mass, peak_number=1, number_of_sulphur=0)
     if expected_ratio is not None:
         original_phr_error = (observed_ratio - expected_ratio) / expected_ratio
-        if abs(original_phr_error) > args.max_ms1_peak_height_ratio_error:
+        if abs(original_phr_error) > MAX_MS1_PEAK_HEIGHT_RATIO_ERROR:
             print("feature {}/{}: PHR error {} - looking for the correct monoisotopic".format(idx+1,total,original_phr_error))
             # probably missed the monoisotopic - need to search for it
-            expected_spacing_mz = DELTA_MZ / feature.charge
+            expected_spacing_mz = CARBON_MASS_DIFFERENCE / feature.charge
             centre_mz = feature.monoisotopic_mz - expected_spacing_mz
             candidate_mz_centroid, candidate_raw_intensity = calculate_raw_peak_intensity_at_mz(centre_mz, feature)
             if (candidate_mz_centroid != -1) and (candidate_raw_intensity != -1):
@@ -484,7 +472,7 @@ def check_monoisotopic_peak(feature, idx, total):
                     candidate_ratio = original_raw_intensity / candidate_raw_intensity
                     candidate_phr_error = (candidate_ratio - expected_ratio) / expected_ratio
                     feature_d['candidate_phr_error'] = candidate_phr_error
-                    if (abs(candidate_phr_error) <= abs(original_phr_error)) and (abs(candidate_phr_error) <= args.max_ms1_peak_height_ratio_error):
+                    if (abs(candidate_phr_error) <= abs(original_phr_error)) and (abs(candidate_phr_error) <= MAX_MS1_PEAK_HEIGHT_RATIO_ERROR):
                         # update the envelope with the adjusted monoisotopic peak
                         env_peak_0_intensity = feature.envelope[0][1]
                         new_env_peak_0_intensity = env_peak_0_intensity / candidate_ratio
@@ -543,46 +531,31 @@ def remove_points_outside_mass_defect_windows(ms2_peaks_a, mass_defect_window_bi
     return result
 
 #########################################################
-if args.new_ms1_features:
-    # find ms1 features for each unique precursor ID
-    print("finding ms1 features")
-    start_time = time.time()
-    if args.small_set_mode:
-        isolation_window_df = isolation_window_df[:20]
-    ms1_df_l = ray.get([find_features.remote(group_number=idx+1, group_df=group_df) for idx,group_df in isolation_window_df.groupby('Precursor')])
-    ms1_df = pd.concat(ms1_df_l)  # combines a list of dataframes into a single dataframe
-    # assign an ID to each feature
-    ms1_df.sort_values(by=['intensity'], ascending=False, inplace=True)
-    ms1_df["feature_id"] = np.arange(start=1, stop=len(ms1_df)+1)
-    ms1_df.to_pickle(args.ms1_features_filename)
-    stop_time = time.time()
-    print("new_ms1_features: {} seconds".format(round(stop_time-start_time,1)))
-    print("detected {} features".format(len(ms1_df)))
-else:
-    # load previously detected ms1 features
-    print("loading ms1 features")
-    ms1_df = pd.read_pickle(args.ms1_features_filename)
-    print("loaded {} features".format(len(ms1_df)))
+# find ms1 features for each unique precursor ID
+print("finding ms1 features")
+start_time = time.time()
+if SMALL_SET_MODE:
+    isolation_window_df = isolation_window_df[:20]
+ms1_df_l = ray.get([find_features.remote(group_number=idx+1, group_df=group_df) for idx,group_df in isolation_window_df.groupby('Precursor')])
+ms1_df = pd.concat(ms1_df_l)  # combines a list of dataframes into a single dataframe
+# assign an ID to each feature
+ms1_df.sort_values(by=['intensity'], ascending=False, inplace=True)
+ms1_df["feature_id"] = np.arange(start=1, stop=len(ms1_df)+1)
+stop_time = time.time()
+print("new_ms1_features: {} seconds".format(round(stop_time-start_time,1)))
+print("detected {} features".format(len(ms1_df)))
 
-if args.check_ms1_mono_peak or args.new_ms1_features:
-    print("checking ms1 monoisotopic peaks")
-    start_time = time.time()
-    ms1_df.reset_index(drop=True, inplace=True)
-    checked_features_l = ray.get([check_monoisotopic_peak.remote(feature=feature, idx=idx, total=len(ms1_df)) for idx,feature in ms1_df.iterrows()])
-    checked_features_df = pd.DataFrame(checked_features_l)
-    checked_features_df.to_pickle(args.checked_ms1_mono_peak_filename)
-    stop_time = time.time()
-    print("check_ms1_mono_peak: {} seconds".format(round(stop_time-start_time,1)))
-else:
-    # load previously checked monoisotopic peaks
-    print("loading checked ms1 monoisotopic peaks")
-    checked_features_df = pd.read_pickle(args.checked_ms1_mono_peak_filename)
+print("checking ms1 monoisotopic peaks")
+start_time = time.time()
+ms1_df.reset_index(drop=True, inplace=True)
+checked_features_l = ray.get([check_monoisotopic_peak.remote(feature=feature, idx=idx, total=len(ms1_df)) for idx,feature in ms1_df.iterrows()])
+checked_features_df = pd.DataFrame(checked_features_l)
+checked_features_df.to_pickle(MS1_PEAK_PKL)
+stop_time = time.time()
+print("check_ms1_mono_peak: {} seconds".format(round(stop_time-start_time,1)))
 
 stop_run = time.time()
-info.append(("run processing time (sec)", round(stop_run-start_run,1)))
-info.append(("processed", time.ctime()))
-info.append(("processor", parser.prog))
-print("{} info: {}".format(parser.prog, info))
+print("total running time: {} seconds".format(round(stop_run-start_run,1)))
 
 print("shutting down ray")
 ray.shutdown()
