@@ -11,6 +11,7 @@ from configparser import ExtendedInterpolation
 import os.path
 import ray
 import time
+import argparse
 
 # A refined approach for processing ms2 spectra independently of the features, associating them in a subsequent step. See 'associating ms2 spectra with features'.
 
@@ -22,25 +23,31 @@ except NameError:
 
 parser = argparse.ArgumentParser(description='Deconvolute ms2 spectra for PASEF isolation windows.')
 parser.add_argument('-ini','--ini_file', type=str, help='Path to the config file.', required=True)
-parser.add_argument('-os','--operating_system', type=str, help='Operating system name. Can be \'linux\' or \'osx\'', required=True)
+parser.add_argument('-os','--operating_system', type=str, choices=['linux','macos'], help='Operating system name.', required=True)
+args = parser.parse_args()
+
+if not os.path.isfile(args.ini_file):
+    print("The configuration file doesn't exist: {}".format(args.ini_file))
+    sys.exit(1)
 
 config = configparser.ConfigParser(interpolation=ExtendedInterpolation())
-config.read(sys.argv[1])
+config.read(args.ini_file)
 
-MASS_DEFECT_WINDOW_DA_MIN = int(config['MS2']['MASS_DEFECT_WINDOW_DA_MIN'])
-MASS_DEFECT_WINDOW_DA_MAX = int(config['MS2']['MASS_DEFECT_WINDOW_DA_MAX'])
-PROTON_MASS = float(config['MS2']['PROTON_MASS'])
-CONVERTED_DATABASE_NAME = config['MS2']['CONVERTED_DATABASE_NAME']
-RAW_DATABASE_NAME = config.get('MS2', 'RAW_DATABASE_NAME')
-DECONVOLUTED_MS2_PKL = config.get('MS2', 'DECONVOLUTED_MS2_PKL')
-MS2_PEAK_DELTA = config.getfloat('MS2', 'MS2_PEAK_DELTA')
-RT_LOWER = config.getfloat('MS2', 'RT_LOWER')
-RT_UPPER = config.getfloat('MS2', 'RT_UPPER')
-RT_BASE_PEAK_WIDTH_SECS = config.getfloat('MS2', 'RT_BASE_PEAK_WIDTH_SECS')
-MS1_COLLISION_ENERGY = config.getfloat('MS2', 'MS1_COLLISION_ENERGY')
-MS2_MZ_ISOLATION_WINDOW_EXTENSION = config.getfloat('MS2', 'MS2_MZ_ISOLATION_WINDOW_EXTENSION')
-CLUSTER_MODE = config.getboolean('MS2', 'CLUSTER_MODE')
-LOCAL_MODE = config.getboolean('MS2', 'LOCAL_MODE')
+MASS_DEFECT_WINDOW_DA_MIN = config.getint('common', 'MASS_DEFECT_WINDOW_DA_MIN')
+MASS_DEFECT_WINDOW_DA_MAX = config.getint('common', 'MASS_DEFECT_WINDOW_DA_MAX')
+PROTON_MASS = config.getfloat('common', 'PROTON_MASS')
+MS2_PEAK_DELTA = config.getfloat('common', 'MS2_PEAK_DELTA')
+RT_LOWER = config.getfloat('common', 'RT_LOWER')
+RT_UPPER = config.getfloat('common', 'RT_UPPER')
+RT_BASE_PEAK_WIDTH_SECS = config.getfloat('common', 'RT_BASE_PEAK_WIDTH_SECS')
+MS1_COLLISION_ENERGY = config.getfloat('common', 'MS1_COLLISION_ENERGY')
+MS2_MZ_ISOLATION_WINDOW_EXTENSION = config.getfloat('common', 'MS2_MZ_ISOLATION_WINDOW_EXTENSION')
+
+CLUSTER_MODE = config.getboolean(args.operating_system, 'CLUSTER_MODE')
+LOCAL_MODE = config.getboolean(args.operating_system, 'LOCAL_MODE')
+CONVERTED_DATABASE_NAME = config.get(args.operating_system, 'CONVERTED_DATABASE_NAME')
+RAW_DATABASE_NAME = config.get(args.operating_system, 'RAW_DATABASE_NAME')
+DECONVOLUTED_MS2_PKL = config.get(args.operating_system, 'DECONVOLUTED_MS2_PKL')
 
 # create the bins for mass defect windows in Da space
 def generate_mass_defect_windows():
@@ -183,8 +190,8 @@ flattened_ms2_df_l = [item for sublist in ms2_df_l for item in sublist]
 ms2_deconvoluted_peaks_df = pd.DataFrame(flattened_ms2_df_l, columns=['precursor','mz','charge','intensity','score','SN'])
 ms2_deconvoluted_peaks_df.to_pickle(DECONVOLUTED_MS2_PKL)
 
-stop_time = time.time()
-print("total running time: {} seconds".format(round(stop_time-start_time,1)))
+stop_run = time.time()
+print("total running time: {} seconds".format(round(stop_run-start_run,1)))
 
 print("shutting down ray")
 ray.shutdown()
