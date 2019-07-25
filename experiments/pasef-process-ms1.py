@@ -19,8 +19,6 @@ from configparser import ExtendedInterpolation
 import warnings
 from scipy.optimize.minpack import OptimizeWarning
 
-warnings.simplefilter("error", OptimizeWarning)
-
 # so we can use profiling without removing @profile
 try:
     profile
