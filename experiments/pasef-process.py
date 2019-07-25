@@ -34,6 +34,13 @@ DECONVOLUTED_MS2_PKL = config.get(args.operating_system, 'DECONVOLUTED_MS2_PKL')
 MGF_NAME = config.get(args.operating_system, 'MGF_NAME')
 CONVERTED_DATABASE_NAME = config.get(args.operating_system, 'CONVERTED_DATABASE_NAME')
 
+# clean up from last time
+if os.path.isfile(MS1_PEAK_PKL):
+    os.remove(MS1_PEAK_PKL)
+
+if os.path.isfile(DECONVOLUTED_MS2_PKL):
+    os.remove(DECONVOLUTED_MS2_PKL)
+
 start_run = time.time()
 
 def run_process(process):
@@ -80,11 +87,19 @@ processes.append("python -W once -u {}/experiments/pasef-process-ms2.py -ini {} 
 # run the processes and wait for them to finish
 pool.map(run_process, processes)
 
-# get the features detected in ms1
-ms1_features_df = pd.read_pickle(MS1_PEAK_PKL)
+if not os.path.isfile(MS1_PEAK_PKL):
+    print("The ms1 output file doesn't exist: {}".format(MS1_PEAK_PKL))
+    sys.exit(1)
+else:
+    # get the features detected in ms1
+    ms1_features_df = pd.read_pickle(MS1_PEAK_PKL)
 
-# get the ms2 spectra
-ms2_deconvoluted_peaks_df = pd.read_pickle(DECONVOLUTED_MS2_PKL)
+if not os.path.isfile(DECONVOLUTED_MS2_PKL):
+    print("The ms2 output file doesn't exist: {}".format(DECONVOLUTED_MS2_PKL))
+    sys.exit(1)
+else:
+    # get the ms2 spectra
+    ms2_deconvoluted_peaks_df = pd.read_pickle(DECONVOLUTED_MS2_PKL)
 
 feature_results = []
 for idx,feature_df in ms1_features_df.iterrows():
