@@ -1,6 +1,6 @@
 from numba import njit
 import sqlite3
-import modin.pandas as pd
+import pandas as pd
 import numpy as np
 import sys
 import peakutils
