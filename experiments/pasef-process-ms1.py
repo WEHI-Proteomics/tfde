@@ -160,7 +160,6 @@ def find_ms1_frames_for_ms2_frame_range(ms2_frame_ids, number_either_side):
     return ms1_frame_ids
 
 # returns a tuple with the characteristics of the feature in the specified row
-@njit(fastmath=True)
 def collate_feature_characteristics(row, group_df, fe_raw_points_df, ms1_raw_points_df):
     result = None
 
@@ -393,6 +392,7 @@ model_params[2] = S2_r
 # Find the ratio of H(peak_number)/H(peak_number-1) for peak_number=1..6
 # peak_number = 0 refers to the monoisotopic peak
 # number_of_sulphur = number of sulphur atoms in the molecule
+@njit(fastmath=True)
 def peak_ratio(monoisotopic_mass, peak_number, number_of_sulphur):
     ratio = None
     if (((1 <= peak_number <= 3) & (((number_of_sulphur == 0) & (498 <= monoisotopic_mass <= 3915)) |
@@ -508,6 +508,7 @@ def check_monoisotopic_peak(feature, idx, total):
     return feature_d
 
 # create the bins for mass defect windows in Da space
+@njit(fastmath=True)
 def generate_mass_defect_windows():
     bin_edges_l = []
     for nominal_mass in range(MASS_DEFECT_WINDOW_DA_MIN, MASS_DEFECT_WINDOW_DA_MAX):
@@ -524,6 +525,7 @@ vectorise_mz = np.vectorize(lambda obj: obj.mz)
 vectorise_intensity = np.vectorize(lambda obj: obj.intensity)
 
 # return a point if, in its imaginary charge-3, charge-2, or charge-1 de-charged state, it fits inside at least one mass defect window
+@njit(fastmath=True)
 def remove_points_outside_mass_defect_windows(ms2_peaks_a, mass_defect_window_bins):
     mz_a = vectorise_mz(ms2_peaks_a)
     inside_mass_defect_window_a = np.full((len(mz_a)), False)
