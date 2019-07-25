@@ -16,8 +16,6 @@ import pickle
 from sys import getsizeof
 import configparser
 from configparser import ExtendedInterpolation
-import warnings
-from scipy.optimize.minpack import OptimizeWarning
 
 # so we can use profiling without removing @profile
 try:
