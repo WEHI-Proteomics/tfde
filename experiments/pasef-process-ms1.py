@@ -560,7 +560,7 @@ stop_time = time.time()
 print("check_ms1_mono_peak: {} seconds".format(round(stop_time-start_time,1)))
 
 stop_run = time.time()
-print("total running time: {} seconds".format(round(stop_run-start_run,1)))
+print("total running time ({}): {} seconds".format(parser.prog, round(stop_run-start_run,1)))
 
 print("shutting down ray")
 ray.shutdown()

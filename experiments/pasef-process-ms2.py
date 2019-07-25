@@ -198,7 +198,7 @@ ms2_deconvoluted_peaks_df = pd.DataFrame(flattened_ms2_df_l, columns=['precursor
 ms2_deconvoluted_peaks_df.to_pickle(DECONVOLUTED_MS2_PKL)
 
 stop_run = time.time()
-print("total running time: {} seconds".format(round(stop_run-start_run,1)))
+print("total running time ({}): {} seconds".format(parser.prog, round(stop_run-start_run,1)))
 
 print("shutting down ray")
 ray.shutdown()

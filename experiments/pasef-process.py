@@ -34,6 +34,8 @@ DECONVOLUTED_MS2_PKL = config.get(args.operating_system, 'DECONVOLUTED_MS2_PKL')
 MGF_NAME = config.get(args.operating_system, 'MGF_NAME')
 CONVERTED_DATABASE_NAME = config.get(args.operating_system, 'CONVERTED_DATABASE_NAME')
 
+start_run = time.time()
+
 def run_process(process):
     print("Executing: {}".format(process))
     os.system(process)
@@ -86,3 +88,6 @@ print("writing {} entries to {}".format(len(feature_results), MGF_NAME))
 if os.path.isfile(MGF_NAME):
     os.remove(MGF_NAME)
 _ = mgf.write(output=MGF_NAME, spectra=feature_results)
+
+stop_run = time.time()
+print("total running time ({}): {} seconds".format(parser.prog, round(stop_run-start_run,1)))
