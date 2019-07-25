@@ -193,6 +193,3 @@ ms2_deconvoluted_peaks_df.to_pickle(DECONVOLUTED_MS2_PKL)
 
 stop_run = time.time()
 print("total running time ({}): {} seconds".format(parser.prog, round(stop_run-start_run,1)))
-
-print("shutting down ray")
-ray.shutdown()
