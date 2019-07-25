@@ -56,6 +56,9 @@ ray_cluster = ray.init()
 # get the address for the sub-processes to join
 redis_address = ray_cluster['redis_address']
 
+# Set up the processing pool
+pool = Pool(processes=2)
+
 # create a list of commands to start the ms1 and ms2 sub-processes and get them to join the cluster
 processes = []
 processes.append("python -u {}/experiments/pasef-process-ms1.py -ini {} -os {} -rm join -ra {}".format(SOURCE_BASE, args.ini_file, args.operating_system, redis_address))
