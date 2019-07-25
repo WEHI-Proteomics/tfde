@@ -468,36 +468,6 @@ def check_monoisotopic_peak(feature, idx, total):
     feature_d['original_phr'] = observed_ratio
     return feature_d
 
-# create the bins for mass defect windows in Da space
-@njit(fastmath=True)
-def generate_mass_defect_windows():
-    bin_edges_l = []
-    for nominal_mass in range(MASS_DEFECT_WINDOW_DA_MIN, MASS_DEFECT_WINDOW_DA_MAX):
-        mass_centre = nominal_mass * 1.00048  # from https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3184890/
-        width = 0.19 + (0.0001 * nominal_mass)
-        lower_mass = mass_centre - (width / 2)
-        upper_mass = mass_centre + (width / 2)
-        bin_edges_l.append(lower_mass)
-        bin_edges_l.append(upper_mass)
-    bins = np.asarray(bin_edges_l)
-    return bins
-
-vectorise_mz = np.vectorize(lambda obj: obj.mz)
-vectorise_intensity = np.vectorize(lambda obj: obj.intensity)
-
-# return a point if, in its imaginary charge-3, charge-2, or charge-1 de-charged state, it fits inside at least one mass defect window
-@njit(fastmath=True)
-def remove_points_outside_mass_defect_windows(ms2_peaks_a, mass_defect_window_bins):
-    mz_a = vectorise_mz(ms2_peaks_a)
-    inside_mass_defect_window_a = np.full((len(mz_a)), False)
-    for charge in [3,2,1]:
-        decharged_mass_a = (mz_a * charge) - (PROTON_MASS * charge)
-        decharged_mass_bin_indexes = np.digitize(decharged_mass_a, mass_defect_window_bins)  # an odd index means the point is inside a mass defect window
-        mass_defect_window_indexes = (decharged_mass_bin_indexes % 2) == 1  # odd bin indexes are mass defect windows
-        inside_mass_defect_window_a[mass_defect_window_indexes] = True
-    result = ms2_peaks_a[inside_mass_defect_window_a]
-    return result
-
 #########################################################
 
 # find ms1 features for each unique precursor ID
