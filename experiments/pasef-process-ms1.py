@@ -16,6 +16,8 @@ import pickle
 from sys import getsizeof
 import configparser
 from configparser import ExtendedInterpolation
+import warnings
+from scipy.optimize import OptimizeWarning
 
 # so we can use profiling without removing @profile
 try:
@@ -533,6 +535,8 @@ def remove_points_outside_mass_defect_windows(ms2_peaks_a, mass_defect_window_bi
     return result
 
 #########################################################
+warnings.simplefilter("once", OptimizeWarning)
+
 # find ms1 features for each unique precursor ID
 print("finding ms1 features")
 start_time = time.time()
