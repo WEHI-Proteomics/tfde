@@ -17,7 +17,7 @@ from sys import getsizeof
 import configparser
 from configparser import ExtendedInterpolation
 import warnings
-from scipy.optimize import OptimizeWarning
+from scipy.optimize.minpack import OptimizeWarning
 
 warnings.simplefilter("error", OptimizeWarning)
 
