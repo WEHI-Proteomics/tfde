@@ -133,6 +133,7 @@ def time_this(f):
     return timed_wrapper
 
 # The FWHM is the m/z / instrument resolution. Std dev is FWHM / 2.35482. See https://en.wikipedia.org/wiki/Full_width_at_half_maximum
+@njit(fastmath=True)
 def standard_deviation(mz):
     FWHM = mz / INSTRUMENT_RESOLUTION
     return FWHM / 2.35482
@@ -142,6 +143,7 @@ def standard_deviation(mz):
 def mz_centroid(_int_f, _mz_f):
     return ((_int_f/_int_f.sum()) * _mz_f).sum()
 
+@njit(fastmath=True)
 def find_ms1_frames_for_ms2_frame_range(ms2_frame_ids, number_either_side):
     lower_ms2_frame = min(ms2_frame_ids)
     upper_ms2_frame = max(ms2_frame_ids)
@@ -159,6 +161,7 @@ def find_ms1_frames_for_ms2_frame_range(ms2_frame_ids, number_either_side):
     return ms1_frame_ids
 
 # returns a tuple with the characteristics of the feature in the specified row
+@njit(fastmath=True)
 def collate_feature_characteristics(row, group_df, fe_raw_points_df, ms1_raw_points_df):
     result = None
 
