@@ -231,6 +231,28 @@ def collate_feature_characteristics(row, group_df, fe_raw_points_df, ms1_raw_poi
 
     return result
 
+# ms1_peaks_a is a numpy array of [mz,intensity]
+# returns a numpy array of [mz_centroid,summed_intensity]
+def ms1_intensity_descent(ms1_peaks_a):
+    # intensity descent
+    ms1_peaks_l = []
+    while len(ms1_peaks_a) > 0:
+        # find the most intense point
+        max_intensity_index = np.argmax(ms1_peaks_a[:,1])
+        peak_mz = ms1_peaks_a[max_intensity_index,0]
+        peak_mz_lower = peak_mz - MS1_PEAK_DELTA
+        peak_mz_upper = peak_mz + MS1_PEAK_DELTA
+
+        # get all the raw points within this m/z region
+        peak_indexes = np.where((ms1_peaks_a[:,0] >= peak_mz_lower) & (ms1_peaks_a[:,0] <= peak_mz_upper))[0]
+        if len(peak_indexes) > 0:
+            mz_cent = mz_centroid(ms1_peaks_a[peak_indexes,1], ms1_peaks_a[peak_indexes,0])
+            summed_intensity = ms1_peaks_a[peak_indexes,1].sum()
+            ms1_peaks_l.append((mz_cent, summed_intensity))
+            # remove the raw points assigned to this peak
+            ms1_peaks_a = np.delete(ms1_peaks_a, peak_indexes, axis=0)
+    return np.array(ms1_peaks_l)
+
 @ray.remote
 def find_features(group_number, group_df):
     # find the ms1 features in this isolation window
@@ -260,58 +282,13 @@ def find_features(group_number, group_df):
 
     # get the raw points constrained to the fragmentation event's extent in ms1 frames
     fe_raw_points_df = ms1_raw_points_df[ms1_raw_points_df.frame_id.isin(isolation_window_ms1_frame_ids)]
+    fe_raw_points_a = fe_raw_points_df[['mz','intensity']].to_numpy()
 
-    ms1_bins = np.arange(start=window_mz_lower, stop=window_mz_upper+MS1_BIN_WIDTH, step=MS1_BIN_WIDTH)  # go slightly wider to accomodate the maximum value
-    MZ_BIN_COUNT = len(ms1_bins)
+    # perform intensity descent to resolve peaks
+    peaks_a = ms1_intensity_descent(fe_raw_points_a)
 
-    # initialise an array of lists to hold the m/z and intensity values allocated to each bin
-    ms1_mz_values_array = np.empty(MZ_BIN_COUNT, dtype=np.object)
-    for idx in range(MZ_BIN_COUNT):
-        ms1_mz_values_array[idx] = []
-
-    # gather the m/z values into bins
-    for r in zip(fe_raw_points_df.mz, fe_raw_points_df.intensity):
-        mz = r[0]
-        intensity = int(r[1])
-        if (mz >= window_mz_lower) and (mz <= window_mz_upper): # it should already but just to be sure
-            mz_array_idx = int(np.digitize(mz, ms1_bins)) # in which bin should this mz go
-            ms1_mz_values_array[mz_array_idx].append((mz, intensity))
-
-    # compute the intensity-weighted m/z centroid and the summed intensity of the bins
-    binned_ms1_l = []
-    for bin_idx in range(MZ_BIN_COUNT):
-        if len(ms1_mz_values_array[bin_idx]) > 0:
-            mz_values_for_bin = np.array([ list[0] for list in ms1_mz_values_array[bin_idx]])
-            intensity_values_for_bin = np.array([ list[1] for list in ms1_mz_values_array[bin_idx]]).astype(int)
-            mz_cent = mz_centroid(intensity_values_for_bin, mz_values_for_bin)
-            summed_intensity = intensity_values_for_bin.sum()
-            binned_ms1_l.append((mz_cent,summed_intensity))
-
-    binned_ms1_df = pd.DataFrame(binned_ms1_l, columns=['mz_centroid','summed_intensity'])
-
-    if args.interim_data_mode:
-        binned_ms1_df.to_csv('./ms1-peaks-group-{}-before-intensity-descent.csv'.format(group_number), index=False, header=True)
-
-    # intensity descent
-    mzs = binned_ms1_df.mz_centroid.to_numpy()
-    intensities = binned_ms1_df.summed_intensity.to_numpy()
-    ms1_peaks_l = []
-    while len(mzs) > 0:
-        # find the most intense point
-        max_intensity_index = np.argmax(intensities)
-        peak_mz = mzs[max_intensity_index]
-        peak_mz_lower = peak_mz - MS1_PEAK_DELTA
-        peak_mz_upper = peak_mz + MS1_PEAK_DELTA
-
-        # get all the raw points within this m/z region
-        peak_indexes = np.where((mzs >= peak_mz_lower) & (mzs <= peak_mz_upper))
-        if len(peak_indexes) > 0:
-            mz_cent = mz_centroid(intensities[peak_indexes], mzs[peak_indexes])
-            summed_intensity = intensities[peak_indexes].sum()
-            ms1_peaks_l.append(simple_peak(mz=mz_cent, intensity=summed_intensity))
-            # remove the raw points assigned to this peak
-            intensities = np.delete(intensities, peak_indexes)
-            mzs = np.delete(mzs, peak_indexes)
+    # deconvolute the spectra
+    ms1_peaks_l = list(map(tuple, peaks_a))
 
     if args.interim_data_mode:
         l = []
