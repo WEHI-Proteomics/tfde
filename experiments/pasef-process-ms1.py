@@ -392,7 +392,6 @@ model_params[2] = S2_r
 # Find the ratio of H(peak_number)/H(peak_number-1) for peak_number=1..6
 # peak_number = 0 refers to the monoisotopic peak
 # number_of_sulphur = number of sulphur atoms in the molecule
-@njit(fastmath=True)
 def peak_ratio(monoisotopic_mass, peak_number, number_of_sulphur):
     ratio = None
     if (((1 <= peak_number <= 3) & (((number_of_sulphur == 0) & (498 <= monoisotopic_mass <= 3915)) |
