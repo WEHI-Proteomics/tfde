@@ -143,7 +143,6 @@ def standard_deviation(mz):
 def mz_centroid(_int_f, _mz_f):
     return ((_int_f/_int_f.sum()) * _mz_f).sum()
 
-@njit(fastmath=True)
 def find_ms1_frames_for_ms2_frame_range(ms2_frame_ids, number_either_side):
     lower_ms2_frame = min(ms2_frame_ids)
     upper_ms2_frame = max(ms2_frame_ids)
