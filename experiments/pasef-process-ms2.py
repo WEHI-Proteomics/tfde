@@ -86,7 +86,7 @@ def mz_centroid(_int_f, _mz_f):
 
 # ms2_peaks_a is a numpy array of [mz,intensity]
 # returns a nunpy array of [mz_centroid,summed_intensity]
-@njit(fastmath=True)
+# @njit(fastmath=True)
 def ms2_intensity_descent(ms2_peaks_a):
     # intensity descent
     ms2_peaks_l = []
