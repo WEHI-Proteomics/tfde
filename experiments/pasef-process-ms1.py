@@ -19,8 +19,6 @@ from configparser import ExtendedInterpolation
 import warnings
 from scipy.optimize import OptimizeWarning
 
-warnings.filterwarnings("ignore", category=OptimizeWarning)
-
 # so we can use profiling without removing @profile
 try:
     profile
@@ -207,6 +205,9 @@ def collate_feature_characteristics(row, group_df, fe_raw_points_df, ms1_raw_poi
         except:
             pass
 
+        with warnings.catch_warnings():
+                    warnings.filterwarnings('ignore', category=OptimizeWarning)
+
         # if we couldn't fit a curve to the mobility dimension, take the intensity-weighted centroid
         if not mobility_curve_fit:
             scan_apex = mz_centroid(scan_df.intensity.to_numpy(), scan_df.scan.to_numpy())
@@ -227,6 +228,9 @@ def collate_feature_characteristics(row, group_df, fe_raw_points_df, ms1_raw_poi
                 rt_curve_fit = True
         except:
             pass
+
+        with warnings.catch_warnings():
+                    warnings.filterwarnings('ignore', category=OptimizeWarning)
 
         # if we couldn't fit a curve to the RT dimension, take the intensity-weighted centroid
         if not rt_curve_fit:
