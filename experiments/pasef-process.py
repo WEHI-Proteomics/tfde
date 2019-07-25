@@ -59,6 +59,16 @@ ray_cluster = ray.init()
 # get the address for the sub-processes to join
 redis_address = ray_cluster['redis_address']
 
+# make sure the right indexes are created in the source database
+print("Setting up indexes on {}".format(CONVERTED_DATABASE_NAME))
+db_conn = sqlite3.connect(CONVERTED_DATABASE_NAME)
+src_c = db_conn.cursor()
+src_c.execute("create index if not exists idx_pasef_frames_1 on frames (frame_id, mz, scan, intensity)")
+src_c.execute("create index if not exists idx_pasef_frames_2 on frames (frame_id, mz, scan, retention_time_secs)")
+src_c.execute("create index if not exists idx_pasef_ms2_frames_1 on frames (frame_id, scan, intensity)")
+src_c.execute("create index if not exists idx_pasef_frame_properties_1 on frame_properties (retention_time_secs, collision_energy)")
+db_conn.close()
+
 # Set up the processing pool
 pool = Pool(processes=2)
 

@@ -157,14 +157,6 @@ if not ray.is_initialized():
     else:
         ray.init(local_mode=True)
 
-# make sure the right indexes are created in the source database
-print("Setting up indexes on {}".format(CONVERTED_DATABASE_NAME))
-db_conn = sqlite3.connect(CONVERTED_DATABASE_NAME)
-src_c = db_conn.cursor()
-src_c.execute("create index if not exists idx_pasef_ms2_frames_1 on frames (frame_id, scan, intensity)")
-src_c.execute("create index if not exists idx_pasef_frame_properties_1 on frame_properties (retention_time_secs, collision_energy)")
-db_conn.close()
-
 start_run = time.time()
 
 # get all the isolation windows

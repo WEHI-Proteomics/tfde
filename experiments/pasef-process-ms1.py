@@ -86,15 +86,6 @@ if not os.path.isfile(CONVERTED_DATABASE_NAME):
     print("The converted database doesn't exist: {}".format(CONVERTED_DATABASE_NAME))
     sys.exit(1)
 
-# make sure the right indexes are created in the source database
-print("Setting up indexes on {}".format(CONVERTED_DATABASE_NAME))
-db_conn = sqlite3.connect(CONVERTED_DATABASE_NAME)
-src_c = db_conn.cursor()
-src_c.execute("create index if not exists idx_pasef_frames_1 on frames (frame_id, mz, scan, intensity)")
-src_c.execute("create index if not exists idx_pasef_frames_2 on frames (frame_id, mz, scan, retention_time_secs)")
-src_c.execute("create index if not exists idx_pasef_frame_properties_1 on frame_properties (retention_time_secs, collision_energy)")
-db_conn.close()
-
 print("reading converted raw data from {}".format(CONVERTED_DATABASE_NAME))
 # get all the isolation windows
 db_conn = sqlite3.connect(RAW_DATABASE_NAME)
