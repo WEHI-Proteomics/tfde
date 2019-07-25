@@ -106,7 +106,7 @@ def ms2_intensity_descent(ms2_peaks_a):
             summed_intensity = ms2_peaks_a[peak_indexes,1].sum()
             ms2_peaks_l.append((mz_cent, summed_intensity))
             # remove the raw points assigned to this peak
-            ms2_peaks_a = np.delete(ms2_peaks_a, peak_indexes)
+            ms2_peaks_a = np.delete(ms2_peaks_a, peak_indexes, axis=0)
     return np.array(ms2_peaks_l)
 
 # return a list of deconvoluted spectra for this precursor
