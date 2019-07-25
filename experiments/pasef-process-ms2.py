@@ -53,7 +53,7 @@ RAW_DATABASE_NAME = config.get(args.operating_system, 'RAW_DATABASE_NAME')
 DECONVOLUTED_MS2_PKL = config.get(args.operating_system, 'DECONVOLUTED_MS2_PKL')
 
 # create the bins for mass defect windows in Da space
-# @njit(fastmath=True)
+@njit(fastmath=True)
 def generate_mass_defect_windows():
     bin_edges_l = []
     for nominal_mass in range(MASS_DEFECT_WINDOW_DA_MIN, MASS_DEFECT_WINDOW_DA_MAX):
@@ -68,7 +68,7 @@ def generate_mass_defect_windows():
 
 # return a point if, in its imaginary charge-3, charge-2, or charge-1 de-charged state, it fits inside at least one mass defect window
 # ms2_peaks_a is a numpy array of [mz,intensity]
-# @njit(fastmath=True)
+@njit(fastmath=True)
 def remove_points_outside_mass_defect_windows(ms2_peaks_a, mass_defect_window_bins):
     mz_a = ms2_peaks_a[:,0]
     inside_mass_defect_window_a = np.full((len(mz_a)), False)
