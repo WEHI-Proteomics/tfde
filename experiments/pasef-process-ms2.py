@@ -98,7 +98,7 @@ def ms2_intensity_descent(ms2_peaks_a):
         peak_mz_upper = peak_mz + MS2_PEAK_DELTA
 
         # get all the raw points within this m/z region
-        peak_indexes = np.where((ms2_peaks_a[:,0] >= peak_mz_lower) & (ms2_peaks_a[:,0] <= peak_mz_upper))
+        peak_indexes = np.where((ms2_peaks_a[:,0] >= peak_mz_lower) & (ms2_peaks_a[:,0] <= peak_mz_upper))[0]
         if len(peak_indexes) > 0:
             intensities_a = ms2_peaks_a[peak_indexes,1]
             mzs_a = ms2_peaks_a[peak_indexes,0]
