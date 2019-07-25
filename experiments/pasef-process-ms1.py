@@ -19,6 +19,8 @@ from configparser import ExtendedInterpolation
 import warnings
 from scipy.optimize import OptimizeWarning
 
+warnings.filterwarnings("ignore", category=OptimizeWarning)
+
 # so we can use profiling without removing @profile
 try:
     profile
@@ -535,7 +537,6 @@ def remove_points_outside_mass_defect_windows(ms2_peaks_a, mass_defect_window_bi
     return result
 
 #########################################################
-warnings.filterwarnings("ignore", category=OptimizeWarning)
 
 # find ms1 features for each unique precursor ID
 print("finding ms1 features")
