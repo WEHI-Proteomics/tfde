@@ -32,6 +32,7 @@ SOURCE_BASE = config.get(args.operating_system, 'SOURCE_BASE')
 MS1_PEAK_PKL = config.get(args.operating_system, 'MS1_PEAK_PKL')
 DECONVOLUTED_MS2_PKL = config.get(args.operating_system, 'DECONVOLUTED_MS2_PKL')
 MGF_NAME = config.get(args.operating_system, 'MGF_NAME')
+CONVERTED_DATABASE_NAME = config.get(args.operating_system, 'CONVERTED_DATABASE_NAME')
 
 def run_process(process):
     print("Executing: {}".format(process))
