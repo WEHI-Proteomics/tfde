@@ -100,7 +100,9 @@ def ms2_intensity_descent(ms2_peaks_a):
         # get all the raw points within this m/z region
         peak_indexes = np.where((ms2_peaks_a[:,0] >= peak_mz_lower) & (ms2_peaks_a[:,0] <= peak_mz_upper))
         if len(peak_indexes) > 0:
-            mz_cent = mz_centroid(ms2_peaks_a[peak_indexes,1], ms2_peaks_a[peak_indexes,0])
+            intensities_a = ms2_peaks_a[peak_indexes,1]
+            mzs_a = ms2_peaks_a[peak_indexes,0]
+            mz_cent = mz_centroid(intensities_a, mzs_a)
             summed_intensity = ms2_peaks_a[peak_indexes,1].sum()
             ms2_peaks_l.append((mz_cent, summed_intensity))
             # remove the raw points assigned to this peak
