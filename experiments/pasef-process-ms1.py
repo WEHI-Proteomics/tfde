@@ -27,6 +27,10 @@ except NameError:
 parser = argparse.ArgumentParser(description='Extract ms1 features from PASEF isolation windows.')
 parser.add_argument('-ini','--ini_file', type=str, help='Path to the config file.', required=True)
 parser.add_argument('-os','--operating_system', type=str, choices=['linux','macos'], help='Operating system name.', required=True)
+parser.add_argument('-rm','--ray_mode', type=str, choices=['local','cluster','join'], help='The Ray mode to use.', required=True)
+parser.add_argument('-ra','--redis_address', type=str, help='Address of the cluster to join.', required=False)
+parser.add_argument('-ssm','--small_set_mode', action='store_true', help='A small subset of the data for testing purposes.')
+parser.add_argument('-idm','--interim_data_mode', action='store_true', help='Write out interim data for debugging.')
 args = parser.parse_args()
 
 if not os.path.isfile(args.ini_file):
@@ -49,8 +53,6 @@ MS2_MZ_ISOLATION_WINDOW_EXTENSION = config.getfloat('ms2', 'MS2_MZ_ISOLATION_WIN
 MS1_PEAK_DELTA = config.getfloat('ms1', 'MS1_PEAK_DELTA')
 CARBON_MASS_DIFFERENCE = config.getfloat('common', 'CARBON_MASS_DIFFERENCE')
 
-CLUSTER_MODE = config.getboolean(args.operating_system, 'CLUSTER_MODE')
-LOCAL_MODE = config.getboolean(args.operating_system, 'LOCAL_MODE')
 CONVERTED_DATABASE_NAME = config.get(args.operating_system, 'CONVERTED_DATABASE_NAME')
 RAW_DATABASE_NAME = config.get(args.operating_system, 'RAW_DATABASE_NAME')
 MS1_PEAK_PKL = config.get(args.operating_system, 'MS1_PEAK_PKL')
@@ -60,19 +62,19 @@ MS1_BIN_WIDTH = config.getfloat('ms1', 'MS1_BIN_WIDTH')
 NUMBER_OF_STD_DEV_MZ = config.getint('ms1', 'NUMBER_OF_STD_DEV_MZ')
 MAX_MS1_PEAK_HEIGHT_RATIO_ERROR = config.getfloat('ms1', 'MAX_MS1_PEAK_HEIGHT_RATIO_ERROR')
 
-SMALL_SET_MODE = config.getboolean(args.operating_system, 'SMALL_SET_MODE')
-INTERIM_DATA_MODE = config.getboolean('common', 'INTERIM_DATA_MODE')
-
 # initialise Ray
 if not ray.is_initialized():
-    if CLUSTER_MODE:
-        ray.init(redis_address="localhost:6379")
-    else:
-        if LOCAL_MODE:
-            ray.init(local_mode=True)
+    if args.ray_mode == "join":
+        if args.redis_address is not None:
+            ray.init(redis_address=args.redis_address)
         else:
-            ray.init(object_store_memory=40000000000,
-                        redis_max_memory=25000000000)
+            print("Argument error: a redis_address is needed for join mode")
+            sys.exit(1)
+    elif args.ray_mode == "cluster":
+        ray.init(object_store_memory=40000000000,
+                    redis_max_memory=25000000000)
+    else:
+        ray.init(local_mode=True)
 
 start_run = time.time()
 
@@ -295,7 +297,7 @@ def find_features(group_number, group_df):
 
     binned_ms1_df = pd.DataFrame(binned_ms1_l, columns=['mz_centroid','summed_intensity'])
 
-    if INTERIM_DATA_MODE:
+    if args.interim_data_mode:
         binned_ms1_df.to_csv('./ms1-peaks-group-{}-before-intensity-descent.csv'.format(group_number), index=False, header=True)
 
     # intensity descent
@@ -319,7 +321,7 @@ def find_features(group_number, group_df):
             intensities = np.delete(intensities, peak_indexes)
             mzs = np.delete(mzs, peak_indexes)
 
-    if INTERIM_DATA_MODE:
+    if args.interim_data_mode:
         l = []
         for p in ms1_peaks_l:
             l.append((p.mz, p.intensity))
@@ -534,7 +536,7 @@ def remove_points_outside_mass_defect_windows(ms2_peaks_a, mass_defect_window_bi
 # find ms1 features for each unique precursor ID
 print("finding ms1 features")
 start_time = time.time()
-if SMALL_SET_MODE:
+if args.small_set_mode:
     isolation_window_df = isolation_window_df[:20]
 ms1_df_l = ray.get([find_features.remote(group_number=idx+1, group_df=group_df) for idx,group_df in isolation_window_df.groupby('Precursor')])
 ms1_df = pd.concat(ms1_df_l)  # combines a list of dataframes into a single dataframe

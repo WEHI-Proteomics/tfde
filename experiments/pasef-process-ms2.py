@@ -24,6 +24,10 @@ except NameError:
 parser = argparse.ArgumentParser(description='Deconvolute ms2 spectra for PASEF isolation windows.')
 parser.add_argument('-ini','--ini_file', type=str, help='Path to the config file.', required=True)
 parser.add_argument('-os','--operating_system', type=str, choices=['linux','macos'], help='Operating system name.', required=True)
+parser.add_argument('-rm','--ray_mode', type=str, choices=['local','cluster','join'], help='The Ray mode to use.', required=True)
+parser.add_argument('-ra','--redis_address', type=str, help='Address of the cluster to join.', required=False)
+parser.add_argument('-ssm','--small_set_mode', action='store_true', help='A small subset of the data for testing purposes.')
+parser.add_argument('-idm','--interim_data_mode', action='store_true', help='Write out interim data for debugging.')
 args = parser.parse_args()
 
 if not os.path.isfile(args.ini_file):
@@ -44,14 +48,9 @@ MS1_COLLISION_ENERGY = config.getfloat('common', 'MS1_COLLISION_ENERGY')
 MS2_PEAK_DELTA = config.getfloat('ms2', 'MS2_PEAK_DELTA')
 MS2_MZ_ISOLATION_WINDOW_EXTENSION = config.getfloat('ms2', 'MS2_MZ_ISOLATION_WINDOW_EXTENSION')
 
-CLUSTER_MODE = config.getboolean(args.operating_system, 'CLUSTER_MODE')
-LOCAL_MODE = config.getboolean(args.operating_system, 'LOCAL_MODE')
 CONVERTED_DATABASE_NAME = config.get(args.operating_system, 'CONVERTED_DATABASE_NAME')
 RAW_DATABASE_NAME = config.get(args.operating_system, 'RAW_DATABASE_NAME')
 DECONVOLUTED_MS2_PKL = config.get(args.operating_system, 'DECONVOLUTED_MS2_PKL')
-
-SMALL_SET_MODE = config.getboolean(args.operating_system, 'SMALL_SET_MODE')
-INTERIM_DATA_MODE = config.getboolean('common', 'INTERIM_DATA_MODE')
 
 # create the bins for mass defect windows in Da space
 def generate_mass_defect_windows():
@@ -144,14 +143,17 @@ if not os.path.isfile(CONVERTED_DATABASE_NAME):
 
 # initialise Ray
 if not ray.is_initialized():
-    if CLUSTER_MODE:
-        ray.init(redis_address="localhost:6379")
-    else:
-        if LOCAL_MODE:
-            ray.init(local_mode=True)
+    if args.ray_mode == "join":
+        if args.redis_address is not None:
+            ray.init(redis_address=args.redis_address)
         else:
-            ray.init(object_store_memory=40000000000,
-                        redis_max_memory=25000000000)
+            print("Argument error: a redis_address is needed for join mode")
+            sys.exit(1)
+    elif args.ray_mode == "cluster":
+        ray.init(object_store_memory=40000000000,
+                    redis_max_memory=25000000000)
+    else:
+        ray.init(local_mode=True)
 
 # make sure the right indexes are created in the source database
 print("Setting up indexes on {}".format(CONVERTED_DATABASE_NAME))
