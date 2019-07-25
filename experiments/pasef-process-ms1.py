@@ -6,7 +6,6 @@ import sys
 import peakutils
 from ms_deisotope import deconvolute_peaks, averagine, scoring
 from ms_deisotope.deconvolution import peak_retention_strategy
-from ms_peak_picker import simple_peak
 from pyteomics import mgf
 import os.path
 import argparse
