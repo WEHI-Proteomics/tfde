@@ -464,7 +464,6 @@ def check_monoisotopic_peak(feature, idx, total):
     if expected_ratio is not None:
         original_phr_error = (observed_ratio - expected_ratio) / expected_ratio
         if abs(original_phr_error) > MAX_MS1_PEAK_HEIGHT_RATIO_ERROR:
-            print("feature {}/{}: PHR error {} - looking for the correct monoisotopic".format(idx+1,total,original_phr_error))
             # probably missed the monoisotopic - need to search for it
             expected_spacing_mz = CARBON_MASS_DIFFERENCE / feature.charge
             centre_mz = feature.monoisotopic_mz - expected_spacing_mz
@@ -541,7 +540,7 @@ print("finding ms1 features")
 start_time = time.time()
 if args.small_set_mode:
     isolation_window_df = isolation_window_df[:20]
-ms1_df_l = ray.get([find_features.remote(group_number=idx+1, group_df=group_df) for idx,group_df in isolation_window_df.groupby('Precursor')])
+ms1_df_l = ray.get([find_features.remote(group_number=group_name, group_df=group_df) for group_name,group_df in isolation_window_df.groupby('Precursor')])
 ms1_df = pd.concat(ms1_df_l)  # combines a list of dataframes into a single dataframe
 # assign an ID to each feature
 ms1_df.sort_values(by=['intensity'], ascending=False, inplace=True)
