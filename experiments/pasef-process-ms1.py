@@ -378,6 +378,7 @@ def peak_ratio(monoisotopic_mass, peak_number, number_of_sulphur):
     return ratio
 
 # given a centre mz and a feature, calculate the mz centroid and summed intensity from the raw points
+# return is (mz,intensity)
 def calculate_raw_peak_intensity_at_mz(centre_mz, feature):
     result = (-1, -1)
 
@@ -419,6 +420,7 @@ def check_monoisotopic_peak(feature, idx, total):
     if expected_ratio is not None:
         original_phr_error = (observed_ratio - expected_ratio) / expected_ratio
         if abs(original_phr_error) > MAX_MS1_PEAK_HEIGHT_RATIO_ERROR:
+            # print("Info: high peak height ratio error for the monoisotopic. Trying for a better fit.")
             # probably missed the monoisotopic - need to search for it
             expected_spacing_mz = CARBON_MASS_DIFFERENCE / feature.charge
             centre_mz = feature.monoisotopic_mz - expected_spacing_mz
@@ -453,6 +455,10 @@ def check_monoisotopic_peak(feature, idx, total):
                         # take the intensity-weighted centroid of the mzs in the list
                         feature_d['monoisotopic_mz'] = mz_centroid(np.array(envelope_deisotoped_intensities), np.array(envelope_deisotoped_mzs))
                         adjusted = True
+                # else:
+                #     print("Error: found no points in the original monoisotopic region.")
+            # else:
+            #     print("Info: found no points in the expected monoisotopic region.")
 
     feature_d['mono_adjusted'] = adjusted
     feature_d['original_phr_error'] = original_phr_error
