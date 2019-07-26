@@ -92,12 +92,14 @@ processes.append("python -W once -u {}/experiments/pasef-process-ms2.py -ini {} 
 
 # run the processes and wait for them to finish
 pool.map(run_process, processes)
+print("Finished ms1 and ms2 processing")
 
 if not os.path.isfile(MS1_PEAK_PKL):
     print("The ms1 output file doesn't exist: {}".format(MS1_PEAK_PKL))
     sys.exit(1)
 else:
     # get the features detected in ms1
+    print("Reading the ms1 output file: {}".format(MS1_PEAK_PKL))
     ms1_features_df = pd.read_pickle(MS1_PEAK_PKL)
 
 if not os.path.isfile(DECONVOLUTED_MS2_PKL):
@@ -105,8 +107,10 @@ if not os.path.isfile(DECONVOLUTED_MS2_PKL):
     sys.exit(1)
 else:
     # get the ms2 spectra
+    print("Reading the ms2 output file: {}".format(DECONVOLUTED_MS2_PKL))
     ms2_deconvoluted_peaks_df = pd.read_pickle(DECONVOLUTED_MS2_PKL)
 
+print("Associating ms2 spectra with ms1 features")
 feature_results = []
 for idx,feature_df in ms1_features_df.iterrows():
     # package the feature and its fragment ions for writing out to the MGF
@@ -115,7 +119,7 @@ for idx,feature_df in ms1_features_df.iterrows():
     feature_results.append(result)
 
 # generate the MGF for all the features
-print("writing {} entries to {}".format(len(feature_results), MGF_NAME))
+print("Writing {} entries to {}".format(len(feature_results), MGF_NAME))
 if os.path.isfile(MGF_NAME):
     os.remove(MGF_NAME)
 _ = mgf.write(output=MGF_NAME, spectra=feature_results)
