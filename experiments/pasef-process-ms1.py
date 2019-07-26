@@ -394,21 +394,13 @@ def calculate_raw_peak_intensity_at_mz(centre_mz, feature):
     ms1_frame_ids = tuple(ms1_frame_properties_df.frame_id)
 
     db_conn = sqlite3.connect(CONVERTED_DATABASE_NAME)
-    ms1_raw_points_df = pd.read_sql_query("select frame_id,mz,scan,intensity from frames where frame_id in {} and mz >= {} and mz <= {} and scan >= {} and scan <= {} and intensity > 0".format(ms1_frame_ids, mz_lower, mz_upper, scan_lower, scan_upper), db_conn)
+    ms1_raw_points_df = pd.read_sql_query("select mz,intensity from frames where frame_id in {} and mz >= {} and mz <= {} and scan >= {} and scan <= {} and retention_time_secs >= {} and retention_time_secs <= {} and intensity > 0".format(ms1_frame_ids, mz_lower, mz_upper, scan_lower, scan_upper, rt_lower, rt_upper), db_conn)
     db_conn.close()
 
     if len(ms1_raw_points_df) > 0:
-        # arrange the points into bins
-        ms1_bins = np.arange(start=mz_lower, stop=mz_upper+MS1_BIN_WIDTH, step=MS1_BIN_WIDTH)  # go slightly wider to accomodate the maximum value
-        ms1_raw_points_df['bin_idx'] = np.digitize(ms1_raw_points_df.mz, ms1_bins).astype(int)
-
-        # find the peaks for each bin
-        unresolved_peaks_df = ms1_raw_points_df.groupby(['bin_idx'], as_index=False).apply(calc_bin_centroid)
-
-        # centroid and sum all the bin peaks, as we are interested in a narrow band of m/z
-        mz_cent = mz_centroid(unresolved_peaks_df.summed_intensity.to_numpy(), unresolved_peaks_df.mz_centroid.to_numpy())
-        summed_intensity = unresolved_peaks_df.summed_intensity.sum()
-        result = (mz_cent, summed_intensity)
+        ms1_raw_points_a = ms1_raw_points_df[['mz','intensity']].to_numpy()
+        peaks = ms1_intensity_descent(ms1_raw_points_a)
+        result = (peaks[0][0], peaks[0][1])
 
     return result
 
