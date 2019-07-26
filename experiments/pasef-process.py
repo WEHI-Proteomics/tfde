@@ -64,7 +64,7 @@ def collate_spectra_for_feature(feature_df, ms2_a):
     params["RTINSECONDS"] = "{}".format(round(feature_df.rt_apex,2))
     spectrum["params"] = params
     return spectrum
-    
+
 ray_cluster = ray.init()
 # get the address for the sub-processes to join
 redis_address = ray_cluster['redis_address']
@@ -113,6 +113,7 @@ else:
     ms2_deconvoluted_peaks_df = pd.read_pickle(DECONVOLUTED_MS2_PKL)
 
 print("Associating ms2 spectra with ms1 features")
+start_time = time.time()
 feature_results = []
 for i in range(len(features_df)):
     feature_df = features_df.iloc[i]
@@ -120,6 +121,8 @@ for i in range(len(features_df)):
     ms2_a = ms2_peaks_a[np.where(ms2_peaks_a[:,0] == feature_df.precursor_id)]
     result = collate_spectra_for_feature(feature_df, ms2_a)
     feature_results.append(result)
+stop_time = time.time()
+print("association time: {} seconds".format(round(stop_time-start_time,1)))
 
 # generate the MGF for all the features
 print("Writing {} entries to {}".format(len(feature_results), MGF_NAME))
