@@ -19,6 +19,7 @@ import time
 parser = argparse.ArgumentParser(description='Manage the ms1 and ms2 processing, and generate the MGF.')
 parser.add_argument('-ini','--ini_file', type=str, help='Path to the config file.', required=True)
 parser.add_argument('-os','--operating_system', type=str, choices=['linux','macos'], help='Operating system name.', required=True)
+parser.add_argument('-di','--drop_indexes', action='store_true', help='Drop converted database indexes, if they exist.')
 args = parser.parse_args()
 
 if not os.path.isfile(args.ini_file):
@@ -67,13 +68,18 @@ ray_cluster = ray.init()
 redis_address = ray_cluster['redis_address']
 
 # make sure the right indexes are created in the source database
-print("Setting up indexes on {}".format(CONVERTED_DATABASE_NAME))
 db_conn = sqlite3.connect(CONVERTED_DATABASE_NAME)
 src_c = db_conn.cursor()
-src_c.execute("create index if not exists idx_pasef_frames_1 on frames (frame_id, mz, scan, intensity)")
-src_c.execute("create index if not exists idx_pasef_frames_2 on frames (frame_id, mz, scan, retention_time_secs)")
-src_c.execute("create index if not exists idx_pasef_ms2_frames_1 on frames (frame_id, scan, intensity)")
+
+if args.drop_indexes:
+    print("Dropping indexes on {}".format(CONVERTED_DATABASE_NAME))
+    src_c.execute("drop index if exists idx_pasef_frames_1")
+    src_c.execute("drop index if exists idx_pasef_frame_properties_1")
+
+print("Setting up indexes on {}".format(CONVERTED_DATABASE_NAME))
+src_c.execute("create index if not exists idx_pasef_frames_1 on frames (frame_id, mz, scan, intensity, retention_time_secs)")
 src_c.execute("create index if not exists idx_pasef_frame_properties_1 on frame_properties (retention_time_secs, collision_energy)")
+
 db_conn.close()
 
 # Set up the processing pool
