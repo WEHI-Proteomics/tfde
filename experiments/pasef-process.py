@@ -48,12 +48,14 @@ def run_process(process):
     print("Executing: {}".format(process))
     os.system(process)
 
-def collate_spectra_for_feature(feature_df, ms2_deconvoluted_df):
+# ms2_a is a numpy array [precursor_id,mz,intensity]
+# return is a dictionary containing the feature information and spectra
+def collate_spectra_for_feature(feature_df, ms2_a):
     # append the monoisotopic and the ms2 fragments to the list for MGF creation
-    pairs_df = ms2_deconvoluted_df[['mz', 'intensity']].copy().sort_values(by=['mz'], ascending=True)
+    ms2_sorted_a = ms2_a[ms2_a[:,1].argsort()] # sort by m/z increasing
     spectrum = {}
-    spectrum["m/z array"] = pairs_df.mz.values
-    spectrum["intensity array"] = pairs_df.intensity.values.astype(int)
+    spectrum["m/z array"] = ms2_sorted_a[:,1]
+    spectrum["intensity array"] = ms2_sorted_a[:,2].astype(int)
     params = {}
     params["TITLE"] = "RawFile: {} Charge: {} FeatureIntensity: {} Feature#: {} RtApex: {} Precursor: {}".format(os.path.basename(CONVERTED_DATABASE_NAME).split('.')[0], feature_df.charge, round(feature_df.intensity), feature_df.feature_id, round(feature_df.rt_apex,2), feature_df.precursor_id)
     params["INSTRUMENT"] = "ESI-QUAD-TOF"
@@ -62,7 +64,7 @@ def collate_spectra_for_feature(feature_df, ms2_deconvoluted_df):
     params["RTINSECONDS"] = "{}".format(round(feature_df.rt_apex,2))
     spectrum["params"] = params
     return spectrum
-
+    
 ray_cluster = ray.init()
 # get the address for the sub-processes to join
 redis_address = ray_cluster['redis_address']
@@ -112,10 +114,11 @@ else:
 
 print("Associating ms2 spectra with ms1 features")
 feature_results = []
-for idx,feature_df in ms1_features_df.iterrows():
+for i in range(len(features_df)):
+    feature_df = features_df.iloc[i]
     # package the feature and its fragment ions for writing out to the MGF
-    ms2_df = ms2_deconvoluted_peaks_df[ms2_deconvoluted_peaks_df.precursor == feature_df.precursor_id]
-    result = collate_spectra_for_feature(feature_df, ms2_df)
+    ms2_a = ms2_peaks_a[np.where(ms2_peaks_a[:,0] == feature_df.precursor_id)]
+    result = collate_spectra_for_feature(feature_df, ms2_a)
     feature_results.append(result)
 
 # generate the MGF for all the features
