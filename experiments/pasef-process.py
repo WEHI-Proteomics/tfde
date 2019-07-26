@@ -89,8 +89,8 @@ pool = Pool(processes=2)
 
 # create a list of commands to start the ms1 and ms2 sub-processes and get them to join the cluster
 processes = []
-processes.append("python -W once -u {}/experiments/pasef-process-ms1.py -ini {} -os {} -rm join -ra {}".format(SOURCE_BASE, args.ini_file, args.operating_system, redis_address))
-processes.append("python -W once -u {}/experiments/pasef-process-ms2.py -ini {} -os {} -rm join -ra {}".format(SOURCE_BASE, args.ini_file, args.operating_system, redis_address))
+processes.append("python -u {}/experiments/pasef-process-ms1.py -ini {} -os {} -rm join -ra {}".format(SOURCE_BASE, args.ini_file, args.operating_system, redis_address))
+processes.append("python -u {}/experiments/pasef-process-ms2.py -ini {} -os {} -rm join -ra {}".format(SOURCE_BASE, args.ini_file, args.operating_system, redis_address))
 
 # run the processes and wait for them to finish
 pool.map(run_process, processes)
