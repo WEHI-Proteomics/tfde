@@ -110,13 +110,14 @@ if not os.path.isfile(DECONVOLUTED_MS2_PKL):
 else:
     # get the ms2 spectra
     print("Reading the ms2 output file: {}".format(DECONVOLUTED_MS2_PKL))
-    ms2_deconvoluted_peaks_df = pd.read_pickle(DECONVOLUTED_MS2_PKL)
+    ms2_peaks_df = pd.read_pickle(DECONVOLUTED_MS2_PKL)
+    ms2_peaks_a = ms2_peaks_df[['precursor','mz','intensity']].to_numpy()
 
 print("Associating ms2 spectra with ms1 features")
 start_time = time.time()
 feature_results = []
-for i in range(len(features_df)):
-    feature_df = features_df.iloc[i]
+for i in range(len(ms1_features_df)):
+    feature_df = ms1_features_df.iloc[i]
     # package the feature and its fragment ions for writing out to the MGF
     ms2_a = ms2_peaks_a[np.where(ms2_peaks_a[:,0] == feature_df.precursor_id)]
     result = collate_spectra_for_feature(feature_df, ms2_a)
