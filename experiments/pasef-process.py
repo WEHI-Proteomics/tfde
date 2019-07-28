@@ -20,6 +20,7 @@ parser = argparse.ArgumentParser(description='Manage the ms1 and ms2 processing,
 parser.add_argument('-ini','--ini_file', type=str, help='Path to the config file.', required=True)
 parser.add_argument('-os','--operating_system', type=str, choices=['linux','macos'], help='Operating system name.', required=True)
 parser.add_argument('-di','--drop_indexes', action='store_true', help='Drop converted database indexes, if they exist.')
+parser.add_argument('-ao','--association_only', action='store_true', help='Bypass the ms1 and ms2 processing; only do the association step.')
 args = parser.parse_args()
 
 if not os.path.isfile(args.ini_file):
@@ -65,6 +66,21 @@ def collate_spectra_for_feature(feature_df, ms2_a):
     spectrum["params"] = params
     return spectrum
 
+def associate_feature_spectra(precursors, features, spectra):
+    associations = []
+    for precursor_id in precursors:
+        # find the spectra for this precursor
+        spectra = np.where(spectra[:,0] == precursor_id)[0]
+        # find the features for this precursor
+        features_df = features[features.precursor_id == precursor]
+        # associate the spectra with each feature found for this precursor
+        for i in range(len(features_df)):
+            feature = features_df.iloc[i]
+            # collate them for the MGF
+            spectrum = collate_spectra_for_feature(feature_df=feature, ms2_a=spectra)
+            associations.append(spectrum)
+    return associations
+
 ray_cluster = ray.init()
 # get the address for the sub-processes to join
 redis_address = ray_cluster['redis_address']
@@ -84,17 +100,18 @@ src_c.execute("create index if not exists idx_pasef_frame_properties_1 on frame_
 
 db_conn.close()
 
-# Set up the processing pool
-pool = Pool(processes=2)
+if not args.association_only:
+    # Set up the processing pool
+    pool = Pool(processes=2)
 
-# create a list of commands to start the ms1 and ms2 sub-processes and get them to join the cluster
-processes = []
-processes.append("python -u {}/experiments/pasef-process-ms1.py -ini {} -os {} -rm join -ra {}".format(SOURCE_BASE, args.ini_file, args.operating_system, redis_address))
-processes.append("python -u {}/experiments/pasef-process-ms2.py -ini {} -os {} -rm join -ra {}".format(SOURCE_BASE, args.ini_file, args.operating_system, redis_address))
+    # create a list of commands to start the ms1 and ms2 sub-processes and get them to join the cluster
+    processes = []
+    processes.append("python -u {}/experiments/pasef-process-ms1.py -ini {} -os {} -rm join -ra {}".format(SOURCE_BASE, args.ini_file, args.operating_system, redis_address))
+    processes.append("python -u {}/experiments/pasef-process-ms2.py -ini {} -os {} -rm join -ra {}".format(SOURCE_BASE, args.ini_file, args.operating_system, redis_address))
 
-# run the processes and wait for them to finish
-pool.map(run_process, processes)
-print("Finished ms1 and ms2 processing")
+    # run the processes and wait for them to finish
+    pool.map(run_process, processes)
+    print("Finished ms1 and ms2 processing")
 
 if not os.path.isfile(MS1_PEAK_PKL):
     print("The ms1 output file doesn't exist: {}".format(MS1_PEAK_PKL))
@@ -115,21 +132,16 @@ else:
 
 print("Associating ms2 spectra with ms1 features")
 start_time = time.time()
-feature_results = []
-for i in range(len(ms1_features_df)):
-    feature_df = ms1_features_df.iloc[i]
-    # package the feature and its fragment ions for writing out to the MGF
-    ms2_a = ms2_peaks_a[np.where(ms2_peaks_a[:,0] == feature_df.precursor_id)]
-    result = collate_spectra_for_feature(feature_df, ms2_a)
-    feature_results.append(result)
+unique_precursor_ids_a = isolation_window_df.Precursor.unique()
+associations = associate_feature_spectra(precursors=unique_precursor_ids_a, features=ms1_features_df, spectra=ms2_peaks_a)
 stop_time = time.time()
 print("association time: {} seconds".format(round(stop_time-start_time,1)))
 
 # generate the MGF for all the features
-print("Writing {} entries to {}".format(len(feature_results), MGF_NAME))
+print("Writing {} entries to {}".format(len(associations), MGF_NAME))
 if os.path.isfile(MGF_NAME):
     os.remove(MGF_NAME)
-_ = mgf.write(output=MGF_NAME, spectra=feature_results)
+_ = mgf.write(output=MGF_NAME, spectra=associations)
 
 stop_run = time.time()
 print("total running time ({}): {} seconds".format(parser.prog, round(stop_run-start_run,1)))
