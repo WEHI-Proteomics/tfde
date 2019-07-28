@@ -79,14 +79,14 @@ def associate_feature_spectra(precursors, features, spectra):
     associations = []
     for precursor_id in precursors:
         # find the spectra for this precursor
-        spectra = np.where(spectra[:,0] == precursor_id)
+        precursor_ms2_spectra = spectra[np.where(spectra[:,0] == precursor_id)]
         # find the features for this precursor
         features_df = features[features.precursor_id == precursor_id]
         # associate the spectra with each feature found for this precursor
         for i in range(len(features_df)):
             feature = features_df.iloc[i]
             # collate them for the MGF
-            spectrum = collate_spectra_for_feature(feature_df=feature, ms2_a=spectra)
+            spectrum = collate_spectra_for_feature(feature_df=feature, ms2_a=precursor_ms2_spectra)
             associations.append(spectrum)
     return associations
 
