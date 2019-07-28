@@ -76,13 +76,15 @@ def collate_spectra_for_feature(feature_df, ms2_a):
     return spectrum
 
 @ray.remote
-def associate_feature_spectra(precursor_features_df, spectra_a):
+def associate_feature_spectra(precursor_id, features_df, spectra_a):
     associations = []
+    precursor_features_df = features_df[features_df.precursor_id == precursor_id]
+    precursor_spectra_a = spectra_a[np.where(spectra_a[:,0] == precursor_id)]
     # associate the spectra with each feature found for this precursor
     for i in range(len(precursor_features_df)):
         feature = precursor_features_df.iloc[i]
         # collate them for the MGF
-        spectrum = collate_spectra_for_feature(feature_df=feature, ms2_a=spectra_a)
+        spectrum = collate_spectra_for_feature(feature_df=feature, ms2_a=precursor_spectra_a)
         associations.append(spectrum)
     return associations
 
@@ -148,7 +150,7 @@ else:
 print("Associating ms2 spectra with ms1 features")
 start_time = time.time()
 unique_precursor_ids_a = isolation_window_df.Precursor.unique()
-associations = ray.get([associate_feature_spectra.remote(ms1_features_df[ms1_features_df.precursor_id == precursor_id], ms2_peaks_a[np.where(ms2_peaks_a[:,0] == precursor_id)]) for precursor_id in unique_precursor_ids_a])
+associations = ray.get([associate_feature_spectra.remote(precursor_id, ms1_features_df, ms2_peaks_a) for precursor_id in unique_precursor_ids_a])
 associations = [item for sublist in associations for item in sublist]
 stop_time = time.time()
 print("association time: {} seconds".format(round(stop_time-start_time,1)))
