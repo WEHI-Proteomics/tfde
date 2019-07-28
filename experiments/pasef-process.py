@@ -79,7 +79,7 @@ def associate_feature_spectra(precursors, features, spectra):
     associations = []
     for precursor_id in precursors:
         # find the spectra for this precursor
-        spectra = np.where(spectra[:,0] == precursor_id)[0]
+        spectra = np.where(spectra[:,0] == precursor_id)
         # find the features for this precursor
         features_df = features[features.precursor_id == precursor_id]
         # associate the spectra with each feature found for this precursor
