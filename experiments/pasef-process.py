@@ -21,6 +21,7 @@ parser.add_argument('-ini','--ini_file', type=str, help='Path to the config file
 parser.add_argument('-os','--operating_system', type=str, choices=['linux','macos'], help='Operating system name.', required=True)
 parser.add_argument('-di','--drop_indexes', action='store_true', help='Drop converted database indexes, if they exist.')
 parser.add_argument('-ao','--association_only', action='store_true', help='Bypass the ms1 and ms2 processing; only do the association step.')
+parser.add_argument('-ssm','--small_set_mode', action='store_true', help='A small subset of the data for testing purposes.')
 args = parser.parse_args()
 
 if not os.path.isfile(args.ini_file):
@@ -37,6 +38,28 @@ MGF_NAME = config.get(args.operating_system, 'MGF_NAME')
 CONVERTED_DATABASE_NAME = config.get(args.operating_system, 'CONVERTED_DATABASE_NAME')
 
 start_run = time.time()
+
+# returns a dataframe with the prepared isolation windows
+def load_isolation_windows(database_name, small_set_mode):
+    # get all the isolation windows
+    db_conn = sqlite3.connect(database_name)
+    isolation_window_df = pd.read_sql_query("select * from PasefFrameMsMsInfo", db_conn)
+    db_conn.close()
+
+    # add-in the retention time for the isolation windows
+    isolation_window_df = pd.merge(isolation_window_df, ms2_frame_properties_df, how='left', left_on=['Frame'], right_on=['frame_id'])
+    isolation_window_df.drop(['CollisionEnergy'], axis=1, inplace=True)
+    isolation_window_df.dropna(subset=['retention_time_secs'], inplace=True)
+    isolation_window_df['mz_lower'] = isolation_window_df.IsolationMz - (isolation_window_df.IsolationWidth / 2) - MS2_MZ_ISOLATION_WINDOW_EXTENSION
+    isolation_window_df['mz_upper'] = isolation_window_df.IsolationMz + (isolation_window_df.IsolationWidth / 2) + MS2_MZ_ISOLATION_WINDOW_EXTENSION
+    # filter out isolation windows that don't fit in the database subset we have loaded
+    isolation_window_df = isolation_window_df[(isolation_window_df.retention_time_secs >= (RT_LOWER - RT_BASE_PEAK_WIDTH_SECS)) & (isolation_window_df.retention_time_secs <= (RT_UPPER + RT_BASE_PEAK_WIDTH_SECS))]
+    print("loaded {} isolation windows from {}".format(len(isolation_window_df), RAW_DATABASE_NAME))
+    isolation_window_df.sort_values(by=['Precursor'], ascending=False, inplace=True)
+
+    if small_set_mode:
+        isolation_window_df = isolation_window_df[:100]
+    return isolation_window_df
 
 def run_process(process):
     print("Executing: {}".format(process))
@@ -73,6 +96,10 @@ def associate_feature_spectra(precursors, features, spectra):
             spectrum = collate_spectra_for_feature(feature_df=feature, ms2_a=spectra)
             associations.append(spectrum)
     return associations
+
+##################################################
+# load the isolation windows
+isolation_window_df = load_isolation_windows(RAW_DATABASE_NAME, args.small_set_mode)
 
 ray_cluster = ray.init()
 # get the address for the sub-processes to join
