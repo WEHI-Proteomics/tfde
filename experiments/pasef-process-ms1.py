@@ -472,7 +472,7 @@ def check_monoisotopic_peak(feature, idx, total):
 print("finding ms1 features")
 start_time = time.time()
 if args.small_set_mode:
-    isolation_window_df = isolation_window_df[:20]
+    isolation_window_df = isolation_window_df[:100]
 ms1_df_l = ray.get([find_features.remote(group_number=group_name, group_df=group_df) for group_name,group_df in isolation_window_df.groupby('Precursor')])
 ms1_df = pd.concat(ms1_df_l)  # combines a list of dataframes into a single dataframe
 # assign an ID to each feature

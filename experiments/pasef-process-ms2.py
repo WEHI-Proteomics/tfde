@@ -181,7 +181,7 @@ print("loaded {} isolation windows from {}".format(len(isolation_window_df), RAW
 isolation_window_df.sort_values(by=['Precursor'], ascending=False, inplace=True)
 
 if args.small_set_mode:
-    isolation_window_df = isolation_window_df[:20]
+    isolation_window_df = isolation_window_df[:100]
 
 # generate the mass defect windows
 mass_defect_window_bins = generate_mass_defect_windows()
