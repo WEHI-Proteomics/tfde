@@ -58,9 +58,10 @@ def run_process(process):
     print("Executing: {}".format(process))
     os.system(process)
 
+# feature_a is a numpy array [feature_id,charge,monoisotopic_mz,rt_apex,intensity,precursor_id]
 # ms2_a is a numpy array [precursor_id,mz,intensity]
 # return is a dictionary containing the feature information and spectra
-def collate_spectra_for_feature(feature_df, ms2_a):
+def collate_spectra_for_feature(feature_a, ms2_a):
     # append the monoisotopic and the ms2 fragments to the list for MGF creation
     ms2_sorted_a = ms2_a[ms2_a[:,1].argsort()] # sort by m/z increasing
     spectrum = {}
@@ -69,22 +70,21 @@ def collate_spectra_for_feature(feature_df, ms2_a):
     params = {}
     params["TITLE"] = "RawFile: {} Charge: {} FeatureIntensity: {} Feature#: {} RtApex: {} Precursor: {}".format(os.path.basename(CONVERTED_DATABASE_NAME).split('.')[0], feature_df.charge, round(feature_df.intensity), feature_df.feature_id, round(feature_df.rt_apex,2), feature_df.precursor_id)
     params["INSTRUMENT"] = "ESI-QUAD-TOF"
-    params["PEPMASS"] = "{} {}".format(round(feature_df.monoisotopic_mz,6), round(feature_df.intensity))
-    params["CHARGE"] = "{}+".format(feature_df.charge)
-    params["RTINSECONDS"] = "{}".format(round(feature_df.rt_apex,2))
+    params["PEPMASS"] = "{} {}".format(round(feature_a[2],6), round(feature_a[4]))
+    params["CHARGE"] = "{}+".format(feature_a[1])
+    params["RTINSECONDS"] = "{}".format(round(feature_a[3],2))
     spectrum["params"] = params
     return spectrum
 
 @ray.remote
-def associate_feature_spectra(precursor_id, features_df, spectra_a):
+# features_a is a numpy array [feature_id,charge,monoisotopic_mz,rt_apex,intensity,precursor_id]
+def associate_feature_spectra(features_a, spectra_a):
     associations = []
-    precursor_features_df = features_df[features_df.precursor_id == precursor_id]
-    precursor_spectra_a = spectra_a[np.where(spectra_a[:,0] == precursor_id)]
     # associate the spectra with each feature found for this precursor
-    for i in range(len(precursor_features_df)):
-        feature = precursor_features_df.iloc[i]
+    for i in range(len(features_a)):
+        feature_a = features_a[i]
         # collate them for the MGF
-        spectrum = collate_spectra_for_feature(feature_df=feature, ms2_a=precursor_spectra_a)
+        spectrum = collate_spectra_for_feature(feature_a=feature_a, ms2_a=spectra_a)
         associations.append(spectrum)
     return associations
 
@@ -136,7 +136,8 @@ if not os.path.isfile(MS1_PEAK_PKL):
 else:
     # get the features detected in ms1
     print("Reading the ms1 output file: {}".format(MS1_PEAK_PKL))
-    ms1_features_df = pd.read_pickle(MS1_PEAK_PKL)
+    features_df = pd.read_pickle(MS1_PEAK_PKL)
+    features_a = features_df[['feature_id','charge','monoisotopic_mz','rt_apex','intensity','precursor_id']].to_numpy()
 
 if not os.path.isfile(DECONVOLUTED_MS2_PKL):
     print("The ms2 output file doesn't exist: {}".format(DECONVOLUTED_MS2_PKL))
@@ -150,7 +151,7 @@ else:
 print("Associating ms2 spectra with ms1 features")
 start_time = time.time()
 unique_precursor_ids_a = isolation_window_df.Precursor.unique()
-associations = ray.get([associate_feature_spectra.remote(precursor_id, ms1_features_df, ms2_peaks_a) for precursor_id in unique_precursor_ids_a])
+associations = ray.get([associate_feature_spectra.remote(features_a[np.where(features_a[:,5] == precursor_id)], ms2_peaks_a[np.where(ms2_peaks_a[:,0] == precursor_id)]) for precursor_id in unique_precursor_ids_a])
 associations = [item for sublist in associations for item in sublist]
 stop_time = time.time()
 print("association time: {} seconds".format(round(stop_time-start_time,1)))
