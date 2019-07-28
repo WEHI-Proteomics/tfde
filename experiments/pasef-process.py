@@ -76,7 +76,7 @@ def collate_spectra_for_feature(feature_a, ms2_a):
     spectrum["params"] = params
     return spectrum
 
-@ray.remote
+# @ray.remote
 # features_a is a numpy array [feature_id,charge,monoisotopic_mz,rt_apex,intensity,precursor_id]
 def associate_feature_spectra(features_a, spectra_a):
     associations = []
@@ -151,7 +151,11 @@ else:
 print("Associating ms2 spectra with ms1 features")
 start_time = time.time()
 unique_precursor_ids_a = isolation_window_df.Precursor.unique()
-associations = ray.get([associate_feature_spectra.remote(features_a[np.where(features_a[:,5] == precursor_id)], ms2_peaks_a[np.where(ms2_peaks_a[:,0] == precursor_id)]) for precursor_id in unique_precursor_ids_a])
+# associations = ray.get([associate_feature_spectra.remote(features_a[np.where(features_a[:,5] == precursor_id)], ms2_peaks_a[np.where(ms2_peaks_a[:,0] == precursor_id)]) for precursor_id in unique_precursor_ids_a])
+associations = []
+for precursor_id in unique_precursor_ids_a:
+    association = associate_feature_spectra(features_a[np.where(features_a[:,5] == precursor_id)], ms2_peaks_a[np.where(ms2_peaks_a[:,0] == precursor_id)])
+    associations.append(association)
 associations = [item for sublist in associations for item in sublist]
 stop_time = time.time()
 print("association time: {} seconds".format(round(stop_time-start_time,1)))
