@@ -52,6 +52,28 @@ CONVERTED_DATABASE_NAME = config.get(args.operating_system, 'CONVERTED_DATABASE_
 RAW_DATABASE_NAME = config.get(args.operating_system, 'RAW_DATABASE_NAME')
 DECONVOLUTED_MS2_PKL = config.get(args.operating_system, 'DECONVOLUTED_MS2_PKL')
 
+# returns a dataframe with the prepared isolation windows
+def load_isolation_windows(database_name, small_set_mode):
+    # get all the isolation windows
+    db_conn = sqlite3.connect(database_name)
+    isolation_window_df = pd.read_sql_query("select * from PasefFrameMsMsInfo", db_conn)
+    db_conn.close()
+
+    # add-in the retention time for the isolation windows
+    isolation_window_df = pd.merge(isolation_window_df, ms2_frame_properties_df, how='left', left_on=['Frame'], right_on=['frame_id'])
+    isolation_window_df.drop(['CollisionEnergy'], axis=1, inplace=True)
+    isolation_window_df.dropna(subset=['retention_time_secs'], inplace=True)
+    isolation_window_df['mz_lower'] = isolation_window_df.IsolationMz - (isolation_window_df.IsolationWidth / 2) - MS2_MZ_ISOLATION_WINDOW_EXTENSION
+    isolation_window_df['mz_upper'] = isolation_window_df.IsolationMz + (isolation_window_df.IsolationWidth / 2) + MS2_MZ_ISOLATION_WINDOW_EXTENSION
+    # filter out isolation windows that don't fit in the database subset we have loaded
+    isolation_window_df = isolation_window_df[(isolation_window_df.retention_time_secs >= (RT_LOWER - RT_BASE_PEAK_WIDTH_SECS)) & (isolation_window_df.retention_time_secs <= (RT_UPPER + RT_BASE_PEAK_WIDTH_SECS))]
+    print("loaded {} isolation windows from {}".format(len(isolation_window_df), RAW_DATABASE_NAME))
+    isolation_window_df.sort_values(by=['Precursor'], ascending=False, inplace=True)
+
+    if small_set_mode:
+        isolation_window_df = isolation_window_df[:100]
+    return isolation_window_df
+
 # create the bins for mass defect windows in Da space
 @njit(fastmath=True)
 def generate_mass_defect_windows():
@@ -143,6 +165,9 @@ if not os.path.isfile(CONVERTED_DATABASE_NAME):
     print("The converted database doesn't exist: {}".format(CONVERTED_DATABASE_NAME))
     sys.exit(1)
 
+# load the isolation windows
+isolation_window_df = load_isolation_windows(RAW_DATABASE_NAME, args.small_set_mode)
+
 # initialise Ray
 if not ray.is_initialized():
     if args.ray_mode == "join":
@@ -159,29 +184,10 @@ if not ray.is_initialized():
 
 start_run = time.time()
 
-# get all the isolation windows
-db_conn = sqlite3.connect(RAW_DATABASE_NAME)
-isolation_window_df = pd.read_sql_query("select * from PasefFrameMsMsInfo", db_conn)
-db_conn.close()
-
 # get the ms2 frames
 db_conn = sqlite3.connect(CONVERTED_DATABASE_NAME)
 ms2_frame_properties_df = pd.read_sql_query("select frame_id,retention_time_secs from frame_properties where retention_time_secs >= {} and retention_time_secs <= {} and collision_energy <> {} order by retention_time_secs".format(RT_LOWER, RT_UPPER, MS1_COLLISION_ENERGY), db_conn)
 db_conn.close()
-
-# add-in the retention time for the isolation windows
-isolation_window_df = pd.merge(isolation_window_df, ms2_frame_properties_df, how='left', left_on=['Frame'], right_on=['frame_id'])
-isolation_window_df.drop(['CollisionEnergy'], axis=1, inplace=True)
-isolation_window_df.dropna(subset=['retention_time_secs'], inplace=True)
-isolation_window_df['mz_lower'] = isolation_window_df.IsolationMz - (isolation_window_df.IsolationWidth / 2) - MS2_MZ_ISOLATION_WINDOW_EXTENSION
-isolation_window_df['mz_upper'] = isolation_window_df.IsolationMz + (isolation_window_df.IsolationWidth / 2) + MS2_MZ_ISOLATION_WINDOW_EXTENSION
-# filter out isolation windows that don't fit in the database subset we have loaded
-isolation_window_df = isolation_window_df[(isolation_window_df.retention_time_secs >= (RT_LOWER - RT_BASE_PEAK_WIDTH_SECS)) & (isolation_window_df.retention_time_secs <= (RT_UPPER + RT_BASE_PEAK_WIDTH_SECS))]
-print("loaded {} isolation windows from {}".format(len(isolation_window_df), RAW_DATABASE_NAME))
-isolation_window_df.sort_values(by=['Precursor'], ascending=False, inplace=True)
-
-if args.small_set_mode:
-    isolation_window_df = isolation_window_df[:100]
 
 # generate the mass defect windows
 mass_defect_window_bins = generate_mass_defect_windows()
