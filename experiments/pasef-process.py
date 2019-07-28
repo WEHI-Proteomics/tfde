@@ -36,13 +36,6 @@ DECONVOLUTED_MS2_PKL = config.get(args.operating_system, 'DECONVOLUTED_MS2_PKL')
 MGF_NAME = config.get(args.operating_system, 'MGF_NAME')
 CONVERTED_DATABASE_NAME = config.get(args.operating_system, 'CONVERTED_DATABASE_NAME')
 
-# clean up from last time
-if os.path.isfile(MS1_PEAK_PKL):
-    os.remove(MS1_PEAK_PKL)
-
-if os.path.isfile(DECONVOLUTED_MS2_PKL):
-    os.remove(DECONVOLUTED_MS2_PKL)
-
 start_run = time.time()
 
 def run_process(process):
@@ -101,6 +94,12 @@ src_c.execute("create index if not exists idx_pasef_frame_properties_1 on frame_
 db_conn.close()
 
 if not args.association_only:
+    # clean up from last time
+    if os.path.isfile(MS1_PEAK_PKL):
+        os.remove(MS1_PEAK_PKL)
+    if os.path.isfile(DECONVOLUTED_MS2_PKL):
+        os.remove(DECONVOLUTED_MS2_PKL)
+
     # Set up the processing pool
     pool = Pool(processes=2)
 
