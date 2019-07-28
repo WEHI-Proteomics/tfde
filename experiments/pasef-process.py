@@ -47,14 +47,6 @@ def load_isolation_windows(database_name, small_set_mode):
     isolation_window_df = pd.read_sql_query("select * from PasefFrameMsMsInfo", db_conn)
     db_conn.close()
 
-    # add-in the retention time for the isolation windows
-    isolation_window_df = pd.merge(isolation_window_df, ms2_frame_properties_df, how='left', left_on=['Frame'], right_on=['frame_id'])
-    isolation_window_df.drop(['CollisionEnergy'], axis=1, inplace=True)
-    isolation_window_df.dropna(subset=['retention_time_secs'], inplace=True)
-    isolation_window_df['mz_lower'] = isolation_window_df.IsolationMz - (isolation_window_df.IsolationWidth / 2) - MS2_MZ_ISOLATION_WINDOW_EXTENSION
-    isolation_window_df['mz_upper'] = isolation_window_df.IsolationMz + (isolation_window_df.IsolationWidth / 2) + MS2_MZ_ISOLATION_WINDOW_EXTENSION
-    # filter out isolation windows that don't fit in the database subset we have loaded
-    isolation_window_df = isolation_window_df[(isolation_window_df.retention_time_secs >= (RT_LOWER - RT_BASE_PEAK_WIDTH_SECS)) & (isolation_window_df.retention_time_secs <= (RT_UPPER + RT_BASE_PEAK_WIDTH_SECS))]
     print("loaded {} isolation windows from {}".format(len(isolation_window_df), RAW_DATABASE_NAME))
     isolation_window_df.sort_values(by=['Precursor'], ascending=False, inplace=True)
 
