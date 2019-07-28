@@ -106,7 +106,7 @@ def time_this(f):
     return timed_wrapper
 
 # returns a dataframe with the prepared isolation windows
-def load_isolation_windows(database_name, small_set_mode):
+def load_isolation_windows(database_name, ms2_frame_properties_df, small_set_mode):
     # get all the isolation windows
     db_conn = sqlite3.connect(database_name)
     isolation_window_df = pd.read_sql_query("select * from PasefFrameMsMsInfo", db_conn)
@@ -475,7 +475,7 @@ def check_monoisotopic_peak(feature, idx, total):
 
 #########################################################
 # load the isolation windows
-isolation_window_df = load_isolation_windows(RAW_DATABASE_NAME, args.small_set_mode)
+isolation_window_df = load_isolation_windows(RAW_DATABASE_NAME, ms2_frame_properties_df, args.small_set_mode)
 
 # find ms1 features for each unique precursor ID
 print("finding ms1 features")
