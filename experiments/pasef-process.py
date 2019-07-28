@@ -35,6 +35,7 @@ SOURCE_BASE = config.get(args.operating_system, 'SOURCE_BASE')
 MS1_PEAK_PKL = config.get(args.operating_system, 'MS1_PEAK_PKL')
 DECONVOLUTED_MS2_PKL = config.get(args.operating_system, 'DECONVOLUTED_MS2_PKL')
 MGF_NAME = config.get(args.operating_system, 'MGF_NAME')
+RAW_DATABASE_NAME = config.get(args.operating_system, 'RAW_DATABASE_NAME')
 CONVERTED_DATABASE_NAME = config.get(args.operating_system, 'CONVERTED_DATABASE_NAME')
 
 start_run = time.time()
