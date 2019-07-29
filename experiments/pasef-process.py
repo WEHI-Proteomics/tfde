@@ -117,8 +117,10 @@ db_conn.close()
 if not args.association_only:
     # clean up from last time
     if os.path.isfile(MS1_PEAK_PKL):
+        print("removing {}".format(MS1_PEAK_PKL))
         os.remove(MS1_PEAK_PKL)
     if os.path.isfile(DECONVOLUTED_MS2_PKL):
+        print("removing {}".format(DECONVOLUTED_MS2_PKL))
         os.remove(DECONVOLUTED_MS2_PKL)
 
     # Set up the processing pool
