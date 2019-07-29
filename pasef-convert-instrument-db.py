@@ -19,7 +19,6 @@ TARGET_MASS_END_PROPERTY_NAME = "Mode_TargetMassEnd"
 
 parser = argparse.ArgumentParser(description='Convert the Bruker database to a detection database.')
 parser.add_argument('-sdb','--source_database_name', type=str, help='The name of the source database.', required=True)
-parser.add_argument('-ddb','--destination_database_name', type=str, help='The name of the destination database.', required=True)
 args = parser.parse_args()
 
 analysis_dir = args.source_database_name
@@ -89,7 +88,6 @@ for idx in range(len(frames_df)):
                 pointId += 1
                 points.append((int(frame_id), int(pointId), float(mz_values[i]), int(scan_line), int(intensity_values[i]), int(peak_id), "{}|{}".format(int(frame_id), int(pointId)), retention_time_secs))
 
-print("Writing frame properties")
 frames_df.rename(columns={"Id":"frame_id", "Time":"retention_time_secs"}, inplace=True)
 print(frames_df.memory_usage())
 
