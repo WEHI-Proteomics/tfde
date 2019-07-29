@@ -61,20 +61,6 @@ SOURCE_BASE = config.get(args.operating_system, 'SOURCE_BASE')
 
 start_run = time.time()
 
-# returns a dataframe with the prepared isolation windows
-def load_isolation_windows(database_name, small_set_mode):
-    # get all the isolation windows
-    db_conn = sqlite3.connect(database_name)
-    isolation_window_df = pd.read_sql_query("select * from PasefFrameMsMsInfo", db_conn)
-    db_conn.close()
-
-    print("loaded {} isolation windows from {}".format(len(isolation_window_df), RAW_DATABASE_NAME))
-    isolation_window_df.sort_values(by=['Precursor'], ascending=False, inplace=True)
-
-    if small_set_mode:
-        isolation_window_df = isolation_window_df[:100]
-    return isolation_window_df
-
 def run_process(process):
     print("Executing: {}".format(process))
     os.system(process)
@@ -109,9 +95,6 @@ def associate_feature_spectra(features_a, spectra_a):
     return associations
 
 ##################################################
-# load the isolation windows
-isolation_window_df = load_isolation_windows(RAW_DATABASE_NAME, args.small_set_mode)
-
 ray_cluster = ray.init()
 # get the address for the sub-processes to join
 redis_address = ray_cluster['redis_address']
