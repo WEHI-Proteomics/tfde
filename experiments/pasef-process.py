@@ -175,7 +175,7 @@ else:
 
 print("Associating ms2 spectra with ms1 features")
 start_time = time.time()
-unique_precursor_ids_a = isolation_window_df.Precursor.unique()
+unique_precursor_ids_a = features_df.precursor_id.unique()
 associations = []
 for precursor_id in unique_precursor_ids_a:
     association = associate_feature_spectra(features_a[np.where(features_a[:,5] == precursor_id)], ms2_peaks_a[np.where(ms2_peaks_a[:,0] == precursor_id)])
