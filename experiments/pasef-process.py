@@ -89,10 +89,10 @@ def collate_spectra_for_feature(feature_a, ms2_a):
     spectrum["m/z array"] = ms2_sorted_a[:,1]
     spectrum["intensity array"] = ms2_sorted_a[:,2].astype(int)
     params = {}
-    params["TITLE"] = "RawFile: {} Charge: {} FeatureIntensity: {} Feature#: {} RtApex: {} Precursor: {}".format(os.path.basename(CONVERTED_DATABASE_NAME).split('.')[0], feature_a[1], round(feature_a[4]), feature_a[0], round(feature_a[3],2), feature_a[5])
+    params["TITLE"] = "RawFile: {} Charge: {} FeatureIntensity: {} Feature#: {} RtApex: {} Precursor: {}".format(os.path.basename(CONVERTED_DATABASE_NAME).split('.')[0], int(feature_a[1]), int(feature_a[4]), int(feature_a[0]), round(feature_a[3],2), int(feature_a[5]))
     params["INSTRUMENT"] = "ESI-QUAD-TOF"
-    params["PEPMASS"] = "{} {}".format(round(feature_a[2],6), round(feature_a[4]))
-    params["CHARGE"] = "{}+".format(feature_a[1])
+    params["PEPMASS"] = "{} {}".format(round(feature_a[2],6), int(feature_a[4]))
+    params["CHARGE"] = "{}+".format(int(feature_a[1]))
     params["RTINSECONDS"] = "{}".format(round(feature_a[3],2))
     spectrum["params"] = params
     return spectrum
