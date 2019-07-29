@@ -138,11 +138,11 @@ def load_isolation_windows(database_name, ms2_frame_properties_df, small_set_mod
     isolation_window_df['mz_upper'] = isolation_window_df.IsolationMz + (isolation_window_df.IsolationWidth / 2) + MS2_MZ_ISOLATION_WINDOW_EXTENSION
     # filter out isolation windows that don't fit in the database subset we have loaded
     isolation_window_df = isolation_window_df[(isolation_window_df.retention_time_secs >= (RT_LOWER - RT_BASE_PEAK_WIDTH_SECS)) & (isolation_window_df.retention_time_secs <= (RT_UPPER + RT_BASE_PEAK_WIDTH_SECS))]
-    print("loaded {} isolation windows from {}".format(len(isolation_window_df), RAW_DATABASE_NAME))
     isolation_window_df.sort_values(by=['Precursor'], ascending=False, inplace=True)
 
     if small_set_mode:
         isolation_window_df = isolation_window_df[:100]
+    print("loaded {} isolation windows from {}".format(len(isolation_window_df), RAW_DATABASE_NAME))
     return isolation_window_df
 
 # The FWHM is the m/z / instrument resolution. Std dev is FWHM / 2.35482. See https://en.wikipedia.org/wiki/Full_width_at_half_maximum
