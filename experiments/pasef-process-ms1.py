@@ -25,7 +25,7 @@ except NameError:
 
 parser = argparse.ArgumentParser(description='Extract ms1 features from PASEF isolation windows.')
 parser.add_argument('-rdb','--raw_database_dir', type=str, help='Path to the raw database directory.', required=True)
-parser.add_argument('-bpd','--base_processing_dir', type=str, default='.', help='Path to the processing directory.', required=True)
+parser.add_argument('-bpd','--base_processing_dir', type=str, default='.', help='Path to the processing directory.', required=False)
 parser.add_argument('-pn','--processing_name', type=str, help='Name of the processing results.', required=True)
 parser.add_argument('-ini','--ini_file', type=str, help='Path to the config file.', required=True)
 parser.add_argument('-os','--operating_system', type=str, choices=['linux','macos'], help='Operating system name.', required=True)
