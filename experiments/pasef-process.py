@@ -43,6 +43,11 @@ DECONVOLUTED_MS2_PKL = "{}/{}-ms2-spectra.pkl".format(PROCESSING_DIR, args.proce
 MGF_NAME = "{}/{}-search.mgf".format(PROCESSING_DIR, args.processing_name)
 CONVERTED_DATABASE_NAME = "{}/{}-converted.sqlite".format(PROCESSING_DIR, args.processing_name)
 
+# check the converted database exists
+if not os.path.isfile(CONVERTED_DATABASE_NAME):
+    print("The converted database doesn't exist: {}".format(CONVERTED_DATABASE_NAME))
+    sys.exit(1)
+
 # check the configuration file exists
 if not os.path.isfile(args.ini_file):
     print("The configuration file doesn't exist: {}".format(args.ini_file))

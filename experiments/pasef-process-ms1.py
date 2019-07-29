@@ -49,6 +49,11 @@ if not os.path.exists(PROCESSING_DIR):
 MS1_PEAK_PKL = "{}/{}-features.pkl".format(PROCESSING_DIR, args.processing_name)
 CONVERTED_DATABASE_NAME = "{}/{}-converted.sqlite".format(PROCESSING_DIR, args.processing_name)
 
+# check the converted database exists
+if not os.path.isfile(CONVERTED_DATABASE_NAME):
+    print("The converted database doesn't exist: {}".format(CONVERTED_DATABASE_NAME))
+    sys.exit(1)
+
 if not os.path.isfile(args.ini_file):
     print("The configuration file doesn't exist: {}".format(args.ini_file))
     sys.exit(1)
