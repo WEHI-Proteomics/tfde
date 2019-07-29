@@ -145,8 +145,8 @@ if not os.path.isfile(MS1_PEAK_PKL):
     sys.exit(1)
 else:
     # get the features detected in ms1
-    print("Reading the ms1 output file: {}".format(MS1_PEAK_PKL))
     features_df = pd.read_pickle(MS1_PEAK_PKL)
+    print("Loaded {} features from {}".format(len(features_df), MS1_PEAK_PKL))
     features_a = features_df[['feature_id','charge','monoisotopic_mz','rt_apex','intensity','precursor_id']].to_numpy()
 
 if not os.path.isfile(DECONVOLUTED_MS2_PKL):
@@ -154,13 +154,14 @@ if not os.path.isfile(DECONVOLUTED_MS2_PKL):
     sys.exit(1)
 else:
     # get the ms2 spectra
-    print("Reading the ms2 output file: {}".format(DECONVOLUTED_MS2_PKL))
     ms2_peaks_df = pd.read_pickle(DECONVOLUTED_MS2_PKL)
+    print("Loaded {} peaks from {}".format(len(ms2_peaks_df), DECONVOLUTED_MS2_PKL))
     ms2_peaks_a = ms2_peaks_df[['precursor','mz','intensity']].to_numpy()
 
 print("Associating ms2 spectra with ms1 features")
 start_time = time.time()
 unique_precursor_ids_a = features_df.precursor_id.unique()
+print("there are {} unique precursors to use for association".format(len(unique_precursor_ids_a)))
 associations = []
 for precursor_id in unique_precursor_ids_a:
     association = associate_feature_spectra(features_a[np.where(features_a[:,5] == precursor_id)], ms2_peaks_a[np.where(ms2_peaks_a[:,0] == precursor_id)])
