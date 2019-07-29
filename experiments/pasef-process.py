@@ -17,6 +17,9 @@ import ray
 import time
 
 parser = argparse.ArgumentParser(description='Manage the ms1 and ms2 processing, and generate the MGF.')
+parser.add_argument('-rdb','--raw_database_dir', type=str, help='Path to the raw database directory.', required=True)
+parser.add_argument('-bpd','--base_processing_dir', type=str, default='.' help='Path to the processing directory.', required=True)
+parser.add_argument('-pn','--processing_name', type=str, help='Name of the processing results.', required=True)
 parser.add_argument('-ini','--ini_file', type=str, help='Path to the config file.', required=True)
 parser.add_argument('-os','--operating_system', type=str, choices=['linux','macos'], help='Operating system name.', required=True)
 parser.add_argument('-di','--drop_indexes', action='store_true', help='Drop converted database indexes, if they exist.')
@@ -24,19 +27,32 @@ parser.add_argument('-ao','--association_only', action='store_true', help='Bypas
 parser.add_argument('-ssm','--small_set_mode', action='store_true', help='A small subset of the data for testing purposes.')
 args = parser.parse_args()
 
+# check the raw database exists
+RAW_DATABASE_NAME = "{}/analysis.tdf".format(args.raw_database_dir)
+if not os.path.isfile(RAW_DATABASE_NAME):
+    print("The raw database doesn't exist: {}".format(RAW_DATABASE_NAME))
+    sys.exit(1)
+
+# check the processing directory exists
+PROCESSING_DIR = "{}/{}".format(args.base_processing_dir, args.processing_name)
+if not os.path.exists(PROCESSING_DIR):
+    os.makedirs(PROCESSING_DIR)
+
+MS1_PEAK_PKL = "{}/{}-features.pkl".format(PROCESSING_DIR, args.processing_name)
+DECONVOLUTED_MS2_PKL = "{}/{}-ms2-spectra.pkl".format(PROCESSING_DIR, args.processing_name)
+MGF_NAME = "{}/{}-search.mgf".format(PROCESSING_DIR, args.processing_name)
+CONVERTED_DATABASE_NAME = "{}/{}-converted.sqlite".format(PROCESSING_DIR, args.processing_name)
+
+# check the configuration file exists
 if not os.path.isfile(args.ini_file):
     print("The configuration file doesn't exist: {}".format(args.ini_file))
     sys.exit(1)
 
+# read the configuration items
 config = configparser.ConfigParser(interpolation=ExtendedInterpolation())
 config.read(args.ini_file)
 
 SOURCE_BASE = config.get(args.operating_system, 'SOURCE_BASE')
-MS1_PEAK_PKL = config.get(args.operating_system, 'MS1_PEAK_PKL')
-DECONVOLUTED_MS2_PKL = config.get(args.operating_system, 'DECONVOLUTED_MS2_PKL')
-MGF_NAME = config.get(args.operating_system, 'MGF_NAME')
-RAW_DATABASE_NAME = config.get(args.operating_system, 'RAW_DATABASE_NAME')
-CONVERTED_DATABASE_NAME = config.get(args.operating_system, 'CONVERTED_DATABASE_NAME')
 
 start_run = time.time()
 
@@ -122,8 +138,8 @@ if not args.association_only:
 
     # create a list of commands to start the ms1 and ms2 sub-processes and get them to join the cluster
     processes = []
-    processes.append("python -u {}/experiments/pasef-process-ms1.py -ini {} -os {} -rm join -ra {}".format(SOURCE_BASE, args.ini_file, args.operating_system, redis_address))
-    processes.append("python -u {}/experiments/pasef-process-ms2.py -ini {} -os {} -rm join -ra {}".format(SOURCE_BASE, args.ini_file, args.operating_system, redis_address))
+    processes.append("python -u {}/experiments/pasef-process-ms1.py -rdb {} -bpd {} -pn {} -ini {} -os {} -rm join -ra {}".format(SOURCE_BASE, args.raw_database_dir, args.base_processing_dir, args.processing_name, args.ini_file, args.operating_system, redis_address))
+    processes.append("python -u {}/experiments/pasef-process-ms2.py -rdb {} -bpd {} -pn {} -ini {} -os {} -rm join -ra {}".format(SOURCE_BASE, args.raw_database_dir, args.base_processing_dir, args.processing_name, args.ini_file, args.operating_system, redis_address))
 
     # run the processes and wait for them to finish
     pool.map(run_process, processes)

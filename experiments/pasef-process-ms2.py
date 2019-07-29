@@ -22,6 +22,9 @@ except NameError:
     profile = lambda x: x
 
 parser = argparse.ArgumentParser(description='Deconvolute ms2 spectra for PASEF isolation windows.')
+parser.add_argument('-rdb','--raw_database_dir', type=str, help='Path to the raw database directory.', required=True)
+parser.add_argument('-bpd','--base_processing_dir', type=str, default='.' help='Path to the processing directory.', required=True)
+parser.add_argument('-pn','--processing_name', type=str, help='Name of the processing results.', required=True)
 parser.add_argument('-ini','--ini_file', type=str, help='Path to the config file.', required=True)
 parser.add_argument('-os','--operating_system', type=str, choices=['linux','macos'], help='Operating system name.', required=True)
 parser.add_argument('-rm','--ray_mode', type=str, choices=['local','cluster','join'], help='The Ray mode to use.', required=True)
@@ -29,6 +32,20 @@ parser.add_argument('-ra','--redis_address', type=str, help='Address of the clus
 parser.add_argument('-ssm','--small_set_mode', action='store_true', help='A small subset of the data for testing purposes.')
 parser.add_argument('-idm','--interim_data_mode', action='store_true', help='Write out interim data for debugging.')
 args = parser.parse_args()
+
+# check the raw database exists
+RAW_DATABASE_NAME = "{}/analysis.tdf".format(args.raw_database_dir)
+if not os.path.isfile(RAW_DATABASE_NAME):
+    print("The raw database doesn't exist: {}".format(RAW_DATABASE_NAME))
+    sys.exit(1)
+
+# check the processing directory exists
+PROCESSING_DIR = "{}/{}".format(args.base_processing_dir, args.processing_name)
+if not os.path.exists(PROCESSING_DIR):
+    os.makedirs(PROCESSING_DIR)
+
+DECONVOLUTED_MS2_PKL = "{}/{}-ms2-spectra.pkl".format(PROCESSING_DIR, args.processing_name)
+CONVERTED_DATABASE_NAME = "{}/{}-converted.sqlite".format(PROCESSING_DIR, args.processing_name)
 
 if not os.path.isfile(args.ini_file):
     print("The configuration file doesn't exist: {}".format(args.ini_file))
@@ -47,10 +64,6 @@ MS1_COLLISION_ENERGY = config.getfloat('common', 'MS1_COLLISION_ENERGY')
 
 MS2_PEAK_DELTA = config.getfloat('ms2', 'MS2_PEAK_DELTA')
 MS2_MZ_ISOLATION_WINDOW_EXTENSION = config.getfloat('ms2', 'MS2_MZ_ISOLATION_WINDOW_EXTENSION')
-
-CONVERTED_DATABASE_NAME = config.get(args.operating_system, 'CONVERTED_DATABASE_NAME')
-RAW_DATABASE_NAME = config.get(args.operating_system, 'RAW_DATABASE_NAME')
-DECONVOLUTED_MS2_PKL = config.get(args.operating_system, 'DECONVOLUTED_MS2_PKL')
 
 # returns a dataframe with the prepared isolation windows
 def load_isolation_windows(database_name, ms2_frame_properties_df, small_set_mode):
