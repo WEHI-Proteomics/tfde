@@ -179,7 +179,7 @@ unique_precursor_ids_a = isolation_window_df.Precursor.unique()
 associations = []
 for precursor_id in unique_precursor_ids_a:
     association = associate_feature_spectra(features_a[np.where(features_a[:,5] == precursor_id)], ms2_peaks_a[np.where(ms2_peaks_a[:,0] == precursor_id)])
-    print("associated spectra for precursor {} with {} features.".format(precursor, len(association)))
+    print("associated spectra for precursor {} with {} features.".format(precursor_id, len(association)))
     associations.append(association)
 associations = [item for sublist in associations for item in sublist]
 stop_time = time.time()
