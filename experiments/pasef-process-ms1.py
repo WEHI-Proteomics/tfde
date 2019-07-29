@@ -513,6 +513,7 @@ ms1_df.reset_index(drop=True, inplace=True)
 checked_features_l = ray.get([check_monoisotopic_peak.remote(feature=feature, idx=idx, total=len(ms1_df)) for idx,feature in ms1_df.iterrows()])
 checked_features_df = pd.DataFrame(checked_features_l)
 checked_features_df.to_pickle(MS1_PEAK_PKL)
+print("wrote {} features to {}".format(len(checked_features_df), MS1_PEAK_PKL))
 stop_time = time.time()
 print("check_ms1_mono_peak: {} seconds".format(round(stop_time-start_time,1)))
 

@@ -214,9 +214,9 @@ mass_defect_window_bins = generate_mass_defect_windows()
 ms2_df_l = ray.get([process_ms2.remote(precursor_id=precursor_id, precursor_group_df=precursor_group_df) for precursor_id,precursor_group_df in isolation_window_df.groupby('Precursor')])
 flattened_ms2_df_l = [item for sublist in ms2_df_l for item in sublist]
 
-print("writing {} peaks to {}".format(len(flattened_ms2_df_l), DECONVOLUTED_MS2_PKL))
 ms2_deconvoluted_peaks_df = pd.DataFrame(flattened_ms2_df_l, columns=['precursor','mz','charge','intensity','score','SN'])
 ms2_deconvoluted_peaks_df.to_pickle(DECONVOLUTED_MS2_PKL)
+print("wrote {} ms2 peaks to {}".format(len(ms2_deconvoluted_peaks_df), DECONVOLUTED_MS2_PKL))
 
 stop_run = time.time()
 print("total running time ({}): {} seconds".format(parser.prog, round(stop_run-start_run,1)))
