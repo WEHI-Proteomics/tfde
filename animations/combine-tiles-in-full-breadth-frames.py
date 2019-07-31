@@ -8,7 +8,6 @@ import shutil
 INDIVIDUAL_TILES_DIR = '/home/ubuntu/yolo-train-rt-1000-4200-24-may/overlay'
 BASE_DIR = '/home/ubuntu/yolo-movie-rt-3000-3600'
 ANIMATION_FRAMES_DIR = '{}/animation-frames'.format(BASE_DIR)
-VIDEO_DIR = '{}/video'.format(BASE_DIR)
 
 TILE_START = 10
 TILE_END = 70
@@ -18,17 +17,13 @@ RT_UPPER = 3600
 MS1_CE = 10
 
 # initialise the directories required
-if os.path.exists(INDIVIDUAL_TILES_DIR):
-    shutil.rmtree(INDIVIDUAL_TILES_DIR)
-os.makedirs(INDIVIDUAL_TILES_DIR)
+if os.path.exists(BASE_DIR):
+    shutil.rmtree(BASE_DIR)
+os.makedirs(BASE_DIR)
 
 if os.path.exists(ANIMATION_FRAMES_DIR):
     shutil.rmtree(ANIMATION_FRAMES_DIR)
 os.makedirs(ANIMATION_FRAMES_DIR)
-
-if os.path.exists(VIDEO_DIR):
-    shutil.rmtree(VIDEO_DIR)
-os.makedirs(VIDEO_DIR)
 
 db_conn = sqlite3.connect(CONVERTED_DATABASE)
 ms1_frame_properties_df = pd.read_sql_query("select frame_id,retention_time_secs from frame_properties where retention_time_secs >= {} and retention_time_secs <= {} and collision_energy == {}".format(RT_LOWER, RT_UPPER, MS1_CE), db_conn)
