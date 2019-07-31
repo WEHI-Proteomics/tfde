@@ -17,6 +17,7 @@ RT_UPPER = 3600
 MS1_CE = 10
 
 # initialise the directories required
+print("preparing directories")
 if os.path.exists(BASE_DIR):
     shutil.rmtree(BASE_DIR)
 os.makedirs(BASE_DIR)
@@ -27,6 +28,7 @@ os.makedirs(ANIMATION_FRAMES_DIR)
 
 db_conn = sqlite3.connect(CONVERTED_DATABASE)
 ms1_frame_properties_df = pd.read_sql_query("select frame_id,retention_time_secs from frame_properties where retention_time_secs >= {} and retention_time_secs <= {} and collision_energy == {}".format(RT_LOWER, RT_UPPER, MS1_CE), db_conn)
+print("loaded {} frame ids".format(len(ms1_frame_properties_df)))
 db_conn.close()
 
 for idx in range(len(ms1_frame_properties_df)):
