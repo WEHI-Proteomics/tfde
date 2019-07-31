@@ -5,8 +5,8 @@ import sqlite3
 import pandas as pd
 import shutil
 
+INDIVIDUAL_TILES_DIR = '/home/ubuntu/yolo-train-rt-1000-4200-24-may/overlay'
 BASE_DIR = '/home/ubuntu/yolo-movie-rt-3000-3600'
-INDIVIDUAL_TILES_DIR = '{}/individual-tiles'.format(BASE_DIR)
 ANIMATION_FRAMES_DIR = '{}/animation-frames'.format(BASE_DIR)
 VIDEO_DIR = '{}/video'.format(BASE_DIR)
 
