@@ -30,6 +30,7 @@ ms1_frame_properties_df = pd.read_sql_query("select frame_id,retention_time_secs
 db_conn.close()
 
 for idx in range(len(ms1_frame_properties_df)):
+    print(".", end='')
     frame_id = int(ms1_frame_properties_df.iloc[idx].frame_id)
     file_list = []
     for tile_id in range(TILE_START, TILE_END+1):
@@ -48,3 +49,6 @@ for idx in range(len(ms1_frame_properties_df)):
       x_offset += im.size[0]
 
     new_im.save('{}/frame-{:04d}.png'.format(ANIMATION_FRAMES_DIR, idx))
+
+print()
+print("wrote {} frames to {}".format(len(ms1_frame_properties_df), ANIMATION_FRAMES_DIR))
