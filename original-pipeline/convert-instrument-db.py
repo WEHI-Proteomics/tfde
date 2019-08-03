@@ -1,7 +1,7 @@
 import sys
 import numpy as np
 import pandas as pd
-import timsdata
+import ../timstof-sdk/timsdata
 import sqlite3
 import os
 import argparse
