@@ -1,5 +1,5 @@
 import sys
-sys.path.insert(1, '../timstof-sdk')
+sys.path.insert(1, '/home/ubuntu/otf-peak-detect/timstof-sdk/')
 import numpy as np
 import pandas as pd
 import timsdata
