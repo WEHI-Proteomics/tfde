@@ -1,7 +1,8 @@
 import sys
+sys.path.insert(1, '../timstof-sdk')
 import numpy as np
 import pandas as pd
-import ../timstof-sdk/timsdata
+import timsdata
 import sqlite3
 import os
 import argparse
