@@ -94,7 +94,6 @@ print("Setting up tables and indexes")
 dest_c.execute("DROP TABLE IF EXISTS frames")
 dest_c.execute("DROP TABLE IF EXISTS convert_info")
 
-dest_c.execute("CREATE TABLE frames (frame_id INTEGER, point_id INTEGER, mz REAL, scan INTEGER, intensity INTEGER, peak_id INTEGER, raw_frame_point TEXT, retention_time_secs REAL)")
 dest_c.execute("CREATE TABLE convert_info (item TEXT, value TEXT)")
 
 points = []
@@ -120,21 +119,11 @@ for idx in range(len(frames_df)):
             intensity_values = scan[1]
             for i in range(0, len(intensity_values)):   # step through the intensity readings (i.e. points) on this scan line
                 pointId += 1
-                points.append((int(frame_id), int(pointId), float(mz_values[i]), int(scan_line), int(intensity_values[i]), int(peak_id), "{}|{}".format(int(frame_id), int(pointId)), retention_time_secs))
+                points.append((int(frame_id), float(mz_values[i]), int(scan_line), int(intensity_values[i]), retention_time_secs))
 
-    # Check whether we've done a chunk to write out to the database
-    if (idx % args.batch_size) == 0:
-        dest_c.executemany("INSERT INTO frames VALUES (?, ?, ?, ?, ?, ?, ?, ?)", points)
-        dest_conn.commit()
-        print("{} frames converted...".format(idx))
-        del points[:]
-
-# Write what we have left
-if len(points) > 0:
-    dest_c.executemany("INSERT INTO frames VALUES (?, ?, ?, ?, ?, ?, ?, ?)", points)
-    dest_conn.commit()
-    print("{} frames converted...".format(idx))
-    del points[:]
+points_file_name = '{}.npy'.format(args.destination_database_name.split('.sqlite')[0])
+points_a = np.array(points, dtype=[('frame_id', 'u2'), ('mz', 'f4'), ('scan', 'u2'), ('intensity', 'u4'), ('retention_time_secs', 'f4')])
+np.save(points_file_name, points_a, allow_pickle=False)
 
 print("Writing frame properties")
 frames_df.rename(columns={"Id":"frame_id", "Time":"retention_time_secs"}, inplace=True)
