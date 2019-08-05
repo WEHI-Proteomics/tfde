@@ -103,12 +103,15 @@ start_run = time.time()
 peak_id = 0 # set the peak ID to be zero for now
 max_scans = 0
 
-print("Converting...")
+print("Converting {} frames...".format(len(frames_df)))
 for idx in range(len(frames_df)):
     frame_id = int(frames_df.iloc[idx].Id)
     num_scans = int(frames_df.iloc[idx].NumScans)
     retention_time_secs = float(frames_df.iloc[idx].Time)
     pointId = 0
+
+    if (idx % 200) == 0:
+        print('converted {} frames'.format(idx))
 
     if num_scans > max_scans:
         max_scans = num_scans
@@ -126,14 +129,14 @@ for idx in range(len(frames_df)):
     if (idx % args.batch_size) == 0:
         dest_c.executemany("INSERT INTO frames VALUES (?, ?, ?, ?, ?, ?, ?, ?)", points)
         dest_conn.commit()
-        print("{} frames converted...".format(idx))
+        print("writing points to database")
         del points[:]
 
 # Write what we have left
 if len(points) > 0:
     dest_c.executemany("INSERT INTO frames VALUES (?, ?, ?, ?, ?, ?, ?, ?)", points)
     dest_conn.commit()
-    print("{} frames converted...".format(idx))
+    print("writing points to database")
     del points[:]
 
 print("Writing frame properties")
