@@ -2,7 +2,7 @@ import glob
 import os
 import shutil
 
-BASE_DIR = '/home/ubuntu/190719_Hela_Ecoli_1to1'
+BASE_DIR = '/home/ubuntu/190719_Hela_Ecoli/190719_Hela_Ecoli_1to1'
 RAW_DIR = '{}/raw'.format(BASE_DIR)
 CONVERTED_DIR = '{}/converted'.format(BASE_DIR)
 
