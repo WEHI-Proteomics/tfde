@@ -102,12 +102,15 @@ start_run = time.time()
 peak_id = 0 # set the peak ID to be zero for now
 max_scans = 0
 
-print("Converting...")
+print("Converting {} frames ...".format(len(frames_df)))
 for idx in range(len(frames_df)):
     frame_id = int(frames_df.iloc[idx].Id)
     num_scans = int(frames_df.iloc[idx].NumScans)
     retention_time_secs = float(frames_df.iloc[idx].Time)
     pointId = 0
+
+    if (frame_id % 500) == 0:
+        print('frame_id {}'.format(frame_id))
 
     if num_scans > max_scans:
         max_scans = num_scans
