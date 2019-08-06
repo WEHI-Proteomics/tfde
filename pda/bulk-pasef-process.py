@@ -5,7 +5,7 @@ import shutil
 BASE_DIR = '/home/ubuntu/190719_Hela_Ecoli/190719_Hela_Ecoli_1to1'
 RAW_DIR = '{}/raw'.format(BASE_DIR)
 CONVERTED_DIR = '{}/converted'.format(BASE_DIR)
-INI_NAME = '/home/ubuntu/otf-peak-detect/pda/pasef-process-short-gradient.ini'
+INI_FILE = '/home/ubuntu/otf-peak-detect/pda/pasef-process-short-gradient.ini'
 
 for raw_db_file in glob.glob("{}/*.d".format(RAW_DIR)):
     db_name = os.path.basename(raw_db_file).split('_Slot')[0]
