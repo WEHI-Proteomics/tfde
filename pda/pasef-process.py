@@ -128,8 +128,8 @@ if not args.association_only:
 
     # create a list of commands to start the ms1 and ms2 sub-processes and get them to join the cluster
     processes = []
-    ms1_command = "python -u {}/experiments/pasef-process-ms1.py -rdb {} -bpd {} -pn {} -ini {} -os {} -rm join -ra {}".format(SOURCE_BASE, args.raw_database_dir, args.base_processing_dir, args.processing_name, args.ini_file, args.operating_system, redis_address)
-    ms2_command = "python -u {}/experiments/pasef-process-ms2.py -rdb {} -bpd {} -pn {} -ini {} -os {} -rm join -ra {}".format(SOURCE_BASE, args.raw_database_dir, args.base_processing_dir, args.processing_name, args.ini_file, args.operating_system, redis_address)
+    ms1_command = "python -u {}/pda/pasef-process-ms1.py -rdb {} -bpd {} -pn {} -ini {} -os {} -rm join -ra {}".format(SOURCE_BASE, args.raw_database_dir, args.base_processing_dir, args.processing_name, args.ini_file, args.operating_system, redis_address)
+    ms2_command = "python -u {}/pda/pasef-process-ms2.py -rdb {} -bpd {} -pn {} -ini {} -os {} -rm join -ra {}".format(SOURCE_BASE, args.raw_database_dir, args.base_processing_dir, args.processing_name, args.ini_file, args.operating_system, redis_address)
     if args.small_set_mode:
         ms1_command += " -ssm"
         ms2_command += " -ssm"
