@@ -16,5 +16,5 @@ for file in glob.glob("{}/*.d".format(RAW_DIR)):
     convert_dir_name = db_name.split('_Slot')[0]
     print("processing {}".format(convert_dir_name))
     os.makedirs('{}/{}'.format(CONVERTED_DIR, convert_dir_name))
-    cmd = "python -u ~/otf-peak-detect/original-pipeline/convert-instrument-db.py -sdb {}/{} -ddb {}/{}/{}-converted.sqlite -bs 2000 > {}/{}.log 2>&1".format(RAW_DIR, db_name, CONVERTED_DIR, convert_dir_name, convert_dir_name, BASE_DIR, convert_dir_name)
+    cmd = "python -u ~/otf-peak-detect/original-pipeline/convert-instrument-db.py -sdb {}/{} -ddb {}/{}/{}-converted.sqlite -bs 2000 > {}/{}-convert.log 2>&1".format(RAW_DIR, db_name, CONVERTED_DIR, convert_dir_name, convert_dir_name, BASE_DIR, convert_dir_name)
     os.system(cmd)
