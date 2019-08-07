@@ -11,7 +11,7 @@ ANIMATION_FRAMES_DIR = '{}/frames'.format(BASE_DIR)
 
 TILE_START = 33
 TILE_END = 33
-CONVERTED_DATABASE = '~/190719_Hela_Ecoli/190719_Hela_Ecoli_1to1/converted/190719_Hela_Ecoli_1to1_01/190719_Hela_Ecoli_1to1_01-converted.sqlite'
+CONVERTED_DATABASE = '/home/ubuntu/190719_Hela_Ecoli/190719_Hela_Ecoli_1to1/converted/190719_Hela_Ecoli_1to1_01/190719_Hela_Ecoli_1to1_01-converted.sqlite'
 RT_LOWER = 0
 RT_UPPER = 1200
 MS1_CE = 10
