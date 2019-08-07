@@ -40,19 +40,21 @@ print("opening {}".format(args.converted_database))
 db_conn = sqlite3.connect(args.converted_database)
 ms1_frame_properties_df = pd.read_sql_query("select frame_id,retention_time_secs from frame_properties where retention_time_secs >= {} and retention_time_secs <= {} and collision_energy == {}".format(args.rt_lower, args.rt_upper, MS1_CE), db_conn)
 ms1_frame_ids = tuple(ms1_frame_properties_df.frame_id)
-points_df = pd.read_sql_query("select frame_id,scan,intensity from frames where frame_id in {}".format(ms1_frame_ids), db_conn)
 db_conn.close()
 
 frame_delay = ms1_frame_properties_df.iloc[1].retention_time_secs - ms1_frame_properties_df.iloc[0].retention_time_secs
 
-# calculate the median of the mobility through the whole extent in RT
-global_mobility_median = statistics.median(points_df.scan)
+if args.adjust_to_global_mobility_median:
+    # calculate the median of the mobility through the whole extent in RT
+    db_conn = sqlite3.connect(args.converted_database)
+    points_df = pd.read_sql_query("select frame_id,scan from frames where frame_id in {}".format(ms1_frame_ids), db_conn)
+    global_mobility_median = statistics.median(points_df.scan)
+    db_conn.close()
 
 def delta_scan_for_frame(frame_id):
-    frame_mobility_median = points_df[points_df.frame_id == frame_id].scan
+    frame_mobility_median = statistics.median(points_df[points_df.frame_id == frame_id].scan)
     delta_scan = global_mobility_median - frame_mobility_median
     return delta_scan
-
 
 MZ_MIN = 100.0
 MZ_MAX = 1700.0
