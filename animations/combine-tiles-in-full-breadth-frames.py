@@ -5,15 +5,15 @@ import sqlite3
 import pandas as pd
 import shutil
 
-INDIVIDUAL_TILES_DIR = '/home/ubuntu/yolo-train-rt-1000-4200-24-may/overlay'
-BASE_DIR = '/home/ubuntu/yolo-movie-rt-3000-3600'
-ANIMATION_FRAMES_DIR = '{}/animation-frames'.format(BASE_DIR)
+INDIVIDUAL_TILES_DIR = '~/190719_Hela_Ecoli_1to1_01-tiles/overlay'
+BASE_DIR = '~/190719_Hela_Ecoli_1to1_01-movie'
+ANIMATION_FRAMES_DIR = '{}/frames'.format(BASE_DIR)
 
-TILE_START = 10
-TILE_END = 70
-CONVERTED_DATABASE = '/home/ubuntu/HeLa_20KInt-rt-3000-3600-denoised/HeLa_20KInt.sqlite'
-RT_LOWER = 3000
-RT_UPPER = 3600
+TILE_START = 33
+TILE_END = 33
+CONVERTED_DATABASE = '~/190719_Hela_Ecoli/190719_Hela_Ecoli_1to1/converted/190719_Hela_Ecoli_1to1_01/190719_Hela_Ecoli_1to1_01-converted.sqlite'
+RT_LOWER = 0
+RT_UPPER = 1200
 MS1_CE = 10
 
 # initialise the directories required
