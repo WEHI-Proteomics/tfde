@@ -5,8 +5,8 @@ import sqlite3
 import pandas as pd
 import shutil
 
-INDIVIDUAL_TILES_DIR = '~/190719_Hela_Ecoli_1to1_01-tiles/overlay'
-BASE_DIR = '~/190719_Hela_Ecoli_1to1_01-movie'
+INDIVIDUAL_TILES_DIR = '/home/ubuntu/190719_Hela_Ecoli_1to1_01-tiles/overlay'
+BASE_DIR = '/home/ubuntu/190719_Hela_Ecoli_1to1_01-movie'
 ANIMATION_FRAMES_DIR = '{}/frames'.format(BASE_DIR)
 
 TILE_START = 33
