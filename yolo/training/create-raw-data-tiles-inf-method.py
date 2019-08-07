@@ -52,6 +52,8 @@ if args.adjust_to_global_mobility_median:
     global_mobility_median = statistics.median(points_df.scan)
     del points_df
     db_conn.close()
+else:
+    global_mobility_median = 0
 
 def delta_scan_for_frame(frame_raw_scans):
     frame_mobility_median = statistics.median(frame_raw_scans)
