@@ -8,6 +8,7 @@ import ray
 import os, shutil
 from PIL import Image, ImageFont, ImageDraw, ImageEnhance
 import time
+import statistics
 
 MS1_CE = 10
 
