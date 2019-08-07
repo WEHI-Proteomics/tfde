@@ -53,9 +53,9 @@ if args.adjust_to_global_mobility_median:
     del points_df
     db_conn.close()
 
-def delta_scan_for_frame(frame_raw_points):
-    frame_mobility_median = statistics.median(frame_raw_points.scan)
-    delta_scan = global_mobility_median - frame_mobility_median
+def delta_scan_for_frame(frame_raw_scans):
+    frame_mobility_median = statistics.median(frame_raw_scans)
+    delta_scan = int(global_mobility_median - frame_mobility_median)
     return delta_scan
 
 MZ_MIN = 100.0
@@ -177,7 +177,7 @@ def render_tile_for_frame(frame_r):
     raw_points_df = pd.read_sql_query("select mz,scan,intensity from frames where frame_id == {}".format(frame_id), db_conn)
     db_conn.close()
 
-    scan_delta = delta_scan_for_frame(frame_raw_points=raw_points_df)
+    scan_delta = delta_scan_for_frame(frame_raw_scans=raw_points_df.scan)
 
     if args.adjust_to_global_mobility_median:
         # adjust the mobility of all the raw points in the frame to align with the global mobility
