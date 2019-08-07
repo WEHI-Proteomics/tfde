@@ -50,10 +50,11 @@ if args.adjust_to_global_mobility_median:
     db_conn = sqlite3.connect(args.converted_database)
     points_df = pd.read_sql_query("select frame_id,scan from frames where frame_id in {}".format(ms1_frame_ids), db_conn)
     global_mobility_median = statistics.median(points_df.scan)
+    del points_df
     db_conn.close()
 
-def delta_scan_for_frame(frame_id):
-    frame_mobility_median = statistics.median(points_df[points_df.frame_id == frame_id].scan)
+def delta_scan_for_frame(frame_raw_points):
+    frame_mobility_median = statistics.median(frame_raw_points.scan)
     delta_scan = global_mobility_median - frame_mobility_median
     return delta_scan
 
@@ -176,7 +177,7 @@ def render_tile_for_frame(frame_r):
     raw_points_df = pd.read_sql_query("select mz,scan,intensity from frames where frame_id == {}".format(frame_id), db_conn)
     db_conn.close()
 
-    scan_delta = delta_scan_for_frame(frame_id)
+    scan_delta = delta_scan_for_frame(frame_raw_points=raw_points_df)
 
     if args.adjust_to_global_mobility_median:
         # adjust the mobility of all the raw points in the frame to align with the global mobility
