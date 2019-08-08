@@ -19,7 +19,7 @@ parser.add_argument('-ff','--features_file', type=str, help='Path to the pickle 
 parser.add_argument('-rtl','--rt_lower', type=int, help='Lower bound of the RT range.', required=True)
 parser.add_argument('-rtu','--rt_upper', type=int, help='Upper bound of the RT range.', required=True)
 parser.add_argument('-tm','--test_mode', action='store_true', help='A small subset of the data for testing purposes.')
-parser.add_argument('-agm','--adjust_to_global_mobility_median', action='store_true', help='Align with the global mobility median, for video purposes.')
+parser.add_argument('-is','--image_stabilisation', action='store_true', help='Apply image stabilisation, for video purposes.')
 args = parser.parse_args()
 
 PRE_ASSIGNED_FILES_DIR = '{}/pre-assigned'.format(args.tile_base)
@@ -45,19 +45,19 @@ db_conn.close()
 
 frame_delay = ms1_frame_properties_df.iloc[1].retention_time_secs - ms1_frame_properties_df.iloc[0].retention_time_secs
 
-if args.adjust_to_global_mobility_median:
+if args.image_stabilisation:
     # calculate the median of the mobility through the whole extent in RT
     db_conn = sqlite3.connect(args.converted_database)
     points_df = pd.read_sql_query("select frame_id,scan from frames where frame_id in {}".format(ms1_frame_ids), db_conn)
-    global_mobility_median = statistics.median(points_df.scan)
+    global_mobility_reference = statistics.mean(points_df.scan)
     del points_df
     db_conn.close()
 else:
     global_mobility_median = 0
 
 def delta_scan_for_frame(frame_raw_scans):
-    frame_mobility_median = statistics.median(frame_raw_scans)
-    delta_scan = int(global_mobility_median - frame_mobility_median)
+    frame_mobility_reference = statistics.mean(frame_raw_scans)
+    delta_scan = int(global_mobility_reference - frame_mobility_reference)
     return delta_scan
 
 MZ_MIN = 100.0
@@ -181,7 +181,7 @@ def render_tile_for_frame(frame_r):
 
     scan_delta = delta_scan_for_frame(frame_raw_scans=raw_points_df.scan)
 
-    if args.adjust_to_global_mobility_median:
+    if args.image_stabilisation:
         # adjust the mobility of all the raw points in the frame to align with the global mobility
         raw_points_df.scan += scan_delta
 
@@ -250,7 +250,7 @@ def render_tile_for_frame(frame_r):
             scan_lower = int(feature_r[5]) - 2  # and a bit wider in mobility for a bigger margin
             scan_upper = int(feature_r[6]) + 2
 
-            if args.adjust_to_global_mobility_median:
+            if args.image_stabilisation:
                 # adjust the mobility of all the raw points in the frame to align with the global mobility
                 scan_lower += scan_delta
                 scan_upper += scan_delta
