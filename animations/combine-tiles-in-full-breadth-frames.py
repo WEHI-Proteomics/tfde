@@ -32,7 +32,6 @@ print("loaded {} frame ids".format(len(ms1_frame_properties_df)))
 db_conn.close()
 
 for idx in range(len(ms1_frame_properties_df)):
-    print(".", end='')
     frame_id = int(ms1_frame_properties_df.iloc[idx].frame_id)
     file_list = []
     for tile_id in range(TILE_START, TILE_END+1):
