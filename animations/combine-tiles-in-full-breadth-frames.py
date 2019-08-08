@@ -12,8 +12,8 @@ ANIMATION_FRAMES_DIR = '{}/frames'.format(BASE_DIR)
 TILE_START = 33
 TILE_END = 33
 CONVERTED_DATABASE = '/home/ubuntu/190719_Hela_Ecoli/190719_Hela_Ecoli_1to1/converted/190719_Hela_Ecoli_1to1_01/190719_Hela_Ecoli_1to1_01-converted.sqlite'
-RT_LOWER = 0
-RT_UPPER = 1200
+RT_LOWER = 300
+RT_UPPER = 900
 MS1_CE = 10
 
 # initialise the directories required
@@ -36,6 +36,7 @@ for idx in range(len(ms1_frame_properties_df)):
     frame_id = int(ms1_frame_properties_df.iloc[idx].frame_id)
     file_list = []
     for tile_id in range(TILE_START, TILE_END+1):
+        print("processing frame {}, tile {}".format(frame_id, tile_id))
         file_list.append(glob.glob("{}/frame-{}-tile-{}-mz-*.png".format(INDIVIDUAL_TILES_DIR, frame_id, tile_id))[0])
     images = list(map(Image.open, file_list))
 
