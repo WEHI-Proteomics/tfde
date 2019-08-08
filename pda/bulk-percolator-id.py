@@ -13,8 +13,8 @@ parser.add_argument('-shutdown','--shutdown', action='store_true', help='Shut do
 args = parser.parse_args()
 
 RUN_NAME = "190719_Hela_Ecoli"
-BASE_COMET_OUTPUT_DIR = '/home/ubuntu/{}/comet_output'.format(RUN_NAME)
-PERCOLATOR_OUTPUT_DIR = '/home/ubuntu/{}/percolator_output'.format(RUN_NAME)
+BASE_COMET_OUTPUT_DIR = '/home/ubuntu/{}/comet-output'.format(RUN_NAME)
+PERCOLATOR_OUTPUT_DIR = '/home/ubuntu/{}/percolator-output'.format(RUN_NAME)
 
 start_run = time.time()
 
@@ -22,7 +22,7 @@ start_run = time.time()
 comet_output_file_list = glob.glob('{}/*.comet.target.pin'.format(BASE_COMET_OUTPUT_DIR))
 comet_output_file_list_as_string = ' '.join(map(str, comet_output_file_list))
 
-cmd = "./crux-3.2.Linux.x86_64/bin/crux percolator --overwrite T --subset-max-train 1000000 --klammer F --maxiter 10 --output-dir {} --picked-protein ./otf-peak-detect/fasta/uniprot-proteome-human-Ecoli.fasta --protein T --protein-enzyme trypsin --search-input auto --verbosity 30 --fileroot {} {}".format(BASE_PERCOLATOR_OUTPUT_DIR, RUN_NAME, comet_output_file_list_as_string)
+cmd = "./crux-3.2.Linux.x86_64/bin/crux percolator --overwrite T --subset-max-train 1000000 --klammer F --maxiter 10 --output-dir {} --picked-protein ./otf-peak-detect/fasta/uniprot-proteome-human-Ecoli.fasta --protein T --protein-enzyme trypsin --search-input auto --verbosity 30 --fileroot {} {}".format(PERCOLATOR_OUTPUT_DIR, RUN_NAME, comet_output_file_list_as_string)
 run_process(cmd)
 
 stop_run = time.time()
