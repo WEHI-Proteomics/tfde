@@ -17,7 +17,7 @@ BASE_DIR = '/home/ubuntu/190719_Hela_Ecoli'
 start_run = time.time()
 
 # process all the MGFs in the base directory
-for file in glob.glob('./{}/**/*.mgf'.format(BASE_DIR), recursive=True):
+for file in glob.glob('{}/**/*.mgf'.format(BASE_DIR), recursive=True):
     mgf_name = os.path.basename(file)
     db_name = mgf_name.split('-search')[0]
     print("processing {}".format(db_name))
