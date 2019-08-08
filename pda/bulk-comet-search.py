@@ -12,7 +12,8 @@ parser = argparse.ArgumentParser(description='Convert the raw databases to proce
 parser.add_argument('-shutdown','--shutdown', action='store_true', help='Shut down the machine when complete.')
 args = parser.parse_args()
 
-BASE_DIR = '/home/ubuntu/190719_Hela_Ecoli'
+RUN_NAME = "190719_Hela_Ecoli"
+BASE_DIR = '/home/ubuntu/{}'.format(RUN_NAME)
 
 start_run = time.time()
 
@@ -21,7 +22,7 @@ for file in glob.glob('{}/**/*.mgf'.format(BASE_DIR), recursive=True):
     mgf_name = os.path.basename(file)
     db_name = mgf_name.split('-search')[0]
     print("processing {}".format(db_name))
-    cmd = "./crux-3.2.Linux.x86_64/bin/crux comet --parameter-file ./otf-peak-detect/comet/TimsTOF.params --fileroot \"{}\" {} ./otf-peak-detect/fasta/uniprot-proteome-human-Ecoli.fasta".format(db_name, file)
+    cmd = "./crux-3.2.Linux.x86_64/bin/crux comet --parameter-file ./otf-peak-detect/comet/TimsTOF.params --output-dir {}/comet-output --fileroot \"{}\" {} ./otf-peak-detect/fasta/uniprot-proteome-human-Ecoli.fasta".format(BASE_DIR, db_name, file)
     run_process(cmd)
 
 stop_run = time.time()
