@@ -53,7 +53,7 @@ if args.image_stabilisation:
     del points_df
     db_conn.close()
 else:
-    global_mobility_median = 0
+    global_mobility_reference = 0
 
 def delta_scan_for_frame(frame_raw_scans):
     frame_mobility_reference = statistics.mean(frame_raw_scans)
