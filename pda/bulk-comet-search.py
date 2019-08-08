@@ -21,7 +21,7 @@ for file in glob.glob('{}/**/*.mgf'.format(BASE_DIR), recursive=True):
     mgf_name = os.path.basename(file)
     db_name = mgf_name.split('-search')[0]
     print("processing {}".format(db_name))
-    cmd = "./crux-3.2.Linux.x86_64/bin/crux comet --parameter-file ./otf-peak-detect/comet/TimsTOF.params --fileroot \"{}\" {} ./otf-peak-detect/fasta/uniprot-proteome-human-Ecoli.fasta".format(db_name, mgf_name)
+    cmd = "./crux-3.2.Linux.x86_64/bin/crux comet --parameter-file ./otf-peak-detect/comet/TimsTOF.params --fileroot \"{}\" {} ./otf-peak-detect/fasta/uniprot-proteome-human-Ecoli.fasta".format(db_name, file)
     run_process(cmd)
 
 stop_run = time.time()
