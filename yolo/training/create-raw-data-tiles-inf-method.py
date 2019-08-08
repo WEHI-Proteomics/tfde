@@ -19,7 +19,6 @@ parser.add_argument('-ff','--features_file', type=str, help='Path to the pickle 
 parser.add_argument('-rtl','--rt_lower', type=int, help='Lower bound of the RT range.', required=True)
 parser.add_argument('-rtu','--rt_upper', type=int, help='Upper bound of the RT range.', required=True)
 parser.add_argument('-tm','--test_mode', action='store_true', help='A small subset of the data for testing purposes.')
-parser.add_argument('-is','--image_stabilisation', action='store_true', help='Apply image stabilisation, for video purposes.')
 args = parser.parse_args()
 
 PRE_ASSIGNED_FILES_DIR = '{}/pre-assigned'.format(args.tile_base)
@@ -44,21 +43,6 @@ ms1_frame_ids = tuple(ms1_frame_properties_df.frame_id)
 db_conn.close()
 
 frame_delay = ms1_frame_properties_df.iloc[1].retention_time_secs - ms1_frame_properties_df.iloc[0].retention_time_secs
-
-if args.image_stabilisation:
-    # calculate the median of the mobility through the whole extent in RT
-    db_conn = sqlite3.connect(args.converted_database)
-    points_df = pd.read_sql_query("select frame_id,scan from frames where frame_id in {}".format(ms1_frame_ids), db_conn)
-    global_mobility_reference = statistics.mean(points_df.scan)
-    del points_df
-    db_conn.close()
-else:
-    global_mobility_reference = 0
-
-def delta_scan_for_frame(frame_raw_scans):
-    frame_mobility_reference = statistics.mean(frame_raw_scans)
-    delta_scan = int(global_mobility_reference - frame_mobility_reference)
-    return delta_scan
 
 MZ_MIN = 100.0
 MZ_MAX = 1700.0
@@ -179,12 +163,6 @@ def render_tile_for_frame(frame_r):
     raw_points_df = pd.read_sql_query("select mz,scan,intensity from frames where frame_id == {}".format(frame_id), db_conn)
     db_conn.close()
 
-    scan_delta = delta_scan_for_frame(frame_raw_scans=raw_points_df.scan)
-
-    if args.image_stabilisation:
-        # adjust the mobility of all the raw points in the frame to align with the global mobility
-        raw_points_df.scan += scan_delta
-
     # convert the raw points to an intensity array
     frame_intensity_array = np.zeros([SCAN_MAX+1, MZ_BIN_COUNT+1], dtype=np.uint16)  # scratchpad for the intensity value prior to image conversion
     for r in zip(raw_points_df.mz,raw_points_df.scan,raw_points_df.intensity):
@@ -249,11 +227,6 @@ def render_tile_for_frame(frame_r):
             binned_rect_mz_idx_upper = int(feature_r[4]) + 1
             scan_lower = int(feature_r[5]) - 2  # and a bit wider in mobility for a bigger margin
             scan_upper = int(feature_r[6]) + 2
-
-            if args.image_stabilisation:
-                # adjust the mobility of all the raw points in the frame to align with the global mobility
-                scan_lower += scan_delta
-                scan_upper += scan_delta
 
             # draw the features overlay
             draw = ImageDraw.Draw(stretched_tile_with_overlay)
