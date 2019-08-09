@@ -50,9 +50,9 @@ if not ray.is_initialized():
 
 @ray.remote
 def render_frame(frame_id):
+    print("processing frame id {}".format(frame_id))
     file_list = []
     for tile_id in range(TILE_START, TILE_END+1):
-        print("processing frame {}, tile {}".format(frame_id, tile_id))
         file_list.append(glob.glob("{}/frame-{}-tile-{}-mz-*.png".format(INDIVIDUAL_TILES_DIR, frame_id, tile_id))[0])
     images = list(map(Image.open, file_list))
 
