@@ -5,6 +5,7 @@ import sqlite3
 import pandas as pd
 import shutil
 import argparse
+import ray
 
 parser = argparse.ArgumentParser(description='Create the tiles from raw data.')
 parser.add_argument('-cdb','--converted_database', type=str, help='Path to the raw converted database.', required=True)
@@ -44,8 +45,8 @@ ms1_frame_properties_df = pd.read_sql_query("select frame_id,retention_time_secs
 print("loaded {} frame ids".format(len(ms1_frame_properties_df)))
 db_conn.close()
 
-for idx in range(len(ms1_frame_properties_df)):
-    frame_id = int(ms1_frame_properties_df.iloc[idx].frame_id)
+@ray.remote
+def render_frame(frame_id):
     file_list = []
     for tile_id in range(TILE_START, TILE_END+1):
         print("processing frame {}, tile {}".format(frame_id, tile_id))
@@ -65,6 +66,8 @@ for idx in range(len(ms1_frame_properties_df)):
 
     new_im = new_im.resize((args.x_pixels, args.y_pixels))
     new_im.save('{}/frame-{:04d}.png'.format(ANIMATION_FRAMES_DIR, idx))
+
+_ = ray.get([render_frame.remote(int(ms1_frame_properties_df.iloc[idx].frame_id)) for idx in range(len(ms1_frame_properties_df))])
 
 print()
 print("wrote {} frames to {}".format(len(ms1_frame_properties_df), ANIMATION_FRAMES_DIR))
