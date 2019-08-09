@@ -4,24 +4,35 @@ from PIL import Image
 import sqlite3
 import pandas as pd
 import shutil
+import argparse
 
-INDIVIDUAL_TILES_DIR = '/home/ubuntu/190719_Hela_Ecoli_1to1_01-tiles/overlay'
-BASE_DIR = '/home/ubuntu/190719_Hela_Ecoli_1to1_01-movie'
-ANIMATION_FRAMES_DIR = '{}/frames'.format(BASE_DIR)
+parser = argparse.ArgumentParser(description='Create the tiles from raw data.')
+parser.add_argument('-cdb','--converted_database', type=str, help='Path to the raw converted database.', required=True)
+parser.add_argument('-tb','--tile_base', type=str, help='Path to the base directory of the tiles.', required=True)
+parser.add_argument('-fd','--frame_directory', type=str, help='Path to the directory of the rendered frames.', required=True)
+parser.add_argument('-rtl','--rt_lower', type=int, help='Lower bound of the RT range.', required=True)
+parser.add_argument('-rtu','--rt_upper', type=int, help='Upper bound of the RT range.', required=True)
+parser.add_argument('-tl','--tile_lower', type=int, help='Lower bound of the tile range.', required=True)
+parser.add_argument('-tu','--tile_upper', type=int, help='Upper bound of the tile range.', required=True)
+parser.add_argument('-pb','--with_prediction_boxes', action='store_true', help='Overlay the prediction boxes.')
+args = parser.parse_args()
 
-TILE_START = 33
-TILE_END = 33
-CONVERTED_DATABASE = '/home/ubuntu/190719_Hela_Ecoli/190719_Hela_Ecoli_1to1/converted/190719_Hela_Ecoli_1to1_01/190719_Hela_Ecoli_1to1_01-converted.sqlite'
-RT_LOWER = 300
-RT_UPPER = 900
+if args.with_prediction_boxes:
+    INDIVIDUAL_TILES_DIR = '{}/overlay'.format(args.tile_base)
+else:
+    INDIVIDUAL_TILES_DIR = '{}/pre-assigned'.format(args.tile_base)
+
+ANIMATION_FRAMES_DIR = args.frame_directory
+
+TILE_START = args.tile_lower
+TILE_END = args.tile_upper
+CONVERTED_DATABASE = args.converted_database
+RT_LOWER = args.rt_lower
+RT_UPPER = args.rt_upper
 MS1_CE = 10
 
 # initialise the directories required
 print("preparing directories")
-if os.path.exists(BASE_DIR):
-    shutil.rmtree(BASE_DIR)
-os.makedirs(BASE_DIR)
-
 if os.path.exists(ANIMATION_FRAMES_DIR):
     shutil.rmtree(ANIMATION_FRAMES_DIR)
 os.makedirs(ANIMATION_FRAMES_DIR)
