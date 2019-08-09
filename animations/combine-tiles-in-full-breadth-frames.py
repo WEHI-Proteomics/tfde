@@ -63,7 +63,7 @@ for idx in range(len(ms1_frame_properties_df)):
       new_im.paste(im, (x_offset,0))
       x_offset += im.size[0]
 
-    new_im = new_im.resize((args.x_pixels, args.y_pixels), PIL.Image.LANCZOS)
+    new_im = new_im.resize((args.x_pixels, args.y_pixels))
     new_im.save('{}/frame-{:04d}.png'.format(ANIMATION_FRAMES_DIR, idx))
 
 print()
