@@ -14,6 +14,8 @@ parser.add_argument('-rtl','--rt_lower', type=int, help='Lower bound of the RT r
 parser.add_argument('-rtu','--rt_upper', type=int, help='Upper bound of the RT range.', required=True)
 parser.add_argument('-tl','--tile_lower', type=int, help='Lower bound of the tile range.', required=True)
 parser.add_argument('-tu','--tile_upper', type=int, help='Upper bound of the tile range.', required=True)
+parser.add_argument('-x','--x_pixels', type=int, default=910, help='Resize to this x dimension.', required=False)
+parser.add_argument('-y','--y_pixels', type=int, default=910, help='Resize to this y dimension.', required=False)
 parser.add_argument('-pb','--with_prediction_boxes', action='store_true', help='Overlay the prediction boxes.')
 args = parser.parse_args()
 
@@ -61,6 +63,7 @@ for idx in range(len(ms1_frame_properties_df)):
       new_im.paste(im, (x_offset,0))
       x_offset += im.size[0]
 
+    new_im = new_im.resize((args.x_pixels, args.y_pixels), PIL.Image.LANCZOS)
     new_im.save('{}/frame-{:04d}.png'.format(ANIMATION_FRAMES_DIR, idx))
 
 print()
