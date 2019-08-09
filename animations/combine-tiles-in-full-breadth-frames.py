@@ -45,6 +45,9 @@ ms1_frame_properties_df = pd.read_sql_query("select frame_id,retention_time_secs
 print("loaded {} frame ids".format(len(ms1_frame_properties_df)))
 db_conn.close()
 
+if not ray.is_initialized():
+    ray.init()
+
 @ray.remote
 def render_frame(frame_id):
     file_list = []
