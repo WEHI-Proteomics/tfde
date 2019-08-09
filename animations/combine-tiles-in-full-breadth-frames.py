@@ -49,7 +49,7 @@ if not ray.is_initialized():
     ray.init()
 
 @ray.remote
-def render_frame(frame_id):
+def render_frame(idx, frame_id):
     print("processing frame id {}".format(frame_id))
     file_list = []
     for tile_id in range(TILE_START, TILE_END+1):
@@ -70,7 +70,7 @@ def render_frame(frame_id):
     new_im = new_im.resize((args.x_pixels, args.y_pixels))
     new_im.save('{}/frame-{:04d}.png'.format(ANIMATION_FRAMES_DIR, idx))
 
-_ = ray.get([render_frame.remote(int(ms1_frame_properties_df.iloc[idx].frame_id)) for idx in range(len(ms1_frame_properties_df))])
+_ = ray.get([render_frame.remote(idx=idx, frame_id=int(ms1_frame_properties_df.iloc[idx].frame_id)) for idx in range(len(ms1_frame_properties_df))])
 
 print()
 print("wrote {} frames to {}".format(len(ms1_frame_properties_df), ANIMATION_FRAMES_DIR))
