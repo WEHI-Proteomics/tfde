@@ -16,8 +16,8 @@ os.makedirs(target_pkl_dir)
 
 for file in glob.glob('{}/**/*.mgf'.format(base_dir), recursive=True):
     target_file = '{}/{}'.format(target_mgf_dir, os.path.basename(file))
-    shutil.copy(file, target_file)
+    os.symlink(file, target_file)
 
 for file in glob.glob('{}/**/*.pkl'.format(base_dir), recursive=True):
     target_file = '{}/{}'.format(target_pkl_dir, os.path.basename(file))
-    shutil.copy(file, target_file)
+    os.symlink(file, target_file)
