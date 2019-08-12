@@ -2,7 +2,7 @@ import glob
 import shutil
 import os
 
-base_dir = './190719_Hela_Ecoli'
+base_dir = '/home/ubuntu/190719_Hela_Ecoli'
 target_mgf_dir = '{}/mgfs'.format(base_dir)
 target_pkl_dir = '{}/pkls'.format(base_dir)
 
