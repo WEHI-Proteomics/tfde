@@ -80,6 +80,7 @@ def collate_spectra_for_feature(feature_a, ms2_a):
     params["PEPMASS"] = "{} {}".format(round(feature_a[2],6), int(feature_a[4]))
     params["CHARGE"] = "{}+".format(int(feature_a[1]))
     params["RTINSECONDS"] = "{}".format(round(feature_a[3],2))
+    params["SCANS"] = "{}".format(int(feature_a[0]))
     spectrum["params"] = params
     return spectrum
 
