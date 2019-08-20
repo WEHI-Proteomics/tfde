@@ -1,4 +1,4 @@
-from flask import Flask, request, abort
+from flask import Flask, request, abort, jsonify, send_file
 from flask_cors import CORS
 import sqlite3
 import pandas as pd
@@ -6,7 +6,7 @@ import numpy as np
 from PIL import Image
 import matplotlib.pyplot as plt
 
-CONVERTED_DATABASE = ''
+CONVERTED_DATABASE = '/Users/darylwilding-mcbride/Downloads/190719_Hela_Ecoli/converted/190719_Hela_Ecoli_1to1_01-converted.sqlite'
 IMAGE_X = 400
 IMAGE_Y = 300
 
@@ -44,11 +44,11 @@ def fig2img(fig):
     return Image.fromstring( "RGBA", ( w ,h ), buf.tostring( ) )
 
 def image_from_raw_data(data_coords):
-    frame_id = data_coords.frame_id
-    mz_lower = data_coords.mz_lower
-    mz_upper = data_coords.mz_upper
-    scan_lower = data_coords.scan_lower
-    scan_upper = data_coords.scan_upper
+    frame_id = data_coords['frame_id']
+    mz_lower = data_coords['mz_lower']
+    mz_upper = data_coords['mz_upper']
+    scan_lower = data_coords['scan_lower']
+    scan_upper = data_coords['scan_upper']
 
     # get the raw points
     db_conn = sqlite3.connect(CONVERTED_DATABASE)
@@ -71,9 +71,13 @@ def image_from_raw_data(data_coords):
 
     # put the chart into an image
     im = fig2img(f)
+    return im
 
-    # save the image (for now)
-    im.save('~/Downloads/image.png')
+def serve_pil_image(pil_img):
+    img_io = BytesIO()
+    pil_img.save(img_io, 'PNG', quality=70)
+    img_io.seek(0)
+    return send_file(img_io, mimetype='image/png')
 
 def tile_coords_to_data_coords(tile_name, tile_width, tile_height, region_x, region_y, region_width, region_height, canvas_scale):
     elements = tile_name.split('-')
@@ -118,8 +122,10 @@ def webhook():
         data_coords = tile_coords_to_data_coords(tile_name, tile_width, tile_height, x, y, width, height, canvas_scale)
         print("data coords: {}".format(data_coords))
         # create image
-        # image_from_raw_data(data_coords)
-        return '', 200
+        img = image_from_raw_data(data_coords)
+        img.save('/Users/darylwilding-mcbride/Downloads/image.png')
+        # return the image in the response
+        # return serve_pil_image(img)
     else:
         abort(400)
 
