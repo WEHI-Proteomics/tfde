@@ -5,45 +5,47 @@ import pandas as pd
 import numpy as np
 from PIL import Image
 import matplotlib.pyplot as plt
+import matplotlib
+matplotlib.use("Agg")
+import tempfile
 
 CONVERTED_DATABASE = '/Users/darylwilding-mcbride/Downloads/190719_Hela_Ecoli/converted/190719_Hela_Ecoli_1to1_01-converted.sqlite'
 IMAGE_X = 400
 IMAGE_Y = 300
 
+MS1_PEAK_DELTA = 0.1
+
 app = Flask(__name__)
 CORS(app) # This will enable CORS for all routes
 
-# credit: http://www.icare.univ-lille1.fr/tutorials/convert_a_matplotlib_figure
-def fig2data(fig):
-    """
-    @brief Convert a Matplotlib figure to a 4D numpy array with RGBA channels and return it
-    @param fig a matplotlib figure
-    @return a numpy 3D array of RGBA values
-    """
-    # draw the renderer
-    fig.canvas.draw ( )
+def mz_centroid(_int_f, _mz_f):
+    return ((_int_f/_int_f.sum()) * _mz_f).sum()
 
-    # Get the RGBA buffer from the figure
-    w,h = fig.canvas.get_width_height()
-    buf = np.fromstring ( fig.canvas.tostring_argb(), dtype=np.uint8 )
-    buf.shape = ( w, h,4 )
+# ms1_peaks_a is a numpy array of [mz,intensity]
+# returns a numpy array of [mz_centroid,summed_intensity]
+def ms1_intensity_descent(ms1_peaks_a):
+    # intensity descent
+    ms1_peaks_l = []
+    while len(ms1_peaks_a) > 0:
+        # find the most intense point
+        max_intensity_index = np.argmax(ms1_peaks_a[:,1])
+        peak_mz = ms1_peaks_a[max_intensity_index,0]
+        peak_mz_lower = peak_mz - MS1_PEAK_DELTA
+        peak_mz_upper = peak_mz + MS1_PEAK_DELTA
 
-    # canvas.tostring_argb give pixmap in ARGB mode. Roll the ALPHA channel to have it in RGBA mode
-    buf = numpy.roll ( buf, 3, axis = 2 )
-    return buf
-
-def fig2img(fig):
-    """
-    @brief Convert a Matplotlib figure to a PIL Image in RGBA format and return it
-    @param fig a matplotlib figure
-    @return a Python Imaging Library ( PIL ) image
-    """
-    # put the figure pixmap into a numpy array
-    buf = fig2data ( fig )
-    w, h, d = buf.shape
-    return Image.fromstring( "RGBA", ( w ,h ), buf.tostring( ) )
+        # get all the raw points within this m/z region
+        peak_indexes = np.where((ms1_peaks_a[:,0] >= peak_mz_lower) & (ms1_peaks_a[:,0] <= peak_mz_upper))[0]
+        if len(peak_indexes) > 0:
+            mz_cent = mz_centroid(ms1_peaks_a[peak_indexes,1], ms1_peaks_a[peak_indexes,0])
+            summed_intensity = ms1_peaks_a[peak_indexes,1].sum()
+            ms1_peaks_l.append((mz_cent, summed_intensity))
+            # remove the raw points assigned to this peak
+            ms1_peaks_a = np.delete(ms1_peaks_a, peak_indexes, axis=0)
+    return np.array(ms1_peaks_l)
 
 def image_from_raw_data(data_coords):
+    image_file_name = ""
+
     frame_id = data_coords['frame_id']
     mz_lower = data_coords['mz_lower']
     mz_upper = data_coords['mz_upper']
@@ -55,29 +57,33 @@ def image_from_raw_data(data_coords):
     raw_points_df = pd.read_sql_query("select mz,scan,intensity from frames where frame_id == {} and mz >= {} and mz <= {} and scan >= {} and scan <= {}".format(frame_id, mz_lower, mz_upper, scan_lower, scan_upper), db_conn)
     db_conn.close()
 
+    # perform intensity descent to consolidate the peaks
+    raw_points_a = raw_points_df[['mz','intensity']].to_numpy()
+    peaks_a = ms1_intensity_descent(raw_points_a)
+
     # draw the chart
     colors = ['tab:blue', 'tab:orange', 'tab:green', 'tab:red', 'tab:purple', 'tab:brown', 'tab:pink', 'tab:gray', 'tab:olive', 'tab:cyan']
-    f, ax = plt.subplots()
-    markerline, stemlines, baseline = ax.stem(raw_points_df.mz, raw_points_df.intensity, 'g')
-    plt.setp(markerline, 'color', colors[2])
-    plt.setp(stemlines, 'color', colors[2])
-    plt.setp(baseline, 'color', colors[7])
+    fig = plt.figure()
+    ax = plt.axes()
+    fig.set_figheight(4)
+    fig.set_figwidth(8)
+    if len(raw_points_df) > 0:
+        markerline, stemlines, baseline = ax.stem(peaks_a[:,0], peaks_a[:,1], 'g', use_line_collection=True)
+        plt.setp(markerline, 'color', colors[2])
+        plt.setp(stemlines, 'color', colors[2])
+        plt.setp(baseline, 'color', colors[7])
+        plt.xlim([mz_lower,mz_upper])
     plt.xlabel('m/z')
     plt.ylabel('intensity')
-    f.set_figheight(5)
-    f.set_figwidth(15)
     plt.margins(0.06)
     plt.title('Raw data in the selected window')
+    # save the chart as an image
+    image_file_name = tempfile.NamedTemporaryFile(suffix='.png').name
+    print("image file: {}".format(image_file_name))
+    plt.savefig(image_file_name, bbox_inches='tight')
+    plt.close()
 
-    # put the chart into an image
-    im = fig2img(f)
-    return im
-
-def serve_pil_image(pil_img):
-    img_io = BytesIO()
-    pil_img.save(img_io, 'PNG', quality=70)
-    img_io.seek(0)
-    return send_file(img_io, mimetype='image/png')
+    return image_file_name
 
 def tile_coords_to_data_coords(tile_name, tile_width, tile_height, region_x, region_y, region_width, region_height, canvas_scale):
     elements = tile_name.split('-')
@@ -122,13 +128,11 @@ def webhook():
         data_coords = tile_coords_to_data_coords(tile_name, tile_width, tile_height, x, y, width, height, canvas_scale)
         print("data coords: {}".format(data_coords))
         # create image
-        img = image_from_raw_data(data_coords)
-        img.save('/Users/darylwilding-mcbride/Downloads/image.png')
-        # return the image in the response
-        # return serve_pil_image(img)
+        filename = image_from_raw_data(data_coords)
+        response = send_file(filename)
+        return response
     else:
         abort(400)
-
 
 if __name__ == '__main__':
     app.run()
