@@ -79,7 +79,7 @@ def image_from_raw_data(data_coords):
     plt.xlabel('m/z')
     plt.ylabel('intensity')
     plt.margins(0.06)
-    plt.title('Raw data in the selected window')
+    plt.title('Peaks summed with intensity descent on raw data in the selected window')
     # save the chart as an image
     image_file_name = tempfile.NamedTemporaryFile(suffix='.png').name
     print("image file: {}".format(image_file_name))
