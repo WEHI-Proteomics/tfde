@@ -3771,6 +3771,8 @@ function _via_draw_rect_region(x, y, w, h, is_selected) {
     _via_reg_ctx.fill();
     _via_reg_ctx.globalAlpha = 1.0;
 
+    _via_draw_isotope_guides(x, y, w, h);
+
     _via_draw_control_point(x  ,   y);
     _via_draw_control_point(x+w, y+h);
     _via_draw_control_point(x  , y+h);
@@ -3812,12 +3814,23 @@ function _via_draw_rect(x, y, w, h) {
   _via_reg_ctx.lineTo(x+w, y+h);
   _via_reg_ctx.lineTo(x  , y+h);
   _via_reg_ctx.closePath();
+}
 
-  // draw the isotope alignment guides
-  _via_reg_ctx.moveTo(x+(10 / _via_canvas_scale), y);
-  _via_reg_ctx.lineTo(x+(10 / _via_canvas_scale), y+h);
-  _via_reg_ctx.moveTo(x+w-(10 / _via_canvas_scale), y);
-  _via_reg_ctx.lineTo(x+w-(10 / _via_canvas_scale), y+h);
+function _via_draw_isotope_guides(x, y, w, h) {
+    // draw the isotope alignment guides
+    _via_reg_ctx.save();
+    _via_reg_ctx.beginPath();
+    _via_reg_ctx.strokeStyle = 'LawnGreen';
+    _via_reg_ctx.lineWidth = 1;
+    _via_reg_ctx.setLineDash([4, 2]);;
+    _via_reg_ctx.moveTo(x+(10 / _via_canvas_scale), y);
+    _via_reg_ctx.lineTo(x+(10 / _via_canvas_scale), y+h);
+    _via_reg_ctx.stroke();
+    _via_reg_ctx.beginPath();
+    _via_reg_ctx.moveTo(x+w-(10 / _via_canvas_scale), y);
+    _via_reg_ctx.lineTo(x+w-(10 / _via_canvas_scale), y+h);
+    _via_reg_ctx.stroke();
+    _via_reg_ctx.restore();
 }
 
 function _via_draw_circle_region(cx, cy, r, is_selected) {
