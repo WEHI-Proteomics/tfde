@@ -2696,7 +2696,8 @@ function postDataToWebhook(action) {
       "tile_name": image_name,
       "tile_width": _via_current_image_width,
       "tile_height": _via_current_image_height,
-      "canvas_scale": _via_canvas_scale
+      "canvas_scale": _via_canvas_scale,
+      "attributes": _via_img_metadata[_via_image_id].regions[_via_user_sel_region_id].region_attributes
   };
 
   oReq.onreadystatechange = function() {
@@ -7675,6 +7676,7 @@ function annotation_editor_on_metadata_update(p) {
 
 function annotation_editor_on_metadata_update_done(type, attr_id, update_count) {
   show_message('Updated ' + type + ' attributes of ' + update_count + ' ' + type + 's');
+  postDataToWebhook("attribute update");
   // check if the updated attribute is one of the group variables
   var i, n, type, attr_id;
   n = _via_image_grid_group_var.length;
