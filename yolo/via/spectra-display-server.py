@@ -8,12 +8,14 @@ import matplotlib.pyplot as plt
 import matplotlib
 matplotlib.use("Agg")
 import tempfile
+import matplotlib.patches as patches
 
 CONVERTED_DATABASE = '/Users/darylwilding-mcbride/Downloads/190719_Hela_Ecoli/converted/190719_Hela_Ecoli_1to1_01-converted.sqlite'
 IMAGE_X = 400
 IMAGE_Y = 300
 
 MS1_PEAK_DELTA = 0.1
+MASS_DIFFERENCE_C12_C13_MZ = 1.003355     # Mass difference between Carbon-12 and Carbon-13 isotopes, in Da. For calculating the spacing between isotopic peaks.
 
 app = Flask(__name__)
 CORS(app) # This will enable CORS for all routes
@@ -43,7 +45,16 @@ def ms1_intensity_descent(ms1_peaks_a):
             ms1_peaks_a = np.delete(ms1_peaks_a, peak_indexes, axis=0)
     return np.array(ms1_peaks_l)
 
-def image_from_raw_data(data_coords):
+MZ_BIN_WIDTH = 0.01978
+PIXELS_PER_BIN = 1
+PIXELS_FROM_EDGE = 10
+MZ_FROM_EDGE = PIXELS_FROM_EDGE * PIXELS_PER_BIN * MZ_BIN_WIDTH
+
+def find_nearest_idx(array, value):
+    idx = (np.abs(array - value)).argmin()
+    return idx
+
+def image_from_raw_data(data_coords, charge, isotopes):
     image_file_name = ""
 
     frame_id = data_coords['frame_id']
@@ -61,6 +72,14 @@ def image_from_raw_data(data_coords):
     raw_points_a = raw_points_df[['mz','intensity']].to_numpy()
     peaks_a = ms1_intensity_descent(raw_points_a)
 
+    # monoisotopic determined by the guide
+    estimated_monoisotopic_mz = mz_lower + MZ_FROM_EDGE
+    selected_peak_idx = find_nearest_idx(peaks_a[:,0], estimated_monoisotopic_mz)
+    selected_peak_mz = peaks_a[selected_peak_idx,0]
+    selected_peak_intensity = peaks_a[selected_peak_idx,1]
+
+    expected_peak_spacing_mz = MASS_DIFFERENCE_C12_C13_MZ / charge
+
     # draw the chart
     colors = ['tab:blue', 'tab:orange', 'tab:green', 'tab:red', 'tab:purple', 'tab:brown', 'tab:pink', 'tab:gray', 'tab:olive', 'tab:cyan']
     fig = plt.figure()
@@ -76,6 +95,11 @@ def image_from_raw_data(data_coords):
         plt.xlim([mz_lower,mz_upper])
         baseline.set_xdata([0,1])
         baseline.set_transform(plt.gca().get_yaxis_transform())
+        # draw the monoisotopic shaded area
+        for isotope in range(isotopes):
+            rect_base_mz = selected_peak_mz + (isotope * expected_peak_spacing_mz) - (MS1_PEAK_DELTA/2)
+            rect = patches.Rectangle((rect_base_mz,0), MS1_PEAK_DELTA, selected_peak_intensity, linewidth=0, facecolor='silver', alpha=0.8)
+            ax.add_patch(rect)
     plt.xlabel('m/z')
     plt.ylabel('intensity')
     plt.margins(0.06)
@@ -126,12 +150,15 @@ def webhook():
         tile_width = request.json['tile_width']
         tile_height = request.json['tile_height']
         canvas_scale = request.json['canvas_scale']
+        attributes = request.json['attributes']
+        charge = int(''.join(ch for ch in attributes['charge'] if ch.isdigit()))
+        isotopes = int(attributes['isotopes'])
         print(request.json)
         # convert to data coordinates
         data_coords = tile_coords_to_data_coords(tile_name, tile_width, tile_height, x, y, width, height, canvas_scale)
         print("data coords: {}".format(data_coords))
         # create image
-        filename = image_from_raw_data(data_coords)
+        filename = image_from_raw_data(data_coords, charge, isotopes)
         response = send_file(filename)
         return response
     else:
