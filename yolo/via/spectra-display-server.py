@@ -16,6 +16,7 @@ IMAGE_Y = 300
 
 MS1_PEAK_DELTA = 0.1
 MASS_DIFFERENCE_C12_C13_MZ = 1.003355     # Mass difference between Carbon-12 and Carbon-13 isotopes, in Da. For calculating the spacing between isotopic peaks.
+PROTON_MASS = 1.0073  # Mass of a proton in unified atomic mass units, or Da. For calculating the monoisotopic mass.
 
 app = Flask(__name__)
 CORS(app) # This will enable CORS for all routes
@@ -50,6 +51,77 @@ PIXELS_PER_BIN = 1
 PIXELS_FROM_EDGE = 10
 MZ_FROM_EDGE = PIXELS_FROM_EDGE * PIXELS_PER_BIN * MZ_BIN_WIDTH
 
+MAX_NUMBER_OF_SULPHUR_ATOMS = 3
+MAX_NUMBER_OF_PREDICTED_RATIOS = 6
+
+S0_r = np.empty(MAX_NUMBER_OF_PREDICTED_RATIOS+1, dtype=np.ndarray)
+S0_r[1] = np.array([-0.00142320578040, 0.53158267080224, 0.00572776591574, -0.00040226083326, -0.00007968737684])
+S0_r[2] = np.array([0.06258138406507, 0.24252967352808, 0.01729736525102, -0.00427641490976, 0.00038011211412])
+S0_r[3] = np.array([0.03092092306220, 0.22353930450345, -0.02630395501009, 0.00728183023772, -0.00073155573939])
+S0_r[4] = np.array([-0.02490747037406, 0.26363266501679, -0.07330346656184, 0.01876886839392, -0.00176688757979])
+S0_r[5] = np.array([-0.19423148776489, 0.45952477474223, -0.18163820209523, 0.04173579115885, -0.00355426505742])
+S0_r[6] = np.array([0.04574408690798, -0.05092121193598, 0.13874539944789, -0.04344815868749, 0.00449747222180])
+
+S1_r = np.empty(MAX_NUMBER_OF_PREDICTED_RATIOS+1, dtype=np.ndarray)
+S1_r[1] = np.array([-0.01040584267474, 0.53121149663696, 0.00576913817747, -0.00039325152252, -0.00007954180489])
+S1_r[2] = np.array([0.37339166598255, -0.15814640001919, 0.24085046064819, -0.06068695741919, 0.00563606634601])
+S1_r[3] = np.array([0.06969331604484, 0.28154425636993, -0.08121643989151, 0.02372741957255, -0.00238998426027])
+S1_r[4] = np.array([0.04462649178239, 0.23204790123388, -0.06083969521863, 0.01564282892512, -0.00145145206815])
+S1_r[5] = np.array([-0.20727547407753, 0.53536509500863, -0.22521649838170, 0.05180965157326, -0.00439750995163])
+S1_r[6] = np.array([0.27169670700251, -0.37192045082925, 0.31939855191976, -0.08668833166842, 0.00822975581940])
+
+S2_r = np.empty(MAX_NUMBER_OF_PREDICTED_RATIOS+1, dtype=np.ndarray)
+S2_r[1] = np.array([-0.01937823810470, 0.53084210514216, 0.00580573751882, -0.00038281138203, -0.00007958217070])
+S2_r[2] = np.array([0.68496829280011, -0.54558176102022, 0.44926662609767, -0.11154849560657, 0.01023294598884])
+S2_r[3] = np.array([0.04215807391059, 0.40434195078925, -0.15884974959493, 0.04319968814535, -0.00413693825139])
+S2_r[4] = np.array([0.14015578207913, 0.14407679007180, -0.01310480312503, 0.00362292256563, -0.00034189078786])
+S2_r[5] = np.array([-0.02549241716294, 0.32153542852101, -0.11409513283836, 0.02617210469576, -0.00221816103608])
+S2_r[6] = np.array([-0.14490868030324, 0.33629928307361, -0.08223564735018, 0.01023410734015, -0.00027717589598])
+
+model_params = np.empty(MAX_NUMBER_OF_SULPHUR_ATOMS, dtype=np.ndarray)
+model_params[0] = S0_r
+model_params[1] = S1_r
+model_params[2] = S2_r
+
+# Find the ratio of H(peak_number)/H(peak_number-1) for peak_number=1..6
+# peak_number = 0 refers to the monoisotopic peak
+# number_of_sulphur = number of sulphur atoms in the molecule
+def peak_ratio(monoisotopic_mass, peak_number, number_of_sulphur):
+    ratio = None
+    if (((1 <= peak_number <= 3) & (((number_of_sulphur == 0) & (498 <= monoisotopic_mass <= 3915)) |
+                                    ((number_of_sulphur == 1) & (530 <= monoisotopic_mass <= 3947)) |
+                                    ((number_of_sulphur == 2) & (562 <= monoisotopic_mass <= 3978)))) |
+       ((peak_number == 4) & (((number_of_sulphur == 0) & (907 <= monoisotopic_mass <= 3915)) |
+                              ((number_of_sulphur == 1) & (939 <= monoisotopic_mass <= 3947)) |
+                              ((number_of_sulphur == 2) & (971 <= monoisotopic_mass <= 3978)))) |
+       ((peak_number == 5) & (((number_of_sulphur == 0) & (1219 <= monoisotopic_mass <= 3915)) |
+                              ((number_of_sulphur == 1) & (1251 <= monoisotopic_mass <= 3947)) |
+                              ((number_of_sulphur == 2) & (1283 <= monoisotopic_mass <= 3978)))) |
+       ((peak_number == 6) & (((number_of_sulphur == 0) & (1559 <= monoisotopic_mass <= 3915)) |
+                              ((number_of_sulphur == 1) & (1591 <= monoisotopic_mass <= 3947)) |
+                              ((number_of_sulphur == 2) & (1623 <= monoisotopic_mass <= 3978))))):
+        beta0 = model_params[number_of_sulphur][peak_number][0]
+        beta1 = model_params[number_of_sulphur][peak_number][1]
+        beta2 = model_params[number_of_sulphur][peak_number][2]
+        beta3 = model_params[number_of_sulphur][peak_number][3]
+        beta4 = model_params[number_of_sulphur][peak_number][4]
+        scaled_m = monoisotopic_mass / 1000.0
+        ratio = beta0 + (beta1*scaled_m) + beta2*(scaled_m**2) + beta3*(scaled_m**3) + beta4*(scaled_m**4)
+    return ratio
+
+def calculate_monoisotopic_mass(monoisotopic_mz, charge):
+    return (monoisotopic_mz * charge) - (PROTON_MASS * charge)
+
+def calculate_peak_intensities(monoisotopic_mass, monoisotopic_intensity, isotopes):
+    isotope_intensities = np.zeros(isotopes)
+    isotope_intensities[0] = monoisotopic_intensity
+    for i in range(1,isotopes):
+        ratio = peak_ratio(monoisotopic_mass, i, 0)
+        if ratio is None:
+            ratio = 0
+        isotope_intensities[i] = ratio * isotope_intensities[i-1]
+    return isotope_intensities
+
 def find_nearest_idx(array, value):
     idx = (np.abs(array - value)).argmin()
     return idx
@@ -77,8 +149,10 @@ def image_from_raw_data(data_coords, charge, isotopes):
     selected_peak_idx = find_nearest_idx(peaks_a[:,0], estimated_monoisotopic_mz)
     selected_peak_mz = peaks_a[selected_peak_idx,0]
     selected_peak_intensity = peaks_a[selected_peak_idx,1]
-
+    estimated_monoisotopic_mass = calculate_monoisotopic_mass(estimated_monoisotopic_mz, charge)
     expected_peak_spacing_mz = MASS_DIFFERENCE_C12_C13_MZ / charge
+
+    isotope_intensities = calculate_peak_intensities(estimated_monoisotopic_mass, selected_peak_intensity, isotopes)
 
     # draw the chart
     colors = ['tab:blue', 'tab:orange', 'tab:green', 'tab:red', 'tab:purple', 'tab:brown', 'tab:pink', 'tab:gray', 'tab:olive', 'tab:cyan']
@@ -98,7 +172,8 @@ def image_from_raw_data(data_coords, charge, isotopes):
         # draw the monoisotopic shaded area
         for isotope in range(isotopes):
             rect_base_mz = selected_peak_mz + (isotope * expected_peak_spacing_mz) - (MS1_PEAK_DELTA/2)
-            rect = patches.Rectangle((rect_base_mz,0), MS1_PEAK_DELTA, selected_peak_intensity, linewidth=0, facecolor='silver', alpha=0.8)
+            peak_intensity = isotope_intensities[isotope]
+            rect = patches.Rectangle((rect_base_mz,0), MS1_PEAK_DELTA, peak_intensity, linewidth=0, facecolor='silver', alpha=0.8)
             ax.add_patch(rect)
     plt.xlabel('m/z')
     plt.ylabel('intensity')
