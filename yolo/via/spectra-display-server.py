@@ -112,11 +112,11 @@ def peak_ratio(monoisotopic_mass, peak_number, number_of_sulphur):
 def calculate_monoisotopic_mass(monoisotopic_mz, charge):
     return (monoisotopic_mz * charge) - (PROTON_MASS * charge)
 
-def calculate_peak_intensities(monoisotopic_mass, monoisotopic_intensity, isotopes):
+def calculate_peak_intensities(monoisotopic_mass, monoisotopic_intensity, isotopes, sulphurs):
     isotope_intensities = np.zeros(isotopes)
     isotope_intensities[0] = monoisotopic_intensity
     for i in range(1,isotopes):
-        ratio = peak_ratio(monoisotopic_mass, i, 0)
+        ratio = peak_ratio(monoisotopic_mass, i, sulphurs)
         if ratio is None:
             ratio = 0
         isotope_intensities[i] = ratio * isotope_intensities[i-1]
@@ -140,19 +140,23 @@ def image_from_raw_data(data_coords, charge, isotopes):
     raw_points_df = pd.read_sql_query("select mz,scan,intensity from frames where frame_id == {} and mz >= {} and mz <= {} and scan >= {} and scan <= {}".format(frame_id, mz_lower, mz_upper, scan_lower, scan_upper), db_conn)
     db_conn.close()
 
-    # perform intensity descent to consolidate the peaks
-    raw_points_a = raw_points_df[['mz','intensity']].to_numpy()
-    peaks_a = ms1_intensity_descent(raw_points_a)
+    if len(raw_points_df) > 0:
 
-    # monoisotopic determined by the guide
-    estimated_monoisotopic_mz = mz_lower + MZ_FROM_EDGE
-    selected_peak_idx = find_nearest_idx(peaks_a[:,0], estimated_monoisotopic_mz)
-    selected_peak_mz = peaks_a[selected_peak_idx,0]
-    selected_peak_intensity = peaks_a[selected_peak_idx,1]
-    estimated_monoisotopic_mass = calculate_monoisotopic_mass(estimated_monoisotopic_mz, charge)
-    expected_peak_spacing_mz = MASS_DIFFERENCE_C12_C13_MZ / charge
+        # perform intensity descent to consolidate the peaks
+        raw_points_a = raw_points_df[['mz','intensity']].to_numpy()
+        peaks_a = ms1_intensity_descent(raw_points_a)
 
-    isotope_intensities = calculate_peak_intensities(estimated_monoisotopic_mass, selected_peak_intensity, isotopes)
+        # monoisotopic determined by the guide
+        estimated_monoisotopic_mz = mz_lower + MZ_FROM_EDGE
+        selected_peak_idx = find_nearest_idx(peaks_a[:,0], estimated_monoisotopic_mz)
+        selected_peak_mz = peaks_a[selected_peak_idx,0]
+        selected_peak_intensity = peaks_a[selected_peak_idx,1]
+        estimated_monoisotopic_mass = calculate_monoisotopic_mass(estimated_monoisotopic_mz, charge)
+        expected_peak_spacing_mz = MASS_DIFFERENCE_C12_C13_MZ / charge
+
+        isotope_intensities = np.empty(MAX_NUMBER_OF_SULPHUR_ATOMS, dtype=np.ndarray)
+        for sulphurs in range(MAX_NUMBER_OF_SULPHUR_ATOMS):
+            isotope_intensities[sulphurs] = calculate_peak_intensities(estimated_monoisotopic_mass, selected_peak_intensity, isotopes, sulphurs)
 
     # draw the chart
     colors = ['tab:blue', 'tab:orange', 'tab:green', 'tab:red', 'tab:purple', 'tab:brown', 'tab:pink', 'tab:gray', 'tab:olive', 'tab:cyan']
@@ -161,28 +165,35 @@ def image_from_raw_data(data_coords, charge, isotopes):
     fig.set_figheight(4)
     fig.set_figwidth(8)
     if len(raw_points_df) > 0:
-        markerline, stemlines, baseline = ax.stem(peaks_a[:,0], peaks_a[:,1], 'g', use_line_collection=True)
-        plt.setp(markerline, linewidth=1, color=colors[2])
-        plt.setp(markerline, markersize=3, color=colors[2])
-        plt.setp(stemlines, linewidth=1, color=colors[2])
+        markerline, stemlines, baseline = ax.stem(peaks_a[:,0], peaks_a[:,1], colors[1], use_line_collection=True, label='peak summed from raw data')
+        plt.setp(markerline, linewidth=1, color=colors[1])
+        plt.setp(markerline, markersize=3, color=colors[1])
+        plt.setp(stemlines, linewidth=1, color=colors[1])
         plt.setp(baseline, linewidth=0.25, color=colors[7])
         plt.xlim([mz_lower,mz_upper])
         baseline.set_xdata([0,1])
         baseline.set_transform(plt.gca().get_yaxis_transform())
         # draw the monoisotopic shaded area
-        for isotope in range(isotopes):
-            rect_base_mz = selected_peak_mz + (isotope * expected_peak_spacing_mz) - (MS1_PEAK_DELTA/2)
-            peak_intensity = isotope_intensities[isotope]
-            rect = patches.Rectangle((rect_base_mz,0), MS1_PEAK_DELTA, peak_intensity, linewidth=0, facecolor='silver', alpha=0.8)
-            ax.add_patch(rect)
+        for sulphurs in range(MAX_NUMBER_OF_SULPHUR_ATOMS):
+            for isotope in range(isotopes):
+                rect_base_mz = selected_peak_mz + (isotope * expected_peak_spacing_mz) - (MS1_PEAK_DELTA/2)
+                peak_intensity = isotope_intensities[sulphurs][isotope]
+                if sulphurs == 0:
+                    rect = patches.Rectangle((rect_base_mz,0), MS1_PEAK_DELTA, peak_intensity, linewidth=0.2, facecolor='silver', alpha=0.6, label='theoretical, 0 sulphur')
+                    ax.add_patch(rect)
+                else:
+                    dotted_line = plt.Line2D((rect_base_mz, rect_base_mz+MS1_PEAK_DELTA), (peak_intensity, peak_intensity), color=colors[sulphurs+3], linewidth=1.0, linestyle='-', alpha=1.0, label='{} sulphur(s)'.format(sulphurs))
+                    plt.gca().add_line(dotted_line)
     plt.xlabel('m/z')
     plt.ylabel('intensity')
     plt.margins(0.06)
+    # plt.legend(loc='best')
     plt.title('Peaks summed with intensity descent on raw data in the selected window')
     # save the chart as an image
     image_file_name = tempfile.NamedTemporaryFile(suffix='.png').name
     print("image file: {}".format(image_file_name))
-    plt.savefig(image_file_name, bbox_inches='tight')
+    # plt.savefig(image_file_name, bbox_inches='tight')
+    plt.savefig(image_file_name)
     plt.close()
 
     return image_file_name
@@ -226,8 +237,12 @@ def webhook():
         tile_height = request.json['tile_height']
         canvas_scale = request.json['canvas_scale']
         attributes = request.json['attributes']
-        charge = int(''.join(ch for ch in attributes['charge'] if ch.isdigit()))
-        isotopes = int(attributes['isotopes'])
+        if len(attributes) > 0:
+            charge = int(''.join(ch for ch in attributes['charge'] if ch.isdigit()))
+            isotopes = int(attributes['isotopes'])
+        else:
+            charge = 0
+            isotopes = 0
         print(request.json)
         # convert to data coordinates
         data_coords = tile_coords_to_data_coords(tile_name, tile_width, tile_height, x, y, width, height, canvas_scale)
