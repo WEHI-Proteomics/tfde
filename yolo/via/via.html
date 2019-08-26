@@ -2674,12 +2674,14 @@ function postDataToWebhook(action) {
   var y = -1;
   var width = -1;
   var height = -1;
+  var feature_attribs = {};
 
   if (_via_user_sel_region_id != -1) {
     x = _via_canvas_regions[_via_user_sel_region_id].shape_attributes['x'];
     y = _via_canvas_regions[_via_user_sel_region_id].shape_attributes['y'];
     width = _via_canvas_regions[_via_user_sel_region_id].shape_attributes['width'];
     height = _via_canvas_regions[_via_user_sel_region_id].shape_attributes['height'];
+    feature_attribs = _via_img_metadata[_via_image_id].regions[_via_user_sel_region_id].region_attributes;
   }
 
   var path_elements = _via_current_image_filename.split('/')
@@ -2697,7 +2699,7 @@ function postDataToWebhook(action) {
       "tile_width": _via_current_image_width,
       "tile_height": _via_current_image_height,
       "canvas_scale": _via_canvas_scale,
-      "attributes": _via_img_metadata[_via_image_id].regions[_via_user_sel_region_id].region_attributes
+      "attributes": feature_attribs
   };
 
   oReq.onreadystatechange = function() {
@@ -2999,6 +3001,7 @@ function _via_reg_canvas_mouseup_handler(e) {
           _via_is_region_selected     = false;
           toggle_all_regions_selection(false);
           annotation_editor_hide();
+          postDataToWebhook("deselected");
         } else {
           switch (_via_current_shape) {
           case VIA_REGION_SHAPE.POLYLINE: // handled by case for POLYGON
