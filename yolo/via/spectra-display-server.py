@@ -183,6 +183,8 @@ def image_from_raw_data(data_coords, charge, isotopes):
         plt.setp(baseline, linewidth=0.25, color=colors[7])
         baseline.set_xdata([0,1])
         baseline.set_transform(plt.gca().get_yaxis_transform())
+        plt.xlabel('m/z')
+        plt.ylabel('intensity')
 
     for isotope in range(isotopes):
         ax = plt.subplot2grid((2, isotopes), (1, isotope), colspan=1)
@@ -196,6 +198,8 @@ def image_from_raw_data(data_coords, charge, isotopes):
             if isotope > 0:
                 ax.set_yticklabels([])
                 ax.set_yticks([])
+            else:
+                plt.ylabel('scan')
             ax.set_xticklabels([])
             ax.set_xticks([])
 
