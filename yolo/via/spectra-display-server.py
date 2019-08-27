@@ -9,6 +9,7 @@ import matplotlib
 matplotlib.use("Agg")
 import tempfile
 import matplotlib.patches as patches
+import matplotlib.gridspec as gridspec
 
 CONVERTED_DATABASE = '/Users/darylwilding-mcbride/Downloads/190719_Hela_Ecoli/converted/190719_Hela_Ecoli_1to1_01-converted.sqlite'
 IMAGE_X = 400
@@ -141,7 +142,6 @@ def image_from_raw_data(data_coords, charge, isotopes):
     db_conn.close()
 
     if len(raw_points_df) > 0:
-
         # perform intensity descent to consolidate the peaks
         raw_points_a = raw_points_df[['mz','intensity']].to_numpy()
         peaks_a = ms1_intensity_descent(raw_points_a)
@@ -160,36 +160,49 @@ def image_from_raw_data(data_coords, charge, isotopes):
 
     # draw the chart
     colors = ['tab:blue', 'tab:orange', 'tab:green', 'tab:red', 'tab:purple', 'tab:brown', 'tab:pink', 'tab:gray', 'tab:olive', 'tab:cyan']
+
     fig = plt.figure()
-    ax = plt.axes()
-    fig.set_figheight(4)
+    fig.set_figheight(10)
     fig.set_figwidth(8)
+    plt.title('Peaks detected in the selected window')
+    plt.margins(0.06)
+    plt.rcParams['axes.linewidth'] = 0.1
+
+    ax1 = plt.subplot2grid((2, isotopes), (0, 0), colspan=isotopes)
     if len(raw_points_df) > 0:
-        markerline, stemlines, baseline = ax.stem(peaks_a[:,0], peaks_a[:,1], colors[1], use_line_collection=True, label='peak summed from raw data')
-        plt.setp(markerline, linewidth=1, color=colors[1])
-        plt.setp(markerline, markersize=3, color=colors[1])
-        plt.setp(stemlines, linewidth=1, color=colors[1])
-        plt.setp(baseline, linewidth=0.25, color=colors[7])
-        plt.xlim([mz_lower,mz_upper])
-        baseline.set_xdata([0,1])
-        baseline.set_transform(plt.gca().get_yaxis_transform())
-        # draw the monoisotopic shaded area
         for sulphurs in range(MAX_NUMBER_OF_SULPHUR_ATOMS):
             for isotope in range(isotopes):
                 rect_base_mz = selected_peak_mz + (isotope * expected_peak_spacing_mz) - (MS1_PEAK_DELTA/2)
                 peak_intensity = isotope_intensities[sulphurs][isotope]
                 rect = patches.Rectangle((rect_base_mz,0), MS1_PEAK_DELTA, peak_intensity, edgecolor='silver', linewidth=1.0, facecolor='silver', alpha=0.3, label='theoretical')
-                ax.add_patch(rect)
-    plt.xlabel('m/z')
-    plt.ylabel('intensity')
-    plt.margins(0.06)
-    # plt.legend(loc='best')
-    plt.title('Peaks summed with intensity descent on raw data in the selected window')
+                ax1.add_patch(rect)
+        markerline, stemlines, baseline = ax1.stem(peaks_a[:,0], peaks_a[:,1], colors[1], use_line_collection=True, label='peak summed from raw data')
+        plt.setp(markerline, linewidth=1, color=colors[1])
+        plt.setp(markerline, markersize=3, color=colors[1])
+        plt.setp(stemlines, linewidth=1, color=colors[1])
+        plt.setp(baseline, linewidth=0.25, color=colors[7])
+        baseline.set_xdata([0,1])
+        baseline.set_transform(plt.gca().get_yaxis_transform())
+
+    for isotope in range(isotopes):
+        ax = plt.subplot2grid((2, isotopes), (1, isotope), colspan=1)
+        if len(raw_points_df) > 0:
+            isotope_mz_lower = selected_peak_mz + (isotope * expected_peak_spacing_mz) - (MS1_PEAK_DELTA/2)
+            isotope_mz_upper = selected_peak_mz + (isotope * expected_peak_spacing_mz) + (MS1_PEAK_DELTA/2)
+            isotope_points_df = raw_points_df[(raw_points_df.mz >= isotope_mz_lower) & (raw_points_df.mz <= isotope_mz_upper)].sort_values('scan')
+            ax.plot(isotope_points_df.intensity, isotope_points_df.scan, linestyle='-', linewidth=0.5, color='tab:brown')
+            plt.ylim([scan_upper,scan_lower])
+            # Turn off tick labels
+            if isotope > 0:
+                ax.set_yticklabels([])
+                ax.set_yticks([])
+            ax.set_xticklabels([])
+            ax.set_xticks([])
+
     # save the chart as an image
     image_file_name = tempfile.NamedTemporaryFile(suffix='.png').name
     print("image file: {}".format(image_file_name))
-    # plt.savefig(image_file_name, bbox_inches='tight')
-    plt.savefig(image_file_name)
+    plt.savefig(image_file_name, bbox_inches='tight')
     plt.close()
 
     return image_file_name
