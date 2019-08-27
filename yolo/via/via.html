@@ -96,7 +96,8 @@ textarea { border:1px solid #cccccc; margin:0.6rem 0; padding:0.2rem 0.4rem; }
 /* Middle panel: containing #image_panel, #leftsidebar */
 .middle_panel { display:table; table-layout:fixed; width:100%; z-index:1; padding:0;}
 #leftsidebar { display:none; z-index:10; vertical-align:top;}
-#display_area { display:table-cell; width:50%; z-index:1; margin:0; padding-left:1em; vertical-align:top; }
+#display_area { display:table-cell; z-index:1; margin:0; padding-left:1em; vertical-align:top; }
+#display_spectra_area { display:table-cell; z-index:1; margin:0; padding-left:1em; vertical-align:top; }
 /* layers of canvas */
 #image_panel        { position:relative; outline:none; }
 #image_panel img    { visibility:hidden; opacity:0; position:absolute; top:0px; left:0px; width:100%; height:100%; outline:none; }
@@ -990,6 +991,7 @@ POSSIBILITY OF SUCH DAMAGE.
           </pre>
         </div>
       </div> <!-- end of display_area -->
+      <div id="display_spectra_area" style="float:right;">
     </div> <!-- end of middle_panel -->
 
     <!-- this vertical spacer is needed to allow scrollbar to show
@@ -2708,11 +2710,14 @@ function postDataToWebhook(action) {
             var imageUrl = urlCreator.createObjectURL(this.response);
 
             var spectra_img = document.createElement("img");
-            spectra_img.style = "position:absolute; left:60%; top:10%";
+            // spectra_img.style = "float:right; top:10%; max-width:100%; height:auto;";
             spectra_img.src = imageUrl;
             spectra_img.alt = 'spectra';
-
-            document.getElementById("display_area").appendChild(spectra_img);
+            var node = document.getElementById("display_spectra_area");
+            while (node.firstChild) {
+                node.removeChild(node.firstChild);
+            }
+            node.appendChild(spectra_img);
           }
       };
   oReq.open("POST", webHookUrl, true);
