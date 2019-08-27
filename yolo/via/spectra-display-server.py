@@ -178,12 +178,8 @@ def image_from_raw_data(data_coords, charge, isotopes):
             for isotope in range(isotopes):
                 rect_base_mz = selected_peak_mz + (isotope * expected_peak_spacing_mz) - (MS1_PEAK_DELTA/2)
                 peak_intensity = isotope_intensities[sulphurs][isotope]
-                if sulphurs == 0:
-                    rect = patches.Rectangle((rect_base_mz,0), MS1_PEAK_DELTA, peak_intensity, linewidth=0.2, facecolor='silver', alpha=0.6, label='theoretical, 0 sulphur')
-                    ax.add_patch(rect)
-                else:
-                    dotted_line = plt.Line2D((rect_base_mz, rect_base_mz+MS1_PEAK_DELTA), (peak_intensity, peak_intensity), color=colors[sulphurs+3], linewidth=1.0, linestyle='-', alpha=1.0, label='{} sulphur(s)'.format(sulphurs))
-                    plt.gca().add_line(dotted_line)
+                rect = patches.Rectangle((rect_base_mz,0), MS1_PEAK_DELTA, peak_intensity, edgecolor='silver', linewidth=1.0, facecolor='silver', alpha=0.3, label='theoretical')
+                ax.add_patch(rect)
     plt.xlabel('m/z')
     plt.ylabel('intensity')
     plt.margins(0.06)
