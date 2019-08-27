@@ -141,6 +141,13 @@ def image_from_raw_data(data_coords, charge, isotopes):
     raw_points_df = pd.read_sql_query("select mz,scan,intensity from frames where frame_id == {} and mz >= {} and mz <= {} and scan >= {} and scan <= {}".format(frame_id, mz_lower, mz_upper, scan_lower, scan_upper), db_conn)
     db_conn.close()
 
+    # draw the chart
+    colors = ['tab:blue', 'tab:orange', 'tab:green', 'tab:red', 'tab:purple', 'tab:brown', 'tab:pink', 'tab:gray', 'tab:olive', 'tab:cyan']
+
+    fig = plt.figure()
+    fig.set_figheight(10)
+    fig.set_figwidth(8)
+
     if len(raw_points_df) > 0:
         # perform intensity descent to consolidate the peaks
         raw_points_a = raw_points_df[['mz','intensity']].to_numpy()
@@ -153,23 +160,17 @@ def image_from_raw_data(data_coords, charge, isotopes):
         selected_peak_intensity = peaks_a[selected_peak_idx,1]
         estimated_monoisotopic_mass = calculate_monoisotopic_mass(estimated_monoisotopic_mz, charge)
         expected_peak_spacing_mz = MASS_DIFFERENCE_C12_C13_MZ / charge
+        maximum_region_intensity = raw_points_df.intensity.max()
 
         isotope_intensities = np.empty(MAX_NUMBER_OF_SULPHUR_ATOMS, dtype=np.ndarray)
         for sulphurs in range(MAX_NUMBER_OF_SULPHUR_ATOMS):
             isotope_intensities[sulphurs] = calculate_peak_intensities(estimated_monoisotopic_mass, selected_peak_intensity, isotopes, sulphurs)
 
-    # draw the chart
-    colors = ['tab:blue', 'tab:orange', 'tab:green', 'tab:red', 'tab:purple', 'tab:brown', 'tab:pink', 'tab:gray', 'tab:olive', 'tab:cyan']
+        plt.title('Peaks detected in the selected window')
+        plt.margins(0.06)
+        plt.rcParams['axes.linewidth'] = 0.1
 
-    fig = plt.figure()
-    fig.set_figheight(10)
-    fig.set_figwidth(8)
-    plt.title('Peaks detected in the selected window')
-    plt.margins(0.06)
-    plt.rcParams['axes.linewidth'] = 0.1
-
-    ax1 = plt.subplot2grid((2, isotopes), (0, 0), colspan=isotopes)
-    if len(raw_points_df) > 0:
+        ax1 = plt.subplot2grid((2, isotopes), (0, 0), colspan=isotopes)
         for sulphurs in range(MAX_NUMBER_OF_SULPHUR_ATOMS):
             for isotope in range(isotopes):
                 rect_base_mz = selected_peak_mz + (isotope * expected_peak_spacing_mz) - (MS1_PEAK_DELTA/2)
@@ -186,14 +187,14 @@ def image_from_raw_data(data_coords, charge, isotopes):
         plt.xlabel('m/z')
         plt.ylabel('intensity')
 
-    for isotope in range(isotopes):
-        ax = plt.subplot2grid((2, isotopes), (1, isotope), colspan=1)
-        if len(raw_points_df) > 0:
+        for isotope in range(isotopes):
+            ax = plt.subplot2grid((2, isotopes), (1, isotope), colspan=1)
             isotope_mz_lower = selected_peak_mz + (isotope * expected_peak_spacing_mz) - (MS1_PEAK_DELTA/2)
             isotope_mz_upper = selected_peak_mz + (isotope * expected_peak_spacing_mz) + (MS1_PEAK_DELTA/2)
             isotope_points_df = raw_points_df[(raw_points_df.mz >= isotope_mz_lower) & (raw_points_df.mz <= isotope_mz_upper)].sort_values('scan')
             ax.plot(isotope_points_df.intensity, isotope_points_df.scan, linestyle='-', linewidth=0.5, color='tab:brown')
             plt.ylim([scan_upper,scan_lower])
+            plt.xlim([0,maximum_region_intensity])
             # Turn off tick labels
             if isotope > 0:
                 ax.set_yticklabels([])
