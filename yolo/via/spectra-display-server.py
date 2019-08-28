@@ -18,6 +18,8 @@ IMAGE_Y = 300
 MS1_PEAK_DELTA = 0.1
 MASS_DIFFERENCE_C12_C13_MZ = 1.003355     # Mass difference between Carbon-12 and Carbon-13 isotopes, in Da. For calculating the spacing between isotopic peaks.
 PROTON_MASS = 1.0073  # Mass of a proton in unified atomic mass units, or Da. For calculating the monoisotopic mass.
+INSTRUMENT_RESOLUTION = 40000.0
+NUMBER_OF_STD_DEV_MZ = 3
 
 app = Flask(__name__)
 CORS(app) # This will enable CORS for all routes
@@ -127,6 +129,10 @@ def find_nearest_idx(array, value):
     idx = (np.abs(array - value)).argmin()
     return idx
 
+def standard_deviation(mz):
+    FWHM = mz / INSTRUMENT_RESOLUTION
+    return FWHM / 2.35482
+
 def image_from_raw_data(data_coords, charge, isotopes):
     image_file_name = ""
 
@@ -152,6 +158,7 @@ def image_from_raw_data(data_coords, charge, isotopes):
         # perform intensity descent to consolidate the peaks
         raw_points_a = raw_points_df[['mz','intensity']].to_numpy()
         peaks_a = ms1_intensity_descent(raw_points_a)
+        peaks_a = peaks_a[peaks_a[:,0].argsort()]  # sort by m/z
 
         # monoisotopic determined by the guide
         estimated_monoisotopic_mz = mz_lower + MZ_FROM_EDGE
@@ -170,7 +177,7 @@ def image_from_raw_data(data_coords, charge, isotopes):
         plt.margins(0.06)
         plt.rcParams['axes.linewidth'] = 0.1
 
-        ax1 = plt.subplot2grid((2, isotopes), (0, 0), colspan=isotopes)
+        ax1 = plt.subplot2grid((2, len(peaks_a)), (0, 0), colspan=len(peaks_a))
         for sulphurs in range(MAX_NUMBER_OF_SULPHUR_ATOMS):
             for isotope in range(isotopes):
                 rect_base_mz = selected_peak_mz + (isotope * expected_peak_spacing_mz) - (MS1_PEAK_DELTA/2)
@@ -187,12 +194,16 @@ def image_from_raw_data(data_coords, charge, isotopes):
         plt.xlabel('m/z')
         plt.ylabel('intensity')
 
-        for isotope in range(isotopes):
-            ax = plt.subplot2grid((2, isotopes), (1, isotope), colspan=1)
-            isotope_mz_lower = selected_peak_mz + (isotope * expected_peak_spacing_mz) - (MS1_PEAK_DELTA/2)
-            isotope_mz_upper = selected_peak_mz + (isotope * expected_peak_spacing_mz) + (MS1_PEAK_DELTA/2)
-            isotope_points_df = raw_points_df[(raw_points_df.mz >= isotope_mz_lower) & (raw_points_df.mz <= isotope_mz_upper)].sort_values('scan')
-            ax.plot(isotope_points_df.intensity, isotope_points_df.scan, linestyle='-', linewidth=0.5, color='tab:brown')
+        for peak_idx,peak in enumerate(peaks_a):
+            ax = plt.subplot2grid((2, len(peaks_a)), (1, peak_idx), colspan=1)
+
+            peak_mz = peaks_a[peak_idx][0]
+            mz_delta = standard_deviation(peak_mz) * NUMBER_OF_STD_DEV_MZ
+            peak_mz_lower = peak_mz - mz_delta
+            peak_mz_upper = peak_mz + mz_delta
+
+            peak_points_df = raw_points_df[(raw_points_df.mz >= peak_mz_lower) & (raw_points_df.mz <= peak_mz_upper)].sort_values('scan')
+            ax.plot(peak_points_df.intensity, peak_points_df.scan, linestyle='-', linewidth=0.5, color='tab:brown')
             plt.ylim([scan_upper,scan_lower])
             plt.xlim([0,maximum_region_intensity])
             # Turn off tick labels
