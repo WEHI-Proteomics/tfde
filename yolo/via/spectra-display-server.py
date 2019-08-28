@@ -202,12 +202,14 @@ def image_from_raw_data(data_coords, charge, isotopes):
             peak_mz_lower = peak_mz - mz_delta
             peak_mz_upper = peak_mz + mz_delta
 
-            peak_points_df = raw_points_df[(raw_points_df.mz >= peak_mz_lower) & (raw_points_df.mz <= peak_mz_upper)].sort_values('scan')
-            ax.plot(peak_points_df.intensity, peak_points_df.scan, linestyle='-', linewidth=0.5, color='tab:brown')
+            peak_points_df = raw_points_df[(raw_points_df.mz >= peak_mz_lower) & (raw_points_df.mz <= peak_mz_upper)]
+            summed_df = pd.DataFrame(peak_points_df.groupby(['scan'])['intensity'].sum().reset_index())
+
+            ax.plot(summed_df.intensity, summed_df.scan, linestyle='-', linewidth=0.5, color='tab:brown')
             plt.ylim([scan_upper,scan_lower])
             plt.xlim([0,maximum_region_intensity])
-            # Turn off tick labels
-            if isotope > 0:
+            # turn off tick labels
+            if peak_idx > 0:
                 ax.set_yticklabels([])
                 ax.set_yticks([])
             else:
