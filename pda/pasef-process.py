@@ -26,6 +26,7 @@ parser.add_argument('-os','--operating_system', type=str, choices=['linux','maco
 parser.add_argument('-di','--drop_indexes', action='store_true', help='Drop converted database indexes, if they exist.')
 parser.add_argument('-ao','--association_only', action='store_true', help='Bypass the ms1 and ms2 processing; only do the association step.')
 parser.add_argument('-ssm','--small_set_mode', action='store_true', help='A small subset of the data for testing purposes.')
+parser.add_argument('-recal','--use_recalibrated_ms1_features', action='store_true', help='Use the recalibrated ms1 features.')
 args = parser.parse_args()
 
 # check the raw database exists
@@ -40,9 +41,11 @@ if not os.path.exists(PROCESSING_DIR):
     os.makedirs(PROCESSING_DIR)
 
 MS1_PEAK_PKL = "{}/{}-features.pkl".format(PROCESSING_DIR, args.processing_name)
+RECALIBRATED_MS1_PEAK_PKL = "{}/{}-recalibrated-features.pkl".format(PROCESSING_DIR, args.processing_name)
 DECONVOLUTED_MS2_PKL = "{}/{}-ms2-spectra.pkl".format(PROCESSING_DIR, args.processing_name)
 ASSOCIATIONS_PKL = "{}/{}-associations.pkl".format(PROCESSING_DIR, args.processing_name)
 MGF_NAME = "{}/{}-search.mgf".format(PROCESSING_DIR, args.processing_name)
+RECALIBRATED_MGF_NAME = "{}/{}-recalibrated-search.mgf".format(PROCESSING_DIR, args.processing_name)
 CONVERTED_DATABASE_NAME = "{}/{}-converted.sqlite".format(PROCESSING_DIR, args.processing_name)
 
 # check the converted database exists
@@ -143,14 +146,24 @@ if not args.association_only:
     pool.map(run_process, processes)
     print("Finished ms1 and ms2 processing")
 
-if not os.path.isfile(MS1_PEAK_PKL):
-    print("The ms1 output file doesn't exist: {}".format(MS1_PEAK_PKL))
-    sys.exit(1)
+if not args.use_recalibrated_ms1_features:
+    if not os.path.isfile(MS1_PEAK_PKL):
+        print("The ms1 output file doesn't exist: {}".format(MS1_PEAK_PKL))
+        sys.exit(1)
+    else:
+        # get the features detected in ms1
+        features_df = pd.read_pickle(MS1_PEAK_PKL)
+        print("Loaded {} features from {}".format(len(features_df), MS1_PEAK_PKL))
+        features_a = features_df[['feature_id','charge','monoisotopic_mz','rt_apex','intensity','precursor_id']].to_numpy()
 else:
-    # get the features detected in ms1
-    features_df = pd.read_pickle(MS1_PEAK_PKL)
-    print("Loaded {} features from {}".format(len(features_df), MS1_PEAK_PKL))
-    features_a = features_df[['feature_id','charge','monoisotopic_mz','rt_apex','intensity','precursor_id']].to_numpy()
+    if not os.path.isfile(RECALIBRATED_MS1_PEAK_PKL):
+        print("The ms1 output file doesn't exist: {}".format(RECALIBRATED_MS1_PEAK_PKL))
+        sys.exit(1)
+    else:
+        # get the features detected in ms1
+        features_df = pd.read_pickle(RECALIBRATED_MS1_PEAK_PKL)
+        print("Loaded {} features from {}".format(len(features_df), RECALIBRATED_MS1_PEAK_PKL))
+        features_a = features_df[['feature_id','charge','recalibrated_mono_mz','rt_apex','intensity','precursor_id']].to_numpy()
 
 if not os.path.isfile(DECONVOLUTED_MS2_PKL):
     print("The ms2 output file doesn't exist: {}".format(DECONVOLUTED_MS2_PKL))
@@ -177,11 +190,18 @@ print("writing associations to {}".format(ASSOCIATIONS_PKL))
 with open(ASSOCIATIONS_PKL, 'wb') as f:
     pickle.dump(associations, f)
 
-# generate the MGF for all the features
-print("Writing {} entries to {}".format(len(associations), MGF_NAME))
-if os.path.isfile(MGF_NAME):
-    os.remove(MGF_NAME)
-_ = mgf.write(output=MGF_NAME, spectra=associations)
+if not args.use_recalibrated_ms1_features:
+    # generate the MGF for all the features
+    print("Writing {} entries to {}".format(len(associations), MGF_NAME))
+    if os.path.isfile(MGF_NAME):
+        os.remove(MGF_NAME)
+    _ = mgf.write(output=MGF_NAME, spectra=associations)
+else:
+    # generate the MGF for all the features
+    print("Writing {} entries to {}".format(len(associations), RECALIBRATED_MGF_NAME))
+    if os.path.isfile(RECALIBRATED_MGF_NAME):
+        os.remove(RECALIBRATED_MGF_NAME)
+    _ = mgf.write(output=RECALIBRATED_MGF_NAME, spectra=associations)
 
 stop_run = time.time()
 print("total running time ({}): {} seconds".format(parser.prog, round(stop_run-start_run,1)))
