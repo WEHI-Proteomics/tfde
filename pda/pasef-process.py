@@ -40,11 +40,20 @@ PROCESSING_DIR = "{}/{}".format(args.base_processing_dir, args.processing_name)
 if not os.path.exists(PROCESSING_DIR):
     os.makedirs(PROCESSING_DIR)
 
-MS1_PEAK_PKL = "{}/{}-features.pkl".format(PROCESSING_DIR, args.processing_name)
-RECALIBRATED_MS1_PEAK_PKL = "{}/{}-recalibrated-features.pkl".format(PROCESSING_DIR, args.processing_name)
+if args.use_recalibrated_ms1_features:
+    MS1_PEAK_PKL = "{}/{}-recalibrated-features.pkl".format(PROCESSING_DIR, args.processing_name)
+    monoisotopic_column_name = 'recalibrated_mono_mz'
+    # we don't need the un-recalibrated MGF any longer
+    OLD_MGF_NAME = "{}/{}-search.mgf".format(PROCESSING_DIR, args.processing_name)
+    if os.path.isfile(OLD_MGF_NAME):
+        os.remove(OLD_MGF_NAME)
+    MGF_NAME = "{}/{}-recalibrated-search.mgf".format(PROCESSING_DIR, args.processing_name)
+else:
+    MS1_PEAK_PKL = "{}/{}-features.pkl".format(PROCESSING_DIR, args.processing_name)
+    monoisotopic_column_name = 'monoisotopic_mz'
+    MGF_NAME = "{}/{}-search.mgf".format(PROCESSING_DIR, args.processing_name)
 DECONVOLUTED_MS2_PKL = "{}/{}-ms2-spectra.pkl".format(PROCESSING_DIR, args.processing_name)
 ASSOCIATIONS_PKL = "{}/{}-associations.pkl".format(PROCESSING_DIR, args.processing_name)
-MGF_NAME = "{}/{}-search.mgf".format(PROCESSING_DIR, args.processing_name)
 RECALIBRATED_MGF_NAME = "{}/{}-recalibrated-search.mgf".format(PROCESSING_DIR, args.processing_name)
 CONVERTED_DATABASE_NAME = "{}/{}-converted.sqlite".format(PROCESSING_DIR, args.processing_name)
 
@@ -146,24 +155,14 @@ if not args.association_only:
     pool.map(run_process, processes)
     print("Finished ms1 and ms2 processing")
 
-if not args.use_recalibrated_ms1_features:
-    if not os.path.isfile(MS1_PEAK_PKL):
-        print("The ms1 output file doesn't exist: {}".format(MS1_PEAK_PKL))
-        sys.exit(1)
-    else:
-        # get the features detected in ms1
-        features_df = pd.read_pickle(MS1_PEAK_PKL)
-        print("Loaded {} features from {}".format(len(features_df), MS1_PEAK_PKL))
-        features_a = features_df[['feature_id','charge','monoisotopic_mz','rt_apex','intensity','precursor_id']].to_numpy()
+if not os.path.isfile(MS1_PEAK_PKL):
+    print("The ms1 output file doesn't exist: {}".format(MS1_PEAK_PKL))
+    sys.exit(1)
 else:
-    if not os.path.isfile(RECALIBRATED_MS1_PEAK_PKL):
-        print("The ms1 output file doesn't exist: {}".format(RECALIBRATED_MS1_PEAK_PKL))
-        sys.exit(1)
-    else:
-        # get the features detected in ms1
-        features_df = pd.read_pickle(RECALIBRATED_MS1_PEAK_PKL)
-        print("Loaded {} features from {}".format(len(features_df), RECALIBRATED_MS1_PEAK_PKL))
-        features_a = features_df[['feature_id','charge','recalibrated_mono_mz','rt_apex','intensity','precursor_id']].to_numpy()
+    # get the features detected in ms1
+    features_df = pd.read_pickle(MS1_PEAK_PKL)
+    print("Loaded {} features from {}".format(len(features_df), MS1_PEAK_PKL))
+    features_a = features_df[['feature_id','charge',monoisotopic_column_name,'rt_apex','intensity','precursor_id']].to_numpy()
 
 if not os.path.isfile(DECONVOLUTED_MS2_PKL):
     print("The ms2 output file doesn't exist: {}".format(DECONVOLUTED_MS2_PKL))
@@ -186,22 +185,15 @@ associations = [item for sublist in associations for item in sublist]  # associa
 stop_time = time.time()
 print("association time: {} seconds".format(round(stop_time-start_time,1)))
 
-print("writing associations to {}".format(ASSOCIATIONS_PKL))
-with open(ASSOCIATIONS_PKL, 'wb') as f:
-    pickle.dump(associations, f)
+# print("writing associations to {}".format(ASSOCIATIONS_PKL))
+# with open(ASSOCIATIONS_PKL, 'wb') as f:
+#     pickle.dump(associations, f)
 
-if not args.use_recalibrated_ms1_features:
-    # generate the MGF for all the features
-    print("Writing {} entries to {}".format(len(associations), MGF_NAME))
-    if os.path.isfile(MGF_NAME):
-        os.remove(MGF_NAME)
-    _ = mgf.write(output=MGF_NAME, spectra=associations)
-else:
-    # generate the MGF for all the features
-    print("Writing {} entries to {}".format(len(associations), RECALIBRATED_MGF_NAME))
-    if os.path.isfile(RECALIBRATED_MGF_NAME):
-        os.remove(RECALIBRATED_MGF_NAME)
-    _ = mgf.write(output=RECALIBRATED_MGF_NAME, spectra=associations)
+# generate the MGF for all the features
+print("Writing {} entries to {}".format(len(associations), MGF_NAME))
+if os.path.isfile(MGF_NAME):
+    os.remove(MGF_NAME)
+_ = mgf.write(output=MGF_NAME, spectra=associations)
 
 stop_run = time.time()
 print("total running time ({}): {} seconds".format(parser.prog, round(stop_run-start_run,1)))
