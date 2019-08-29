@@ -40,6 +40,7 @@ if not os.path.exists(PROCESSING_DIR):
 
 MS1_PEAK_PKL = "{}/{}-features.pkl".format(PROCESSING_DIR, args.processing_name)
 DECONVOLUTED_MS2_PKL = "{}/{}-ms2-spectra.pkl".format(PROCESSING_DIR, args.processing_name)
+ASSOCIATIONS_PKL = "{}/{}-associations.pkl".format(PROCESSING_DIR, args.processing_name)
 MGF_NAME = "{}/{}-search.mgf".format(PROCESSING_DIR, args.processing_name)
 CONVERTED_DATABASE_NAME = "{}/{}-converted.sqlite".format(PROCESSING_DIR, args.processing_name)
 
@@ -167,9 +168,13 @@ associations = []
 for precursor_id in unique_precursor_ids_a:
     association = associate_feature_spectra(features_a[np.where(features_a[:,5] == precursor_id)], ms2_peaks_a[np.where(ms2_peaks_a[:,0] == precursor_id)])
     associations.append(association)
-associations = [item for sublist in associations for item in sublist]
+associations = [item for sublist in associations for item in sublist]  # associations is a list of the associated ms1 features and ms2 spectra
 stop_time = time.time()
 print("association time: {} seconds".format(round(stop_time-start_time,1)))
+
+print("writing associations to {}".format(ASSOCIATIONS_PKL))
+with open(ASSOCIATIONS_PKL, 'wb') as f:
+    pickle.dump(associations, f)
 
 # generate the MGF for all the features
 print("Writing {} entries to {}".format(len(associations), MGF_NAME))
