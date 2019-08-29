@@ -15,6 +15,7 @@ import os.path
 import argparse
 import ray
 import time
+import pickle
 
 parser = argparse.ArgumentParser(description='Manage the ms1 and ms2 processing, and generate the MGF.')
 parser.add_argument('-rdb','--raw_database_dir', type=str, help='Path to the raw database directory.', required=True)
