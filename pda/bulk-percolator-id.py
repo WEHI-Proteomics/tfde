@@ -8,7 +8,7 @@ def run_process(process):
     print("Executing: {}".format(process))
     os.system(process)
 
-parser = argparse.ArgumentParser(description='Convert the raw databases to processing databases.')
+parser = argparse.ArgumentParser(description='Run Percolator on the Comet files.')
 parser.add_argument('-shutdown','--shutdown', action='store_true', help='Shut down the machine when complete.')
 args = parser.parse_args()
 
