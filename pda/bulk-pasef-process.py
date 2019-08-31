@@ -16,7 +16,11 @@ args = parser.parse_args()
 BASE_DIR = '/home/ubuntu/190719_Hela_Ecoli/190719_Hela_Ecoli_1to1'
 RAW_DIR = '{}/raw'.format(BASE_DIR)
 CONVERTED_DIR = '{}/converted'.format(BASE_DIR)
+LOG_DIR = '{}/log'.format(BASE_DIR)
 INI_FILE = '/home/ubuntu/otf-peak-detect/pda/pasef-process-short-gradient.ini'
+
+if not os.path.exists(LOG_DIR):
+    os.makedirs(LOG_DIR)
 
 start_run = time.time()
 
@@ -25,9 +29,9 @@ for raw_db_file in glob.glob("{}/*.d".format(RAW_DIR)):
     base_processing_dir = CONVERTED_DIR
     print("processing {}".format(db_name))
     if not args.recalibration_mode:
-        cmd = "python -u ~/otf-peak-detect/pda/pasef-process.py -rdb {} -bpd {} -pn {} -ini {} -os linux > {}/{}-processing.log 2>&1".format(raw_db_file, base_processing_dir, db_name, INI_FILE, BASE_DIR, db_name)
+        cmd = "python -u ~/otf-peak-detect/pda/pasef-process.py -rdb {} -bpd {} -pn {} -ini {} -os linux > {}/{}-processing.log 2>&1".format(raw_db_file, base_processing_dir, db_name, INI_FILE, LOG_DIR, db_name)
     else:
-        cmd = "python -u ~/otf-peak-detect/pda/pasef-process.py -rdb {} -bpd {} -pn {} -ini {} -os linux -recal > {}/{}-processing.log 2>&1".format(raw_db_file, base_processing_dir, db_name, INI_FILE, BASE_DIR, db_name)
+        cmd = "python -u ~/otf-peak-detect/pda/pasef-process.py -rdb {} -bpd {} -pn {} -ini {} -os linux -recal > {}/{}-recal-processing.log 2>&1".format(raw_db_file, base_processing_dir, db_name, INI_FILE, LOG_DIR, db_name)
     run_process(cmd)
 
 stop_run = time.time()
