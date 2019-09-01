@@ -99,6 +99,7 @@ def adjust_features(file_idx, X_train, y_train, features_df):
 ###########################################
 
 # initialise Ray
+print("Setting up Ray")
 if not ray.is_initialized():
     if args.ray_mode == "join":
         if args.redis_address is not None:
@@ -115,12 +116,14 @@ if not ray.is_initialized():
 start_run = time.time()
 
 # load the percolator output
+print("Loading the percolator output")
 psms_df = pd.read_csv(PERCOLATOR_OUTPUT_FILE_NAME, sep='\t')
 # we only want to use the high quality identifications for our training set
 psms_df = psms_df[psms_df['percolator q-value'] <= MAXIMUM_Q_VALUE]
 
 # determine the mapping between the percolator index and the run file name - this is only
 # available by parsing percolator's stdout redirected to a text file.
+print("Determining the mapping between percolator index and each run")
 mapping = []
 with open(PERCOLATOR_STDOUT_FILE_NAME) as f:
     lines = f.readlines()
@@ -136,6 +139,7 @@ mapping_df.to_csv(PERCOLATOR_MAPPING_FILE_NAME, index=False)
 
 # load the feature pkl files from the whole experiment analysed by percolator, and associate them
 # with their percolator index
+print("loading the features")
 df_l = []
 for m in mapping:
     idx = m[0]
@@ -150,6 +154,7 @@ del df_l[:]
 
 # merge the features with their precolator identifications, based on the file index and the
 # feature id (embedded as the 'scan' in the percolator output)
+print("Merging the features with percolator results")
 percolator_df = pd.merge(psms_df, features_df, how='left', left_on=['file_idx','scan'], right_on=['percolator_idx','feature_id'])
 percolator_df['human'] = percolator_df['protein id'].str.contains('HUMAN')
 percolator_df = percolator_df[percolator_df['peptide mass'] > 0]
@@ -169,8 +174,10 @@ percolator_df = percolator_df[(percolator_df.mass_accuracy_ppm >= -10) & (percol
 
 # for each feature file, produce a model that estimates the mass error from a feature's characteristics,
 # and generate a revised feature file with adjusted mass, to get a smaller mass error on a second Comet search.
+print("training models and adjusting monoisotopic mass for each feature")
 adjustments_l = ray.get([adjust_features.remote(file_idx, X_train=group_df[['monoisotopic_mz','scan_apex','rt_apex','intensity']].to_numpy(), y_train=group_df[['mass_error']].to_numpy()[:,0]) for file_idx,group_df in percolator_df.groupby('file_idx')])
 
+print("Writing adjusted features")
 for adjustment in adjustments_l:
     file_idx = adjustment[0]
     feature_recal_attributes_df = adjustment[1]
