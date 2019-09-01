@@ -107,7 +107,7 @@ if not ray.is_initialized():
             print("Argument error: a redis_address is needed for join mode")
             sys.exit(1)
     elif args.ray_mode == "cluster":
-        ray.init(object_store_memory=40000000000,
+        ray.init(object_store_memory=20000000000,
                     redis_max_memory=25000000000)
     else:
         ray.init(local_mode=True)
