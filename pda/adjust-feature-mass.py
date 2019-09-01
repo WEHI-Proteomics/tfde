@@ -51,7 +51,7 @@ if not os.path.exists(MASS_ERROR_ESTIMATORS_DIR):
 # source: https://shankarmsy.github.io/stories/gbrt-sklearn.html
 def GradientBooster(param_grid, n_jobs, X_train, y_train):
     estimator = GradientBoostingRegressor()
-    cv = ShuffleSplit(n_splits=10, train_size=0.8, test_size=.2, random_state=0)
+    cv = ShuffleSplit(n_splits=10, train_size=0.8, test_size=0.2, random_state=0)
     classifier = GridSearchCV(estimator=estimator, cv=cv, param_grid=param_grid, n_jobs=n_jobs)
     classifier.fit(X_train, y_train)
     print('best estimator found by grid search: {}'.format(classifier.best_estimator_))
@@ -81,17 +81,17 @@ def adjust_features(file_idx, X_train, y_train, features_df):
 
     # calculate the recalibrated mass attributes
     feature_recal_attributes_df = pd.DataFrame()
-    feature_recal_attributes_df['feature_id'] = feature_df.feature_id
+    feature_recal_attributes_df['feature_id'] = features_df.feature_id
     feature_recal_attributes_df['predicted_mass_error'] = y
-    feature_recal_attributes_df['recalibrated_monoisotopic_mass'] = feature_df.monoisotopic_mass - feature_recal_attributes_df.predicted_mass_error
+    feature_recal_attributes_df['recalibrated_monoisotopic_mass'] = features_df.monoisotopic_mass - feature_recal_attributes_df.predicted_mass_error
     feature_recal_attributes_df['recalibrated_monoisotopic_mz'] = feature_recal_attributes_df.apply(lambda row: mono_mass_to_mono_mz(row), axis=1)
 
     # add the minimal set of attributes required for MGF generation
-    feature_recal_attributes_df['charge'] = feature_df.charge
-    feature_recal_attributes_df['rt_apex'] = feature_df.rt_apex
-    feature_recal_attributes_df['scan_apex'] = feature_df.scan_apex
-    feature_recal_attributes_df['intensity'] = feature_df.intensity
-    feature_recal_attributes_df['precursor_id'] = feature_df.precursor_id
+    feature_recal_attributes_df['charge'] = features_df.charge
+    feature_recal_attributes_df['rt_apex'] = features_df.rt_apex
+    feature_recal_attributes_df['scan_apex'] = features_df.scan_apex
+    feature_recal_attributes_df['intensity'] = features_df.intensity
+    feature_recal_attributes_df['precursor_id'] = features_df.precursor_id
 
     return file_idx, feature_recal_attributes_df, best_estimator
 
