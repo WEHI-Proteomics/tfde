@@ -109,9 +109,9 @@ percolator_df['mass_error'] = percolator_df['monoisotopic_mass'] - percolator_df
 
 # for each feature file, produce a model that estimates the mass error from a feature's characteristics,
 # and generate a revised feature file with adjusted mass, to get a smaller mass error on a second Comet search.
-for m in mapping:
-    idx = m[0]
-    run_name = m[1]  # e.g. 190719_Hela_Ecoli_1to3_06
+for run in mapping:
+    idx = run[0]
+    run_name = run[1]  # e.g. 190719_Hela_Ecoli_1to3_06
     # filter the percolator output for just this file
     percolator_file_subset_df = percolator_df[percolator_df.file_idx == idx].copy()
     # filter out the identifications with high ppm error
@@ -133,11 +133,6 @@ for m in mapping:
     # use the best parameters to train the model
     best_estimator.fit(X_train, y_train)
     print("R-squared for training set (best model found): {}".format(best_estimator.score(X_train, y_train)))
-
-    # save the model
-    with open(MASS_ERROR_ESTIMATOR_FILE_NAME, 'wb') as handle:
-        pickle.dump(best_estimator, handle)
-    print("Saved the estimator to {}".format(MASS_ERROR_ESTIMATOR_FILE_NAME))
 
     # use the trained model to predict the mass error for all the detected features
     X_df = feature_df[['monoisotopic_mz','scan_apex','rt_apex','intensity']]
@@ -162,6 +157,11 @@ for m in mapping:
     RECALIBRATED_FEATURES_FILE_NAME = "{}/{}-recalibrated-features.pkl".format(RECALIBRATED_FEATURES_DIR, run_name)
     feature_recal_attributes_df.to_pickle(RECALIBRATED_FEATURES_FILE_NAME)
     print("Wrote the recalibrated features to {}".format(RECALIBRATED_FEATURES_FILE_NAME))
+
+    # save the model
+    with open(MASS_ERROR_ESTIMATOR_FILE_NAME, 'wb') as handle:
+        pickle.dump(best_estimator, handle)
+    print("Saved the estimator to {}".format(MASS_ERROR_ESTIMATOR_FILE_NAME))
 
 stop_run = time.time()
 print("total running time ({}): {} seconds".format(parser.prog, round(stop_run-start_run,1)))
