@@ -17,6 +17,7 @@ parser.add_argument('-eb','--experiment_base_dir', type=str, default='./experime
 parser.add_argument('-en','--experiment_name', type=str, help='Name of the experiment.', required=True)
 parser.add_argument('-rm','--ray_mode', type=str, choices=['local','cluster','join'], help='The Ray mode to use.', required=True)
 parser.add_argument('-ra','--redis_address', type=str, help='Address of the cluster to join.', required=False)
+parser.add_argument('-ssm','--small_set_mode', action='store_true', help='A small subset of the data for testing purposes.')
 args = parser.parse_args()
 
 # check the experiment directory exists
@@ -79,12 +80,7 @@ def adjust_features(file_idx, X_train, y_train, features_df):
     X = features_df[['monoisotopic_mz','scan_apex','rt_apex','intensity']].to_numpy()
     y = best_estimator.predict(X)
 
-    # calculate the recalibrated mass attributes
     feature_recal_attributes_df = pd.DataFrame()
-    feature_recal_attributes_df['feature_id'] = features_df.feature_id
-    feature_recal_attributes_df['predicted_mass_error'] = y
-    feature_recal_attributes_df['recalibrated_monoisotopic_mass'] = features_df.monoisotopic_mass - feature_recal_attributes_df.predicted_mass_error
-    feature_recal_attributes_df['recalibrated_monoisotopic_mz'] = feature_recal_attributes_df.apply(lambda row: mono_mass_to_mono_mz(row), axis=1)
 
     # add the minimal set of attributes required for MGF generation
     feature_recal_attributes_df['charge'] = features_df.charge
@@ -92,6 +88,12 @@ def adjust_features(file_idx, X_train, y_train, features_df):
     feature_recal_attributes_df['scan_apex'] = features_df.scan_apex
     feature_recal_attributes_df['intensity'] = features_df.intensity
     feature_recal_attributes_df['precursor_id'] = features_df.precursor_id
+
+    # calculate the recalibrated mass attributes
+    feature_recal_attributes_df['feature_id'] = features_df.feature_id
+    feature_recal_attributes_df['predicted_mass_error'] = y
+    feature_recal_attributes_df['recalibrated_monoisotopic_mass'] = features_df.monoisotopic_mass - feature_recal_attributes_df.predicted_mass_error
+    feature_recal_attributes_df['recalibrated_monoisotopic_mz'] = feature_recal_attributes_df.apply(lambda row: mono_mass_to_mono_mz(row), axis=1)
 
     return file_idx, feature_recal_attributes_df, best_estimator
 
@@ -174,6 +176,8 @@ percolator_df = percolator_df[(percolator_df.mass_accuracy_ppm >= -10) & (percol
 # for each feature file, produce a model that estimates the mass error from a feature's characteristics,
 # and generate a revised feature file with adjusted mass, to get a smaller mass error on a second Comet search.
 print("training models and adjusting monoisotopic mass for each feature")
+if args.small_set_mode:
+    percolator_df = percolator_df[percolator_df.file_idx == 0]
 adjustments_l = ray.get([adjust_features.remote(file_idx, X_train=group_df[['monoisotopic_mz','scan_apex','rt_apex','intensity']].to_numpy(), y_train=group_df[['mass_error']].to_numpy()[:,0], features_df=features_df) for file_idx,group_df in percolator_df.groupby('file_idx')])
 
 print("Writing adjusted features")
