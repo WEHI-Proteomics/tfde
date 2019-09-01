@@ -49,7 +49,7 @@ if not os.path.exists(MASS_ERROR_ESTIMATORS_DIR):
     print("The mass error estimators directory was created: {}".format(MASS_ERROR_ESTIMATORS_DIR))
 
 # source: https://shankarmsy.github.io/stories/gbrt-sklearn.html
-def GradientBooster(param_grid, n_jobs):
+def GradientBooster(param_grid, n_jobs, X_train, y_train):
     estimator = GradientBoostingRegressor()
     cv = ShuffleSplit(n_splits=10, train_size=0.8, test_size=.2, random_state=0)
     classifier = GridSearchCV(estimator=estimator, cv=cv, param_grid=param_grid, n_jobs=n_jobs)
@@ -69,7 +69,7 @@ def adjust_features(file_idx, X_train, y_train, features_df):
     # search for the best model in the specified hyperparameter space
     param_grid = {'n_estimators':[100], 'learning_rate': [0.1, 0.05, 0.02, 0.01], 'max_depth':[20, 10, 6, 4], 'min_samples_leaf':[3, 5, 9, 17], 'max_features':[1.0, 0.3, 0.1] }
     n_jobs = 4
-    cv, best_estimator = GradientBooster(param_grid, n_jobs)
+    cv, best_estimator = GradientBooster(param_grid, n_jobs, X_train, y_train)
 
     # use the best parameters to train the model
     best_estimator.fit(X_train, y_train)
