@@ -76,8 +76,7 @@ def adjust_features(file_idx, X_train, y_train, features_df):
     print("R-squared for training set (best model found): {}".format(best_estimator.score(X_train, y_train)))
 
     # use the trained model to predict the mass error for all the detected features
-    X_df = features_df[['monoisotopic_mz','scan_apex','rt_apex','intensity']]
-    X = X_df.to_numpy()
+    X = features_df[['monoisotopic_mz','scan_apex','rt_apex','intensity']].to_numpy()
     y = best_estimator.predict(X)
 
     # calculate the recalibrated mass attributes
@@ -148,7 +147,7 @@ for m in mapping:
     df['percolator_idx'] = idx
     df_l.append(df)
 # make a single df from the list of dfs
-features_df = pd.concat(df_l, axis=0)
+features_df = pd.concat(df_l, axis=0, sort=False)
 features_df.drop(['candidate_phr_error','envelope','mono_adjusted','original_phr','original_phr_error','precursor_id','rt_curve_fit','rt_lower','rt_upper','scan_curve_fit','scan_lower','scan_upper'], axis=1, inplace=True)
 del df_l[:]
 
@@ -175,7 +174,7 @@ percolator_df = percolator_df[(percolator_df.mass_accuracy_ppm >= -10) & (percol
 # for each feature file, produce a model that estimates the mass error from a feature's characteristics,
 # and generate a revised feature file with adjusted mass, to get a smaller mass error on a second Comet search.
 print("training models and adjusting monoisotopic mass for each feature")
-adjustments_l = ray.get([adjust_features.remote(file_idx, X_train=group_df[['monoisotopic_mz','scan_apex','rt_apex','intensity']].to_numpy(), y_train=group_df[['mass_error']].to_numpy()[:,0]) for file_idx,group_df in percolator_df.groupby('file_idx')])
+adjustments_l = ray.get([adjust_features.remote(file_idx, X_train=group_df[['monoisotopic_mz','scan_apex','rt_apex','intensity']].to_numpy(), y_train=group_df[['mass_error']].to_numpy()[:,0], features_df=features_df) for file_idx,group_df in percolator_df.groupby('file_idx')])
 
 print("Writing adjusted features")
 for adjustment in adjustments_l:
