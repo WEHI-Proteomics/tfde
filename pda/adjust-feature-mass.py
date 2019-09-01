@@ -30,7 +30,7 @@ if not os.path.exists(PERCOLATOR_OUTPUT_DIR):
     print("The percolator output directory is required but doesn't exist: {}".format(PERCOLATOR_OUTPUT_DIR))
     sys.exit(1)
 PERCOLATOR_OUTPUT_FILE_NAME = "{}/{}.percolator.target.psms.txt".format(PERCOLATOR_OUTPUT_DIR, args.experiment_name)
-PERCOLATOR_STDOUT_FILE_NAME = "{}/percolator-stdout.log".format(PERCOLATOR_OUTPUT_DIR)
+PERCOLATOR_STDOUT_FILE_NAME = "{}/{}.percolator.log.txt".format(PERCOLATOR_OUTPUT_DIR, args.experiment_name)
 PERCOLATOR_MAPPING_FILE_NAME = "{}/percolator-idx-mapping.csv".format(PERCOLATOR_OUTPUT_DIR)
 
 FEATURES_DIR = "{}/features".format(EXPERIMENT_DIR)
