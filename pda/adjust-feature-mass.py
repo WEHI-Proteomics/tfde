@@ -96,6 +96,7 @@ def adjust_features(file_idx, X_train, y_train, features_df):
     feature_recal_attributes_df['recalibrated_monoisotopic_mass'] = features_df.monoisotopic_mass - feature_recal_attributes_df.predicted_mass_error
     feature_recal_attributes_df['recalibrated_monoisotopic_mz'] = feature_recal_attributes_df.apply(lambda row: mono_mass_to_mono_mz(row), axis=1)
 
+    print("Completed file {}".format(file_idx))
     return file_idx, feature_recal_attributes_df, best_estimator
 
 ###########################################
