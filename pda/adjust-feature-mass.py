@@ -195,6 +195,7 @@ for adjustment in adjustments_l:
     print("Wrote the recalibrated features to {}".format(RECALIBRATED_FEATURES_FILE_NAME))
 
     # save the estimator
+    MASS_ERROR_ESTIMATOR_FILE_NAME = "{}/{}-mass-error-estimator.pkl".format(MASS_ERROR_ESTIMATORS_DIR, run_name)
     with open(MASS_ERROR_ESTIMATOR_FILE_NAME, 'wb') as handle:
         pickle.dump(best_estimator, handle)
     print("Saved the estimator to {}".format(MASS_ERROR_ESTIMATOR_FILE_NAME))
