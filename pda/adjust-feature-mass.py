@@ -63,6 +63,7 @@ def mono_mass_to_mono_mz(row):
 
 @ray.remote
 def adjust_features(file_idx, X_train, y_train, features_df):
+    print("Processing file {}".format(file_idx))
     # train a model on the features that gave the best identifications to predict the mass error, so we can predict
     # the mass error for all the features detected (not just those with high quality identifications), and adjust
     # their calculated mass to give zero mass error.
@@ -185,7 +186,7 @@ for adjustment in adjustments_l:
     file_idx = adjustment[0]
     feature_recal_attributes_df = adjustment[1]
     best_estimator = adjustment[2]
-    run_name = mapping_df[mapping_df.file_idx == file_idx].iloc[0].run_name
+    run_name = mapping_df[mapping_df.percolator_idx == file_idx].iloc[0].run_name
 
     # write out the recalibrated feature attributes so we can regenerate the MGF and search again
     RECALIBRATED_FEATURES_FILE_NAME = "{}/{}-recalibrated-features.pkl".format(RECALIBRATED_FEATURES_DIR, run_name)
