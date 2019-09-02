@@ -150,7 +150,7 @@ for m in mapping:
     df_l.append(df)
 # make a single df from the list of dfs
 features_df = pd.concat(df_l, axis=0, sort=False)
-features_df.drop(['candidate_phr_error','envelope','mono_adjusted','original_phr','original_phr_error','precursor_id','rt_curve_fit','rt_lower','rt_upper','scan_curve_fit','scan_lower','scan_upper'], axis=1, inplace=True)
+features_df.drop(['candidate_phr_error','envelope','mono_adjusted','original_phr','original_phr_error','rt_curve_fit','rt_lower','rt_upper','scan_curve_fit','scan_lower','scan_upper'], axis=1, inplace=True)
 del df_l[:]
 
 # merge the features with their precolator identifications, based on the file index and the
