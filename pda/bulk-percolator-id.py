@@ -46,7 +46,7 @@ start_run = time.time()
 comet_output_file_list = glob.glob('{}/*.comet.target.pin'.format(COMET_OUTPUT_DIR))
 comet_output_file_list_as_string = ' '.join(map(str, comet_output_file_list))
 
-cmd = "./crux-3.2.Linux.x86_64/bin/crux percolator --overwrite T --subset-max-train 1000000 --klammer F --maxiter 10 --output-dir {} --picked-protein ./otf-peak-detect/fasta/uniprot-proteome-human-Ecoli.fasta --protein T --protein-enzyme trypsin --search-input auto --verbosity 30 --fileroot {} {} > {}".format(PERCOLATOR_OUTPUT_DIR, RUN_NAME, comet_output_file_list_as_string, PERCOLATOR_STDOUT_FILE_NAME)
+cmd = "./crux-3.2.Linux.x86_64/bin/crux percolator --overwrite T --subset-max-train 1000000 --klammer F --maxiter 10 --output-dir {} --picked-protein ./otf-peak-detect/fasta/uniprot-proteome-human-Ecoli.fasta --protein T --protein-enzyme trypsin --search-input auto --verbosity 30 --fileroot {} {} > {}".format(PERCOLATOR_OUTPUT_DIR, args.experiment_name, comet_output_file_list_as_string, PERCOLATOR_STDOUT_FILE_NAME)
 run_process(cmd)
 
 stop_run = time.time()
