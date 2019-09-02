@@ -40,14 +40,16 @@ if not os.path.exists(FEATURES_DIR):
     sys.exit(1)
 
 RECALIBRATED_FEATURES_DIR = "{}/recalibrated-features".format(EXPERIMENT_DIR)
-if not os.path.exists(RECALIBRATED_FEATURES_DIR):
-    os.makedirs(RECALIBRATED_FEATURES_DIR)
-    print("The recalibrated features directory was created: {}".format(RECALIBRATED_FEATURES_DIR))
+if os.path.exists(RECALIBRATED_FEATURES_DIR):
+    shutil.rmtree(RECALIBRATED_FEATURES_DIR)
+os.makedirs(RECALIBRATED_FEATURES_DIR)
+print("The recalibrated features directory was created: {}".format(RECALIBRATED_FEATURES_DIR))
 
 MASS_ERROR_ESTIMATORS_DIR = "{}/mass-correction-models".format(EXPERIMENT_DIR)
-if not os.path.exists(MASS_ERROR_ESTIMATORS_DIR):
-    os.makedirs(MASS_ERROR_ESTIMATORS_DIR)
-    print("The mass error estimators directory was created: {}".format(MASS_ERROR_ESTIMATORS_DIR))
+if os.path.exists(MASS_ERROR_ESTIMATORS_DIR):
+    shutil.rmtree(MASS_ERROR_ESTIMATORS_DIR)
+os.makedirs(MASS_ERROR_ESTIMATORS_DIR)
+print("The mass error estimators directory was created: {}".format(MASS_ERROR_ESTIMATORS_DIR))
 
 # source: https://shankarmsy.github.io/stories/gbrt-sklearn.html
 def GradientBooster(param_grid, n_jobs, X_train, y_train):
