@@ -21,12 +21,19 @@ if not os.path.exists(EXPERIMENT_DIR):
     print("The experiment directory is required but doesn't exist: {}".format(EXPERIMENT_DIR))
     sys.exit(1)
 
-COMET_OUTPUT_DIR = "{}/comet-output".format(EXPERIMENT_DIR)
-if not os.path.exists(COMET_OUTPUT_DIR):
-    os.makedirs(COMET_OUTPUT_DIR)
-    print("The comet output directory was created: {}".format(COMET_OUTPUT_DIR))
+if args.recalibration_mode:
+    COMET_OUTPUT_DIR = "{}/comet-output-recalibrated".format(EXPERIMENT_DIR)
+else:
+    COMET_OUTPUT_DIR = "{}/comet-output".format(EXPERIMENT_DIR)
+if os.path.exists(COMET_OUTPUT_DIR):
+    shutil.rmtree(COMET_OUTPUT_DIR)
+os.makedirs(COMET_OUTPUT_DIR)
+print("The comet output directory was created: {}".format(COMET_OUTPUT_DIR))
 
-MGF_DIR = "{}/mgfs".format(EXPERIMENT_DIR)
+if args.recalibration_mode:
+    MGF_DIR = "{}/mgfs-recalibrated".format(EXPERIMENT_DIR)
+else:
+    MGF_DIR = "{}/mgfs".format(EXPERIMENT_DIR)
 if not os.path.exists(MGF_DIR):
     print("The MGF directory is required but does not exist: {}".format(MGF_DIR))
     sys.exit(1)
@@ -35,6 +42,9 @@ if args.recalibration_mode:
     COMET_PARAMETER_FILE = './otf-peak-detect/comet/TimsTOF-recalibration.params'
 else:
     COMET_PARAMETER_FILE = './otf-peak-detect/comet/TimsTOF.params'
+if not os.path.exists(COMET_PARAMETER_FILE):
+    print("The comet parameter file is required but does not exist: {}".format(COMET_PARAMETER_FILE))
+    sys.exit(1)
 
 start_run = time.time()
 
