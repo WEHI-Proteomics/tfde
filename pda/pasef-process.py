@@ -18,43 +18,51 @@ import time
 import pickle
 
 parser = argparse.ArgumentParser(description='Manage the ms1 and ms2 processing, and generate the MGF.')
-parser.add_argument('-rdb','--raw_database_dir', type=str, help='Path to the raw database directory.', required=True)
-parser.add_argument('-bpd','--base_processing_dir', type=str, default='.', help='Path to the processing directory.', required=False)
-parser.add_argument('-pn','--processing_name', type=str, help='Name of the processing results.', required=True)
+parser.add_argument('-eb','--experiment_base_dir', type=str, default='./experiments', help='Path to the experiments directory.', required=False)
+parser.add_argument('-en','--experiment_name', type=str, help='Name of the experiment.', required=True)
+parser.add_argument('-rn','--run_name', type=str, help='Name of the run.', required=True)
 parser.add_argument('-ini','--ini_file', type=str, help='Path to the config file.', required=True)
 parser.add_argument('-os','--operating_system', type=str, choices=['linux','macos'], help='Operating system name.', required=True)
 parser.add_argument('-di','--drop_indexes', action='store_true', help='Drop converted database indexes, if they exist.')
 parser.add_argument('-ao','--association_only', action='store_true', help='Bypass the ms1 and ms2 processing; only do the association step.')
 parser.add_argument('-ssm','--small_set_mode', action='store_true', help='A small subset of the data for testing purposes.')
-parser.add_argument('-recal','--use_recalibrated_ms1_features', action='store_true', help='Use the recalibrated ms1 features.')
+parser.add_argument('-recal','--recalibration_mode', action='store_true', help='Use the recalibrated features.')
 args = parser.parse_args()
 
-# check the raw database exists
-RAW_DATABASE_NAME = "{}/analysis.tdf".format(args.raw_database_dir)
-if not os.path.isfile(RAW_DATABASE_NAME):
-    print("The raw database doesn't exist: {}".format(RAW_DATABASE_NAME))
+# check the experiment directory exists
+EXPERIMENT_DIR = "{}/{}".format(args.experiment_base_dir, args.experiment_name)
+if not os.path.exists(EXPERIMENT_DIR):
+    print("The experiment directory is required but doesn't exist: {}".format(EXPERIMENT_DIR))
     sys.exit(1)
 
-# check the processing directory exists
-PROCESSING_DIR = "{}/{}".format(args.base_processing_dir, args.processing_name)
-if not os.path.exists(PROCESSING_DIR):
-    os.makedirs(PROCESSING_DIR)
-
-if args.use_recalibrated_ms1_features:
-    MS1_PEAK_PKL = "{}/{}-recalibrated-features.pkl".format(PROCESSING_DIR, args.processing_name)
-    monoisotopic_column_name = 'recalibrated_mono_mz'
-    # we don't need the un-recalibrated MGF any longer
-    OLD_MGF_NAME = "{}/{}-search.mgf".format(PROCESSING_DIR, args.processing_name)
-    if os.path.isfile(OLD_MGF_NAME):
-        os.remove(OLD_MGF_NAME)
-    MGF_NAME = "{}/{}-recalibrated-search.mgf".format(PROCESSING_DIR, args.processing_name)
+# check the raw database exists
+raw_files_l = glob.glob("{}/raw-databases/{}*.d".format(EXPERIMENT_DIR, args.run_name))
+if (len(raw_files_l) > 0):
+    RAW_DATABASE_FILE_NAME = raw_files_l[0]
+    if not os.path.isfile(RAW_DATABASE_FILE_NAME):
+        print("The raw database doesn't exist: {}".format(RAW_DATABASE_FILE_NAME))
+        sys.exit(1)
 else:
-    MS1_PEAK_PKL = "{}/{}-features.pkl".format(PROCESSING_DIR, args.processing_name)
+    print("The raw database doesn't exist: {}".format(RAW_DATABASE_FILE_NAME))
+    sys.exit(1)
+
+if args.recalibration_mode:
+    if not args.association_only:
+        print("The association_only argument should be set but is not.")
+        sys.exit(1)
+
+    MS1_PEAK_PKL = "{}/recalibrated-features/{}-recalibrated-features.pkl".format(EXPERIMENT_DIR, args.run_name)
+    monoisotopic_column_name = 'recalibrated_monoisotopic_mz'
+    MGF_DIR = "{}/recalibrated-mgfs"
+    MGF_NAME = "{}/{}-recalibrated-search.mgf".format(MGF_DIR, args.run_name)
+else:
+    MS1_PEAK_PKL = "{}/features/{}-features.pkl".format(EXPERIMENT_DIR, args.run_name)
     monoisotopic_column_name = 'monoisotopic_mz'
-    MGF_NAME = "{}/{}-search.mgf".format(PROCESSING_DIR, args.processing_name)
-DECONVOLUTED_MS2_PKL = "{}/{}-ms2-spectra.pkl".format(PROCESSING_DIR, args.processing_name)
-ASSOCIATIONS_PKL = "{}/{}-associations.pkl".format(PROCESSING_DIR, args.processing_name)
-RECALIBRATED_MGF_NAME = "{}/{}-recalibrated-search.mgf".format(PROCESSING_DIR, args.processing_name)
+    MGF_DIR = "{}/mgfs"
+    MGF_NAME = "{}/{}-search.mgf".format(MGF_DIR, args.run_name)
+
+DECONVOLUTED_MS2_PKL = "{}/ms2-spectra/{}-ms2-spectra.pkl".format(EXPERIMENT_DIR, args.run_name)
+ASSOCIATIONS_PKL = "{}/associations/{}-associations.pkl".format(EXPERIMENT_DIR, args.run_name)
 CONVERTED_DATABASE_NAME = "{}/{}-converted.sqlite".format(PROCESSING_DIR, args.processing_name)
 
 # check the converted database exists
@@ -130,14 +138,6 @@ src_c.execute("create index if not exists idx_pasef_frame_properties_1 on frame_
 db_conn.close()
 
 if not args.association_only:
-    # clean up from last time
-    if os.path.isfile(MS1_PEAK_PKL):
-        print("removing {}".format(MS1_PEAK_PKL))
-        os.remove(MS1_PEAK_PKL)
-    if os.path.isfile(DECONVOLUTED_MS2_PKL):
-        print("removing {}".format(DECONVOLUTED_MS2_PKL))
-        os.remove(DECONVOLUTED_MS2_PKL)
-
     # Set up the processing pool
     pool = Pool(processes=2)
 
@@ -156,7 +156,7 @@ if not args.association_only:
     print("Finished ms1 and ms2 processing")
 
 if not os.path.isfile(MS1_PEAK_PKL):
-    print("The ms1 output file doesn't exist: {}".format(MS1_PEAK_PKL))
+    print("The ms1 output file is required but doesn't exist: {}".format(MS1_PEAK_PKL))
     sys.exit(1)
 else:
     # get the features detected in ms1
@@ -165,7 +165,7 @@ else:
     features_a = features_df[['feature_id','charge',monoisotopic_column_name,'rt_apex','intensity','precursor_id']].to_numpy()
 
 if not os.path.isfile(DECONVOLUTED_MS2_PKL):
-    print("The ms2 output file doesn't exist: {}".format(DECONVOLUTED_MS2_PKL))
+    print("The ms2 output file is required doesn't exist: {}".format(DECONVOLUTED_MS2_PKL))
     sys.exit(1)
 else:
     # get the ms2 spectra
@@ -185,9 +185,9 @@ associations = [item for sublist in associations for item in sublist]  # associa
 stop_time = time.time()
 print("association time: {} seconds".format(round(stop_time-start_time,1)))
 
-# print("writing associations to {}".format(ASSOCIATIONS_PKL))
-# with open(ASSOCIATIONS_PKL, 'wb') as f:
-#     pickle.dump(associations, f)
+print("writing associations to {}".format(ASSOCIATIONS_PKL))
+with open(ASSOCIATIONS_PKL, 'wb') as f:
+    pickle.dump(associations, f)
 
 # generate the MGF for all the features
 print("Writing {} entries to {}".format(len(associations), MGF_NAME))
