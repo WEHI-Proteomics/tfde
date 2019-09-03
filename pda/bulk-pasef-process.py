@@ -39,6 +39,17 @@ if not os.path.isfile(args.ini_file):
     print("The configuration file doesn't exist: {}".format(args.ini_file))
     sys.exit(1)
 
+# initialise Ray
+if not ray.is_initialized():
+    if (args.ray_mode == "join") or (args.ray_mode == "local") :
+        print("Argument error: 'join' and 'local' modes are not valid.")
+        sys.exit(1)
+    elif args.ray_mode == "cluster":
+        print("Starting a Ray cluster for the subprocesses to join.")
+        r = ray.init(object_store_memory=40000000000,
+                    redis_max_memory=25000000000)
+        redis_address = r['redis_address']
+
 # process all the runs - we'll use the raw data files as the source of run names
 raw_files_l = glob.glob("{}/raw-databases/*.d".format(EXPERIMENT_DIR))
 if args.small_set_mode:
@@ -49,9 +60,9 @@ for raw_file in raw_files_l:
     print("processing {}".format(run_name))
 
     if not args.recalibration_mode:
-        cmd = "python -u ~/otf-peak-detect/pda/pasef-process.py -eb {} -en {} -rn {} -ini {} -os linux > {} 2>&1".format(args.experiment_base_dir, args.experiment_name, run_name, args.ini_file, LOG_FILE_NAME)
+        cmd = "python -u ~/otf-peak-detect/pda/pasef-process.py -eb {} -en {} -rn {} -ini {} -os linux -rm join -ra {} > {} 2>&1".format(args.experiment_base_dir, args.experiment_name, run_name, args.ini_file, redis_address, LOG_FILE_NAME)
     else:
-        cmd = "python -u ~/otf-peak-detect/pda/pasef-process.py -eb {} -en {} -rn {} -ini {} -os linux -ao -recal > {} 2>&1".format(args.experiment_base_dir, args.experiment_name, run_name, args.ini_file, LOG_FILE_NAME)
+        cmd = "python -u ~/otf-peak-detect/pda/pasef-process.py -eb {} -en {} -rn {} -ini {} -os linux -rm join -ra {} -ao -recal > {} 2>&1".format(args.experiment_base_dir, args.experiment_name, run_name, args.ini_file, redis_address, LOG_FILE_NAME)
     run_process(cmd)
 
 stop_run = time.time()
