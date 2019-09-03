@@ -11,7 +11,7 @@ def run_process(process):
 parser = argparse.ArgumentParser(description='Process all the runs in an experiment.')
 parser.add_argument('-eb','--experiment_base_dir', type=str, default='./experiments', help='Path to the experiments directory.', required=False)
 parser.add_argument('-en','--experiment_name', type=str, help='Name of the experiment.', required=True)
-parser.add_argument('-ini','--ini_file', type=str, help='Path to the config file.', required=True)
+parser.add_argument('-ini','--ini_file', type=str, default='./otf-peak-detect/pda/pasef-process-short-gradient.ini', help='Path to the config file.', required=False)
 parser.add_argument('-recal','--recalibration_mode', action='store_true', help='Use the recalibrated ms1 features.')
 parser.add_argument('-ssm','--small_set_mode', action='store_true', help='A small subset of the data for testing purposes.')
 parser.add_argument('-shutdown','--shutdown', action='store_true', help='Shut down the machine when complete.')
