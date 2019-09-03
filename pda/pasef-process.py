@@ -28,7 +28,7 @@ parser.add_argument('-di','--drop_indexes', action='store_true', help='Drop conv
 parser.add_argument('-ao','--association_only', action='store_true', help='Bypass the ms1 and ms2 processing; only do the association step.')
 parser.add_argument('-ssm','--small_set_mode', action='store_true', help='A small subset of the data for testing purposes.')
 parser.add_argument('-recal','--recalibration_mode', action='store_true', help='Use the recalibrated features.')
-parser.add_argument('-rm','--ray_mode', type=str, choices=['local','cluster','join'], help='The Ray mode to use.', required=True)
+parser.add_argument('-rm','--ray_mode', type=str, choices=['cluster','join'], help='The Ray mode to use.', required=True)
 parser.add_argument('-ra','--redis_address', type=str, help='Address of the cluster to join.', required=False)
 args = parser.parse_args()
 
@@ -150,8 +150,6 @@ if not args.association_only:
             r = ray.init(object_store_memory=40000000000,
                         redis_max_memory=25000000000)
             redis_address = r['redis_address']
-        else:
-            ray.init(local_mode=True)
 
     # Set up the processing pool
     pool = Pool(processes=2)
