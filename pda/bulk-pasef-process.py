@@ -41,11 +41,10 @@ if not os.path.isfile(args.ini_file):
     sys.exit(1)
 
 # initialise Ray
-if not ray.is_initialized():
-    print("Starting a Ray cluster for the subprocesses to join.")
-    r = ray.init(object_store_memory=20000000000,
-                 redis_max_memory=25000000000)
-    redis_address = r['redis_address']
+print("Starting a Ray cluster for the subprocesses to join.")
+r = ray.init(object_store_memory=20000000000,
+             redis_max_memory=25000000000)
+redis_address = r['redis_address']
 
 # process all the runs - we'll use the raw data files as the source of run names
 raw_files_l = glob.glob("{}/raw-databases/*.d".format(EXPERIMENT_DIR))
