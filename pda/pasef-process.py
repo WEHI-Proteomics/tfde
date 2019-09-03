@@ -39,7 +39,7 @@ if not os.path.exists(EXPERIMENT_DIR):
 # check the raw database exists
 raw_files_l = glob.glob("{}/raw-databases/{}*.d".format(EXPERIMENT_DIR, args.run_name))
 if (len(raw_files_l) > 0):
-    RAW_DATABASE_FILE_NAME = raw_files_l[0]
+    RAW_DATABASE_FILE_NAME = "{}/analysis.tdf".format(raw_files_l[0])
     if not os.path.isfile(RAW_DATABASE_FILE_NAME):
         print("The raw database doesn't exist: {}".format(RAW_DATABASE_FILE_NAME))
         sys.exit(1)
