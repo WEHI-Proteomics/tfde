@@ -9,6 +9,8 @@ def run_process(process):
     print("Executing: {}".format(process))
     os.system(process)
 
+# This program sequentially executes pasef-process.py for each run in the experiment. A future optimisation would be to run them concurrently but I want it to run on a somewhat ordinary machine.
+
 parser = argparse.ArgumentParser(description='Process all the runs in an experiment.')
 parser.add_argument('-eb','--experiment_base_dir', type=str, default='./experiments', help='Path to the experiments directory.', required=False)
 parser.add_argument('-en','--experiment_name', type=str, help='Name of the experiment.', required=True)
@@ -26,14 +28,21 @@ if not os.path.exists(EXPERIMENT_DIR):
     print("The experiment directory is required but doesn't exist: {}".format(EXPERIMENT_DIR))
     sys.exit(1)
 
+# check the associations directory exists
+ASSOCIATIONS_DIR = "{}/associations".format(EXPERIMENT_DIR)
+if os.path.exists(ASSOCIATIONS_DIR):
+    shutil.rmtree(ASSOCIATIONS_DIR)
+os.makedirs(ASSOCIATIONS_DIR)
+print("The associations directory was created: {}".format(ASSOCIATIONS_DIR))
+
 # check the log directory exists
-LOG_DIR = "{}/logs".format(args.experiment_base_dir)
+LOG_DIR = "{}/logs".format(EXPERIMENT_DIR)
 if not os.path.exists(LOG_DIR):
     os.makedirs(LOG_DIR)
 if args.recalibration_mode:
-    LOG_FILE_NAME = "{}/logs/{}-recalibration-pasef-process.log".format(args.experiment_base_dir, args.experiment_name)
+    LOG_FILE_NAME = "{}/{}-recalibration-pasef-process.log".format(LOG_DIR, args.experiment_name)
 else:
-    LOG_FILE_NAME = "{}/logs/{}-pasef-process.log".format(args.experiment_base_dir, args.experiment_name)
+    LOG_FILE_NAME = "{}/{}-pasef-process.log".format(LOG_DIR, args.experiment_name)
 
 # check the configuration file exists
 if not os.path.isfile(args.ini_file):
