@@ -22,7 +22,7 @@ parser = argparse.ArgumentParser(description='Manage the ms1 and ms2 processing,
 parser.add_argument('-eb','--experiment_base_dir', type=str, default='./experiments', help='Path to the experiments directory.', required=False)
 parser.add_argument('-en','--experiment_name', type=str, help='Name of the experiment.', required=True)
 parser.add_argument('-rn','--run_name', type=str, help='Name of the run.', required=True)
-parser.add_argument('-ini','--ini_file', type=str, help='Path to the config file.', required=True)
+parser.add_argument('-ini','--ini_file', type=str, default='./otf-peak-detect/pda/pasef-process-short-gradient.ini', help='Path to the config file.', required=False)
 parser.add_argument('-os','--operating_system', type=str, choices=['linux','macos'], help='Operating system name.', required=True)
 parser.add_argument('-di','--drop_indexes', action='store_true', help='Drop converted database indexes, if they exist.')
 parser.add_argument('-ao','--association_only', action='store_true', help='Bypass the ms1 and ms2 processing; only do the association step.')
