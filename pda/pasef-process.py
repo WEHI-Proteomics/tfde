@@ -41,10 +41,10 @@ raw_files_l = glob.glob("{}/raw-databases/{}*.d".format(EXPERIMENT_DIR, args.run
 if (len(raw_files_l) > 0):
     RAW_DATABASE_FILE_NAME = "{}/analysis.tdf".format(raw_files_l[0])
     if not os.path.isfile(RAW_DATABASE_FILE_NAME):
-        print("The raw database doesn't exist: {}".format(RAW_DATABASE_FILE_NAME))
+        print("The raw database is required but doesn't exist: {}".format(RAW_DATABASE_FILE_NAME))
         sys.exit(1)
 else:
-    print("The raw database doesn't exist: {}".format(RAW_DATABASE_FILE_NAME))
+    print("The raw database is required but doesn't exist: {}".format(RAW_DATABASE_FILE_NAME))
     sys.exit(1)
 
 if args.recalibration_mode:
@@ -64,16 +64,16 @@ else:
 
 DECONVOLUTED_MS2_PKL = "{}/ms2-spectra/{}-ms2-spectra.pkl".format(EXPERIMENT_DIR, args.run_name)
 ASSOCIATIONS_PKL = "{}/associations/{}-associations.pkl".format(EXPERIMENT_DIR, args.run_name)
-CONVERTED_DATABASE_NAME = "{}/{}-converted.sqlite".format(PROCESSING_DIR, args.processing_name)
+CONVERTED_DATABASE_NAME = "{}/converted-databases/{}-converted.sqlite".format(EXPERIMENT_DIR, args.run_name)
 
 # check the converted database exists
 if not os.path.isfile(CONVERTED_DATABASE_NAME):
-    print("The converted database doesn't exist: {}".format(CONVERTED_DATABASE_NAME))
+    print("The converted database is required but doesn't exist: {}".format(CONVERTED_DATABASE_NAME))
     sys.exit(1)
 
 # check the configuration file exists
 if not os.path.isfile(args.ini_file):
-    print("The configuration file doesn't exist: {}".format(args.ini_file))
+    print("The configuration file is required but doesn't exist: {}".format(args.ini_file))
     sys.exit(1)
 
 # read the configuration items
