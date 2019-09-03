@@ -3,6 +3,7 @@ import os
 import shutil
 import time
 import argparse
+import ray
 
 def run_process(process):
     print("Executing: {}".format(process))
@@ -41,14 +42,10 @@ if not os.path.isfile(args.ini_file):
 
 # initialise Ray
 if not ray.is_initialized():
-    if (args.ray_mode == "join") or (args.ray_mode == "local") :
-        print("Argument error: 'join' and 'local' modes are not valid.")
-        sys.exit(1)
-    elif args.ray_mode == "cluster":
-        print("Starting a Ray cluster for the subprocesses to join.")
-        r = ray.init(object_store_memory=40000000000,
-                    redis_max_memory=25000000000)
-        redis_address = r['redis_address']
+    print("Starting a Ray cluster for the subprocesses to join.")
+    r = ray.init(object_store_memory=40000000000,
+                redis_max_memory=25000000000)
+    redis_address = r['redis_address']
 
 # process all the runs - we'll use the raw data files as the source of run names
 raw_files_l = glob.glob("{}/raw-databases/*.d".format(EXPERIMENT_DIR))
