@@ -28,6 +28,8 @@ parser.add_argument('-di','--drop_indexes', action='store_true', help='Drop conv
 parser.add_argument('-ao','--association_only', action='store_true', help='Bypass the ms1 and ms2 processing; only do the association step.')
 parser.add_argument('-ssm','--small_set_mode', action='store_true', help='A small subset of the data for testing purposes.')
 parser.add_argument('-recal','--recalibration_mode', action='store_true', help='Use the recalibrated features.')
+parser.add_argument('-rm','--ray_mode', type=str, choices=['local','cluster','join'], help='The Ray mode to use.', required=True)
+parser.add_argument('-ra','--redis_address', type=str, help='Address of the cluster to join.', required=False)
 args = parser.parse_args()
 
 # check the experiment directory exists
@@ -119,10 +121,6 @@ def associate_feature_spectra(features_a, spectra_a):
     return associations
 
 ##################################################
-ray_cluster = ray.init()
-# get the address for the sub-processes to join
-redis_address = ray_cluster['redis_address']
-
 # make sure the right indexes are created in the source database
 db_conn = sqlite3.connect(CONVERTED_DATABASE_NAME)
 src_c = db_conn.cursor()
@@ -139,6 +137,22 @@ src_c.execute("create index if not exists idx_pasef_frame_properties_1 on frame_
 db_conn.close()
 
 if not args.association_only:
+    # initialise Ray
+    if not ray.is_initialized():
+        if args.ray_mode == "join":
+            if args.redis_address is not None:
+                r = ray.init(redis_address=args.redis_address)
+                redis_address = r['redis_address']
+            else:
+                print("Argument error: a redis_address is needed for join mode")
+                sys.exit(1)
+        elif args.ray_mode == "cluster":
+            r = ray.init(object_store_memory=40000000000,
+                        redis_max_memory=25000000000)
+            redis_address = r['redis_address']
+        else:
+            ray.init(local_mode=True)
+
     # Set up the processing pool
     pool = Pool(processes=2)
 
