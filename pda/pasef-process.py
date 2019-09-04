@@ -56,16 +56,19 @@ if args.recalibration_mode:
 
     MS1_PEAK_PKL = "{}/recalibrated-features/{}-recalibrated-features.pkl".format(EXPERIMENT_DIR, args.run_name)
     monoisotopic_column_name = 'recalibrated_monoisotopic_mz'
-    MGF_DIR = "{}/recalibrated-mgfs"
+    MGF_DIR = "{}/recalibrated-mgfs".format(EXPERIMENT_DIR)
     MGF_NAME = "{}/{}-recalibrated-search.mgf".format(MGF_DIR, args.run_name)
+    ASSOCIATIONS_DIR = "{}/recalibrated-associations".format(EXPERIMENT_DIR)
+    ASSOCIATIONS_NAME = "{}/{}-recalibrated-associations.pkl".format(ASSOCIATIONS_DIR, args.run_name)
 else:
     MS1_PEAK_PKL = "{}/features/{}-features.pkl".format(EXPERIMENT_DIR, args.run_name)
     monoisotopic_column_name = 'monoisotopic_mz'
-    MGF_DIR = "{}/mgfs"
+    MGF_DIR = "{}/mgfs".format(EXPERIMENT_DIR)
     MGF_NAME = "{}/{}-search.mgf".format(MGF_DIR, args.run_name)
+    ASSOCIATIONS_DIR = "{}/associations".format(EXPERIMENT_DIR)
+    ASSOCIATIONS_NAME = "{}/{}-associations.pkl".format(ASSOCIATIONS_DIR, args.run_name)
 
 DECONVOLUTED_MS2_PKL = "{}/ms2-spectra/{}-ms2-spectra.pkl".format(EXPERIMENT_DIR, args.run_name)
-ASSOCIATIONS_PKL = "{}/associations/{}-associations.pkl".format(EXPERIMENT_DIR, args.run_name)
 CONVERTED_DATABASE_NAME = "{}/converted-databases/{}-converted.sqlite".format(EXPERIMENT_DIR, args.run_name)
 
 # check the converted database exists
