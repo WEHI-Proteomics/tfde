@@ -87,23 +87,22 @@ def adjust_features(file_idx, X_train, y_train, features_df):
     X = features_df[['monoisotopic_mz','scan_apex','rt_apex','intensity']].to_numpy()
     y = best_estimator.predict(X)
 
-    # calculate the monoisotopic mass of the features (can remove on future data sets)
-    features_df['monoisotopic_mass'] = (features_df.monoisotopic_mz * features_df.charge) - (PROTON_MASS * features_df.charge)
 
     # collate the recalibrated feature attributes
     feature_recal_attributes_df = pd.DataFrame()
 
     # add the minimal set of attributes required for MGF generation
+    feature_recal_attributes_df['feature_id'] = features_df.feature_id
     feature_recal_attributes_df['charge'] = features_df.charge
     feature_recal_attributes_df['rt_apex'] = features_df.rt_apex
     feature_recal_attributes_df['scan_apex'] = features_df.scan_apex
     feature_recal_attributes_df['intensity'] = features_df.intensity
     feature_recal_attributes_df['precursor_id'] = features_df.precursor_id
+    feature_recal_attributes_df['monoisotopic_mass'] = (features_df.monoisotopic_mz * features_df.charge) - (PROTON_MASS * features_df.charge)
 
     # calculate the recalibrated mass attributes
-    feature_recal_attributes_df['feature_id'] = features_df.feature_id
     feature_recal_attributes_df['predicted_mass_error'] = y
-    feature_recal_attributes_df['recalibrated_monoisotopic_mass'] = features_df.monoisotopic_mass - feature_recal_attributes_df.predicted_mass_error
+    feature_recal_attributes_df['recalibrated_monoisotopic_mass'] = feature_recal_attributes_df.monoisotopic_mass - feature_recal_attributes_df.predicted_mass_error
     feature_recal_attributes_df['recalibrated_monoisotopic_mz'] = feature_recal_attributes_df.apply(lambda row: mono_mass_to_mono_mz(row), axis=1)
 
     print("Completed file {}".format(file_idx))
