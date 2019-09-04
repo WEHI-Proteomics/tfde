@@ -29,11 +29,24 @@ if not os.path.exists(EXPERIMENT_DIR):
     sys.exit(1)
 
 # check the associations directory exists
-ASSOCIATIONS_DIR = "{}/associations".format(EXPERIMENT_DIR)
+if args.recalibration_mode:
+    ASSOCIATIONS_DIR = "{}/recalibrated-associations".format(EXPERIMENT_DIR)
+else:
+    ASSOCIATIONS_DIR = "{}/associations".format(EXPERIMENT_DIR)
 if os.path.exists(ASSOCIATIONS_DIR):
     shutil.rmtree(ASSOCIATIONS_DIR)
 os.makedirs(ASSOCIATIONS_DIR)
 print("The associations directory was created: {}".format(ASSOCIATIONS_DIR))
+
+# check the MGFs directory exists
+if args.recalibration_mode:
+    MGF_DIR = "{}/recalibrated-mgfs".format(EXPERIMENT_DIR)
+else:
+    MGF_DIR = "{}/mgfs".format(EXPERIMENT_DIR)
+if os.path.exists(MGF_DIR):
+    shutil.rmtree(MGF_DIR)
+os.makedirs(MGF_DIR)
+print("The MGFs directory was created: {}".format(MGF_DIR))
 
 # check the log directory exists
 LOG_DIR = "{}/logs".format(EXPERIMENT_DIR)
