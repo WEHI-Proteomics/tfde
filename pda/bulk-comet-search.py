@@ -57,7 +57,7 @@ for file in glob.glob('{}/*.mgf'.format(MGF_DIR)):
     run_process(cmd)
 
 stop_run = time.time()
-print("total running time (bulk-comet-search): {} seconds".format(round(stop_run-start_run,1)))
+print("total running time ({}): {} seconds".format(parser.prog, round(stop_run-start_run,1)))
 
 if args.shutdown:
     run_process("sudo shutdown -P +5") # shutdown the instance in 5 minutes from now
