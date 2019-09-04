@@ -22,7 +22,7 @@ if not os.path.exists(EXPERIMENT_DIR):
     sys.exit(1)
 
 if args.recalibration_mode:
-    COMET_OUTPUT_DIR = "{}/comet-output-recalibrated".format(EXPERIMENT_DIR)
+    COMET_OUTPUT_DIR = "{}/recalibrated-comet-output".format(EXPERIMENT_DIR)
 else:
     COMET_OUTPUT_DIR = "{}/comet-output".format(EXPERIMENT_DIR)
 if not os.path.exists(COMET_OUTPUT_DIR):
@@ -30,7 +30,7 @@ if not os.path.exists(COMET_OUTPUT_DIR):
     sys.exit(1)
 
 if args.recalibration_mode:
-    PERCOLATOR_OUTPUT_DIR = "{}/percolator-output-recalibrated".format(EXPERIMENT_DIR)
+    PERCOLATOR_OUTPUT_DIR = "{}/recalibrated-percolator-output".format(EXPERIMENT_DIR)
 else:
     PERCOLATOR_OUTPUT_DIR = "{}/percolator-output".format(EXPERIMENT_DIR)
 if os.path.exists(PERCOLATOR_OUTPUT_DIR):
@@ -50,7 +50,7 @@ cmd = "./crux-3.2.Linux.x86_64/bin/crux percolator --overwrite T --subset-max-tr
 run_process(cmd)
 
 stop_run = time.time()
-print("total running time (bulk-percolator-id): {} seconds".format(round(stop_run-start_run,1)))
+print("total running time ({}): {} seconds".format(parser.prog, round(stop_run-start_run,1)))
 
 if args.shutdown:
     run_process("sudo shutdown -P +5") # shutdown the instance in 5 minutes from now
