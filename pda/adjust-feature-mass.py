@@ -183,7 +183,7 @@ percolator_df = percolator_df[(percolator_df.mass_accuracy_ppm >= -10) & (percol
 print("training models and adjusting monoisotopic mass for each feature")
 if args.small_set_mode:
     percolator_df = percolator_df[percolator_df.file_idx == 0]
-adjustments_l = ray.get([adjust_features.remote(file_idx, X_train=group_df[['monoisotopic_mz','scan_apex','rt_apex','intensity']].to_numpy(), y_train=group_df[['mass_error']].to_numpy()[:,0], features_df=features_df) for file_idx,group_df in percolator_df.groupby('file_idx')])
+adjustments_l = ray.get([adjust_features.remote(file_idx, X_train=group_df[['monoisotopic_mz','scan_apex','rt_apex','intensity']].to_numpy(), y_train=group_df[['mass_error']].to_numpy()[:,0], features_df=features_df[features_df.percolator_idx == file_idx]) for file_idx,group_df in percolator_df.groupby('file_idx')])
 
 print("Writing adjusted features")
 for adjustment in adjustments_l:
