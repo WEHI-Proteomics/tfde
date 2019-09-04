@@ -145,7 +145,7 @@ mapping_df.to_csv(PERCOLATOR_MAPPING_FILE_NAME, index=False)
 
 # load the feature pkl files from the whole experiment analysed by percolator, and associate them
 # with their percolator index
-print("loading the features")
+print("Loading the features for the experiment.")
 df_l = []
 for m in mapping:
     idx = m[0]
