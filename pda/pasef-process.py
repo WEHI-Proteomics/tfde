@@ -201,8 +201,8 @@ associations = [item for sublist in associations for item in sublist]  # associa
 stop_time = time.time()
 print("association time: {} seconds".format(round(stop_time-start_time,1)))
 
-print("writing associations to {}".format(ASSOCIATIONS_PKL))
-with open(ASSOCIATIONS_PKL, 'wb') as f:
+print("writing associations to {}".format(ASSOCIATIONS_NAME))
+with open(ASSOCIATIONS_NAME, 'wb') as f:
     pickle.dump(associations, f)
 
 # generate the MGF for all the features
