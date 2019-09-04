@@ -440,7 +440,7 @@ def check_monoisotopic_peak(feature, idx, total):
 
     # calculate the PHR error for peak 1 (first isotope) and peak 0 (what we think is the monoisotopic)
     observed_ratio = feature.envelope[1][1] / feature.envelope[0][1]
-    monoisotopic_mass = feature.monoisotopic_mz * feature.charge
+    monoisotopic_mass = (feature.monoisotopic_mz * feature.charge) - (PROTON_MASS * feature.charge)
     expected_ratio = peak_ratio(monoisotopic_mass=monoisotopic_mass, peak_number=1, number_of_sulphur=0)
     if expected_ratio is not None:
         original_phr_error = (observed_ratio - expected_ratio) / expected_ratio
