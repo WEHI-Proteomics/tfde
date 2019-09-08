@@ -84,7 +84,7 @@ for raw_file in raw_files_l:
     run_process(cmd)
 
 stop_run = time.time()
-print("total running time (bulk-pasef-process): {} seconds".format(round(stop_run-start_run,1)))
+print("total running time ({}): {} seconds".format(parser.prog, round(stop_run-start_run,1)))
 
 if args.shutdown:
     run_process("sudo shutdown -P +5") # shutdown the instance in 5 minutes from now
