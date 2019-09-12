@@ -340,10 +340,6 @@ def find_features(group_number, group_df):
 
     return ms1_characteristics_df
 
-# calculate the centroid, intensity of a bin
-def calc_bin_centroid(bin_df):
-    return pd.Series(np.array([bin_df.iloc[0].bin_idx, mz_centroid(bin_df.intensity.to_numpy(), bin_df.mz.to_numpy()), bin_df.intensity.sum()]), ['bin_idx', 'mz_centroid', 'summed_intensity'])
-
 MAX_NUMBER_OF_SULPHUR_ATOMS = 3
 MAX_NUMBER_OF_PREDICTED_RATIOS = 6
 

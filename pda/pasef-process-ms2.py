@@ -2,7 +2,6 @@ import sqlite3
 import pandas as pd
 import numpy as np
 import sys
-import matplotlib.pyplot as plt
 from ms_deisotope import deconvolute_peaks, averagine, scoring
 from ms_deisotope.deconvolution import peak_retention_strategy
 from numba import njit
