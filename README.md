@@ -13,6 +13,6 @@ A DDA pipeline using PASEF's isolation windows to detect features in ms1, and us
 Training a YOLO object detection ANN to detect features in ms1 frames. Intended to be used on the instrument at run-time to select precursors to fragment. Code is [here](https://github.com/WEHI-Proteomics/otf-peak-detect/tree/master/yolo).
 
 Also in the repository
-[Jupyter notebooks](https://github.com/WEHI-Proteomics/otf-peak-detect/tree/master/notebooks) for prototypying ideas.
-[Data plotting code](https://github.com/WEHI-Proteomics/otf-peak-detect/tree/master/plotting) from the time before I got the hang of Jupyter notebooks.
-[Experiments](https://github.com/WEHI-Proteomics/otf-peak-detect/tree/master/experiments) that didn't go very far.
+- [Jupyter notebooks](https://github.com/WEHI-Proteomics/otf-peak-detect/tree/master/notebooks) for prototypying ideas.
+- [Data plotting code](https://github.com/WEHI-Proteomics/otf-peak-detect/tree/master/plotting) from the time before I got the hang of Jupyter notebooks.
+- [Experiments](https://github.com/WEHI-Proteomics/otf-peak-detect/tree/master/experiments) that didn't go very far.
