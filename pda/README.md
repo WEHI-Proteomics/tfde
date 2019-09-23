@@ -1,11 +1,11 @@
 #### Requirements
 The code was developed on Python 3.6 using a Conda environment on Ubuntu 18.04.
 
-wget https://repo.anaconda.com/archive/Anaconda3-5.2.0-Linux-x86_64.sh
-bash Anaconda-latest-Linux-x86_64.sh
+- wget https://repo.anaconda.com/archive/Anaconda3-5.2.0-Linux-x86_64.sh
+- bash Anaconda-latest-Linux-x86_64.sh
 
-conda create --name py36 python=3.6
-conda activate py36
+- conda create --name py36 python=3.6
+- conda activate py36
 
 
 #### Running the Infusini Method pipeline
