@@ -18,3 +18,5 @@ To process a whole experiment end-to-end, including mass recalibration and re-se
 5. python ./otf-peak-detect/pda/adjust-feature-mass.py -en 190719_Hela_Ecoli -rm cluster
 6. python ./otf-peak-detect/pda/bulk-comet-search.py -en 190719_Hela_Ecoli -recal
 7. python ./otf-peak-detect/pda/bulk-percolator-id.py -en 190719_Hela_Ecoli -recal
+
+Step 2 processing speed is bound by the number of cores available; it will benefit from a machine with many cores. The processing per-core granularity for ms1 is a feature (there will many thousands of features) and for ms1 the per-core granularity is the precursor selected by PASEF (also many thousands).
