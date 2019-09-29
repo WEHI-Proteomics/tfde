@@ -69,7 +69,7 @@ for tile_idx in args.tile_idx_list:
     os.makedirs("{}/tile-{}".format(TRAINING_SET_DIR, tile_idx))
 
 if not ray.is_initialized():
-    ray.init()
+    ray.init(num_cpus=8)
 
 @ray.remote
 def render_frame(frame_id, idx):
