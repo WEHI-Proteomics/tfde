@@ -18,12 +18,11 @@ parser.add_argument('-cdb','--converted_database', type=str, help='Path to the r
 parser.add_argument('-tb','--tile_base', type=str, help='Path to the base directory of the training set.', required=True)
 parser.add_argument('-rtl','--rt_lower', type=int, default=200, help='Lower bound of the RT range.', required=False)
 parser.add_argument('-rtu','--rt_upper', type=int, default=800, help='Upper bound of the RT range.', required=False)
-parser.add_argument('-tl','--tile_lower', type=int, default=30, help='Lower bound of the tile index range.', required=False)
-parser.add_argument('-tu','--tile_upper', type=int, default=35, help='Upper bound of the tile index range.', required=False)
+parser.add_argument('-tidx','--tile_idx_list', nargs='+', type=int, help='Indexes of the tiles to render.', required=True)
 parser.add_argument('-tm','--test_mode', action='store_true', help='A small subset of the data for testing purposes.')
 args = parser.parse_args()
 
-PRE_ASSIGNED_FILES_DIR = '{}/pre-assigned'.format(args.tile_base)
+TRAINING_SET_DIR = '{}/training-set'.format(args.tile_base)
 
 start_run = time.time()
 
@@ -57,16 +56,17 @@ TILES_PER_FRAME = int((MZ_MAX - MZ_MIN) / MZ_PER_TILE)
 mz_bins = np.arange(start=MZ_MIN, stop=MZ_MAX+MZ_BIN_WIDTH, step=MZ_BIN_WIDTH)  # go slightly wider to accommodate the maximum value
 MZ_BIN_COUNT = len(mz_bins)
 
-# ### Generate tiles for all frames
-
 # initialise the directories required for the data set creation
 if os.path.exists(args.tile_base):
     shutil.rmtree(args.tile_base)
 os.makedirs(args.tile_base)
 
-if os.path.exists(PRE_ASSIGNED_FILES_DIR):
-    shutil.rmtree(PRE_ASSIGNED_FILES_DIR)
-os.makedirs(PRE_ASSIGNED_FILES_DIR)
+if os.path.exists(TRAINING_SET_DIR):
+    shutil.rmtree(TRAINING_SET_DIR)
+os.makedirs(TRAINING_SET_DIR)
+
+for tile_idx in args.tile_idx_list:
+    os.makedirs("{}/tile-{}".format(TRAINING_SET_DIR, tile_idx))
 
 if not ray.is_initialized():
     ray.init()
@@ -113,7 +113,7 @@ def render_frame(frame_id, idx):
         frame_im_array[y,x,:] = c
 
     # extract the pixels for the frame for the specified tiles
-    for tile_idx in range(args.tile_lower, args.tile_upper+1):
+    for tile_idx in args.tile_idx_list:
         tile_idx_base = tile_idx * PIXELS_X
         tile_idx_width = PIXELS_X
         # extract the subset of the frame for this image
@@ -123,7 +123,7 @@ def render_frame(frame_id, idx):
         mz_lower = MZ_MIN + (tile_idx * MZ_PER_TILE)
         mz_upper = mz_lower + MZ_PER_TILE
 
-        tile.save('{}/frame-{}-tile-{}-mz-{}-{}.png'.format(PRE_ASSIGNED_FILES_DIR, frame_id, tile_idx, int(mz_lower), int(mz_upper)))
+        tile.save('{}/tile-{}/frame-{}-tile-{}-mz-{}-{}.png'.format(TRAINING_SET_DIR, tile_idx, frame_id, tile_idx, int(mz_lower), int(mz_upper)))
 
 
 ray.get([render_frame.remote(frame_id, idx) for idx,frame_id in enumerate(ms1_frame_ids, start=1)])
