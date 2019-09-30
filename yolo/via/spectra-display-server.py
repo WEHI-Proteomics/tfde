@@ -11,7 +11,7 @@ import tempfile
 import matplotlib.patches as patches
 import matplotlib.gridspec as gridspec
 
-CONVERTED_DATABASE = '/Users/darylwilding-mcbride/Downloads/190719_Hela_Ecoli/converted/190719_Hela_Ecoli_1to1_01-converted.sqlite'
+CONVERTED_DATABASE = '/Users/darylwilding-mcbride/Downloads/experiments/190719_Hela_Ecoli/converted-databases/190719_Hela_Ecoli_1to3_06-converted.sqlite'
 IMAGE_X = 400
 IMAGE_Y = 300
 
@@ -52,7 +52,7 @@ def ms1_intensity_descent(ms1_peaks_a):
 MZ_BIN_WIDTH = 0.01978
 PIXELS_PER_BIN = 1
 PIXELS_FROM_EDGE = 10
-MZ_FROM_EDGE = PIXELS_FROM_EDGE * PIXELS_PER_BIN * MZ_BIN_WIDTH
+MZ_FROM_EDGE = PIXELS_FROM_EDGE * PIXELS_PER_BIN * MZ_BIN_WIDTH  # number of pixels padding around the monoisotopic peak
 
 MAX_NUMBER_OF_SULPHUR_ATOMS = 3
 MAX_NUMBER_OF_PREDICTED_RATIOS = 6
