@@ -33,15 +33,16 @@ os.makedirs(working_folder)
 
 azimuth = 230
 
-for frame_id in ms1_frame_ids:
+for frame_idx,frame_id in enumerate(ms1_frame_ids):
     frame_df = frames_df[frames_df.frame_id==frame_id]
 
-    print("rendering frame {}".format(frame_id))
+    print("rendering frame {} of {}".format(frame_idx+1, len(ms1_frame_ids)))
 
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
     fig.set_figheight(10)
     fig.set_figwidth(15)
+    ax.patch.set_facecolor('silver')
 
     ax.elev = 20.0
     ax.azim = azimuth
@@ -57,5 +58,5 @@ for frame_id in ms1_frame_ids:
 
     ax.scatter(frame_df.mz, frame_df.scan, frame_df.intensity, s=2**2, c=np.log(frame_df.intensity), cmap=plt.get_cmap('cool'))
     fig.suptitle('Frame {}'.format(frame_id), fontsize=16, x=0.5, y=0.85)
-    plt.savefig('{}/img{:03d}.png'.format(working_folder, frame_id), bbox_inches='tight')
+    plt.savefig('{}/img-{:04d}.png'.format(working_folder, frame_idx), bbox_inches='tight')
     plt.close()
