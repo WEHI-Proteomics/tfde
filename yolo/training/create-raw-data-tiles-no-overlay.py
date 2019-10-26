@@ -21,6 +21,7 @@ parser.add_argument('-rn','--run_name', type=str, help='Name of the run.', requi
 parser.add_argument('-rtl','--rt_lower', type=int, default=200, help='Lower bound of the RT range.', required=False)
 parser.add_argument('-rtu','--rt_upper', type=int, default=800, help='Upper bound of the RT range.', required=False)
 parser.add_argument('-tidx','--tile_idx_list', nargs='+', type=int, help='Space-separated indexes of the tiles to render.', required=True)
+parser.add_argument('-np','--number_of_processors', type=int, default=8, help='The number of processors to use.', required=False)
 args = parser.parse_args()
 
 # check the experiment directory exists
@@ -83,7 +84,7 @@ mz_bins = np.arange(start=MZ_MIN, stop=MZ_MAX+MZ_BIN_WIDTH, step=MZ_BIN_WIDTH)  
 MZ_BIN_COUNT = len(mz_bins)
 
 if not ray.is_initialized():
-    ray.init(num_cpus=8)
+    ray.init(num_cpus=args.number_of_processors)
 
 @ray.remote
 def render_frame(frame_id, tile_dir_d, idx):
