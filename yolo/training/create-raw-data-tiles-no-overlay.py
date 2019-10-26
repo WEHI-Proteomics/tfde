@@ -9,20 +9,46 @@ from PIL import Image, ImageFont, ImageDraw, ImageEnhance
 import time
 import ray
 
-# This version uses MkII of the tile rendering algorithm.
+# Create a set of tiles without labels for training purposes. This version uses MkII of the tile rendering algorithm.
+# Example: python ./otf-peak-detect/yolo/training/create-raw-data-tiles-no-overlay.py -eb ~/Downloads/experiments -en 190719_Hela_Ecoli -rn 190719_Hela_Ecoli_1to3_06 -tidx 33 34
 
 MS1_CE = 10
 
 parser = argparse.ArgumentParser(description='Create the tiles from raw data.')
-parser.add_argument('-cdb','--converted_database', type=str, help='Path to the raw converted database.', required=True)
-parser.add_argument('-tb','--tile_base', type=str, help='Path to the base directory of the training set.', required=True)
+parser.add_argument('-eb','--experiment_base_dir', type=str, default='./experiments', help='Path to the experiments directory.', required=False)
+parser.add_argument('-en','--experiment_name', type=str, help='Name of the experiment.', required=True)
+parser.add_argument('-rn','--run_name', type=str, help='Name of the run.', required=True)
 parser.add_argument('-rtl','--rt_lower', type=int, default=200, help='Lower bound of the RT range.', required=False)
 parser.add_argument('-rtu','--rt_upper', type=int, default=800, help='Upper bound of the RT range.', required=False)
-parser.add_argument('-tidx','--tile_idx_list', nargs='+', type=int, help='Indexes of the tiles to render.', required=True)
-parser.add_argument('-tm','--test_mode', action='store_true', help='A small subset of the data for testing purposes.')
+parser.add_argument('-tidx','--tile_idx_list', nargs='+', type=int, help='Space-separated indexes of the tiles to render.', required=True)
 args = parser.parse_args()
 
-TRAINING_SET_DIR = '{}/training-set'.format(args.tile_base)
+# check the experiment directory exists
+EXPERIMENT_DIR = "{}/{}".format(args.experiment_base_dir, args.experiment_name)
+if not os.path.exists(EXPERIMENT_DIR):
+    print("The experiment directory is required but doesn't exist: {}".format(EXPERIMENT_DIR))
+    sys.exit(1)
+
+# check the converted database exists
+CONVERTED_DATABASE_NAME = "{}/converted-databases/{}-converted.sqlite".format(EXPERIMENT_DIR, args.run_name)
+if not os.path.isfile(CONVERTED_DATABASE_NAME):
+    print("The converted database is required but doesn't exist: {}".format(CONVERTED_DATABASE_NAME))
+    sys.exit(1)
+
+# create the tiles base directory
+TILES_BASE_DIR = '{}/tiles/{}'.format(EXPERIMENT_DIR, args.run_name)
+if os.path.exists(TILES_BASE_DIR):
+    shutil.rmtree(TILES_BASE_DIR)
+os.makedirs(TILES_BASE_DIR)
+print("The tiles base directory was created: {}".format(TILES_BASE_DIR))
+
+# set up a tile directory for each run
+tile_dir_d = {}
+for tile_idx in args.tile_idx_list:
+    tile_dir = "{}/tile-{}".format(TILES_BASE_DIR, tile_idx)
+    tile_dir_d[tile_idx] = tile_dir
+    os.makedirs(tile_dir)
+    print("Created {}".format(tile_dir))
 
 start_run = time.time()
 
@@ -33,8 +59,8 @@ for arg in vars(args):
 
 print("{} info: {}".format(parser.prog, info))
 
-print("opening {}".format(args.converted_database))
-db_conn = sqlite3.connect(args.converted_database)
+print("opening {}".format(CONVERTED_DATABASE_NAME))
+db_conn = sqlite3.connect(CONVERTED_DATABASE_NAME)
 ms1_frame_properties_df = pd.read_sql_query("select frame_id,retention_time_secs from frame_properties where retention_time_secs >= {} and retention_time_secs <= {} and collision_energy == {}".format(args.rt_lower, args.rt_upper, MS1_CE), db_conn)
 ms1_frame_ids = tuple(ms1_frame_properties_df.frame_id)
 db_conn.close()
@@ -56,26 +82,14 @@ TILES_PER_FRAME = int((MZ_MAX - MZ_MIN) / MZ_PER_TILE)
 mz_bins = np.arange(start=MZ_MIN, stop=MZ_MAX+MZ_BIN_WIDTH, step=MZ_BIN_WIDTH)  # go slightly wider to accommodate the maximum value
 MZ_BIN_COUNT = len(mz_bins)
 
-# initialise the directories required for the data set creation
-if os.path.exists(args.tile_base):
-    shutil.rmtree(args.tile_base)
-os.makedirs(args.tile_base)
-
-if os.path.exists(TRAINING_SET_DIR):
-    shutil.rmtree(TRAINING_SET_DIR)
-os.makedirs(TRAINING_SET_DIR)
-
-for tile_idx in args.tile_idx_list:
-    os.makedirs("{}/tile-{}".format(TRAINING_SET_DIR, tile_idx))
-
 if not ray.is_initialized():
     ray.init(num_cpus=8)
 
 @ray.remote
-def render_frame(frame_id, idx):
+def render_frame(frame_id, tile_dir_d, idx):
     print("processing frame {} of {}".format(idx, len(ms1_frame_ids)))
     # read the raw points for the frame
-    db_conn = sqlite3.connect(args.converted_database)
+    db_conn = sqlite3.connect(CONVERTED_DATABASE_NAME)
     raw_points_df = pd.read_sql_query("select mz,scan,intensity from frames where frame_id == {}".format(frame_id), db_conn)
     db_conn.close()
 
@@ -113,7 +127,7 @@ def render_frame(frame_id, idx):
         frame_im_array[y,x,:] = c
 
     # extract the pixels for the frame for the specified tiles
-    for tile_idx in args.tile_idx_list:
+    for tile_idx in tile_dir_d.keys():
         tile_idx_base = tile_idx * PIXELS_X
         tile_idx_width = PIXELS_X
         # extract the subset of the frame for this image
@@ -123,10 +137,10 @@ def render_frame(frame_id, idx):
         mz_lower = MZ_MIN + (tile_idx * MZ_PER_TILE)
         mz_upper = mz_lower + MZ_PER_TILE
 
-        tile.save('{}/tile-{}/frame-{}-tile-{}-mz-{}-{}.png'.format(TRAINING_SET_DIR, tile_idx, frame_id, tile_idx, int(mz_lower), int(mz_upper)))
+        tile.save('{}/frame-{}-tile-{}-mz-{}-{}.png'.format(tile_dir_d[tile_idx], frame_id, tile_idx, int(mz_lower), int(mz_upper)))
 
 
-ray.get([render_frame.remote(frame_id, idx) for idx,frame_id in enumerate(ms1_frame_ids, start=1)])
+ray.get([render_frame.remote(frame_id, tile_dir_d, idx) for idx,frame_id in enumerate(ms1_frame_ids, start=1)])
 
 stop_run = time.time()
 info.append(("run processing time (sec)", round(stop_run-start_run,1)))
