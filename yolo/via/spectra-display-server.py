@@ -31,6 +31,7 @@ parser.add_argument('-eb','--experiment_base_dir', type=str, default='./experime
 parser.add_argument('-en','--experiment_name', type=str, help='Name of the experiment.', required=True)
 parser.add_argument('-rn','--run_name', type=str, help='Name of the run.', required=True)
 parser.add_argument('-url', '--server_url', type=str, default='http://127.0.0.1:5000', help='The URL used to access the server from the client.', required=False)
+parser.add_argument('-st', '--secret_token', type=str, default='wehi-proteomics', help='A secret token to pass in the request.', required=False)
 args = parser.parse_args()
 
 # check the experiment directory exists
@@ -354,12 +355,16 @@ def tile_list(tile_id):
         abort(400)
 
 # retrieve the via annotation tool
-@app.route('/via')
-def via():
-    via_file_name = 'Documents/otf-peak-detect/yolo/via/via.html'
-    root_dir = os.path.dirname(os.getcwd())
-    response = send_file("{}/{}".format(root_dir, via_file_name))
-    return response
+@app.route('/via/<string:token>')
+def via(token):
+    if token == args.secret_token:
+        via_file_name = 'Documents/otf-peak-detect/yolo/via/via.html'
+        root_dir = os.path.dirname(os.getcwd())
+        response = send_file("{}/{}".format(root_dir, via_file_name))
+        return response
+    else:
+        print("the token in the request {} did not match the secret {}".format(token, args.secret_token))
+        abort(400)
 
 
 if __name__ == '__main__':
