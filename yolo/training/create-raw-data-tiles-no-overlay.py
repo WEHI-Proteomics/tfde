@@ -12,6 +12,10 @@ import ray
 # Create a set of tiles without labels for training purposes. This version uses MkII of the tile rendering algorithm.
 # Example: python ./otf-peak-detect/yolo/training/create-raw-data-tiles-no-overlay.py -eb ~/Downloads/experiments -en 190719_Hela_Ecoli -rn 190719_Hela_Ecoli_1to3_06 -tidx 33 34
 
+def run_process(process):
+    print("Executing: {}".format(process))
+    os.system(process)
+
 MS1_CE = 10
 
 parser = argparse.ArgumentParser(description='Create the tiles from raw data.')
@@ -152,3 +156,6 @@ print("{} info: {}".format(parser.prog, info))
 
 print("shutting down ray")
 ray.shutdown()
+
+if args.shutdown:
+    run_process("sudo shutdown -P +5") # shutdown the instance in 5 minutes from now
