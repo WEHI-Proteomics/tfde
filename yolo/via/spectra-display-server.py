@@ -20,6 +20,9 @@ PROTON_MASS = 1.0073  # Mass of a proton in unified atomic mass units, or Da. Fo
 INSTRUMENT_RESOLUTION = 40000.0
 NUMBER_OF_STD_DEV_MZ = 3
 
+MZ_MIN = 100.0
+MZ_PER_TILE = 18.0
+
 # This is the Flask server for the Via-based labelling tool for YOLO
 # Example: python ./otf-peak-detect/yolo/via/spectra-display-server.py -eb ~/Downloads/experiments -en 190719_Hela_Ecoli -rn 190719_Hela_Ecoli_1to3_06
 
@@ -49,7 +52,7 @@ if not os.path.exists(TILES_BASE_DIR):
     sys.exit(1)
 
 app = Flask(__name__)
-CORS(app) # This will enable CORS for all routes
+# CORS(app) # This will enable CORS for all routes
 
 def mz_centroid(_int_f, _mz_f):
     return ((_int_f/_int_f.sum()) * _mz_f).sum()
@@ -170,7 +173,7 @@ def image_from_raw_data(data_coords, charge, isotopes):
     scan_upper = data_coords['scan_upper']
 
     # get the raw points
-    db_conn = sqlite3.connect(CONVERTED_DATABASE)
+    db_conn = sqlite3.connect(CONVERTED_DATABASE_NAME)
     raw_points_df = pd.read_sql_query("select mz,scan,intensity from frames where frame_id == {} and mz >= {} and mz <= {} and scan >= {} and scan <= {}".format(frame_id, mz_lower, mz_upper, scan_lower, scan_upper), db_conn)
     db_conn.close()
 
@@ -253,10 +256,13 @@ def image_from_raw_data(data_coords, charge, isotopes):
     return image_file_name
 
 def tile_coords_to_data_coords(tile_name, tile_width, tile_height, region_x, region_y, region_width, region_height, canvas_scale):
-    elements = tile_name.split('-')
-    frame_id = int(elements[1])
-    tile_mz_lower = int(elements[5])
-    tile_mz_upper = int(elements[6])
+    # determine the tile id and frame id from the tile URL
+    elements = tile_name.split('/')
+    tile_id = int(elements[4])
+    frame_id = int(elements[6])
+
+    tile_mz_lower = MZ_MIN + (tile_id * MZ_PER_TILE)
+    tile_mz_upper = tile_mz_lower + MZ_PER_TILE
 
     # scale the tile coordinates by the canvas scale
     region_x = region_x * canvas_scale
@@ -278,7 +284,7 @@ def tile_coords_to_data_coords(tile_name, tile_width, tile_height, region_x, reg
     return d
 
 @app.route('/spectra', methods=['POST'])
-def webhook():
+def spectra():
     if request.method == 'POST':
         # extract payload
         action = request.json['action']
@@ -346,6 +352,14 @@ def tile_list(tile_id):
     else:
         print("tiles in the series for tile index {} do not exist in {}".format(tile_id, TILES_BASE_DIR))
         abort(400)
+
+# retrieve the via annotation tool
+@app.route('/via')
+def via():
+    via_file_name = 'Documents/otf-peak-detect/yolo/via/via.html'
+    root_dir = os.path.dirname(os.getcwd())
+    response = send_file("{}/{}".format(root_dir, via_file_name))
+    return response
 
 
 if __name__ == '__main__':

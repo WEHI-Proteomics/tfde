@@ -2670,7 +2670,7 @@ function _via_reg_canvas_mousedown_handler(e) {
 
 function postDataToWebhook(action) {
   // url to the webhook
-  var webHookUrl = "http://127.0.0.1:5000/webhook"
+  var webHookUrl = "http://127.0.0.1:5000/spectra"
 
   var x = -1;
   var y = -1;
@@ -2697,7 +2697,7 @@ function postDataToWebhook(action) {
       "y": y,
       "width": width,
       "height": height,
-      "tile_name": image_name,
+      "tile_name": _via_current_image_filename,
       "tile_width": _via_current_image_width,
       "tile_height": _via_current_image_height,
       "canvas_scale": _via_canvas_scale,
