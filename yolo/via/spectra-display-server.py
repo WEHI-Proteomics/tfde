@@ -1,4 +1,4 @@
-from flask import Flask, request, abort, jsonify, send_file
+from flask import Flask, request, abort, jsonify, send_file, make_response
 from flask_cors import CORS
 import sqlite3
 import pandas as pd
@@ -23,6 +23,8 @@ NUMBER_OF_STD_DEV_MZ = 3
 MZ_MIN = 100.0
 MZ_PER_TILE = 18.0
 
+SERVER_URL = "http://127.0.0.1:5000"
+
 # This is the Flask server for the Via-based labelling tool for YOLO
 # Example: python ./otf-peak-detect/yolo/via/spectra-display-server.py -eb ~/Downloads/experiments -en 190719_Hela_Ecoli -rn 190719_Hela_Ecoli_1to3_06
 
@@ -30,7 +32,6 @@ parser = argparse.ArgumentParser(description='Create the tiles from raw data.')
 parser.add_argument('-eb','--experiment_base_dir', type=str, default='./experiments', help='Path to the experiments directory.', required=False)
 parser.add_argument('-en','--experiment_name', type=str, help='Name of the experiment.', required=True)
 parser.add_argument('-rn','--run_name', type=str, help='Name of the run.', required=True)
-parser.add_argument('-url', '--server_url', type=str, default='http://127.0.0.1:5000', help='The URL used to access the server from the client.', required=False)
 parser.add_argument('-st', '--secret_token', type=str, default='wehi-proteomics', help='A secret token to pass in the request.', required=False)
 args = parser.parse_args()
 
@@ -339,16 +340,18 @@ def tile_list(tile_id):
         with open(temp_file_name, 'w') as filehandle:
             for idx,tile_file_path in enumerate(tile_list):
                 tile_file_name = os.path.basename(tile_file_path)
-                print(tile_file_name)
                 # get the frame id for this tile
                 frame_id = int(tile_file_name.split('-')[1])
                 # create the URL
-                tile_url = "{}/tile/{}/frame/{}".format(args.server_url, tile_id, frame_id)
+                print(SERVER_URL)
+                tile_url = "{}/tile/{}/frame/{}".format(SERVER_URL, tile_id, frame_id)
+                print(tile_url)
                 if idx < len(tile_list):
                     filehandle.write('{}\n'.format(tile_url))
                 else:
                     filehandle.write('{}'.format(tile_url))
         response = send_file(temp_file_name)
+        os.remove(temp_file_name)
         return response
     else:
         print("tiles in the series for tile index {} do not exist in {}".format(tile_id, TILES_BASE_DIR))
@@ -365,6 +368,14 @@ def via(token):
     else:
         print("the token in the request {} did not match the secret {}".format(token, args.secret_token))
         abort(400)
+
+# set the server URL
+@app.route('/server_url/<string:server_url>')
+def set_server_url(server_url):
+    global SERVER_URL
+    SERVER_URL = "http://{}".format(server_url)
+    print("server URL is now {}".format(SERVER_URL))
+    return make_response()
 
 
 if __name__ == '__main__':
