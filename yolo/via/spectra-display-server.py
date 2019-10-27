@@ -27,6 +27,7 @@ parser = argparse.ArgumentParser(description='Create the tiles from raw data.')
 parser.add_argument('-eb','--experiment_base_dir', type=str, default='./experiments', help='Path to the experiments directory.', required=False)
 parser.add_argument('-en','--experiment_name', type=str, help='Name of the experiment.', required=True)
 parser.add_argument('-rn','--run_name', type=str, help='Name of the run.', required=True)
+parser.add_argument('-url', '--server_url', type=str, default='http://127.0.0.1:5000', help='The URL used to access the server from the client.', required=False)
 args = parser.parse_args()
 
 # check the experiment directory exists
@@ -320,6 +321,27 @@ def tile(tile_id, frame_id):
         return response
     else:
         print("tile for tile {} frame {} does not exist in {}".format(tile_id, frame_id, TILES_BASE_DIR))
+        abort(400)
+
+# retrieve the list of tile URLs for a specific tile index
+@app.route('/tile-list/<int:tile_id>')
+def tile_list(tile_id):
+    tile_list = sorted(glob.glob("{}/tile-{}/*.png".format(TILES_BASE_DIR, tile_id)))
+    if len(tile_list) > 0:
+        temp_file_name = tempfile.NamedTemporaryFile(suffix='.txt').name
+        with open(temp_file_name, 'w') as filehandle:
+            for tile_file_path in tile_list:
+                tile_file_name = os.path.basename(tile_file_path)
+                print(tile_file_name)
+                # get the frame id for this tile
+                frame_id = int(tile_file_name.split('-')[1])
+                # create the URL
+                tile_url = "{}/tile/{}/frame/{}".format(args.server_url, tile_id, frame_id)
+                filehandle.write('%s\n' % tile_url)
+        response = send_file(temp_file_name)
+        return response
+    else:
+        print("tiles for tile {} do not exist in {}".format(tile_id, TILES_BASE_DIR))
         abort(400)
 
 
