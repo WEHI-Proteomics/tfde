@@ -330,14 +330,17 @@ def tile_list(tile_id):
     if len(tile_list) > 0:
         temp_file_name = tempfile.NamedTemporaryFile(suffix='.txt').name
         with open(temp_file_name, 'w') as filehandle:
-            for tile_file_path in tile_list:
+            for idx,tile_file_path in enumerate(tile_list):
                 tile_file_name = os.path.basename(tile_file_path)
                 print(tile_file_name)
                 # get the frame id for this tile
                 frame_id = int(tile_file_name.split('-')[1])
                 # create the URL
                 tile_url = "{}/tile/{}/frame/{}".format(args.server_url, tile_id, frame_id)
-                filehandle.write('%s\n' % tile_url)
+                if idx < len(tile_list):
+                    filehandle.write('{}\n'.format(tile_url))
+                else:
+                    filehandle.write('{}'.format(tile_url))
         response = send_file(temp_file_name)
         return response
     else:
