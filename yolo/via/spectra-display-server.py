@@ -344,7 +344,7 @@ def tile_list(tile_id):
         response = send_file(temp_file_name)
         return response
     else:
-        print("tiles for tile {} do not exist in {}".format(tile_id, TILES_BASE_DIR))
+        print("tiles in the series for tile index {} do not exist in {}".format(tile_id, TILES_BASE_DIR))
         abort(400)
 
 
