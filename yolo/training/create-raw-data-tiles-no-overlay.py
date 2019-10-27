@@ -22,6 +22,7 @@ parser.add_argument('-rtl','--rt_lower', type=int, default=200, help='Lower boun
 parser.add_argument('-rtu','--rt_upper', type=int, default=800, help='Upper bound of the RT range.', required=False)
 parser.add_argument('-tidx','--tile_idx_list', nargs='+', type=int, help='Space-separated indexes of the tiles to render.', required=True)
 parser.add_argument('-np','--number_of_processors', type=int, default=8, help='The number of processors to use.', required=False)
+parser.add_argument('-shutdown','--shutdown', action='store_true', help='Shut down the machine when complete.')
 args = parser.parse_args()
 
 # check the experiment directory exists
