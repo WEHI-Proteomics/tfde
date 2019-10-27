@@ -10,16 +10,42 @@ matplotlib.use("Agg")
 import tempfile
 import matplotlib.patches as patches
 import matplotlib.gridspec as gridspec
-
-CONVERTED_DATABASE = '/Users/darylwilding-mcbride/Downloads/experiments/190719_Hela_Ecoli/converted-databases/190719_Hela_Ecoli_1to3_06-converted.sqlite'
-IMAGE_X = 400
-IMAGE_Y = 300
+import argparse
+import os
+import glob
 
 MS1_PEAK_DELTA = 0.1
 MASS_DIFFERENCE_C12_C13_MZ = 1.003355     # Mass difference between Carbon-12 and Carbon-13 isotopes, in Da. For calculating the spacing between isotopic peaks.
 PROTON_MASS = 1.0073  # Mass of a proton in unified atomic mass units, or Da. For calculating the monoisotopic mass.
 INSTRUMENT_RESOLUTION = 40000.0
 NUMBER_OF_STD_DEV_MZ = 3
+
+# This is the Flask server for the Via-based labelling tool for YOLO
+# Example: python ./otf-peak-detect/yolo/via/spectra-display-server.py -eb ~/Downloads/experiments -en 190719_Hela_Ecoli -rn 190719_Hela_Ecoli_1to3_06
+
+parser = argparse.ArgumentParser(description='Create the tiles from raw data.')
+parser.add_argument('-eb','--experiment_base_dir', type=str, default='./experiments', help='Path to the experiments directory.', required=False)
+parser.add_argument('-en','--experiment_name', type=str, help='Name of the experiment.', required=True)
+parser.add_argument('-rn','--run_name', type=str, help='Name of the run.', required=True)
+args = parser.parse_args()
+
+# check the experiment directory exists
+EXPERIMENT_DIR = "{}/{}".format(args.experiment_base_dir, args.experiment_name)
+if not os.path.exists(EXPERIMENT_DIR):
+    print("The experiment directory is required but doesn't exist: {}".format(EXPERIMENT_DIR))
+    sys.exit(1)
+
+# check the converted database exists
+CONVERTED_DATABASE_NAME = "{}/converted-databases/{}-converted.sqlite".format(EXPERIMENT_DIR, args.run_name)
+if not os.path.isfile(CONVERTED_DATABASE_NAME):
+    print("The converted database is required but doesn't exist: {}".format(CONVERTED_DATABASE_NAME))
+    sys.exit(1)
+
+# check the tiles base directory exists
+TILES_BASE_DIR = '{}/tiles/{}'.format(EXPERIMENT_DIR, args.run_name)
+if not os.path.exists(TILES_BASE_DIR):
+    print("The tiles base directory is required but doesn't exist: {}".format(TILES_BASE_DIR))
+    sys.exit(1)
 
 app = Flask(__name__)
 CORS(app) # This will enable CORS for all routes
@@ -250,7 +276,7 @@ def tile_coords_to_data_coords(tile_name, tile_width, tile_height, region_x, reg
     d['scan_upper'] = region_scan_upper
     return d
 
-@app.route('/webhook', methods=['POST'])
+@app.route('/spectra', methods=['POST'])
 def webhook():
     if request.method == 'POST':
         # extract payload
@@ -280,6 +306,22 @@ def webhook():
         return response
     else:
         abort(400)
+
+# retrieve the tile-frame for this run
+@app.route('/tile/<int:tile_id>/frame/<int:frame_id>')
+def tile(tile_id, frame_id):
+    # determine the file name for this tile
+    file_list = glob.glob("{}/tile-{}/frame-{}-tile-{}*.png".format(TILES_BASE_DIR, tile_id, frame_id, tile_id))
+    if len(file_list) > 0:
+        tile_file_name = file_list[0]
+        # send it to the client
+        print("serving {}".format(tile_file_name))
+        response = send_file(tile_file_name)
+        return response
+    else:
+        print("tile for tile {} frame {} does not exist in {}".format(tile_id, frame_id, TILES_BASE_DIR))
+        abort(400)
+
 
 if __name__ == '__main__':
     app.run()
