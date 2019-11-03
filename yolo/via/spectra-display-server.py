@@ -12,6 +12,7 @@ import matplotlib.gridspec as gridspec
 import argparse
 import os
 import glob
+import sys
 
 MS1_PEAK_DELTA = 0.1
 MASS_DIFFERENCE_C12_C13_MZ = 1.003355     # Mass difference between Carbon-12 and Carbon-13 isotopes, in Da. For calculating the spacing between isotopic peaks.
