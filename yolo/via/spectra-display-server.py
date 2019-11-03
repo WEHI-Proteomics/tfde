@@ -359,7 +359,7 @@ def tile_list(tile_id):
 # retrieve the via annotation tool
 @app.route('/via')
 def via():
-    via_file_name = 'Documents/otf-peak-detect/yolo/via/via.html'
+    via_file_name = '/otf-peak-detect/yolo/via/via.html'
     root_dir = os.path.dirname(os.getcwd())
     response = send_file("{}/{}".format(root_dir, via_file_name))
     return response
