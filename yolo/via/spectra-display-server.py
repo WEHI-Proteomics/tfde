@@ -14,6 +14,7 @@ import os
 import glob
 import sys
 from pathlib import Path
+import time
 
 MS1_PEAK_DELTA = 0.1
 MASS_DIFFERENCE_C12_C13_MZ = 1.003355     # Mass difference between Carbon-12 and Carbon-13 isotopes, in Da. For calculating the spacing between isotopic peaks.
@@ -288,6 +289,7 @@ def tile_coords_to_data_coords(tile_name, tile_width, tile_height, region_x, reg
 @app.route('/spectra', methods=['POST'])
 def spectra():
     if request.method == 'POST':
+        start_time = time.time()
         # extract payload
         action = request.json['action']
         x = request.json['x']
@@ -312,6 +314,8 @@ def spectra():
         # create image
         filename = image_from_raw_data(data_coords, charge, isotopes)
         response = send_file(filename)
+        stop_time = time.time()
+        print("served the request in {} seconds".format(round(stop_run-start_run,1)))
         return response
     else:
         abort(400)
@@ -375,4 +379,11 @@ def set_server_url(server_url):
 
 
 if __name__ == '__main__':
+    print("setting up indexes on {}".format(CONVERTED_DATABASE_NAME))
+    db_conn = sqlite3.connect(CONVERTED_DATABASE_NAME)
+    src_c = db_conn.cursor()
+    src_c.execute("create index if not exists idx_frames_1 on frames (frame_id, mz, scan)")
+    db_conn.close()
+
+    print("running the server")
     app.run(host='0.0.0.0')
