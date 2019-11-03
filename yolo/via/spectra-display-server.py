@@ -27,6 +27,7 @@ SERVER_URL = "http://127.0.0.1:5000"
 
 # This is the Flask server for the Via-based labelling tool for YOLO
 # Example: python ./otf-peak-detect/yolo/via/spectra-display-server.py -eb ~/Downloads/experiments -en 190719_Hela_Ecoli -rn 190719_Hela_Ecoli_1to3_06
+#          /tile-list/33 to download a text file with a list of URLs for this tile index
 
 parser = argparse.ArgumentParser(description='Create the tiles from raw data.')
 parser.add_argument('-eb','--experiment_base_dir', type=str, default='./experiments', help='Path to the experiments directory.', required=False)
@@ -369,7 +370,7 @@ def via(token):
         print("the token in the request {} did not match the secret {}".format(token, args.secret_token))
         abort(400)
 
-# set the server URL
+# set the server URL so the server can generate a list of URLs that can be referenced from the internet by the Via client
 @app.route('/server_url/<string:server_url>')
 def set_server_url(server_url):
     global SERVER_URL
