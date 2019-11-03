@@ -315,7 +315,7 @@ def spectra():
         filename = image_from_raw_data(data_coords, charge, isotopes)
         response = send_file(filename)
         stop_time = time.time()
-        print("served the request in {} seconds".format(round(stop_run-start_run,1)))
+        print("served the request in {} seconds".format(round(stop_time-start_time,1)))
         return response
     else:
         abort(400)
