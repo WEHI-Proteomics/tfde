@@ -13,6 +13,7 @@ import argparse
 import os
 import glob
 import sys
+from pathlib import Path
 
 MS1_PEAK_DELTA = 0.1
 MASS_DIFFERENCE_C12_C13_MZ = 1.003355     # Mass difference between Carbon-12 and Carbon-13 isotopes, in Da. For calculating the spacing between isotopic peaks.
@@ -359,9 +360,10 @@ def tile_list(tile_id):
 # retrieve the via annotation tool
 @app.route('/via')
 def via():
-    via_file_name = '/otf-peak-detect/yolo/via/via.html'
-    root_dir = os.path.dirname(os.getcwd())
-    response = send_file("{}/{}".format(root_dir, via_file_name))
+    via_file_name = 'otf-peak-detect/yolo/via/via.html'
+    home = str(Path.home())
+    print("home: {}".format(home))
+    response = send_file("{}/{}".format(home, via_file_name))
     return response
 
 # set the server URL so the server can generate a list of URLs that can be referenced from the internet by the Via client
