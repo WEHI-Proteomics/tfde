@@ -2670,7 +2670,8 @@ function _via_reg_canvas_mousedown_handler(e) {
 
 function postDataToWebhook(action) {
   // url to the webhook
-  var webHookUrl = "http://127.0.0.1:5000/spectra"
+  var webHookUrl = "http://" + location.host + "/spectra"
+  console.log("web hook url: " + webHookUrl)
 
   var x = -1;
   var y = -1;
