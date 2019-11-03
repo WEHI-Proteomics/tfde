@@ -362,7 +362,6 @@ def tile_list(tile_id):
 def via():
     via_file_name = 'otf-peak-detect/yolo/via/via.html'
     home = str(Path.home())
-    print("home: {}".format(home))
     response = send_file("{}/{}".format(home, via_file_name))
     return response
 
