@@ -377,7 +377,7 @@ def set_server_url(server_url):
     print("server URL is now {}".format(SERVER_URL))
     return make_response()
 
-@app.route('/')
+@app.route('/index.html')
 def index():
     resp = make_response()
     resp.status_code = 200
