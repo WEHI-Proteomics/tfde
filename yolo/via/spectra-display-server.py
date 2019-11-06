@@ -377,6 +377,12 @@ def set_server_url(server_url):
     print("server URL is now {}".format(SERVER_URL))
     return make_response()
 
+@app.route('/')
+def index():
+    resp = make_response()
+    resp.status_code = 200
+    return resp
+
 
 if __name__ == '__main__':
     print("setting up indexes on {}".format(CONVERTED_DATABASE_NAME))
