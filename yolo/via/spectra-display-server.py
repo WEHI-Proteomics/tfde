@@ -25,7 +25,7 @@ NUMBER_OF_STD_DEV_MZ = 3
 MZ_MIN = 100.0
 MZ_PER_TILE = 18.0
 
-SERVER_URL = "http://127.0.0.1:5000"
+SERVER_URL = "http://spectra-server-lb-1653892276.ap-southeast-2.elb.amazonaws.com/"
 
 # This is the Flask server for the Via-based labelling tool for YOLO
 # Example: python ./otf-peak-detect/yolo/via/spectra-display-server.py -eb ~/Downloads/experiments -en 190719_Hela_Ecoli -rn 190719_Hela_Ecoli_1to3_06
