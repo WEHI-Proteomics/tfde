@@ -25,9 +25,9 @@ if not ray.is_initialized():
 
 # load the tiles and their labels
 TILE_BASE = args.tile_base
-TRAINING_SET_FILES_DIR = '{}/train'.format(TILE_BASE)
-TRAINING_SET_BACKUP_FILES_DIR = '{}/train-backup'.format(TILE_BASE)
-AUGMENTED_FILES_DIR = '{}/augmented'.format(TILE_BASE)
+TRAINING_SET_FILES_DIR = '{}/sets/train'.format(TILE_BASE)
+TRAINING_SET_BACKUP_FILES_DIR = '{}/sets/train-backup'.format(TILE_BASE)
+AUGMENTED_FILES_DIR = '{}/sets/augmented'.format(TILE_BASE)
 AUGMENTED_OVERLAY_FILES_DIR = '{}/overlay'.format(AUGMENTED_FILES_DIR)
 
 PIXELS = 910 # length of each tile edge in pixels
@@ -175,9 +175,9 @@ training_set_l = []
 for fname in training_set_files:
     if os.path.isfile(fname):
         basename = os.path.basename(fname)
-        training_set_l.append('data/peptides/train/{}'.format(basename))
+        training_set_l.append('data/peptides/sets/train/{}'.format(basename))
 df = pd.DataFrame(training_set_l, columns=['filename'])
-df.to_csv("{}/data-files/train-list.txt".format(TILE_BASE), index=False, header=False)
+df.to_csv("{}/train.txt".format(TILE_BASE), index=False, header=False)
 
 stop_run = time.time()
 info.append(("run processing time (sec)", stop_run-start_run))
