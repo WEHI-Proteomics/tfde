@@ -37,8 +37,13 @@ if not os.path.exists(EXPERIMENT_DIR):
     print("The experiment directory is required but doesn't exist: {}".format(EXPERIMENT_DIR))
     sys.exit(1)
 
+# check the run directory exists
+RUN_DIR = '{}/converted-databases'.format(EXPERIMENT_DIR)
+if not os.path.exists(RUN_DIR):
+    os.makedirs(RUN_DIR)
+
 # check the converted database exists
-CONVERTED_DATABASE_NAME = "{}/converted-databases/{}-converted.sqlite".format(EXPERIMENT_DIR, args.run_name)
+CONVERTED_DATABASE_NAME = "{}/exp-{}-run-{}-converted.sqlite".format(RUN_DIR, args.experiment_name, args.run_name)
 if not os.path.isfile(CONVERTED_DATABASE_NAME):
     print("The converted database is required but doesn't exist: {}".format(CONVERTED_DATABASE_NAME))
     sys.exit(1)
