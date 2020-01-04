@@ -90,8 +90,8 @@ if not ray.is_initialized():
     ray.init(num_cpus=args.number_of_processors)
 
 @ray.remote
-def render_frame(frame_id, tile_dir_d, idx):
-    print("processing frame {} of {}".format(idx, len(ms1_frame_ids)))
+def render_frame(frame_id, tile_dir_d, idx, total_frames):
+    print("processing frame {} of {}".format(idx, total_frames))
     # read the raw points for the frame
     db_conn = sqlite3.connect(CONVERTED_DATABASE_NAME)
     raw_points_df = pd.read_sql_query("select mz,scan,intensity from frames where frame_id == {}".format(frame_id), db_conn)
@@ -149,7 +149,7 @@ ms1_frame_properties_df = pd.read_sql_query("select Id,Time from frame_propertie
 ms1_frame_ids = tuple(ms1_frame_properties_df.Id)
 db_conn.close()
 
-ray.get([render_frame.remote(frame_id, tile_dir_d, idx) for idx,frame_id in enumerate(ms1_frame_ids, start=1)])
+ray.get([render_frame.remote(frame_id, tile_dir_d, idx, len(ms1_frame_ids)) for idx,frame_id in enumerate(ms1_frame_ids, start=1)])
 
 stop_run = time.time()
 info.append(("run processing time (sec)", round(stop_run-start_run,1)))
