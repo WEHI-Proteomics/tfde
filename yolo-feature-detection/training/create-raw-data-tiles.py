@@ -16,7 +16,9 @@ def run_process(process):
     print("Executing: {}".format(process))
     os.system(process)
 
-MS1_CE = 10
+# frame types for PASEF mode
+FRAME_TYPE_MS1 = 0
+FRAME_TYPE_MS2 = 8
 
 parser = argparse.ArgumentParser(description='Create the tiles from raw data.')
 parser.add_argument('-eb','--experiment_base_dir', type=str, default='./experiments', help='Path to the experiments directory.', required=False)
@@ -64,15 +66,6 @@ for arg in vars(args):
     info.append((arg, getattr(args, arg)))
 
 print("{} info: {}".format(parser.prog, info))
-
-print("opening {}".format(CONVERTED_DATABASE_NAME))
-db_conn = sqlite3.connect(CONVERTED_DATABASE_NAME)
-ms1_frame_properties_df = pd.read_sql_query("select frame_id,retention_time_secs from frame_properties where retention_time_secs >= {} and retention_time_secs <= {} and collision_energy == {}".format(args.rt_lower, args.rt_upper, MS1_CE), db_conn)
-ms1_frame_ids = tuple(ms1_frame_properties_df.frame_id)
-db_conn.close()
-
-frame_delay = ms1_frame_properties_df.iloc[1].retention_time_secs - ms1_frame_properties_df.iloc[0].retention_time_secs
-print("frame period: {} seconds".format(round(frame_delay,1)))
 
 PIXELS_X = 910
 PIXELS_Y = 910  # equal to the number of scan lines
@@ -145,6 +138,11 @@ def render_frame(frame_id, tile_dir_d, idx):
 
         tile.save('{}/frame-{}-tile-{}-mz-{}-{}.png'.format(tile_dir_d[tile_idx], frame_id, tile_idx, int(mz_lower), int(mz_upper)))
 
+# get the ms1 frame ids within the specified retention time
+db_conn = sqlite3.connect(CONVERTED_DATABASE_NAME)
+ms1_frame_properties_df = pd.read_sql_query("select Id,Time from frame_properties where retention_time_secs >= {} and retention_time_secs <= {} and MsMsType == {}".format(args.rt_lower, args.rt_upper, FRAME_TYPE_MS1), db_conn)
+ms1_frame_ids = tuple(ms1_frame_properties_df.Id)
+db_conn.close()
 
 ray.get([render_frame.remote(frame_id, tile_dir_d, idx) for idx,frame_id in enumerate(ms1_frame_ids, start=1)])
 
