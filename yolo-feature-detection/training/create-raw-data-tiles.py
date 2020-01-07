@@ -9,12 +9,79 @@ from PIL import Image, ImageFont, ImageDraw, ImageEnhance
 import time
 import ray
 
-# Create a set of tiles without labels for training purposes. This version uses MkII of the tile rendering algorithm.
+# Create a set of tiles without labels for training purposes. This version uses Mk3 of the tile rendering algorithm.
 # Example: python ./otf-peak-detect/yolo-feature-detection/training/create-raw-data-tiles.py -eb ~/Downloads/experiments -en 190719_Hela_Ecoli -rn 190719_Hela_Ecoli_1to3_06 -tidx 33 34
 
 def run_process(process):
     print("Executing: {}".format(process))
     os.system(process)
+
+def mz_from_tile_pixel(tile_id, pixel_x):
+    assert (pixel_x >= 0) and (pixel_x <= PIXELS_X), "pixel_x not in range"
+    assert (tile_id >= 0) and (tile_id <= TILES_PER_FRAME-1), "tile_id not in range"
+
+    mz = (tile_id * MZ_PER_TILE) + ((pixel_x / PIXELS_X) * MZ_PER_TILE) + MZ_MIN
+    return mz
+
+def tile_pixel_x_from_mz(mz):
+    assert (mz >= MZ_MIN) and (mz <= MZ_MAX), "m/z not in range"
+
+    tile_id = int((mz - MZ_MIN) / MZ_PER_TILE)
+    pixel_x = int(((mz - MZ_MIN) % MZ_PER_TILE) / MZ_PER_TILE * PIXELS_X)
+    return (tile_id, pixel_x)
+
+def mz_range_for_tile(tile_id):
+    assert (tile_id >= 0) and (tile_id <= TILES_PER_FRAME-1), "tile_id not in range"
+
+    mz_lower = MZ_MIN + (tile_id * MZ_PER_TILE)
+    mz_upper = mz_lower + MZ_PER_TILE
+    return (mz_lower, mz_upper)
+
+def interpolate_pixels(tile_im_array):
+    z = np.array([0,0,0])
+    for x in range(4, PIXELS_X-4):
+        for y in range(4, PIXELS_Y-4):
+            c = tile_im_array[y,x]
+            if (c == z).all():
+                n = []
+                n.append(tile_im_array[y+1,x-1])
+                n.append(tile_im_array[y+1,x])
+                n.append(tile_im_array[y+1,x+1])
+
+                n.append(tile_im_array[y-1,x-1])
+                n.append(tile_im_array[y-1,x])
+                n.append(tile_im_array[y-1,x+1])
+
+                n.append(tile_im_array[y+2,x-1])
+                n.append(tile_im_array[y+2,x])
+                n.append(tile_im_array[y+2,x+1])
+
+                n.append(tile_im_array[y-2,x-1])
+                n.append(tile_im_array[y-2,x])
+                n.append(tile_im_array[y-2,x+1])
+
+                n.append(tile_im_array[y+3,x-1])
+                n.append(tile_im_array[y+3,x])
+                n.append(tile_im_array[y+3,x+1])
+
+                n.append(tile_im_array[y-3,x-1])
+                n.append(tile_im_array[y-3,x])
+                n.append(tile_im_array[y-3,x+1])
+
+                n.append(tile_im_array[y+4,x-1])
+                n.append(tile_im_array[y+4,x])
+                n.append(tile_im_array[y+4,x+1])
+
+                n.append(tile_im_array[y-4,x-1])
+                n.append(tile_im_array[y-4,x])
+                n.append(tile_im_array[y-4,x+1])
+
+                n.append(tile_im_array[y,x-1])
+                n.append(tile_im_array[y,x+1])
+
+                neighbours_a = np.array(n)
+                tile_im_array[y,x] = np.mean(neighbours_a, axis=0)
+    return tile_im_array
 
 # frame types for PASEF mode
 FRAME_TYPE_MS1 = 0
@@ -74,17 +141,12 @@ print("{} info: {}".format(parser.prog, info))
 
 PIXELS_X = 910
 PIXELS_Y = 910  # equal to the number of scan lines
-PIXELS_PER_BIN = 1
 MZ_MIN = 100.0
 MZ_MAX = 1700.0
 SCAN_MAX = PIXELS_Y
 SCAN_MIN = 1
 MZ_PER_TILE = 18.0
-MZ_BIN_WIDTH = MZ_PER_TILE / (PIXELS_X * PIXELS_PER_BIN)
-TILES_PER_FRAME = int((MZ_MAX - MZ_MIN) / MZ_PER_TILE)
-
-mz_bins = np.arange(start=MZ_MIN, stop=MZ_MAX+MZ_BIN_WIDTH, step=MZ_BIN_WIDTH)  # go slightly wider to accommodate the maximum value
-MZ_BIN_COUNT = len(mz_bins)
+TILES_PER_FRAME = int((MZ_MAX - MZ_MIN) / MZ_PER_TILE) + 1
 
 if not ray.is_initialized():
     ray.init(num_cpus=args.number_of_processors)
@@ -92,55 +154,48 @@ if not ray.is_initialized():
 @ray.remote
 def render_frame(frame_id, tile_dir_d, idx, total_frames):
     print("processing frame {} of {}".format(idx, total_frames))
+
+    # find the mz range for the tiles specified
+    frame_mz_lower = mz_range_for_tile(min(tile_dir_d.keys()))[0]
+    frame_mz_upper = mz_range_for_tile(max(tile_dir_d.keys()))[1]
+
     # read the raw points for the frame
     db_conn = sqlite3.connect(CONVERTED_DATABASE_NAME)
-    raw_points_df = pd.read_sql_query("select mz,scan,intensity from frames where frame_id == {}".format(frame_id), db_conn)
+    raw_points_df = pd.read_sql_query("select mz,scan,intensity from frames where frame_id == {} and mz >= {} and mz <= {}".format(frame_id, frame_mz_lower, frame_mz_upper), db_conn)
     db_conn.close()
 
-    frame_intensity_array = np.zeros([SCAN_MAX+1, MZ_BIN_COUNT+1], dtype=np.uint16)  # scratchpad for the intensity value prior to image conversion
-    for r in zip(raw_points_df.mz,raw_points_df.scan,raw_points_df.intensity):
-        mz = r[0]
-        scan = int(r[1])
-        if (mz >= MZ_MIN) and (mz <= MZ_MAX) and (scan >= SCAN_MIN) and (scan <= SCAN_MAX):
-            mz_array_idx = int(np.digitize(mz, mz_bins))-1
-            scan_array_idx = scan
-            intensity = int(r[2])
-            frame_intensity_array[scan_array_idx,mz_array_idx] += intensity
+    tile_pixels_df = pd.DataFrame(raw_points_df.apply(lambda row: tile_pixel_x_from_mz(row.mz), axis=1).tolist(), columns=['tile_id', 'pixel_x'])
+    raw_points_df = pd.concat([raw_points_df, tile_pixels_df], axis=1)
+    pixel_intensity_df = raw_points_df.groupby(by=['tile_id', 'pixel_x', 'scan'], as_index=False).intensity.sum()
 
-    # calculate the colour to represent the intensity
+    # create the colour map to convert intensity to colour
     colour_map = cm.get_cmap(name='magma')
     norm = colors.LogNorm(vmin=1, vmax=5e3, clip=True)  # aiming to get good colour variation in the lower range, and clipping everything else
 
-    # convert the intensity array to a dataframe
-    intensity_df = pd.DataFrame(frame_intensity_array).stack().rename_axis(['y', 'x']).reset_index(name='intensity')
-    # remove all the zero-intensity elements
-    intensity_df = intensity_df[intensity_df.intensity > 0]
-
     # calculate the colour to represent the intensity
     colour_l = []
-    for r in zip(intensity_df.intensity):
+    for r in zip(pixel_intensity_df.intensity):
         colour_l.append((colour_map(norm(r[0]), bytes=True)[:3]))
-    intensity_df['colour'] = colour_l
-
-    # create an image of the whole frame
-    frame_im_array = np.zeros([PIXELS_Y+1, MZ_BIN_COUNT+1, 3], dtype=np.uint8)  # container for the image
-    for r in zip(intensity_df.x, intensity_df.y, intensity_df.colour):
-        x = r[0]
-        y = r[1]
-        c = r[2]
-        frame_im_array[y,x,:] = c
+    pixel_intensity_df['colour'] = colour_l
 
     # extract the pixels for the frame for the specified tiles
     for tile_idx in tile_dir_d.keys():
-        tile_idx_base = tile_idx * PIXELS_X
-        tile_idx_width = PIXELS_X
-        # extract the subset of the frame for this image
-        tile_im_array = frame_im_array[:,tile_idx_base:tile_idx_base+tile_idx_width,:]
+        tile_df = pixel_intensity_df[(pixel_intensity_df.tile_id == tile_idx)]
+
+        # create an intensity array
+        tile_im_array = np.zeros([PIXELS_Y+1, PIXELS_X+1, 3], dtype=np.uint8)  # container for the image
+        for r in zip(tile_df.pixel_x, tile_df.scan, tile_df.colour):
+            x = r[0]
+            y = r[1]
+            c = r[2]
+            tile_im_array[y,x,:] = c
+
+        # fill in zero pixels with interpolated values
+        tile_im_array = interpolate_pixels(tile_im_array)
+
+        # create an image of the intensity array
         tile = Image.fromarray(tile_im_array, 'RGB')
-
-        mz_lower = MZ_MIN + (tile_idx * MZ_PER_TILE)
-        mz_upper = mz_lower + MZ_PER_TILE
-
+        mz_lower,mz_upper = mz_range_for_tile(tile_idx)
         tile.save('{}/frame-{}-tile-{}-mz-{}-{}.png'.format(tile_dir_d[tile_idx], frame_id, tile_idx, int(mz_lower), int(mz_upper)))
 
 # get the ms1 frame ids within the specified retention time
