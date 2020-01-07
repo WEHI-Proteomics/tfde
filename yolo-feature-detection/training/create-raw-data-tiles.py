@@ -147,6 +147,7 @@ SCAN_MAX = PIXELS_Y
 SCAN_MIN = 1
 MZ_PER_TILE = 18.0
 TILES_PER_FRAME = int((MZ_MAX - MZ_MIN) / MZ_PER_TILE) + 1
+MAX_PIXEL_INTENSITY = 500
 
 if not ray.is_initialized():
     ray.init(num_cpus=args.number_of_processors)
@@ -170,7 +171,7 @@ def render_frame(frame_id, tile_dir_d, idx, total_frames):
 
     # create the colour map to convert intensity to colour
     colour_map = cm.get_cmap(name='magma')
-    norm = colors.LogNorm(vmin=1, vmax=5e3, clip=True)  # aiming to get good colour variation in the lower range, and clipping everything else
+    norm = colors.LogNorm(vmin=1, vmax=MAX_PIXEL_INTENSITY, clip=True)  # aiming to get good colour variation in the lower range, and clipping everything else
 
     # calculate the colour to represent the intensity
     colour_l = []
