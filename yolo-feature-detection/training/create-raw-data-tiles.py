@@ -93,6 +93,7 @@ parser.add_argument('-en','--experiment_name', type=str, help='Name of the exper
 parser.add_argument('-rn','--run_name', type=str, help='Name of the run.', required=True)
 parser.add_argument('-rtl','--rt_lower', type=int, default=200, help='Lower bound of the RT range.', required=False)
 parser.add_argument('-rtu','--rt_upper', type=int, default=800, help='Upper bound of the RT range.', required=False)
+parser.add_argument('-mpi','--maximum_pixel_intensity', type=int, default=1000, help='Maximum pixel intensity for encoding, above which will be clipped.', required=False)
 parser.add_argument('-tidx','--tile_idx_list', nargs='+', type=int, help='Space-separated indexes of the tiles to render.', required=True)
 parser.add_argument('-np','--number_of_processors', type=int, default=8, help='The number of processors to use.', required=False)
 parser.add_argument('-shutdown','--shutdown', action='store_true', help='Shut down the machine when complete.')
@@ -147,7 +148,6 @@ SCAN_MAX = PIXELS_Y
 SCAN_MIN = 1
 MZ_PER_TILE = 18.0
 TILES_PER_FRAME = int((MZ_MAX - MZ_MIN) / MZ_PER_TILE) + 1
-MAX_PIXEL_INTENSITY = 500
 
 if not ray.is_initialized():
     ray.init(num_cpus=args.number_of_processors)
@@ -171,7 +171,7 @@ def render_frame(frame_id, tile_dir_d, idx, total_frames):
 
     # create the colour map to convert intensity to colour
     colour_map = cm.get_cmap(name='magma')
-    norm = colors.LogNorm(vmin=1, vmax=MAX_PIXEL_INTENSITY, clip=True)  # aiming to get good colour variation in the lower range, and clipping everything else
+    norm = colors.LogNorm(vmin=1, vmax=args.maximum_pixel_intensity, clip=True)  # aiming to get good colour variation in the lower range, and clipping everything else
 
     # calculate the colour to represent the intensity
     colour_l = []
