@@ -94,6 +94,7 @@ parser.add_argument('-rn','--run_name', type=str, help='Name of the run.', requi
 parser.add_argument('-rtl','--rt_lower', type=int, default=200, help='Lower bound of the RT range.', required=False)
 parser.add_argument('-rtu','--rt_upper', type=int, default=800, help='Upper bound of the RT range.', required=False)
 parser.add_argument('-mpi','--maximum_pixel_intensity', type=int, default=1000, help='Maximum pixel intensity for encoding, above which will be clipped.', required=False)
+parser.add_argument('-inp','--interpolate_neighbouring_pixels', action='store_true', help='Use the value of surrounding pixels to fill zero pixels.')
 parser.add_argument('-tidx','--tile_idx_list', nargs='+', type=int, help='Space-separated indexes of the tiles to render.', required=True)
 parser.add_argument('-np','--number_of_processors', type=int, default=8, help='The number of processors to use.', required=False)
 parser.add_argument('-shutdown','--shutdown', action='store_true', help='Shut down the machine when complete.')
@@ -191,8 +192,9 @@ def render_frame(frame_id, tile_dir_d, idx, total_frames):
             c = r[2]
             tile_im_array[y,x,:] = c
 
-        # fill in zero pixels with interpolated values
-        tile_im_array = interpolate_pixels(tile_im_array)
+        if args.interpolate_neighbouring_pixels:
+            # fill in zero pixels with interpolated values
+            tile_im_array = interpolate_pixels(tile_im_array)
 
         # create an image of the intensity array
         tile = Image.fromarray(tile_im_array, 'RGB')
