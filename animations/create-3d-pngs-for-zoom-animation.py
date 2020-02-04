@@ -7,6 +7,7 @@ import pandas as pd
 import numpy as np
 import os
 import shutil
+import colorcet as cc
 
 CONVERTED_DATABASE_NAME = '/Users/darylwilding-mcbride/Downloads/experiments/dwm-test/converted-databases/exp-dwm-test-run-190719_Hela_Ecoli_1to1_01-converted.sqlite'
 RT_LOWER = 100
@@ -18,7 +19,7 @@ FRAME_TYPE_MS2 = 8
 
 # set a filename, run the logistic model, and create the plot
 gif_filename = '190719_Hela_Ecoli_1to1_01'
-save_folder = '3d'
+save_folder = '3d-zoomed'
 working_folder = '/Users/darylwilding-mcbride/Downloads/experiments/dwm-test/tiles/{}/{}'.format(save_folder, gif_filename)
 if os.path.exists(working_folder):
     shutil.rmtree(working_folder)
@@ -91,7 +92,8 @@ for frame_id,frame_df in frames_df.groupby('frame_id'):
     ax = fig.add_subplot(111, projection='3d')
     fig.set_figheight(10)
     fig.set_figwidth(15)
-    ax.patch.set_facecolor('silver')
+    ax.patch.set_facecolor('darkgray')
+    ax.w_xaxis.set_pane_color((0.75, 0.75, 0.75, 0.8))
 
     ax.elev = 20.0
     ax.azim = azimuth
@@ -105,7 +107,7 @@ for frame_id,frame_df in frames_df.groupby('frame_id'):
     plt.xlabel('m/z')
     plt.ylabel('scan')
 
-    ax.scatter(frame_df.mz, frame_df.scan, frame_df.intensity, s=2**2, c=np.log(frame_df.intensity), cmap=plt.get_cmap('cool'))
+    ax.scatter(frame_df.mz, frame_df.scan, frame_df.intensity, s=2**2, c=np.log(frame_df.intensity), cmap=plt.get_cmap('cet_rainbow'))
     fig.suptitle('frame id {}, retention time (secs) {}'.format(frame_id, round(frame_df.iloc[0].retention_time_secs, 1)), fontsize=16, x=0.5, y=0.85)
     plt.savefig('{}/img-{:04d}.png'.format(working_folder, frame_counter), bbox_inches='tight')
     plt.close()
