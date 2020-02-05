@@ -59,9 +59,9 @@ for frame_id,frame_df in frames_df.groupby('frame_id'):
         f, ax = plt.subplots()
         f.set_facecolor('darkgray')
         plt.scatter(frame_df.mz, frame_df.normalised_intensity, c=np.log2(frame_df.intensity), cmap=plt.get_cmap('cet_rainbow'), alpha=0.70, edgecolors='face')
-        plt.xlabel('m/z')
-        plt.ylabel('normalised intensity')
-
+        plt.xlabel('m/z', fontsize=20)
+        plt.ylabel('normalised intensity', fontsize=20)
+        plt.tick_params(labelsize=18)
         ax.patch.set_facecolor('silver')
 
         plt.xlim((mz_lower,mz_upper))
@@ -77,7 +77,7 @@ for frame_id,frame_df in frames_df.groupby('frame_id'):
         plt.margins(0.06)
         # plt.suptitle('Peaks in the area predicted for sequence {}, charge {}'.format(sequence_name, sequence_charge))
 
-        plt.savefig('{}/img-{:04d}.png'.format(working_folder, frame_counter), bbox_inches='tight', pad_inches=0.8, facecolor=f.get_facecolor())
+        plt.savefig('{}/img-{:04d}.png'.format(working_folder, frame_counter), bbox_inches='tight', pad_inches=1.0, facecolor=f.get_facecolor())
         plt.close()
 
         frame_counter += 1

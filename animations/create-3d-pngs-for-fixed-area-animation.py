@@ -72,9 +72,10 @@ for frame_id,frame_df in frames_df.groupby('frame_id'):
         ax.set_zlim(bottom=0, top=1.0)
 
         # plt.gca().invert_yaxis()
-        plt.xlabel('m/z')
-        plt.ylabel('CCS')
-        ax.set_zlabel('normalised intensity')
+        plt.xlabel('m/z', fontsize=20)
+        plt.ylabel('CCS', fontsize=20)
+        ax.set_zlabel('normalised intensity', fontsize=20)
+        plt.tick_params(labelsize=18)
 
         ax.scatter(frame_df.mz, frame_df.scan, frame_df.normalised_intensity, s=2**2, c=np.log2(frame_df.intensity), cmap=plt.get_cmap('cet_rainbow'))
         # fig.suptitle('frame id {}, retention time (secs) {}'.format(frame_id, round(frame_df.iloc[0].retention_time_secs, 1)), fontsize=16, x=0.5, y=0.85)
