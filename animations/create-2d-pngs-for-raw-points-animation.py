@@ -57,15 +57,17 @@ for frame_id,frame_df in frames_df.groupby('frame_id'):
         print("rendering frame {}".format(frame_counter))
 
         f, ax = plt.subplots()
-        f.set_facecolor('darkgray')
-        plt.scatter(frame_df.mz, frame_df.normalised_intensity, c=np.log2(frame_df.intensity), cmap=plt.get_cmap('cet_rainbow'), alpha=0.70, edgecolors='face')
+        f.set_facecolor('whitesmoke')
+        plt.scatter(frame_df.mz, frame_df.normalised_intensity, s=5**2, c=np.log2(frame_df.intensity), cmap=plt.get_cmap('cet_rainbow'), alpha=1.0, edgecolors='face')
         plt.xlabel('m/z', fontsize=20)
         plt.ylabel('normalised intensity', fontsize=20)
         plt.tick_params(labelsize=18)
-        ax.patch.set_facecolor('silver')
+        ax.patch.set_facecolor('whitesmoke')
 
         plt.xlim((mz_lower,mz_upper))
         plt.ylim((0,intensity_upper))
+
+        ax.set_yticks([])
 
         #removing top and right borders
         ax.spines['top'].set_visible(False)
