@@ -14,7 +14,7 @@ TRAINING_SET_BASE_DIR = '{}/training set'.format(BASE_DIR)
 PRE_ASSIGNED_FILES_DIR = '{}/pre-assigned'.format(TRAINING_SET_BASE_DIR)
 OVERLAY_FILES_DIR = '{}/overlays'.format(TRAINING_SET_BASE_DIR)
 
-LOCAL_TILE_SOURCE_DIR = '/data/experiments/dwm-test/tiles/190719_Hela_Ecoli_1to3_01/tile-33/'
+LOCAL_TILE_SOURCE_DIR = '/data/experiments/dwm-test/tiles/190719_Hela_Ecoli_1to1_01/tile-33/'
 
 if os.path.exists(PRE_ASSIGNED_FILES_DIR):
     shutil.rmtree(PRE_ASSIGNED_FILES_DIR)
