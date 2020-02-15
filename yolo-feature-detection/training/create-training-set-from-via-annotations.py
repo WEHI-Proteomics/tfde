@@ -10,7 +10,7 @@ PIXELS_X = 910
 PIXELS_Y = 910  # equal to the number of scan lines
 
 BASE_DIR = '/data/yolo-training-sets'
-TRAINING_SET_BASE_DIR = '{}/training set'.format(BASE_DIR)
+TRAINING_SET_BASE_DIR = '{}/sets'.format(BASE_DIR)
 PRE_ASSIGNED_FILES_DIR = '{}/pre-assigned'.format(TRAINING_SET_BASE_DIR)
 OVERLAY_FILES_DIR = '{}/overlays'.format(TRAINING_SET_BASE_DIR)
 
