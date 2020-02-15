@@ -42,7 +42,8 @@ def interpolate_pixels(tile_im_array):
     for x in range(4, PIXELS_X-4):
         for y in range(4, PIXELS_Y-4):
             c = tile_im_array[y,x]
-            if (c == z).all():
+            if (c == z).all():  # only change pixels that are [0,0,0]
+                # build the list of this pixel's neighbours to average
                 n = []
                 n.append(tile_im_array[y+1,x-1])
                 n.append(tile_im_array[y+1,x])
@@ -79,8 +80,10 @@ def interpolate_pixels(tile_im_array):
                 n.append(tile_im_array[y,x-1])
                 n.append(tile_im_array[y,x+1])
 
+                # set the pixel's colour to be the channel-wise mean of its neighbours
                 neighbours_a = np.array(n)
                 tile_im_array[y,x] = np.mean(neighbours_a, axis=0)
+
     return tile_im_array
 
 # frame types for PASEF mode
