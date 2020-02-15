@@ -171,7 +171,7 @@ def render_frame(frame_id, tile_dir_d, idx, total_frames):
     pixel_intensity_df = raw_points_df.groupby(by=['tile_id', 'pixel_x', 'scan'], as_index=False).intensity.sum()
 
     # create the colour map to convert intensity to colour
-    colour_map = cm.get_cmap(name='magma')
+    colour_map = cm.get_cmap(name='plasma')
     norm = colors.LogNorm(vmin=1, vmax=args.maximum_pixel_intensity, clip=True)  # aiming to get good colour variation in the lower range, and clipping everything else
 
     # calculate the colour to represent the intensity
