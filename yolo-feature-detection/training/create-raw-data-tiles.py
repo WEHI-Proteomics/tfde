@@ -123,16 +123,17 @@ if not os.path.isfile(CONVERTED_DATABASE_NAME):
 
 # create the tiles base directory
 TILES_BASE_DIR = '{}/tiles/{}'.format(EXPERIMENT_DIR, args.run_name)
-if os.path.exists(TILES_BASE_DIR):
-    shutil.rmtree(TILES_BASE_DIR)
-os.makedirs(TILES_BASE_DIR)
-print("The tiles base directory was created: {}".format(TILES_BASE_DIR))
+if not os.path.exists(TILES_BASE_DIR):
+    os.makedirs(TILES_BASE_DIR)
+    print("The tiles base directory was created: {}".format(TILES_BASE_DIR))
 
 # set up a tile directory for each run
 tile_dir_d = {}
 for tile_idx in args.tile_idx_list:
     tile_dir = "{}/tile-{}".format(TILES_BASE_DIR, tile_idx)
     tile_dir_d[tile_idx] = tile_dir
+    if os.path.exists(tile_dir):
+        shutil.rmtree(tile_dir)
     os.makedirs(tile_dir)
     print("Created {}".format(tile_dir))
 
