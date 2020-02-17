@@ -3,14 +3,15 @@
 
 import glob,os
 
-BASE_DIR = './yolo-train-rt-1000-4200-23-may'
-TEST_DIR = '{}/test'.format(BASE_DIR)
-TARGET_DIR = 'data/peptides/test'
-TILE_ID = 33
-FILE_LIST_FILENAME = './test-files.txt'
+EXPERIMENT_NAME = 'dwm-test'
+RUN_NAME = '190719_Hela_Ecoli_1to1_01'
+TILE_ID = 34
+TILE_DIR = '/data/experiments/{}/tiles/{}/tile-{}'.format(EXPERIMENT_NAME, RUN_NAME, TILE_ID)
 
-file_list = sorted(glob.glob("{}/frame-*-tile-{}-mz-*.png".format(TEST_DIR, TILE_ID)))
+OUTPUT_FILENAME = './tile-{}-files.txt'.format(TILE_ID)  # the name of the file containing the list to process
 
-with open(FILE_LIST_FILENAME, 'w') as f:
+file_list = sorted(glob.glob("{}/frame-*-tile-{}-mz-*.png".format(TILE_DIR, TILE_ID)))
+
+with open(OUTPUT_FILENAME, 'w') as f:
     for file in file_list:
-        f.write('{}/{}\n'.format(TARGET_DIR, os.path.basename(file)))
+        f.write('{}/{}\n'.format(TILE_DIR, os.path.basename(file)))
