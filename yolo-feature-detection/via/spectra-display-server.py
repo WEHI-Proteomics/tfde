@@ -28,7 +28,7 @@ MZ_PER_TILE = 18.0
 SERVER_URL = "http://spectra-server-lb-1653892276.ap-southeast-2.elb.amazonaws.com"
 
 # This is the Flask server for the Via-based labelling tool for YOLO
-# Example: python ./otf-peak-detect/yolo/via/spectra-display-server.py -eb ~/Downloads/experiments -en 190719_Hela_Ecoli -rn 190719_Hela_Ecoli_1to3_06
+# Example: python ./otf-peak-detect/yolo/via/spectra-display-server.py -eb ~/Downloads/experiments -en 190719_Hela_Ecoli -rn 190719_Hela_Ecoli_1to1_01
 #          /tile-list/33 to download a text file with a list of URLs for this tile index
 
 parser = argparse.ArgumentParser(description='Create the tiles from raw data.')
@@ -364,7 +364,7 @@ def tile_list(tile_id):
 # retrieve the via annotation tool
 @app.route('/via')
 def via():
-    via_file_name = 'otf-peak-detect/yolo/via/via.html'
+    via_file_name = 'otf-peak-detect/yolo-feature-detection/via/via.html'
     home = str(Path.home())
     response = send_file("{}/{}".format(home, via_file_name))
     return response
