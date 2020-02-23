@@ -204,7 +204,7 @@ def render_frame(frame_id, tile_dir_d, idx, total_frames):
         # create an image of the intensity array
         tile = Image.fromarray(tile_im_array, 'RGB')
         mz_lower,mz_upper = mz_range_for_tile(tile_idx)
-        tile.save('{}/frame-{}-tile-{}-mz-{}-{}.png'.format(tile_dir_d[tile_idx], frame_id, tile_idx, int(mz_lower), int(mz_upper)))
+        tile.save('{}/frame-{}-tile-{}.png'.format(tile_dir_d[tile_idx], frame_id, tile_idx))
 
 # get the ms1 frame ids within the specified retention time
 db_conn = sqlite3.connect(CONVERTED_DATABASE_NAME)
