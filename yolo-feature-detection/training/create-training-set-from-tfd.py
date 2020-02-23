@@ -7,6 +7,7 @@ import argparse
 import glob
 import sqlite3
 import pandas as pd
+import sys
 
 PIXELS_X = 910
 PIXELS_Y = 910  # equal to the number of scan lines
@@ -24,6 +25,8 @@ FRAME_TYPE_MS2 = 8
 # in YOLO a small object is smaller than 16x16 @ 416x416 image size.
 SMALL_OBJECT_W = SMALL_OBJECT_H = 16/416
 
+# python ./otf-peak-detect/yolo-feature-detection/training/create-training-set-from-tfd.py -eb ~/Downloads/experiments -en dwm-test -rn 190719_Hela_Ecoli_1to1_01 -tidx 34 -np 4
+
 parser = argparse.ArgumentParser(description='Set up a training set from raw tiles.')
 parser.add_argument('-eb','--experiment_base_dir', type=str, default='./experiments', help='Path to the experiments directory.', required=False)
 parser.add_argument('-en','--experiment_name', type=str, help='Name of the experiment.', required=True)
@@ -35,6 +38,13 @@ parser.add_argument('-tidx','--tile_idx_list', nargs='+', type=int, help='Space-
 parser.add_argument('-np','--number_of_processors', type=int, default=8, help='The number of processors to use.', required=False)
 parser.add_argument('-shutdown','--shutdown', action='store_true', help='Shut down the machine when complete.')
 args = parser.parse_args()
+
+# Store the arguments as metadata for later reference
+info = []
+for arg in vars(args):
+    info.append((arg, getattr(args, arg)))
+
+print("{} info: {}".format(parser.prog, info))
 
 # check the experiment directory exists
 EXPERIMENT_DIR = "{}/{}".format(args.experiment_base_dir, args.experiment_name)
