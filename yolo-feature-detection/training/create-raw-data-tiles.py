@@ -94,6 +94,7 @@ parser = argparse.ArgumentParser(description='Create the tiles from raw data.')
 parser.add_argument('-eb','--experiment_base_dir', type=str, default='./experiments', help='Path to the experiments directory.', required=False)
 parser.add_argument('-en','--experiment_name', type=str, help='Name of the experiment.', required=True)
 parser.add_argument('-rn','--run_name', type=str, help='Name of the run.', required=True)
+parser.add_argument('-tsn','--tile_set_name', type=str, default='tile-set', help='Name of the tile set.', required=False)
 parser.add_argument('-rtl','--rt_lower', type=int, default=200, help='Lower bound of the RT range.', required=False)
 parser.add_argument('-rtu','--rt_upper', type=int, default=800, help='Upper bound of the RT range.', required=False)
 parser.add_argument('-maxpi','--maximum_pixel_intensity', type=int, default=1000, help='Maximum pixel intensity for encoding, above which will be clipped.', required=False)
@@ -122,7 +123,7 @@ if not os.path.isfile(CONVERTED_DATABASE_NAME):
     sys.exit(1)
 
 # create the tiles base directory
-TILES_BASE_DIR = '{}/tiles/{}'.format(EXPERIMENT_DIR, args.run_name)
+TILES_BASE_DIR = '{}/tiles/{}/{}'.format(EXPERIMENT_DIR, args.run_name, args.tile_set_name)
 if not os.path.exists(TILES_BASE_DIR):
     os.makedirs(TILES_BASE_DIR)
     print("The tiles base directory was created: {}".format(TILES_BASE_DIR))
