@@ -104,6 +104,7 @@ for tile_idx in args.tile_idx_list:
 # check the consolidated features file exists - create it if it doesn't
 FEATURES_NAME = '{}/features/{}/exp-{}-run-{}-features-all.pkl'.format(EXPERIMENT_DIR, args.run_name, args.experiment_name, args.run_name)
 if not os.path.isfile(FEATURES_NAME):
+    print("the consolidated features file does not exist - creating {}".format(FEATURES_NAME))
     # consolidate the features into a single file
     features_file_list = sorted(glob.glob('{}/features/{}/exp-{}-run-{}-features-precursor-*.pkl'.format(EXPERIMENT_DIR, args.run_name, args.experiment_name, args.run_name)))
     df_l = []
@@ -112,6 +113,7 @@ if not os.path.isfile(FEATURES_NAME):
         df_l.append(df)
     features_df = pd.concat(df_l, axis=0, sort=False)
     features_df.to_pickle(FEATURES_NAME)
+    print("created {}".format(FEATURES_NAME))
 
 # get the m/z extent for the specified tile ID
 def mz_range_for_tile(tile_id):
@@ -169,7 +171,7 @@ for idx,tile_filename in enumerate(tile_filename_list):
 
     base_name = os.path.basename(tile_filename)
     frame_id = int(base_name.split('-')[1])
-    tile_id = int(base_name.split('-')[3])
+    tile_id = int(base_name.split('-')[3].split('.')[0])
 
     # get the m/z range for this tile
     (tile_mz_lower,tile_mz_upper) = mz_range_for_tile(tile_id)
