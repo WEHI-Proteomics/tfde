@@ -101,10 +101,17 @@ for tile_idx in args.tile_idx_list:
         print("The tiles directory is required but does not exist: {}".format(tile_dir))
         sys.exit(1)
 
+# check the consolidated features file exists - create it if it doesn't
 FEATURES_NAME = '{}/features/{}/exp-{}-run-{}-features-all.pkl'.format(EXPERIMENT_DIR, args.run_name, args.experiment_name, args.run_name)
 if not os.path.isfile(FEATURES_NAME):
-    print("The consolidated features file is required but doesn't exist: {}".format(FEATURES_NAME))
-    sys.exit(1)
+    # consolidate the features into a single file
+    features_file_list = sorted(glob.glob('{}/features/{}/exp-{}-run-{}-features-precursor-*.pkl'.format(EXPERIMENT_DIR, args.run_name, args.experiment_name, args.run_name)))
+    df_l = []
+    for features_file in features_file_list:
+        df = pd.read_pickle(features_file)
+        df_l.append(df)
+    features_df = pd.concat(df_l, axis=0, sort=False)
+    features_df.to_pickle(FEATURES_NAME)
 
 # get the m/z extent for the specified tile ID
 def mz_range_for_tile(tile_id):
