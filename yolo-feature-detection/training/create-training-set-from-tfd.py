@@ -220,6 +220,7 @@ for idx,tile_filename in enumerate(tile_filename_list):
                 # draw the rectangle
                 draw.rectangle(xy=[(x0_buffer, y0), (x1_buffer, y1)], fill=None, outline='red')
                 # keep record of the 'small' objects
+                total_objects += 1
                 if (w <= SMALL_OBJECT_W) and (h <= SMALL_OBJECT_H):
                     small_objects += 1
 
@@ -231,6 +232,8 @@ for idx,tile_filename in enumerate(tile_filename_list):
         for item in feature_coordinates:
             f.write("%s\n" % item)
 
+for c in sorted(classes_d.keys()):
+    print(class {} objects: {}".format(c, classes_d[c]))
 print("{} out of {} objects are small.".format(small_objects, total_objects))
 
 # assign the tiles to the training sets
