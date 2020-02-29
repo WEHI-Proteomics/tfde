@@ -233,7 +233,7 @@ for idx,tile_filename in enumerate(tile_filename_list):
             f.write("%s\n" % item)
 
 for c in sorted(classes_d.keys()):
-    print(class {} objects: {}".format(c, classes_d[c]))
+    print("class {} objects: {}".format(c, classes_d[c]))
 print("{} out of {} objects are small.".format(small_objects, total_objects))
 
 # assign the tiles to the training sets
