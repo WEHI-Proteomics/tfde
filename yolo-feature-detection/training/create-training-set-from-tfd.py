@@ -233,7 +233,7 @@ for idx,tile_filename in enumerate(tile_filename_list):
             f.write("%s\n" % item)
 
 for c in sorted(classes_d.keys()):
-    print("class {} objects: {}".format(c, classes_d[c]))
+    print("charge {} objects: {}".format(c+2, classes_d[c]))
 print("{} out of {} objects are small.".format(small_objects, total_objects))
 
 # assign the tiles to the training sets
@@ -281,7 +281,7 @@ for file_pair in test_set:
 
 # create obj.names, for copying to ./darknet/data, with the object names, each one on a new line
 LOCAL_NAMES_FILENAME = "{}/peptides-obj.names".format(TRAINING_SET_BASE_DIR)
-NUMBER_OF_CLASSES = 2
+NUMBER_OF_CLASSES = len(classes_d.keys())
 
 with open(LOCAL_NAMES_FILENAME, 'w') as f:
     for object_class in range(NUMBER_OF_CLASSES):
