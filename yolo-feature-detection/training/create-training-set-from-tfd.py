@@ -25,6 +25,19 @@ FRAME_TYPE_MS2 = 8
 # in YOLO a small object is smaller than 16x16 @ 416x416 image size.
 SMALL_OBJECT_W = SMALL_OBJECT_H = 16/416
 
+# generate the features file
+def generate_features_file(features_file_name):
+    # consolidate the features into a single file
+    features_file_list = sorted(glob.glob('{}/features/{}/exp-{}-run-{}-features-precursor-*.pkl'.format(EXPERIMENT_DIR, args.run_name, args.experiment_name, args.run_name)))
+    df_l = []
+    for features_file in features_file_list:
+        df = pd.read_pickle(features_file)
+        df_l.append(df)
+    features_df = pd.concat(df_l, axis=0, sort=False)
+    features_df.to_pickle(features_file_name)
+    return
+
+
 # python ./otf-peak-detect/yolo-feature-detection/training/create-training-set-from-tfd.py -eb ~/Downloads/experiments -en dwm-test -rn 190719_Hela_Ecoli_1to1_01 -tidx 34 -np 4
 
 parser = argparse.ArgumentParser(description='Set up a training set from raw tiles.')
@@ -106,14 +119,7 @@ for tile_idx in args.tile_idx_list:
 FEATURES_NAME = '{}/features/{}/exp-{}-run-{}-features-all.pkl'.format(EXPERIMENT_DIR, args.run_name, args.experiment_name, args.run_name)
 if not os.path.isfile(FEATURES_NAME):
     print("the consolidated features file does not exist - creating {}".format(FEATURES_NAME))
-    # consolidate the features into a single file
-    features_file_list = sorted(glob.glob('{}/features/{}/exp-{}-run-{}-features-precursor-*.pkl'.format(EXPERIMENT_DIR, args.run_name, args.experiment_name, args.run_name)))
-    df_l = []
-    for features_file in features_file_list:
-        df = pd.read_pickle(features_file)
-        df_l.append(df)
-    features_df = pd.concat(df_l, axis=0, sort=False)
-    features_df.to_pickle(FEATURES_NAME)
+    generate_features_file(FEATURES_NAME)
     print("created {}".format(FEATURES_NAME))
 
 # get the m/z extent for the specified tile ID
