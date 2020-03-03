@@ -114,10 +114,6 @@ def calculate_feature_extents(row):
     scan_apex = coordinates_d['scan_apex']
     rt_apex = coordinates_d['rt_apex']
 
-    # distance for looking either side of the scan and RT apex, based on the other times this sequence has been seen in this experiment
-    SCAN_WIDTH = experiment_scan_peak_width
-    RT_WIDTH = experiment_rt_peak_width
-
     # the width to use for isotopic width, in Da
     MZ_TOLERANCE_PPM = 5  # +/- this amount
     MZ_TOLERANCE_PERCENT = MZ_TOLERANCE_PPM * 10**-4
@@ -130,10 +126,10 @@ def calculate_feature_extents(row):
     # define the region we will look in for the feature
     feature_region_mz_lower = mono_mz - MS1_PEAK_DELTA
     feature_region_mz_upper = mono_mz + (NUMBER_OF_ISOTOPES * expected_spacing_mz) + MS1_PEAK_DELTA
-    scan_lower = scan_apex - (2 * SCAN_WIDTH)
-    scan_upper = scan_apex + (2 * SCAN_WIDTH)
-    rt_lower = rt_apex - (2 * RT_WIDTH)
-    rt_upper = rt_apex + (2 * RT_WIDTH)
+    scan_lower = scan_apex - (experiment_scan_peak_width / 2)
+    scan_upper = scan_apex + (experiment_scan_peak_width / 2)
+    rt_lower = rt_apex - (experiment_rt_peak_width / 2)
+    rt_upper = rt_apex + (experiment_rt_peak_width / 2)
 
     # extract the raw data within this area of interest
     db_conn = sqlite3.connect(CONVERTED_DATABASE_NAME)
