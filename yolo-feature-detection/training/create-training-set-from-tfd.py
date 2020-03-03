@@ -171,7 +171,7 @@ def calculate_feature_extents(row):
         index_of_last_isotope = np.where(d > 0)[0][0] + 1
 
     mz_lower = mono_mz
-    mz_upper = isotope_peaks_df.iloc[index_of_last_isotope]
+    mz_upper = isotope_peaks_df.iloc[index_of_last_isotope].mz_centroid
 
     return (sequence, charge, mz_lower, mz_upper, scan_lower, scan_upper, rt_lower, rt_upper, index_of_last_isotope+1)
 
@@ -232,6 +232,8 @@ if not os.path.isfile(SEQUENCE_LIBRARY_FILE_NAME):
     sys.exit(1)
 else:
     library_sequences_df = pd.read_pickle(SEQUENCE_LIBRARY_FILE_NAME)
+    if args.small_set_mode:
+        library_sequences_df = library_sequences_df.sample(n=20)
     print("loaded {} sequences from the library".format(len(library_sequences_df)))
 
 # load the coordinate estimators
