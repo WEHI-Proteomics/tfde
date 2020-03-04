@@ -282,8 +282,8 @@ if os.path.exists(OVERLAY_FILES_DIR):
 os.makedirs(OVERLAY_FILES_DIR)
 
 # check if the features file exists - if not, create it
-FEATURES_FILE_NAME = '{}/features-for-labelling.pkl'.format(TRAINING_SET_BASE_DIR)
-if (not os.path.isfile(FEATURES_FILE_NAME)) or args.create_new_features:
+SEQUENCE_LABELS_FILE_NAME = '{}/sequence-labels-for-training.pkl'.format(SEQUENCE_LIBRARY_DIR)
+if (not os.path.isfile(SEQUENCE_LABELS_FILE_NAME)) or args.create_new_features:
     # calculate the target coordinates
     print("calculating the target coordinates for each sequence-charge")
     library_sequences_df['target_coords'] = library_sequences_df.apply(lambda row: estimate_target_coordinates(row, mz_estimator, scan_estimator, rt_estimator), axis=1)
@@ -296,10 +296,10 @@ if (not os.path.isfile(FEATURES_FILE_NAME)) or args.create_new_features:
 
     # save the features file
     features_df = pd.DataFrame(sequence_features_l, columns=['sequence','charge','mz_lower','mz_upper','scan_lower','scan_upper','rt_lower','rt_upper','number_of_isotopes'])
-    features_df.to_pickle(FEATURES_FILE_NAME)
+    features_df.to_pickle(SEQUENCE_LABELS_FILE_NAME)
 else:
-    features_df = pd.read_pickle(FEATURES_FILE_NAME)
-    print("loaded {} features from {}".format(len(features_df), FEATURES_FILE_NAME))
+    features_df = pd.read_pickle(SEQUENCE_LABELS_FILE_NAME)
+    print("loaded {} features from {}".format(len(features_df), SEQUENCE_LABELS_FILE_NAME))
 
 # check the raw tiles base directory exists
 TILES_BASE_DIR = '{}/tiles/{}/{}'.format(EXPERIMENT_DIR, args.run_name, args.tile_set_name)
