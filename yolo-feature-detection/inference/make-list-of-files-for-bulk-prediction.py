@@ -5,6 +5,7 @@ import glob
 import os
 import argparse
 import shutil
+import sys
 
 parser = argparse.ArgumentParser(description='Create the tiles from raw data.')
 parser.add_argument('-eb','--experiment_base_dir', type=str, default='./experiments', help='Path to the experiments directory.', required=False)
