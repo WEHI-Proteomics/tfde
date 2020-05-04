@@ -41,7 +41,6 @@ def tile_pixel_x_from_mz(mz):
 
 # decide whether there is sufficient data in this region to justify labelling it for the training set
 def label_this_object(frame_id, feature):
-    print((frame_id, feature.mz_lower, feature.mz_upper, feature.scan_lower, feature.scan_upper))
     # are there any points in this region of the frame?
     db_conn = sqlite3.connect(CONVERTED_DATABASE_NAME)
     points_df = pd.read_sql_query("select * from frames where frame_id == {} and mz >= {} and mz <= {} and scan >= {} and scan <= {}".format(frame_id, feature.mz_lower, feature.mz_upper, feature.scan_lower, feature.scan_upper), db_conn)
