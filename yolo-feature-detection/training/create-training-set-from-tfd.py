@@ -20,6 +20,10 @@ SCAN_MIN = 1
 MZ_PER_TILE = 18.0
 TILES_PER_FRAME = int((MZ_MAX - MZ_MIN) / MZ_PER_TILE) + 1
 
+# charge states of interest
+MIN_CHARGE = 2
+MAX_CHARGE = 4
+
 # in YOLO a small object is smaller than 16x16 @ 416x416 image size.
 SMALL_OBJECT_W = SMALL_OBJECT_H = 16/416
 
@@ -256,8 +260,9 @@ for idx,tile_filename in enumerate(tile_filename_list):
         # label this object if it meets the criteria
         if label_this_object(frame_id, feature):
             # we are only interested in charge 2 and higher
-            if charge >= 2:
-                feature_class = charge - 2
+            if (charge >= MIN_CHARGE) and (charge <= MAX_CHARGE):
+                feature_class = charge - MIN_CHARGE
+                # keep record of how many instances of each class
                 if feature_class in classes_d.keys():
                     classes_d[feature_class] += 1
                 else:
@@ -330,9 +335,10 @@ for file_pair in test_set:
 LOCAL_NAMES_FILENAME = "{}/peptides-obj.names".format(TRAINING_SET_BASE_DIR)
 NUMBER_OF_CLASSES = len(classes_d.keys())
 
+# class labels
 with open(LOCAL_NAMES_FILENAME, 'w') as f:
-    for object_class in range(NUMBER_OF_CLASSES):
-        f.write("charge-{}\n".format(object_class + 2))
+    for charge in range(MIN_CHARGE, MAX_CHARGE+1):
+        f.write("charge-{}\n".format(charge))
 
 # create obj.data, for copying to ./darknet/data
 LOCAL_DATA_FILENAME = "{}/peptides-obj.data".format(TRAINING_SET_BASE_DIR)
