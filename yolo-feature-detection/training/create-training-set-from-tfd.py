@@ -275,6 +275,8 @@ for idx,tile_filename in enumerate(tile_filename_list):
                 total_objects += 1
                 if (w <= SMALL_OBJECT_W) and (h <= SMALL_OBJECT_H):
                     small_objects += 1
+            else:
+                print("found a charge-{} feature - not included in the training set".format(charge))
 
     # write the overlay tile
     img.save('{}/{}'.format(OVERLAY_FILES_DIR, base_name))
@@ -284,6 +286,7 @@ for idx,tile_filename in enumerate(tile_filename_list):
         for item in feature_coordinates:
             f.write("%s\n" % item)
 
+# display the object counts for each class
 for c in sorted(classes_d.keys()):
     print("charge {} objects: {}".format(c+2, classes_d[c]))
 print("{} out of {} objects are small.".format(small_objects, total_objects))
@@ -333,7 +336,6 @@ for file_pair in test_set:
 
 # create obj.names, for copying to ./darknet/data, with the object names, each one on a new line
 LOCAL_NAMES_FILENAME = "{}/peptides-obj.names".format(TRAINING_SET_BASE_DIR)
-NUMBER_OF_CLASSES = len(classes_d.keys())
 
 # class labels
 with open(LOCAL_NAMES_FILENAME, 'w') as f:
@@ -344,7 +346,7 @@ with open(LOCAL_NAMES_FILENAME, 'w') as f:
 LOCAL_DATA_FILENAME = "{}/peptides-obj.data".format(TRAINING_SET_BASE_DIR)
 
 with open(LOCAL_DATA_FILENAME, 'w') as f:
-    f.write("classes={}\n".format(NUMBER_OF_CLASSES))
+    f.write("classes={}\n".format(MAX_CHARGE - MIN_CHARGE + 1))
     f.write("train=data/peptides/train.txt\n")
     f.write("valid=data/peptides/validation.txt\n")
     f.write("names=data/peptides/peptides-obj.names\n")
