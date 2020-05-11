@@ -86,6 +86,13 @@ def interpolate_pixels(tile_im_array):
 
     return tile_im_array
 
+def create_indexes(db_file_name):
+    db_conn = sqlite3.connect(db_file_name)
+    src_c = db_conn.cursor()
+    src_c.execute("create index if not exists idx_tile_set_1 on frames (frame_id, mz)")
+    db_conn.close()
+
+
 # frame types for PASEF mode
 FRAME_TYPE_MS1 = 0
 FRAME_TYPE_MS2 = 8
@@ -155,6 +162,10 @@ SCAN_MAX = PIXELS_Y
 SCAN_MIN = 1
 MZ_PER_TILE = 18.0
 TILES_PER_FRAME = int((MZ_MAX - MZ_MIN) / MZ_PER_TILE) + 1
+
+print("creating indexes")
+create_indexes(CONVERTED_DATABASE_NAME)
+
 
 if not ray.is_initialized():
     ray.init(num_cpus=args.number_of_processors)
