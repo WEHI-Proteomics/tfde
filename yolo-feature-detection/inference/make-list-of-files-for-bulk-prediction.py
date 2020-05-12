@@ -1,18 +1,14 @@
-# This script gets all the tiles for a particular section of m/z and creates a file
-# containing their filenames for the purpose of bulk inference.
-
 import glob
 import os
 import argparse
 import shutil
 import sys
 
-parser = argparse.ArgumentParser(description='Create the tiles from raw data.')
+parser = argparse.ArgumentParser(description='Create a file containing the tiles to be used for batch inference.')
 parser.add_argument('-eb','--experiment_base_dir', type=str, default='./experiments', help='Path to the experiments directory.', required=False)
 parser.add_argument('-en','--experiment_name', type=str, help='Name of the experiment.', required=True)
-parser.add_argument('-rn','--run_name', type=str, help='Name of the run.', required=True)
-parser.add_argument('-tsn','--tile_set_name', type=str, default='tile-set', help='Name of the tile set.', required=False)
-parser.add_argument('-tidx','--tile_idx_list', nargs='+', type=int, help='Space-separated indexes of the tiles to use for the training set.', required=True)
+parser.add_argument('-tn','--training_set_name', type=str, help='Name of the training set.', required=True)
+parser.add_argument('-tid','--tile_id', type=int, help='Index of the tile for inference.', required=True)
 
 args = parser.parse_args()
 
@@ -29,38 +25,35 @@ if not os.path.exists(EXPERIMENT_DIR):
     print("The experiment directory is required but doesn't exist: {}".format(EXPERIMENT_DIR))
     sys.exit(1)
 
-# check the raw tiles base directory exists
-TILES_BASE_DIR = '{}/tiles/{}/{}'.format(EXPERIMENT_DIR, args.run_name, args.tile_set_name)
-if not os.path.exists(TILES_BASE_DIR):
-    print("The raw tiles base directory is required but does not exist: {}".format(TILES_BASE_DIR))
+# check the training base directories
+TRAINING_SET_BASE_DIR = '{}/training-sets/{}'.format(EXPERIMENT_DIR, args.training_set_name)
+PRE_ASSIGNED_FILES_DIR = '{}/pre-assigned'.format(TRAINING_SET_BASE_DIR)
+
+if not os.path.exists(TRAINING_SET_BASE_DIR):
+    print("The training set directory is required but doesn't exist: {}".format(TRAINING_SET_BASE_DIR))
     sys.exit(1)
 
-# copy the tile indexes to a staging area for inference
-INFERENCE_STAGING_DIR = '{}/inference-staging'.format(TILES_BASE_DIR)
-if os.path.exists(INFERENCE_STAGING_DIR):
-    shutil.rmtree(INFERENCE_STAGING_DIR)
-os.makedirs(INFERENCE_STAGING_DIR)
+if not os.path.exists(PRE_ASSIGNED_FILES_DIR):
+    print("The pre-assigned directory is required but doesn't exist: {}".format(PRE_ASSIGNED_FILES_DIR))
+    sys.exit(1)
 
-# check the tiles directory exists for each tile index we need
-for tile_idx in args.tile_idx_list:
-    tile_dir = "{}/tile-{}".format(TILES_BASE_DIR, tile_idx)
-    if os.path.exists(tile_dir):
-        # copy the raw tiles to the inference staging tiles directory
-        file_list = sorted(glob.glob("{}/frame-*-tile-*.png".format(tile_dir)))
-        print("copying {} tiles from {} to {}".format(len(file_list), tile_dir, INFERENCE_STAGING_DIR))
+PREDICTIONS_BASE_DIR = '{}/predictions'.format(EXPERIMENT_DIR)
+if not os.path.exists(PREDICTIONS_BASE_DIR):
+    os.makedirs(PREDICTIONS_BASE_DIR)
+
+TILE_PREDICTIONS_DIR = '{}/tile-{}'.format(PREDICTIONS_BASE_DIR, args.tile_id)
+if os.path.exists(TILE_PREDICTIONS_DIR):
+    shutil.rmtree(TILE_PREDICTIONS_DIR)
+os.makedirs(TILE_PREDICTIONS_DIR)
+
+TILE_FILE_NAME = '{}/batch-inference-tile-{}.txt'.format(TILE_PREDICTIONS_DIR, args.tile_id)
+
+# we will use the tiles in the pre-assigned directory for inference
+file_list = sorted(glob.glob("{}/frame-*-tile-{}.png".format(PRE_ASSIGNED_FILES_DIR, args.tile_id)))
+if len(file_list) > 0:
+    print("writing {} entries to {}".format(len(file_list), TILE_FILE_NAME))
+    with open(TILE_FILE_NAME, 'w') as f:
         for file in file_list:
-            base_name = os.path.basename(file)
-            destination_name = '{}/{}'.format(INFERENCE_STAGING_DIR, base_name)
-            shutil.copyfile(file, destination_name)
-    else:
-        print("The tiles directory is required but does not exist: {}".format(tile_dir))
-        sys.exit(1)
-
-# write out the file list
-OUTPUT_FILENAME = './inference-files-tile-idxs-{}.txt'.format('-'.join(map(str, args.tile_idx_list)))  # the name of the file containing the list to process
-file_list = sorted(glob.glob("{}/frame-*.png".format(INFERENCE_STAGING_DIR)))
-
-print("writing {} entries to {}".format(len(file_list), OUTPUT_FILENAME))
-with open(OUTPUT_FILENAME, 'w') as f:
-    for file in file_list:
-        f.write('{}/{}\n'.format(INFERENCE_STAGING_DIR, os.path.basename(file)))
+            f.write('{}\n'.format(file))
+else:
+    print("could not find any index {} tiles in the pre-assigned directory: {}".format(args.tile_id, PRE_ASSIGNED_FILES_DIR))
