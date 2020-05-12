@@ -9,6 +9,7 @@ import os
 import argparse
 import time
 import sys
+import shutil
 
 PIXELS_X = 910
 PIXELS_Y = 910  # equal to the number of scan lines
@@ -59,6 +60,16 @@ if not os.path.exists(TILE_PREDICTIONS_DIR):
     print("The tile predictions directory is required but doesn't exist: {}".format(TILE_PREDICTIONS_DIR))
     sys.exit(1)
 
+INDIVIDUAL_TILE_DIR = '{}/individual'.format(TILE_PREDICTIONS_DIR)
+if os.path.exists(INDIVIDUAL_TILE_DIR):
+    shutil.rmtree(INDIVIDUAL_TILE_DIR)
+os.makedirs(INDIVIDUAL_TILE_DIR)
+
+COMPOSITE_TILE_DIR = '{}/composite'.format(TILE_PREDICTIONS_DIR)
+if os.path.exists(COMPOSITE_TILE_DIR):
+    shutil.rmtree(COMPOSITE_TILE_DIR)
+os.makedirs(COMPOSITE_TILE_DIR)
+
 prediction_json_file = '{}/predictions.json'.format(TILE_PREDICTIONS_DIR)
 with open(prediction_json_file) as file:
     prediction_json = json.load(file)
@@ -66,6 +77,7 @@ with open(prediction_json_file) as file:
 for prediction_idx in range(len(prediction_json)):
     tile_file_name = prediction_json[prediction_idx]['filename']
     base_name = os.path.basename(tile_file_name)
+    print("processing {}".format(base_name))
     img = Image.open(tile_file_name)
 
     draw_predictions = ImageDraw.Draw(img)
@@ -80,4 +92,11 @@ for prediction_idx in range(len(prediction_json)):
         draw_predictions.rectangle(xy=[(x, y), (x+width, y+height)], fill=None, outline=(100,255,100,20))
 
     # write the annotated tile to the predictions directory
-    img.save('{}/{}'.format(TILE_PREDICTIONS_DIR, base_name))
+    individual_name = '{}/{}'.format(INDIVIDUAL_TILE_DIR, base_name)
+    img.save(individual_name)
+
+    # make the composite
+    composite_name = '{}/{}'.format(COMPOSITE_TILE_DIR, base_name)
+    overlay_name = '{}/{}'.format(OVERLAY_FILES_DIR, base_name)
+    cmd = "convert {} {} +append -background darkgrey -splice 10x0+910+0 {}".format(overlay_name, individual_name, composite_name)
+    os.system(cmd)
