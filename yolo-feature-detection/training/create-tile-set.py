@@ -105,9 +105,10 @@ parser.add_argument('-tsn','--tile_set_name', type=str, default='tile-set', help
 parser.add_argument('-rtl','--rt_lower', type=int, default=200, help='Lower bound of the RT range.', required=False)
 parser.add_argument('-rtu','--rt_upper', type=int, default=800, help='Upper bound of the RT range.', required=False)
 parser.add_argument('-maxpi','--maximum_pixel_intensity', type=int, default=1000, help='Maximum pixel intensity for encoding, above which will be clipped.', required=False)
-parser.add_argument('-minpi','--minimum_pixel_intensity', type=int, default=1, help='Minimum pixel intensity for encoding, above which will be clipped.', required=False)
+parser.add_argument('-minpi','--minimum_pixel_intensity', type=int, default=1, help='Minimum pixel intensity for encoding, below which will be clipped.', required=False)
 parser.add_argument('-inp','--interpolate_neighbouring_pixels', action='store_true', help='Use the value of surrounding pixels to fill zero pixels.')
-parser.add_argument('-tidx','--tile_idx_list', nargs='+', type=int, help='Space-separated indexes of the tiles to render.', required=True)
+parser.add_argument('-tidl','--tile_idx_lower', type=int, help='Lower range of the tile indexes to render.', required=True)
+parser.add_argument('-tidu','--tile_idx_upper', type=int, help='Upper range of the tile indexes to render.', required=True)
 parser.add_argument('-np','--number_of_processors', type=int, default=8, help='The number of processors to use.', required=False)
 parser.add_argument('-shutdown','--shutdown', action='store_true', help='Shut down the machine when complete.')
 args = parser.parse_args()
@@ -137,7 +138,7 @@ if not os.path.exists(TILES_BASE_DIR):
 
 # set up a tile directory for each run
 tile_dir_d = {}
-for tile_idx in args.tile_idx_list:
+for tile_idx in range(args.tile_idx_lower, args.tile_index_upper+1):
     tile_dir = "{}/tile-{}".format(TILES_BASE_DIR, tile_idx)
     tile_dir_d[tile_idx] = tile_dir
     if os.path.exists(tile_dir):
@@ -175,8 +176,8 @@ def render_frame(frame_id, tile_dir_d, idx, total_frames):
     print("processing frame {} of {}".format(idx, total_frames))
 
     # find the mz range for the tiles specified
-    frame_mz_lower = mz_range_for_tile(min(tile_dir_d.keys()))[0]
-    frame_mz_upper = mz_range_for_tile(max(tile_dir_d.keys()))[1]
+    frame_mz_lower = mz_range_for_tile(min(tile_dir_d.keys()))[0]  # the lower mz range for the lowest tile index specified
+    frame_mz_upper = mz_range_for_tile(max(tile_dir_d.keys()))[1]  # the upper mz range for the highest tile index specified
 
     # read the raw points for the frame
     db_conn = sqlite3.connect(CONVERTED_DATABASE_NAME)
