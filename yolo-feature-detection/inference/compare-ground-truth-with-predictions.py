@@ -63,7 +63,7 @@ prediction_json_file = '{}/predictions.json'.format(TILE_PREDICTIONS_DIR)
 with open(prediction_json_file) as file:
     prediction_json = json.load(file)
 
-for prediction_idx in len(prediction_json):
+for prediction_idx in range(len(prediction_json)):
     tile_file_name = prediction_json[prediction_idx]['filename']
     base_name = os.path.basename(tile_file_name)
     img = Image.open(tile_file_name)
