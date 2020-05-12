@@ -80,4 +80,4 @@ for prediction_idx in range(len(prediction_json)):
         draw_predictions.rectangle(xy=[(x, y), (x+width, y+height)], fill=None, outline=(100,255,100,20))
 
     # write the annotated tile to the predictions directory
-    draw_predictions.save('{}/{}'.format(TILE_PREDICTIONS_DIR, base_name))
+    img.save('{}/{}'.format(TILE_PREDICTIONS_DIR, base_name))
