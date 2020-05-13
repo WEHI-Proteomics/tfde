@@ -138,7 +138,7 @@ if not os.path.exists(TILES_BASE_DIR):
 
 # set up a tile directory for each run
 tile_dir_d = {}
-for tile_idx in range(args.tile_idx_lower, args.tile_index_upper+1):
+for tile_idx in range(args.tile_idx_lower, args.tile_idx_upper+1):
     tile_dir = "{}/tile-{}".format(TILES_BASE_DIR, tile_idx)
     tile_dir_d[tile_idx] = tile_dir
     if os.path.exists(tile_dir):
