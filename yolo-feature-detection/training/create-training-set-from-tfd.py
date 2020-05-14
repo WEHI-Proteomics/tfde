@@ -20,6 +20,10 @@ SCAN_MIN = 1
 MZ_PER_TILE = 18.0
 TILES_PER_FRAME = int((MZ_MAX - MZ_MIN) / MZ_PER_TILE) + 1
 
+# frame types for PASEF mode
+FRAME_TYPE_MS1 = 0
+FRAME_TYPE_MS2 = 8
+
 # charge states of interest
 MIN_CHARGE = 2
 MAX_CHARGE = 4
@@ -199,26 +203,31 @@ if not os.path.exists(TILES_BASE_DIR):
     print("The raw tiles base directory is required but does not exist: {}".format(TILES_BASE_DIR))
     sys.exit(1)
 
+# get the frame properties so we can map frame ID to RT
+print("reading frame IDs from {}".format(CONVERTED_DATABASE_NAME))
+db_conn = sqlite3.connect(CONVERTED_DATABASE_NAME)
+ms1_frame_properties_df = pd.read_sql_query("select Id,Time from frame_properties where Time >= {} and Time <= {} and MsMsType == {}".format(args.rt_lower, args.rt_upper, FRAME_TYPE_MS1), db_conn)
+min_frame_id = ms1_frame_properties_df.Id.min()
+max_frame_id = ms1_frame_properties_df.Id.max()
+db_conn.close()
+
 # check the tiles directory exists for each tile index we need
 for tile_idx in indexes_l:
     tile_dir = "{}/tile-{}".format(TILES_BASE_DIR, tile_idx)
     if os.path.exists(tile_dir):
         # copy the raw tiles to the pre-assigned tiles directory
         file_list = sorted(glob.glob("{}/frame-*-tile-*.png".format(tile_dir)))
-        print("copying {} tiles from {} to {}".format(len(file_list), tile_dir, PRE_ASSIGNED_FILES_DIR))
+        print("copying tiles within the RT range from {} to {}".format(tile_dir, PRE_ASSIGNED_FILES_DIR))
         for file in file_list:
             base_name = os.path.basename(file)
-            destination_name = '{}/{}'.format(PRE_ASSIGNED_FILES_DIR, base_name)
-            shutil.copyfile(file, destination_name)
+            # if the frame_id is within the specified RT range
+            frame_id = int(base_name.split('-')[1])
+            if (frame_id >= min_frame_id) and (frame_id <= max_frame_id):
+                destination_name = '{}/{}'.format(PRE_ASSIGNED_FILES_DIR, base_name)
+                shutil.copyfile(file, destination_name)
     else:
         print("The tiles directory is required but does not exist: {}".format(tile_dir))
         sys.exit(1)
-
-# get the frame properties so we can map frame ID to RT
-print("reading frame IDs from {}".format(CONVERTED_DATABASE_NAME))
-db_conn = sqlite3.connect(CONVERTED_DATABASE_NAME)
-ms1_frame_properties_df = pd.read_sql_query("select Id,Time from frame_properties", db_conn)
-db_conn.close()
 
 # get all the tiles that have been generated from the raw data
 tile_filename_list = sorted(glob.glob("{}/frame-*-tile-*.png".format(PRE_ASSIGNED_FILES_DIR)))
