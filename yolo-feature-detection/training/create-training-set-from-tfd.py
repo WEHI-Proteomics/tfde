@@ -213,6 +213,7 @@ db_conn.close()
 
 # check the tiles directory exists for each tile index we need
 for tile_idx in indexes_l:
+    tile_count = 0
     tile_dir = "{}/tile-{}".format(TILES_BASE_DIR, tile_idx)
     if os.path.exists(tile_dir):
         # copy the raw tiles to the pre-assigned tiles directory
@@ -225,12 +226,17 @@ for tile_idx in indexes_l:
             if (frame_id >= min_frame_id) and (frame_id <= max_frame_id):
                 destination_name = '{}/{}'.format(PRE_ASSIGNED_FILES_DIR, base_name)
                 shutil.copyfile(file, destination_name)
+                tile_count += 1
+        print("copied {} tiles for index {} to {}".format(tile_count, tile_idx, PRE_ASSIGNED_FILES_DIR))
     else:
         print("The tiles directory is required but does not exist: {}".format(tile_dir))
         sys.exit(1)
 
 # get all the tiles that have been generated from the raw data
 tile_filename_list = sorted(glob.glob("{}/frame-*-tile-*.png".format(PRE_ASSIGNED_FILES_DIR)))
+if len(tile_filename_list) == 0:
+    print("Found no tiles to process in the pre-assigned directory: {}".format(PRE_ASSIGNED_FILES_DIR))
+    sys.exit(1)
 
 # limit the number of tiles for small set mode
 if args.small_set_mode:
