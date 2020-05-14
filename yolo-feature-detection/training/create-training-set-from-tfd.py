@@ -89,7 +89,7 @@ parser.add_argument('-tsn','--tile_set_name', type=str, default='tile-set', help
 parser.add_argument('-tn','--training_set_name', type=str, default='yolo', help='Name of the training set.', required=False)
 parser.add_argument('-rtl','--rt_lower', type=int, default=200, help='Lower bound of the RT range.', required=False)
 parser.add_argument('-rtu','--rt_upper', type=int, default=800, help='Upper bound of the RT range.', required=False)
-parser.add_argument('-tidx','--tile_idx_list', type=str, help='Indexes of the tiles to use for the training set. Can specifiy several range (e.g. 10-20,21-30,31-40), a single range (e.g. 10-24), individual indexes (e.g. 34,56,32), or a single index (e.g. 54)', required=True)
+parser.add_argument('-tidx','--tile_idx_list', type=str, help='Indexes of the tiles to use for the training set. Can specify several ranges (e.g. 10-20,21-30,31-40), a single range (e.g. 10-24), individual indexes (e.g. 34,56,32), or a single index (e.g. 54)', required=True)
 parser.add_argument('-ssm','--small_set_mode', action='store_true', help='A small subset of the data for testing purposes.')
 parser.add_argument('-ssms','--small_set_mode_size', type=int, default='100', help='The number of tiles to sample for small set mode.', required=False)
 args = parser.parse_args()
@@ -227,7 +227,7 @@ for tile_idx in indexes_l:
                 destination_name = '{}/{}'.format(PRE_ASSIGNED_FILES_DIR, base_name)
                 shutil.copyfile(file, destination_name)
                 tile_count += 1
-        print("copied {} tiles for index {} to {}".format(tile_count, tile_idx, PRE_ASSIGNED_FILES_DIR))
+        print("copied {} tiles for index {}".format(tile_count, tile_idx))
     else:
         print("The tiles directory is required but does not exist: {}".format(tile_dir))
         sys.exit(1)
