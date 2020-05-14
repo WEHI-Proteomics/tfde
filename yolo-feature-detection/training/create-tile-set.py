@@ -113,6 +113,13 @@ parser.add_argument('-np','--number_of_processors', type=int, default=8, help='T
 parser.add_argument('-shutdown','--shutdown', action='store_true', help='Shut down the machine when complete.')
 args = parser.parse_args()
 
+# Store the arguments as metadata for later reference
+info = []
+for arg in vars(args):
+    info.append((arg, getattr(args, arg)))
+
+print("{} info: {}".format(parser.prog, info))
+
 # check the experiment directory exists
 EXPERIMENT_DIR = "{}/{}".format(args.experiment_base_dir, args.experiment_name)
 if not os.path.exists(EXPERIMENT_DIR):
