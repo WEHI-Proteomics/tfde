@@ -85,7 +85,7 @@ parser.add_argument('-tsn','--tile_set_name', type=str, default='tile-set', help
 parser.add_argument('-tn','--training_set_name', type=str, default='yolo', help='Name of the training set.', required=False)
 parser.add_argument('-rtl','--rt_lower', type=int, default=200, help='Lower bound of the RT range.', required=False)
 parser.add_argument('-rtu','--rt_upper', type=int, default=800, help='Upper bound of the RT range.', required=False)
-parser.add_argument('-tidx','--tile_idx_list', nargs='+', type=int, help='Space-separated indexes of the tiles to use for the training set.', required=True)
+parser.add_argument('-tidx','--tile_idx_list', type=str, help='Indexes of the tiles to use for the training set. Can specifiy several range (e.g. 10-20,21-30,31-40), a single range (e.g. 10-24), individual indexes (e.g. 34,56,32), or a single index (e.g. 54)', required=True)
 parser.add_argument('-ssm','--small_set_mode', action='store_true', help='A small subset of the data for testing purposes.')
 parser.add_argument('-ssms','--small_set_mode_size', type=int, default='100', help='The number of tiles to sample for small set mode.', required=False)
 args = parser.parse_args()
@@ -96,6 +96,23 @@ for arg in vars(args):
     info.append((arg, getattr(args, arg)))
 
 print("{} info: {}".format(parser.prog, info))
+
+# parse the tile indexes
+indexes_l = []
+for item in args.tile_idx_list.replace(" ", "").split(','):
+    index_range = item.split('-')
+    if all([i.isnumeric() for i in index_range]):  # only use the range if it's valid
+        index_range = [int(i) for i in index_range]
+        if len(index_range) == 2:
+            index_lower = min(index_range)
+            index_upper = max(index_range)
+            indexes_l.append([i for i in range(index_lower, index_upper+1)])
+        else:
+            indexes_l.append(index_range)
+indexes_l = [item for sublist in indexes_l for item in sublist]
+if len(indexes_l) == 0:
+    print("Need to specify at least one tile index to include training set: {}".format(args.tile_idx_list))
+    sys.exit(1)
 
 # check the experiment directory exists
 EXPERIMENT_DIR = "{}/{}".format(args.experiment_base_dir, args.experiment_name)
@@ -183,7 +200,7 @@ if not os.path.exists(TILES_BASE_DIR):
     sys.exit(1)
 
 # check the tiles directory exists for each tile index we need
-for tile_idx in args.tile_idx_list:
+for tile_idx in indexes_l:
     tile_dir = "{}/tile-{}".format(TILES_BASE_DIR, tile_idx)
     if os.path.exists(tile_dir):
         # copy the raw tiles to the pre-assigned tiles directory
