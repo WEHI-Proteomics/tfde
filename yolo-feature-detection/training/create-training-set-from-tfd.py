@@ -85,8 +85,7 @@ parser.add_argument('-tsn','--tile_set_name', type=str, default='tile-set', help
 parser.add_argument('-tn','--training_set_name', type=str, default='yolo', help='Name of the training set.', required=False)
 parser.add_argument('-rtl','--rt_lower', type=int, default=200, help='Lower bound of the RT range.', required=False)
 parser.add_argument('-rtu','--rt_upper', type=int, default=800, help='Upper bound of the RT range.', required=False)
-parser.add_argument('-tidl','--tile_idx_lower', type=int, help='Lower range of the tile indexes to include in the set.', required=True)
-parser.add_argument('-tidu','--tile_idx_upper', type=int, help='Upper range of the tile indexes to include in the set.', required=True)
+parser.add_argument('-tidx','--tile_idx_list', nargs='+', type=int, help='Space-separated indexes of the tiles to use for the training set.', required=True)
 parser.add_argument('-ssm','--small_set_mode', action='store_true', help='A small subset of the data for testing purposes.')
 parser.add_argument('-ssms','--small_set_mode_size', type=int, default='100', help='The number of tiles to sample for small set mode.', required=False)
 args = parser.parse_args()
@@ -184,7 +183,7 @@ if not os.path.exists(TILES_BASE_DIR):
     sys.exit(1)
 
 # check the tiles directory exists for each tile index we need
-for tile_idx in range(args.tile_idx_lower, args.tile_idx_upper+1):
+for tile_idx in args.tile_idx_list:
     tile_dir = "{}/tile-{}".format(TILES_BASE_DIR, tile_idx)
     if os.path.exists(tile_dir):
         # copy the raw tiles to the pre-assigned tiles directory
