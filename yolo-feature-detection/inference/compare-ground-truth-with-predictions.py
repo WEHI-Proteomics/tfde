@@ -100,3 +100,4 @@ for prediction_idx in range(len(prediction_json)):
     overlay_name = '{}/{}'.format(OVERLAY_FILES_DIR, base_name)
     cmd = "convert {} {} +append -background darkgrey -splice 10x0+910+0 {}".format(overlay_name, individual_name, composite_name)
     os.system(cmd)
+print("wrote {} composite tiles to {}".format(len(prediction_json), COMPOSITE_TILE_DIR))
