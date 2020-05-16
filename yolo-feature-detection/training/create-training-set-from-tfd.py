@@ -308,7 +308,7 @@ for idx,tile_filename in enumerate(tile_filename_list):
                 draw.rectangle(xy=[(x0_buffer, y0), (x1_buffer, y1)], fill=None, outline='red')
                 # keep record of the 'small' objects
                 total_objects += 1
-                if (yolo_w <= SMALL_OBJECT_W) and (yolo_h <= SMALL_OBJECT_H):
+                if (yolo_w <= SMALL_OBJECT_W) or (yolo_h <= SMALL_OBJECT_H):
                     small_objects += 1
                 # keep track of the number of objects in this tile
                 number_of_objects_this_tile += 1
@@ -334,7 +334,7 @@ print("{} out of {} objects ({}%) are small.".format(small_objects, total_object
 objects_per_tile_df = pd.DataFrame(objects_per_tile, columns=['tile_id','frame_id','number_of_objects'])
 objects_per_tile_df.to_pickle('{}/objects_per_tile_df.pkl'.format(TRAINING_SET_BASE_DIR))
 print("There are {} tiles with no objects.".format(len(objects_per_tile_df[objects_per_tile_df.number_of_objects == 0])))
-print("On average there are {} objects per tile.".format(np.mean(objects_per_tile_df.number_of_objects)))
+print("On average there are {} objects per tile.".format(round(np.mean(objects_per_tile_df.number_of_objects,1))))
 
 # assign the tiles to the training sets
 
