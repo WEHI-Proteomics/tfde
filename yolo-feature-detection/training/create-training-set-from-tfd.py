@@ -328,7 +328,7 @@ for idx,tile_filename in enumerate(tile_filename_list):
 # display the object counts for each class
 for c in sorted(classes_d.keys()):
     print("charge {} objects: {}".format(c+2, classes_d[c]))
-print("{} out of {} objects are small.".format(small_objects, total_objects))
+print("{} out of {} objects ({}%) are small.".format(small_objects, total_objects, round(small_objects/total_objects*100,1)))
 
 # display the number of objects per tile
 objects_per_tile_df = pd.DataFrame(objects_per_tile, columns=['tile_id','frame_id','number_of_objects'])
