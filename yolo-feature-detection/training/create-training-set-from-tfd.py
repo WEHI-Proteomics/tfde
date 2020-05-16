@@ -246,6 +246,7 @@ classes_d = {}
 small_objects = 0
 total_objects = 0
 tile_list = []
+objects_per_tile = []
 
 # for each raw tile, create its overlay and label text file
 for idx,tile_filename in enumerate(tile_filename_list):
@@ -255,6 +256,8 @@ for idx,tile_filename in enumerate(tile_filename_list):
     base_name = os.path.basename(tile_filename)
     frame_id = int(base_name.split('-')[1])
     tile_id = int(base_name.split('-')[3].split('.')[0])
+
+    number_of_objects_this_tile = 0
 
     # get the m/z range for this tile
     (tile_mz_lower,tile_mz_upper) = mz_range_for_tile(tile_id)
@@ -307,6 +310,8 @@ for idx,tile_filename in enumerate(tile_filename_list):
                 total_objects += 1
                 if (w <= SMALL_OBJECT_W) and (h <= SMALL_OBJECT_H):
                     small_objects += 1
+                # keep track of the number of objects in this tile
+                number_of_objects_this_tile += 1
             else:
                 print("found a charge-{} feature - not included in the training set".format(charge))
 
@@ -317,11 +322,19 @@ for idx,tile_filename in enumerate(tile_filename_list):
     with open(annotations_path, 'w') as f:
         for item in feature_coordinates:
             f.write("%s\n" % item)
+    
+    objects_per_tile.append((tile_id, frame_id, number_of_objects_this_tile))
 
 # display the object counts for each class
 for c in sorted(classes_d.keys()):
     print("charge {} objects: {}".format(c+2, classes_d[c]))
 print("{} out of {} objects are small.".format(small_objects, total_objects))
+
+# display the number of objects per tile
+objects_per_tile_df = pd.DataFrame(objects_per_tile, columns=['tile_id','frame_id','number_of_objects'])
+objects_per_tile_df.to_pickle('{}/objects_per_tile_df.pkl'.format(TRAINING_SET_BASE_DIR))
+print("There are {} tiles with no objects.".format(len(objects_per_tile_df[objects_per_tile_df.number_of_objects == 0])))
+print("On average there are {} objects per tile.".format(np.mean(objects_per_tile_df.number_of_objects)))
 
 # assign the tiles to the training sets
 
