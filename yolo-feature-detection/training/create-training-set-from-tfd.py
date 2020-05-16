@@ -334,7 +334,7 @@ print("{} out of {} objects ({}%) are small.".format(small_objects, total_object
 objects_per_tile_df = pd.DataFrame(objects_per_tile, columns=['tile_id','frame_id','number_of_objects'])
 objects_per_tile_df.to_pickle('{}/objects_per_tile_df.pkl'.format(TRAINING_SET_BASE_DIR))
 print("There are {} tiles with no objects.".format(len(objects_per_tile_df[objects_per_tile_df.number_of_objects == 0])))
-print("On average there are {} objects per tile.".format(round(np.mean(objects_per_tile_df.number_of_objects,1))))
+print("On average there are {} objects per tile.".format(round(np.mean(objects_per_tile_df.number_of_objects),1)))
 
 # assign the tiles to the training sets
 
