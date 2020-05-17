@@ -12,6 +12,19 @@ import ray
 # Create a set of tiles without labels for training purposes. This version uses Mk3 of the tile rendering algorithm.
 # Example: python ./otf-peak-detect/yolo-feature-detection/training/create-raw-data-tiles.py -eb ~/Downloads/experiments -en 190719_Hela_Ecoli -rn 190719_Hela_Ecoli_1to3_06 -tidx 33 34
 
+PIXELS_X = 910
+PIXELS_Y = 910  # equal to the number of scan lines
+MZ_MIN = 100.0
+MZ_MAX = 1700.0
+SCAN_MAX = PIXELS_Y
+SCAN_MIN = 1
+MZ_PER_TILE = 18.0
+TILES_PER_FRAME = int((MZ_MAX - MZ_MIN) / MZ_PER_TILE) + 1
+
+# frame types for PASEF mode
+FRAME_TYPE_MS1 = 0
+FRAME_TYPE_MS2 = 8
+
 def run_process(process):
     print("Executing: {}".format(process))
     os.system(process)
@@ -93,10 +106,6 @@ def create_indexes(db_file_name):
     db_conn.close()
 
 
-# frame types for PASEF mode
-FRAME_TYPE_MS1 = 0
-FRAME_TYPE_MS2 = 8
-
 parser = argparse.ArgumentParser(description='Create the tiles from raw data.')
 parser.add_argument('-eb','--experiment_base_dir', type=str, default='./experiments', help='Path to the experiments directory.', required=False)
 parser.add_argument('-en','--experiment_name', type=str, help='Name of the experiment.', required=True)
@@ -155,25 +164,10 @@ for tile_idx in range(args.tile_idx_lower, args.tile_idx_upper+1):
 
 start_run = time.time()
 
-# Store the arguments as metadata for later reference
-info = []
-for arg in vars(args):
-    info.append((arg, getattr(args, arg)))
-
-print("{} info: {}".format(parser.prog, info))
-
-PIXELS_X = 910
-PIXELS_Y = 910  # equal to the number of scan lines
-MZ_MIN = 100.0
-MZ_MAX = 1700.0
-SCAN_MAX = PIXELS_Y
-SCAN_MIN = 1
-MZ_PER_TILE = 18.0
-TILES_PER_FRAME = int((MZ_MAX - MZ_MIN) / MZ_PER_TILE) + 1
-
 print("creating indexes")
 create_indexes(CONVERTED_DATABASE_NAME)
 
+print("rendering tiles {} to {}, with m/z range {} to {}".format(args.tile_idx_lower, args.tile_idx_upper, round(mz_range_for_tile(args.tile_idx_lower)[0],1), round(mz_range_for_tile(args.tile_idx_upper)[1],1)))
 
 if not ray.is_initialized():
     ray.init(num_cpus=args.number_of_processors)
