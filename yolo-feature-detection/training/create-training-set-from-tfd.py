@@ -19,6 +19,8 @@ SCAN_MAX = PIXELS_Y
 SCAN_MIN = 1
 MZ_PER_TILE = 18.0
 TILES_PER_FRAME = int((MZ_MAX - MZ_MIN) / MZ_PER_TILE) + 1
+MIN_TILE_IDX = 0
+MAX_TILE_IDX = TILES_PER_FRAME-1
 
 # frame types for PASEF mode
 FRAME_TYPE_MS1 = 0
@@ -89,7 +91,7 @@ parser.add_argument('-tsn','--tile_set_name', type=str, default='tile-set', help
 parser.add_argument('-tn','--training_set_name', type=str, default='yolo', help='Name of the training set.', required=False)
 parser.add_argument('-rtl','--rt_lower', type=int, default=200, help='Lower bound of the RT range.', required=False)
 parser.add_argument('-rtu','--rt_upper', type=int, default=800, help='Upper bound of the RT range.', required=False)
-parser.add_argument('-tidx','--tile_idx_list', type=str, help='Indexes of the tiles to use for the training set. Can specify several ranges (e.g. 10-20,21-30,31-40), a single range (e.g. 10-24), individual indexes (e.g. 34,56,32), or a single index (e.g. 54)', required=True)
+parser.add_argument('-tidx','--tile_idx_list', type=str, help='Indexes of the tiles to use for the training set. Can specify several ranges (e.g. 10-20,21-30,31-40), a single range (e.g. 10-24), individual indexes (e.g. 34,56,32), or a single index (e.g. 54). Indexes must be between {} and {}'.format(MIN_TILE_IDX,MAX_TILE_IDX), required=True)
 parser.add_argument('-ssm','--small_set_mode', action='store_true', help='A small subset of the data for testing purposes.')
 parser.add_argument('-ssms','--small_set_mode_size', type=int, default='100', help='The number of tiles to sample for small set mode.', required=False)
 args = parser.parse_args()
