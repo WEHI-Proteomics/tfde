@@ -111,8 +111,10 @@ for item in args.tile_idx_list.replace(" ", "").split(','):
             index_lower = min(index_range)
             index_upper = max(index_range)
             indexes_l.append([i for i in range(index_lower, index_upper+1)])
+            print("tile range {}-{}, with m/z range {} to {}".format(index_lower, index_upper, round(mz_range_for_tile(index_lower)[0],1), round(mz_range_for_tile(index_upper)[1],1)))
         else:
             indexes_l.append(index_range)
+            print("tile index {}, with m/z range {} to {}".format(index_range, round(mz_range_for_tile(index_range)[0],1), round(mz_range_for_tile(index_range)[1],1)))
 indexes_l = [item for sublist in indexes_l for item in sublist]
 if len(indexes_l) == 0:
     print("Need to specify at least one tile index to include training set: {}".format(args.tile_idx_list))
