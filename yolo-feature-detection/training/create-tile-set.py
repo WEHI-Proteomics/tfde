@@ -20,6 +20,9 @@ SCAN_MAX = PIXELS_Y
 SCAN_MIN = 1
 MZ_PER_TILE = 18.0
 TILES_PER_FRAME = int((MZ_MAX - MZ_MIN) / MZ_PER_TILE) + 1
+MIN_TILE_IDX = 0
+MAX_TILE_IDX = TILES_PER_FRAME-1
+
 
 # frame types for PASEF mode
 FRAME_TYPE_MS1 = 0
@@ -116,8 +119,8 @@ parser.add_argument('-rtu','--rt_upper', type=int, default=800, help='Upper boun
 parser.add_argument('-maxpi','--maximum_pixel_intensity', type=int, default=1000, help='Maximum pixel intensity for encoding, above which will be clipped.', required=False)
 parser.add_argument('-minpi','--minimum_pixel_intensity', type=int, default=1, help='Minimum pixel intensity for encoding, below which will be clipped.', required=False)
 parser.add_argument('-inp','--interpolate_neighbouring_pixels', action='store_true', help='Use the value of surrounding pixels to fill zero pixels.')
-parser.add_argument('-tidl','--tile_idx_lower', type=int, help='Lower range of the tile indexes to render.', required=True)
-parser.add_argument('-tidu','--tile_idx_upper', type=int, help='Upper range of the tile indexes to render.', required=True)
+parser.add_argument('-tidl','--tile_idx_lower', type=int, help='Lower range of the tile indexes to render. Must be between {} and {}'.format(MIN_TILE_IDX,MAX_TILE_IDX), required=True)
+parser.add_argument('-tidu','--tile_idx_upper', type=int, help='Upper range of the tile indexes to render. Must be between {} and {}'.format(MIN_TILE_IDX,MAX_TILE_IDX), required=True)
 parser.add_argument('-np','--number_of_processors', type=int, default=8, help='The number of processors to use.', required=False)
 parser.add_argument('-shutdown','--shutdown', action='store_true', help='Shut down the machine when complete.')
 args = parser.parse_args()
@@ -128,6 +131,11 @@ for arg in vars(args):
     info.append((arg, getattr(args, arg)))
 
 print("{} info: {}".format(parser.prog, info))
+
+# check the tile index range
+if (args.tile_idx_lower < MIN_TILE_IDX) or (args.tile_idx_lower > MAX_TILE_IDX) or (args.tile_idx_upper < MIN_TILE_IDX) or (args.tile_idx_upper > MAX_TILE_IDX):
+    print("The tile index must be between {} and {} inclusive".format(MIN_TILE_IDX, MAX_TILE_IDX))
+    sys.exit(1)
 
 # check the experiment directory exists
 EXPERIMENT_DIR = "{}/{}".format(args.experiment_base_dir, args.experiment_name)
