@@ -1,6 +1,6 @@
 # This application creates everything YOLO needs in the training set. The output base directory should be copied to ~/darket/data/peptides on the training machine with scp -rp. Prior to this step, the raw tiles must be created with create-raw-data-tiles.py.
 import json
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageChops
 import os, shutil
 import random
 import argparse
@@ -92,6 +92,7 @@ parser.add_argument('-tn','--training_set_name', type=str, default='yolo', help=
 parser.add_argument('-rtl','--rt_lower', type=int, default=200, help='Lower bound of the RT range.', required=False)
 parser.add_argument('-rtu','--rt_upper', type=int, default=800, help='Upper bound of the RT range.', required=False)
 parser.add_argument('-tidx','--tile_idx_list', type=str, help='Indexes of the tiles to use for the training set. Can specify several ranges (e.g. 10-20,21-30,31-40), a single range (e.g. 10-24), individual indexes (e.g. 34,56,32), or a single index (e.g. 54). Indexes must be between {} and {}'.format(MIN_TILE_IDX,MAX_TILE_IDX), required=True)
+parser.add_argument('-inf','--inference_mode', action='store_true', help='This set of labelled tiles is for inference rather than training.')
 parser.add_argument('-ssm','--small_set_mode', action='store_true', help='A small subset of the data for testing purposes.')
 parser.add_argument('-ssms','--small_set_mode_size', type=int, default='100', help='The number of tiles to sample for small set mode.', required=False)
 args = parser.parse_args()
@@ -155,7 +156,7 @@ if not os.path.isfile(EXTRACTED_FEATURES_DB_NAME):
 MAPPING_FILE_NAME = "{}/recalibrated-percolator-output/percolator-idx-mapping.csv".format(EXPERIMENT_DIR)
 
 
-# load the extracted features
+# load the extracted features for the specified run
 print("reading the extracted features from {}".format(EXTRACTED_FEATURES_DB_NAME))
 db_conn = sqlite3.connect(EXTRACTED_FEATURES_DB_NAME)
 sequences_df = pd.read_sql_query('select sequence,charge,run_name,monoisotopic_mz_centroid,number_of_isotopes,mono_rt_bounds,mono_scan_bounds,isotope_1_rt_bounds,isotope_1_scan_bounds,isotope_2_rt_bounds,isotope_2_scan_bounds,isotope_intensities_l from features where file_idx=={}'.format(file_idx_for_run(args.run_name)), db_conn)
@@ -188,7 +189,9 @@ sequences_df['mz_upper'] = sequences_df.apply(lambda row: np.max([i[0] for i in 
 TRAINING_SET_BASE_DIR = '{}/training-sets/{}'.format(EXPERIMENT_DIR, args.training_set_name)
 PRE_ASSIGNED_FILES_DIR = '{}/pre-assigned'.format(TRAINING_SET_BASE_DIR)
 OVERLAY_FILES_DIR = '{}/overlays'.format(TRAINING_SET_BASE_DIR)
+MASK_FILES_DIR = '{}/masks'.format(TRAINING_SET_BASE_DIR)
 
+# make sure they're empty for a fresh start
 if os.path.exists(TRAINING_SET_BASE_DIR):
     shutil.rmtree(TRAINING_SET_BASE_DIR)
 os.makedirs(TRAINING_SET_BASE_DIR)
@@ -200,6 +203,10 @@ os.makedirs(PRE_ASSIGNED_FILES_DIR)
 if os.path.exists(OVERLAY_FILES_DIR):
     shutil.rmtree(OVERLAY_FILES_DIR)
 os.makedirs(OVERLAY_FILES_DIR)
+
+if os.path.exists(MASK_FILES_DIR):
+    shutil.rmtree(MASK_FILES_DIR)
+os.makedirs(MASK_FILES_DIR)
 
 # check the raw tiles base directory exists
 TILES_BASE_DIR = '{}/tiles/{}/{}'.format(EXPERIMENT_DIR, args.run_name, args.tile_set_name)
@@ -276,6 +283,10 @@ for idx,tile_filename in enumerate(tile_filename_list):
     intersecting_features_df = sequences_df[(sequences_df.rt_lower <= frame_rt) & (sequences_df.rt_upper >= frame_rt) & (sequences_df.mz_lower >= tile_mz_lower) & (sequences_df.mz_upper <= tile_mz_upper)]
     # remember the coordinates so we can write them to the annotations file
     feature_coordinates = []
+    # create a feature mask
+    mask_im_array = np.zeros([PIXELS_Y+1, PIXELS_X+1, 3], dtype=np.uint8)  # container for the image mask
+    mask = Image.fromarray(mask_im_array, 'RGB')
+    mask_draw = ImageDraw.Draw(mask)
     # draw the labels on the raw tile
     img = Image.open(tile_filename)
     draw = ImageDraw.Draw(img)
@@ -310,6 +321,8 @@ for idx,tile_filename in enumerate(tile_filename_list):
                 feature_coordinates.append(("{} {:.6f} {:.6f} {:.6f} {:.6f}".format(feature_class, yolo_x, yolo_y, yolo_w, yolo_h)))
                 # draw the rectangle
                 draw.rectangle(xy=[(x0_buffer, y0), (x1_buffer, y1)], fill=None, outline='red')
+                # draw the mask for this feature
+                mask_draw.rectangle(xy=[(x0_buffer, y0), (x1_buffer, y1)], fill='white', outline='white')
                 # keep record of the 'small' objects
                 total_objects += 1
                 if (yolo_w <= SMALL_OBJECT_W) or (yolo_h <= SMALL_OBJECT_H):
@@ -319,8 +332,14 @@ for idx,tile_filename in enumerate(tile_filename_list):
             else:
                 print("found a charge-{} feature - not included in the training set".format(charge))
 
+    # apply the mask to the overlay
+    masked_overlay = img and mask
+
     # write the overlay tile
-    img.save('{}/{}'.format(OVERLAY_FILES_DIR, base_name))
+    masked_overlay.save('{}/{}'.format(OVERLAY_FILES_DIR, base_name))
+
+    # write the mask
+    mask.save('{}/{}'.format(MASK_FILES_DIR, base_name))
 
     # write the annotations text file
     with open(annotations_path, 'w') as f:
