@@ -411,6 +411,9 @@ val_set = random.sample(val_test_set, val_n)
 test_set = list(set(val_test_set) - set(val_set))
 
 logger.info("tile set counts - train {}, validation {}, test {}".format(len(train_set), len(val_set), len(test_set)))
+number_of_classes = MAX_CHARGE - MIN_CHARGE + 1
+max_batches = max(6000, max(2000*number_of_classes, len(train_set)))
+logger.info("set max_batches={}, steps={},{},{},{}".format(max_batches, int(0.4*max_batches), int(0.6*max_batches), int(0.8*max_batches), int(0.9*max_batches)))
 
 for file_pair in train_set:
     shutil.copyfile('{}/{}'.format(PRE_ASSIGNED_FILES_DIR, file_pair[0]), '{}/{}'.format(TRAIN_SET_DIR, file_pair[0]))
