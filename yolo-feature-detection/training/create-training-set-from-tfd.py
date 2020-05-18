@@ -333,13 +333,18 @@ for idx,tile_filename in enumerate(tile_filename_list):
                 print("found a charge-{} feature - not included in the training set".format(charge))
 
     # apply the mask to the overlay
-    masked_overlay = img and mask
+    masked_overlay = ImageChops.multiply(img, mask)
 
     # write the overlay tile
     masked_overlay.save('{}/{}'.format(OVERLAY_FILES_DIR, base_name))
 
     # write the mask
     mask.save('{}/{}'.format(MASK_FILES_DIR, base_name))
+
+    # apply the mask to the tile
+    img = Image.open("{}/{}".format(PRE_ASSIGNED_FILES_DIR, base_name))
+    masked_tile = ImageChops.multiply(img, mask)
+    masked_tile.save("{}/{}".format(PRE_ASSIGNED_FILES_DIR, base_name))
 
     # write the annotations text file
     with open(annotations_path, 'w') as f:
