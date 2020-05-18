@@ -92,7 +92,7 @@ parser.add_argument('-tn','--training_set_name', type=str, default='yolo', help=
 parser.add_argument('-rtl','--rt_lower', type=int, default=200, help='Lower bound of the RT range.', required=False)
 parser.add_argument('-rtu','--rt_upper', type=int, default=800, help='Upper bound of the RT range.', required=False)
 parser.add_argument('-tidx','--tile_idx_list', type=str, help='Indexes of the tiles to use for the training set. Can specify several ranges (e.g. 10-20,21-30,31-40), a single range (e.g. 10-24), individual indexes (e.g. 34,56,32), or a single index (e.g. 54). Indexes must be between {} and {}'.format(MIN_TILE_IDX,MAX_TILE_IDX), required=True)
-parser.add_argument('-inf','--inference_mode', action='store_true', help='This set of labelled tiles is for inference rather than training.')
+parser.add_argument('-inf','--inference_mode', action='store_true', help='This set of labelled tiles is for inference (without feature-masking) rather than training (with feature-masking).')
 parser.add_argument('-ssm','--small_set_mode', action='store_true', help='A small subset of the data for testing purposes.')
 parser.add_argument('-ssms','--small_set_mode_size', type=int, default='100', help='The number of tiles to sample for small set mode.', required=False)
 args = parser.parse_args()
@@ -117,7 +117,7 @@ for item in args.tile_idx_list.replace(" ", "").split(','):
             print("tile range {}-{}, with m/z range {} to {}".format(index_lower, index_upper, round(mz_range_for_tile(index_lower)[0],1), round(mz_range_for_tile(index_upper)[1],1)))
         else:
             indexes_l.append(index_range)
-            print("tile index {}, with m/z range {} to {}".format(index_range, round(mz_range_for_tile(index_range)[0],1), round(mz_range_for_tile(index_range)[1],1)))
+            print("tile index {}, with m/z range {} to {}".format(index_range[0], round(mz_range_for_tile(index_range[0])[0],1), round(mz_range_for_tile(index_range[0])[1],1)))
 indexes_l = [item for sublist in indexes_l for item in sublist]
 if len(indexes_l) == 0:
     print("Need to specify at least one tile index to include training set: {}".format(args.tile_idx_list))
