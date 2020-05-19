@@ -317,10 +317,11 @@ for idx,tile_filename in enumerate(tile_filename_list):
     intersecting_features_df = sequences_df[(sequences_df.rt_lower <= frame_rt) & (sequences_df.rt_upper >= frame_rt) & (sequences_df.mz_lower >= tile_mz_lower) & (sequences_df.mz_upper <= tile_mz_upper)]
     # remember the coordinates so we can write them to the annotations file
     feature_coordinates = []
-    # create a feature mask
-    mask_im_array = np.zeros([PIXELS_Y+1, PIXELS_X+1, 3], dtype=np.uint8)  # container for the image mask
-    mask = Image.fromarray(mask_im_array, 'RGB')
-    mask_draw = ImageDraw.Draw(mask)
+    if not args.inference_mode:
+        # create a feature mask
+        mask_im_array = np.zeros([PIXELS_Y+1, PIXELS_X+1, 3], dtype=np.uint8)  # container for the image mask
+        mask = Image.fromarray(mask_im_array, 'RGB')
+        mask_draw = ImageDraw.Draw(mask)
     # draw the labels on the raw tile
     img = Image.open(tile_filename)
     draw = ImageDraw.Draw(img)
@@ -353,10 +354,11 @@ for idx,tile_filename in enumerate(tile_filename_list):
                     classes_d[feature_class] = 1
                 # add it to the list
                 feature_coordinates.append(("{} {:.6f} {:.6f} {:.6f} {:.6f}".format(feature_class, yolo_x, yolo_y, yolo_w, yolo_h)))
-                # draw the rectangle
+                # draw the rectangle on the overlay
                 draw.rectangle(xy=[(x0_buffer, y0), (x1_buffer, y1)], fill=None, outline='red')
-                # draw the mask for this feature
-                mask_draw.rectangle(xy=[(x0_buffer, y0), (x1_buffer, y1)], fill='white', outline='white')
+                if not args.inference_mode:
+                    # draw the mask for this feature
+                    mask_draw.rectangle(xy=[(x0_buffer, y0), (x1_buffer, y1)], fill='white', outline='white')
                 # keep record of the 'small' objects
                 total_objects += 1
                 if (yolo_w <= SMALL_OBJECT_W) or (yolo_h <= SMALL_OBJECT_H):
@@ -366,19 +368,23 @@ for idx,tile_filename in enumerate(tile_filename_list):
             else:
                 logger.info("found a charge-{} feature - not included in the training set".format(charge))
 
-    # apply the mask to the overlay
-    masked_overlay = ImageChops.multiply(img, mask)
+    if args.inference_mode:
+        # write the overlay tile
+        img.save('{}/{}'.format(OVERLAY_FILES_DIR, base_name))
+    else:
+        # apply the mask to the overlay
+        masked_overlay = ImageChops.multiply(img, mask)
 
-    # write the overlay tile
-    masked_overlay.save('{}/{}'.format(OVERLAY_FILES_DIR, base_name))
+        # write the overlay tile
+        masked_overlay.save('{}/{}'.format(OVERLAY_FILES_DIR, base_name))
 
-    # write the mask
-    mask.save('{}/{}'.format(MASK_FILES_DIR, base_name))
+        # write the mask
+        mask.save('{}/{}'.format(MASK_FILES_DIR, base_name))
 
-    # apply the mask to the tile
-    img = Image.open("{}/{}".format(PRE_ASSIGNED_FILES_DIR, base_name))
-    masked_tile = ImageChops.multiply(img, mask)
-    masked_tile.save("{}/{}".format(PRE_ASSIGNED_FILES_DIR, base_name))
+        # apply the mask to the tile
+        img = Image.open("{}/{}".format(PRE_ASSIGNED_FILES_DIR, base_name))
+        masked_tile = ImageChops.multiply(img, mask)
+        masked_tile.save("{}/{}".format(PRE_ASSIGNED_FILES_DIR, base_name))
 
     # write the annotations text file
     with open(annotations_path, 'w') as f:
