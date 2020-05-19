@@ -83,6 +83,11 @@ def run_name_for_file_idx(file_idx):
             break
     return result
 
+def scan_coords_for_single_charge_region(mz_lower, mz_upper):
+    scan_for_mz_lower = -1 * ((1.2 * mz_lower) - 1252)
+    scan_for_mz_upper = -1 * ((1.2 * mz_upper) - 1252)
+    return (scan_for_mz_lower,scan_for_mz_upper)
+
 # python ./otf-peak-detect/yolo-feature-detection/training/create-training-set-from-tfd.py -eb ~/Downloads/experiments -en dwm-test -rn 190719_Hela_Ecoli_1to1_01 -tidx 34
 
 parser = argparse.ArgumentParser(description='Set up a training set from raw tiles.')
@@ -322,6 +327,9 @@ for idx,tile_filename in enumerate(tile_filename_list):
         mask_im_array = np.zeros([PIXELS_Y+1, PIXELS_X+1, 3], dtype=np.uint8)  # container for the image mask
         mask = Image.fromarray(mask_im_array, 'RGB')
         mask_draw = ImageDraw.Draw(mask)
+        # fill in the charge-1 area that we want to preserve
+        mask_region_y_left,mask_region_y_right = scan_coords_for_single_charge_region(tile_mz_lower, tile_mz_upper)
+        mask_draw.polygon(xy=[(0,0),(910,0),(910,mask_region_y_right),(0,mask_region_y_left)], fill='white', outline='white')
     # draw the labels on the raw tile
     img = Image.open(tile_filename)
     draw = ImageDraw.Draw(img)
