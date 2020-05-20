@@ -37,7 +37,7 @@ if not os.path.exists(PRE_ASSIGNED_FILES_DIR):
     print("The pre-assigned directory is required but doesn't exist: {}".format(PRE_ASSIGNED_FILES_DIR))
     sys.exit(1)
 
-PREDICTIONS_BASE_DIR = '{}/predictions'.format(EXPERIMENT_DIR)
+PREDICTIONS_BASE_DIR = '{}/predictions/{}'.format(EXPERIMENT_DIR, args.training_set_name)
 if not os.path.exists(PREDICTIONS_BASE_DIR):
     os.makedirs(PREDICTIONS_BASE_DIR)
 

@@ -207,6 +207,13 @@ if os.path.exists(TEST_SET_DIR):
     shutil.rmtree(TEST_SET_DIR)
 os.makedirs(TEST_SET_DIR)
 
+# create a place for the predictions for this inference set
+if args.inference_mode:
+    PREDICTIONS_BASE_DIR = '{}/predictions/{}'.format(EXPERIMENT_DIR, args.training_set_name)
+    if os.path.exists(PREDICTIONS_BASE_DIR):
+        shutil.rmtree(PREDICTIONS_BASE_DIR)
+    os.makedirs(PREDICTIONS_BASE_DIR)
+
 # set up logging
 logger = logging.getLogger(__name__)  
 logger.setLevel(logging.INFO)
