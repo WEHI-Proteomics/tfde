@@ -10,6 +10,8 @@ import pandas as pd
 import sys
 import pickle
 import numpy as np
+import logging
+
 
 PIXELS_X = 910
 PIXELS_Y = 910  # equal to the number of scan lines
@@ -81,6 +83,11 @@ def run_name_for_file_idx(file_idx):
             break
     return result
 
+def scan_coords_for_single_charge_region(mz_lower, mz_upper):
+    scan_for_mz_lower = -1 * ((1.2 * mz_lower) - 1252)
+    scan_for_mz_upper = -1 * ((1.2 * mz_upper) - 1252)
+    return (scan_for_mz_lower,scan_for_mz_upper)
+
 # python ./otf-peak-detect/yolo-feature-detection/training/create-training-set-from-tfd.py -eb ~/Downloads/experiments -en dwm-test -rn 190719_Hela_Ecoli_1to1_01 -tidx 34
 
 parser = argparse.ArgumentParser(description='Set up a training set from raw tiles.')
@@ -97,12 +104,10 @@ parser.add_argument('-ssm','--small_set_mode', action='store_true', help='A smal
 parser.add_argument('-ssms','--small_set_mode_size', type=int, default='100', help='The number of tiles to sample for small set mode.', required=False)
 args = parser.parse_args()
 
-# Store the arguments as metadata for later reference
+# store the command line arguments as metadata for later reference
 info = []
 for arg in vars(args):
     info.append((arg, getattr(args, arg)))
-
-print("{} info: {}".format(parser.prog, info))
 
 # parse the tile indexes
 indexes_l = []
@@ -114,10 +119,10 @@ for item in args.tile_idx_list.replace(" ", "").split(','):
             index_lower = min(index_range)
             index_upper = max(index_range)
             indexes_l.append([i for i in range(index_lower, index_upper+1)])
-            print("tile range {}-{}, with m/z range {} to {}".format(index_lower, index_upper, round(mz_range_for_tile(index_lower)[0],1), round(mz_range_for_tile(index_upper)[1],1)))
+            info.append("tile range {}-{}, with m/z range {} to {}".format(index_lower, index_upper, round(mz_range_for_tile(index_lower)[0],1), round(mz_range_for_tile(index_upper)[1],1)))
         else:
             indexes_l.append(index_range)
-            print("tile index {}, with m/z range {} to {}".format(index_range[0], round(mz_range_for_tile(index_range[0])[0],1), round(mz_range_for_tile(index_range[0])[1],1)))
+            info.append("tile index {}, with m/z range {} to {}".format(index_range[0], round(mz_range_for_tile(index_range[0])[0],1), round(mz_range_for_tile(index_range[0])[1],1)))
 indexes_l = [item for sublist in indexes_l for item in sublist]
 if len(indexes_l) == 0:
     print("Need to specify at least one tile index to include training set: {}".format(args.tile_idx_list))
@@ -155,36 +160,6 @@ if not os.path.isfile(EXTRACTED_FEATURES_DB_NAME):
 
 MAPPING_FILE_NAME = "{}/recalibrated-percolator-output/percolator-idx-mapping.csv".format(EXPERIMENT_DIR)
 
-
-# load the extracted features for the specified run
-print("reading the extracted features from {}".format(EXTRACTED_FEATURES_DB_NAME))
-db_conn = sqlite3.connect(EXTRACTED_FEATURES_DB_NAME)
-sequences_df = pd.read_sql_query('select sequence,charge,run_name,monoisotopic_mz_centroid,number_of_isotopes,mono_rt_bounds,mono_scan_bounds,isotope_1_rt_bounds,isotope_1_scan_bounds,isotope_2_rt_bounds,isotope_2_scan_bounds,isotope_intensities_l from features where file_idx=={}'.format(file_idx_for_run(args.run_name)), db_conn)
-db_conn.close()
-print("loaded {} extracted features from {}".format(len(sequences_df), EXTRACTED_FEATURES_DB_NAME))
-
-# unpack the feature extents
-print("unpacking the feature extents")
-sequences_df.mono_rt_bounds = sequences_df.apply(lambda row: json.loads(row.mono_rt_bounds), axis=1)
-sequences_df.mono_scan_bounds = sequences_df.apply(lambda row: json.loads(row.mono_scan_bounds), axis=1)
-
-sequences_df.isotope_1_rt_bounds = sequences_df.apply(lambda row: json.loads(row.isotope_1_rt_bounds), axis=1)
-sequences_df.isotope_1_scan_bounds = sequences_df.apply(lambda row: json.loads(row.isotope_1_scan_bounds), axis=1)
-
-sequences_df.isotope_2_rt_bounds = sequences_df.apply(lambda row: json.loads(row.isotope_2_rt_bounds), axis=1)
-sequences_df.isotope_2_scan_bounds = sequences_df.apply(lambda row: json.loads(row.isotope_2_scan_bounds), axis=1)
-
-sequences_df.isotope_intensities_l = sequences_df.apply(lambda row: json.loads(row.isotope_intensities_l), axis=1)
-
-sequences_df['rt_lower'] = sequences_df.apply(lambda row: np.min([i[0] for i in [row.mono_rt_bounds,row.isotope_1_rt_bounds,row.isotope_2_rt_bounds]]), axis=1)
-sequences_df['rt_upper'] = sequences_df.apply(lambda row: np.max([i[1] for i in [row.mono_rt_bounds,row.isotope_1_rt_bounds,row.isotope_2_rt_bounds]]), axis=1)
-
-sequences_df['scan_lower'] = sequences_df.apply(lambda row: np.min([i[0] for i in [row.mono_scan_bounds,row.isotope_1_scan_bounds,row.isotope_2_scan_bounds]]), axis=1)
-sequences_df['scan_upper'] = sequences_df.apply(lambda row: np.max([i[1] for i in [row.mono_scan_bounds,row.isotope_1_scan_bounds,row.isotope_2_scan_bounds]]), axis=1)
-
-sequences_df['mz_lower'] = sequences_df.apply(lambda row: np.min([i[0] for i in row.isotope_intensities_l[0][4]]), axis=1)  # [0][4] refers to the isotope points of the monoisotope; i[0] refers to the m/z values
-sequences_df['mz_upper'] = sequences_df.apply(lambda row: np.max([i[0] for i in row.isotope_intensities_l[row.number_of_isotopes-1][4]]), axis=1)
-
 # set up the training base directories
 TRAINING_SET_BASE_DIR = '{}/training-sets/{}'.format(EXPERIMENT_DIR, args.training_set_name)
 PRE_ASSIGNED_FILES_DIR = '{}/pre-assigned'.format(TRAINING_SET_BASE_DIR)
@@ -214,8 +189,72 @@ if not os.path.exists(TILES_BASE_DIR):
     print("The raw tiles base directory is required but does not exist: {}".format(TILES_BASE_DIR))
     sys.exit(1)
 
+# set up the training sets directories
+SETS_BASE_DIR = '{}/sets'.format(TRAINING_SET_BASE_DIR)
+TRAIN_SET_DIR = '{}/train'.format(SETS_BASE_DIR)
+VAL_SET_DIR = '{}/validation'.format(SETS_BASE_DIR)
+TEST_SET_DIR = '{}/test'.format(SETS_BASE_DIR)
+
+if os.path.exists(TRAIN_SET_DIR):
+    shutil.rmtree(TRAIN_SET_DIR)
+os.makedirs(TRAIN_SET_DIR)
+
+if os.path.exists(VAL_SET_DIR):
+    shutil.rmtree(VAL_SET_DIR)
+os.makedirs(VAL_SET_DIR)
+
+if os.path.exists(TEST_SET_DIR):
+    shutil.rmtree(TEST_SET_DIR)
+os.makedirs(TEST_SET_DIR)
+
+# set up logging
+logger = logging.getLogger(__name__)  
+logger.setLevel(logging.INFO)
+formatter = logging.Formatter('%(asctime)s : %(levelname)s : %(name)s : %(message)s')
+# set the file handler
+file_handler = logging.FileHandler('{}/{}.log'.format(TRAINING_SET_BASE_DIR, parser.prog))
+file_handler.setFormatter(formatter)
+logger.addHandler(file_handler)
+# set the console handler
+console_handler = logging.StreamHandler()
+console_handler.setFormatter(formatter)
+logger.addHandler(console_handler)
+
+logger.info("{} info: {}".format(parser.prog, info))
+
+
+
+# load the extracted features for the specified run
+logger.info("reading the extracted features from {}".format(EXTRACTED_FEATURES_DB_NAME))
+db_conn = sqlite3.connect(EXTRACTED_FEATURES_DB_NAME)
+sequences_df = pd.read_sql_query('select sequence,charge,run_name,monoisotopic_mz_centroid,number_of_isotopes,mono_rt_bounds,mono_scan_bounds,isotope_1_rt_bounds,isotope_1_scan_bounds,isotope_2_rt_bounds,isotope_2_scan_bounds,isotope_intensities_l from features where file_idx=={}'.format(file_idx_for_run(args.run_name)), db_conn)
+db_conn.close()
+logger.info("loaded {} extracted features from {}".format(len(sequences_df), EXTRACTED_FEATURES_DB_NAME))
+
+# unpack the feature extents
+logger.info("unpacking the feature extents")
+sequences_df.mono_rt_bounds = sequences_df.apply(lambda row: json.loads(row.mono_rt_bounds), axis=1)
+sequences_df.mono_scan_bounds = sequences_df.apply(lambda row: json.loads(row.mono_scan_bounds), axis=1)
+
+sequences_df.isotope_1_rt_bounds = sequences_df.apply(lambda row: json.loads(row.isotope_1_rt_bounds), axis=1)
+sequences_df.isotope_1_scan_bounds = sequences_df.apply(lambda row: json.loads(row.isotope_1_scan_bounds), axis=1)
+
+sequences_df.isotope_2_rt_bounds = sequences_df.apply(lambda row: json.loads(row.isotope_2_rt_bounds), axis=1)
+sequences_df.isotope_2_scan_bounds = sequences_df.apply(lambda row: json.loads(row.isotope_2_scan_bounds), axis=1)
+
+sequences_df.isotope_intensities_l = sequences_df.apply(lambda row: json.loads(row.isotope_intensities_l), axis=1)
+
+sequences_df['rt_lower'] = sequences_df.apply(lambda row: np.min([i[0] for i in [row.mono_rt_bounds,row.isotope_1_rt_bounds,row.isotope_2_rt_bounds]]), axis=1)
+sequences_df['rt_upper'] = sequences_df.apply(lambda row: np.max([i[1] for i in [row.mono_rt_bounds,row.isotope_1_rt_bounds,row.isotope_2_rt_bounds]]), axis=1)
+
+sequences_df['scan_lower'] = sequences_df.apply(lambda row: np.min([i[0] for i in [row.mono_scan_bounds,row.isotope_1_scan_bounds,row.isotope_2_scan_bounds]]), axis=1)
+sequences_df['scan_upper'] = sequences_df.apply(lambda row: np.max([i[1] for i in [row.mono_scan_bounds,row.isotope_1_scan_bounds,row.isotope_2_scan_bounds]]), axis=1)
+
+sequences_df['mz_lower'] = sequences_df.apply(lambda row: np.min([i[0] for i in row.isotope_intensities_l[0][4]]), axis=1)  # [0][4] refers to the isotope points of the monoisotope; i[0] refers to the m/z values
+sequences_df['mz_upper'] = sequences_df.apply(lambda row: np.max([i[0] for i in row.isotope_intensities_l[row.number_of_isotopes-1][4]]), axis=1)
+
 # get the frame properties so we can map frame ID to RT
-print("reading frame IDs from {}".format(CONVERTED_DATABASE_NAME))
+logger.info("reading frame IDs from {}".format(CONVERTED_DATABASE_NAME))
 db_conn = sqlite3.connect(CONVERTED_DATABASE_NAME)
 ms1_frame_properties_df = pd.read_sql_query("select Id,Time from frame_properties where Time >= {} and Time <= {} and MsMsType == {}".format(args.rt_lower, args.rt_upper, FRAME_TYPE_MS1), db_conn)
 min_frame_id = ms1_frame_properties_df.Id.min()
@@ -229,7 +268,7 @@ for tile_idx in indexes_l:
     if os.path.exists(tile_dir):
         # copy the raw tiles to the pre-assigned tiles directory
         file_list = sorted(glob.glob("{}/frame-*-tile-*.png".format(tile_dir)))
-        print("copying tiles within the RT range from {} to {}".format(tile_dir, PRE_ASSIGNED_FILES_DIR))
+        logger.info("copying tiles within the RT range from {} to {}".format(tile_dir, PRE_ASSIGNED_FILES_DIR))
         for file in file_list:
             base_name = os.path.basename(file)
             # if the frame_id is within the specified RT range
@@ -238,7 +277,7 @@ for tile_idx in indexes_l:
                 destination_name = '{}/{}'.format(PRE_ASSIGNED_FILES_DIR, base_name)
                 shutil.copyfile(file, destination_name)
                 tile_count += 1
-        print("copied {} tiles for index {}".format(tile_count, tile_idx))
+        logger.info("copied {} tiles for index {}".format(tile_count, tile_idx))
     else:
         print("The tiles directory is required but does not exist: {}".format(tile_dir))
         sys.exit(1)
@@ -262,7 +301,7 @@ objects_per_tile = []
 # for each raw tile, create its overlay and label text file
 for idx,tile_filename in enumerate(tile_filename_list):
     if idx % 100 == 0:
-        print("processing {} of {} tiles".format(idx+1, len(tile_filename_list)))
+        logger.info("processing {} of {} tiles".format(idx+1, len(tile_filename_list)))
 
     base_name = os.path.basename(tile_filename)
     frame_id = int(base_name.split('-')[1])
@@ -283,10 +322,14 @@ for idx,tile_filename in enumerate(tile_filename_list):
     intersecting_features_df = sequences_df[(sequences_df.rt_lower <= frame_rt) & (sequences_df.rt_upper >= frame_rt) & (sequences_df.mz_lower >= tile_mz_lower) & (sequences_df.mz_upper <= tile_mz_upper)]
     # remember the coordinates so we can write them to the annotations file
     feature_coordinates = []
-    # create a feature mask
-    mask_im_array = np.zeros([PIXELS_Y+1, PIXELS_X+1, 3], dtype=np.uint8)  # container for the image mask
-    mask = Image.fromarray(mask_im_array, 'RGB')
-    mask_draw = ImageDraw.Draw(mask)
+    if not args.inference_mode:
+        # create a feature mask
+        mask_im_array = np.zeros([PIXELS_Y+1, PIXELS_X+1, 3], dtype=np.uint8)  # container for the image mask
+        mask = Image.fromarray(mask_im_array, 'RGB')
+        mask_draw = ImageDraw.Draw(mask)
+        # fill in the charge-1 area that we want to preserve
+        mask_region_y_left,mask_region_y_right = scan_coords_for_single_charge_region(tile_mz_lower, tile_mz_upper)
+        mask_draw.polygon(xy=[(0,0),(910,0),(910,mask_region_y_right),(0,mask_region_y_left)], fill='white', outline='white')
     # draw the labels on the raw tile
     img = Image.open(tile_filename)
     draw = ImageDraw.Draw(img)
@@ -319,10 +362,11 @@ for idx,tile_filename in enumerate(tile_filename_list):
                     classes_d[feature_class] = 1
                 # add it to the list
                 feature_coordinates.append(("{} {:.6f} {:.6f} {:.6f} {:.6f}".format(feature_class, yolo_x, yolo_y, yolo_w, yolo_h)))
-                # draw the rectangle
+                # draw the rectangle on the overlay
                 draw.rectangle(xy=[(x0_buffer, y0), (x1_buffer, y1)], fill=None, outline='red')
-                # draw the mask for this feature
-                mask_draw.rectangle(xy=[(x0_buffer, y0), (x1_buffer, y1)], fill='white', outline='white')
+                if not args.inference_mode:
+                    # draw the mask for this feature
+                    mask_draw.rectangle(xy=[(x0_buffer, y0), (x1_buffer, y1)], fill='white', outline='white')
                 # keep record of the 'small' objects
                 total_objects += 1
                 if (yolo_w <= SMALL_OBJECT_W) or (yolo_h <= SMALL_OBJECT_H):
@@ -330,21 +374,25 @@ for idx,tile_filename in enumerate(tile_filename_list):
                 # keep track of the number of objects in this tile
                 number_of_objects_this_tile += 1
             else:
-                print("found a charge-{} feature - not included in the training set".format(charge))
+                logger.info("found a charge-{} feature - not included in the training set".format(charge))
 
-    # apply the mask to the overlay
-    masked_overlay = ImageChops.multiply(img, mask)
+    if args.inference_mode:
+        # write the overlay tile
+        img.save('{}/{}'.format(OVERLAY_FILES_DIR, base_name))
+    else:
+        # apply the mask to the overlay
+        masked_overlay = ImageChops.multiply(img, mask)
 
-    # write the overlay tile
-    masked_overlay.save('{}/{}'.format(OVERLAY_FILES_DIR, base_name))
+        # write the overlay tile
+        masked_overlay.save('{}/{}'.format(OVERLAY_FILES_DIR, base_name))
 
-    # write the mask
-    mask.save('{}/{}'.format(MASK_FILES_DIR, base_name))
+        # write the mask
+        mask.save('{}/{}'.format(MASK_FILES_DIR, base_name))
 
-    # apply the mask to the tile
-    img = Image.open("{}/{}".format(PRE_ASSIGNED_FILES_DIR, base_name))
-    masked_tile = ImageChops.multiply(img, mask)
-    masked_tile.save("{}/{}".format(PRE_ASSIGNED_FILES_DIR, base_name))
+        # apply the mask to the tile
+        img = Image.open("{}/{}".format(PRE_ASSIGNED_FILES_DIR, base_name))
+        masked_tile = ImageChops.multiply(img, mask)
+        masked_tile.save("{}/{}".format(PRE_ASSIGNED_FILES_DIR, base_name))
 
     # write the annotations text file
     with open(annotations_path, 'w') as f:
@@ -355,14 +403,14 @@ for idx,tile_filename in enumerate(tile_filename_list):
 
 # display the object counts for each class
 for c in sorted(classes_d.keys()):
-    print("charge {} objects: {}".format(c+2, classes_d[c]))
-print("{} out of {} objects ({}%) are small.".format(small_objects, total_objects, round(small_objects/total_objects*100,1)))
+    logger.info("charge {} objects: {}".format(c+2, classes_d[c]))
+logger.info("{} out of {} objects ({}%) are small.".format(small_objects, total_objects, round(small_objects/total_objects*100,1)))
 
 # display the number of objects per tile
 objects_per_tile_df = pd.DataFrame(objects_per_tile, columns=['tile_id','frame_id','number_of_objects'])
 objects_per_tile_df.to_pickle('{}/objects_per_tile_df.pkl'.format(TRAINING_SET_BASE_DIR))
-print("There are {} tiles with no objects.".format(len(objects_per_tile_df[objects_per_tile_df.number_of_objects == 0])))
-print("On average there are {} objects per tile.".format(round(np.mean(objects_per_tile_df.number_of_objects),1)))
+logger.info("There are {} tiles with no objects.".format(len(objects_per_tile_df[objects_per_tile_df.number_of_objects == 0])))
+logger.info("On average there are {} objects per tile.".format(round(np.mean(objects_per_tile_df.number_of_objects),1)))
 
 # assign the tiles to the training sets
 
@@ -376,24 +424,10 @@ val_test_set = list(set(tile_list) - set(train_set))
 val_set = random.sample(val_test_set, val_n)
 test_set = list(set(val_test_set) - set(val_set))
 
-print("tile set counts - train {}, validation {}, test {}".format(len(train_set), len(val_set), len(test_set)))
-
-SETS_BASE_DIR = '{}/sets'.format(TRAINING_SET_BASE_DIR)
-TRAIN_SET_DIR = '{}/train'.format(SETS_BASE_DIR)
-VAL_SET_DIR = '{}/validation'.format(SETS_BASE_DIR)
-TEST_SET_DIR = '{}/test'.format(SETS_BASE_DIR)
-
-if os.path.exists(TRAIN_SET_DIR):
-    shutil.rmtree(TRAIN_SET_DIR)
-os.makedirs(TRAIN_SET_DIR)
-
-if os.path.exists(VAL_SET_DIR):
-    shutil.rmtree(VAL_SET_DIR)
-os.makedirs(VAL_SET_DIR)
-
-if os.path.exists(TEST_SET_DIR):
-    shutil.rmtree(TEST_SET_DIR)
-os.makedirs(TEST_SET_DIR)
+logger.info("tile set counts - train {}, validation {}, test {}".format(len(train_set), len(val_set), len(test_set)))
+number_of_classes = MAX_CHARGE - MIN_CHARGE + 1
+max_batches = max(6000, max(2000*number_of_classes, len(train_set)))
+logger.info("set max_batches={}, steps={},{},{},{}".format(max_batches, int(0.4*max_batches), int(0.6*max_batches), int(0.8*max_batches), int(0.9*max_batches)))
 
 for file_pair in train_set:
     shutil.copyfile('{}/{}'.format(PRE_ASSIGNED_FILES_DIR, file_pair[0]), '{}/{}'.format(TRAIN_SET_DIR, file_pair[0]))
