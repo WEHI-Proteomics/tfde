@@ -54,7 +54,7 @@ if not os.path.exists(OVERLAY_FILES_DIR):
     print("The overlay directory is required but doesn't exist: {}".format(OVERLAY_FILES_DIR))
     sys.exit(1)
 
-PREDICTIONS_BASE_DIR = '{}/predictions'.format(EXPERIMENT_DIR)
+PREDICTIONS_BASE_DIR = '{}/predictions/{}'.format(EXPERIMENT_DIR, args.training_set_name)
 TILE_PREDICTIONS_DIR = '{}/tile-{}'.format(PREDICTIONS_BASE_DIR, args.tile_id)
 if not os.path.exists(TILE_PREDICTIONS_DIR):
     print("The tile predictions directory is required but doesn't exist: {}".format(TILE_PREDICTIONS_DIR))
