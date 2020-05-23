@@ -336,7 +336,7 @@ for idx,tile_filename in enumerate(tile_filename_list):
         mask_draw = ImageDraw.Draw(mask)
         # fill in the charge-1 area that we want to preserve
         mask_region_y_left,mask_region_y_right = scan_coords_for_single_charge_region(tile_mz_lower, tile_mz_upper)
-        mask_draw.polygon(xy=[(0,0),(910,0),(910,mask_region_y_right),(0,mask_region_y_left)], fill='white', outline='white')
+        mask_draw.polygon(xy=[(0,0),(PIXELS_X,0),(PIXELS_X,mask_region_y_right),(0,mask_region_y_left)], fill='white', outline='white')
     # draw the labels on the raw tile
     img = Image.open(tile_filename)
     draw = ImageDraw.Draw(img)
