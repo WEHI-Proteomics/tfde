@@ -373,7 +373,9 @@ for idx,tile_filename in enumerate(tile_filename_list):
                 draw.rectangle(xy=[(x0_buffer, y0), (x1_buffer, y1)], fill=None, outline='red')
                 if not args.inference_mode:
                     # draw the mask for this feature
-                    mask_draw.rectangle(xy=[(x0_buffer, y0), (x1_buffer, y1)], fill='white', outline='white')
+                    x_expanded_pixels = 10  # mask a little wider than the feature to include some context
+                    y_expanded_pixels = 10
+                    mask_draw.rectangle(xy=[(x0_buffer-x_expanded_pixels, y0-y_expanded_pixels), (x1_buffer+x_expanded_pixels, y1+y_expanded_pixels)], fill='white', outline='white')
                 # keep record of the 'small' objects
                 total_objects += 1
                 if (yolo_w <= SMALL_OBJECT_W) or (yolo_h <= SMALL_OBJECT_H):
