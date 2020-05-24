@@ -21,7 +21,7 @@ os.makedirs(PUBLISHED_FRAMES_DIR)
 print("creating indexes on {}".format(CONVERTED_DATABASE_NAME))
 db_conn = sqlite3.connect(CONVERTED_DATABASE_NAME)
 src_c = db_conn.cursor()
-src_c.execute("create index if not exists idx_frame_publisher_1 on frames (frame_id)")
+src_c.execute("create index if not exists idx_frame_publisher_1 on frames (frame_id,scan)")
 db_conn.close()
 
 # load the ms1 frame IDs
@@ -33,7 +33,7 @@ db_conn.close()
 
 # publish the frames
 print("load the frame ids")
-for frame_idx,frame_id in enumerate(ms1_frame_ids):
+for frame_idx,frame_id in enumerate(ms1_frame_ids[:50]):
     print("frame id {} ({} of {})".format(frame_id, frame_idx+1, len(ms1_frame_ids)))
     # load the frame's data
     db_conn = sqlite3.connect(CONVERTED_DATABASE_NAME)
