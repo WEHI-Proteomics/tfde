@@ -101,11 +101,16 @@ def render_frame(frame_id, frame_df):
 
         # create an intensity array
         tile_im_array = np.zeros([PIXELS_Y+1, PIXELS_X+1, 3], dtype=np.uint8)  # container for the image
-        for r in zip(tile_df.pixel_x, tile_df.scan, tile_df.colour):
-            x = r[0]
-            y = r[1]
-            c = r[2]
-            tile_im_array[y,x,:] = c
+        indexes = list(tile_df[['pixel_x','scan']].values)
+        colours = np.array(list(tile_df.colour))
+        tile_im_array[tuple(np.array(indexes).T)] = colours
+
+
+        # for r in zip(tile_df.pixel_x, tile_df.scan, tile_df.colour):
+        #     x = r[0]
+        #     y = r[1]
+        #     c = r[2]
+        #     tile_im_array[y,x,:] = c
 
         # fill in zero pixels with interpolated values
         # tile_im_array = interpolate_pixels(tile_im_array)
