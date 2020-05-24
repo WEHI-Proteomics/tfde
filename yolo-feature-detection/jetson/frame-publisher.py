@@ -17,13 +17,24 @@ if os.path.exists(PUBLISHED_FRAMES_DIR):
     shutil.rmtree(PUBLISHED_FRAMES_DIR)
 os.makedirs(PUBLISHED_FRAMES_DIR)
 
+# create indexes
+print("creating indexes on {}".format(CONVERTED_DATABASE_NAME))
+db_conn = sqlite3.connect(CONVERTED_DATABASE_NAME)
+src_c = db_conn.cursor()
+src_c.execute("create index if not exists idx_frame_publisher_1 on frames (frame_id)")
+db_conn.close()
+
 # load the ms1 frame IDs
+print("load the frame ids")
 db_conn = sqlite3.connect(CONVERTED_DATABASE_NAME)
 ms1_frame_properties_df = pd.read_sql_query("select Id,Time from frame_properties where MsMsType == {} order by Time".format(FRAME_TYPE_MS1), db_conn)
 ms1_frame_ids = tuple(ms1_frame_properties_df.Id)
 db_conn.close()
 
+# publish the frames
+print("load the frame ids")
 for frame_idx,frame_id in enumerate(ms1_frame_ids):
+    print("frame id {} ({} of {})".format(frame_id, frame_idx+1, len(ms1_frame_ids)))
     # load the frame's data
     db_conn = sqlite3.connect(CONVERTED_DATABASE_NAME)
     frame_df = pd.read_sql_query("select * from frames where frame_id == {} order by scan".format(frame_id), db_conn)
