@@ -58,7 +58,7 @@ def tile_pixel_x_from_mz(mz):
 # decide whether there is sufficient data in this region to justify labelling it for the training set
 def label_this_object(frame_id, feature):
     # are there any points in this region of the frame?
-    db_conn = sqlite3.connect(CONVERTED_DATABASE_NAME)
+    db_conn = sqlite3.connect(CONVERTED_DATAbasename)
     points_df = pd.read_sql_query("select * from frames where frame_id == {} and mz >= {} and mz <= {} and scan >= {} and scan <= {}".format(frame_id, feature.mz_lower, feature.mz_upper, feature.scan_lower, feature.scan_upper), db_conn)
     db_conn.close()
     return (len(points_df) > 0)
@@ -145,9 +145,9 @@ if not os.path.exists(CONVERTED_DATABASE_DIR):
     sys.exit(1)
 
 # check the converted database exists
-CONVERTED_DATABASE_NAME = "{}/exp-{}-run-{}-converted.sqlite".format(CONVERTED_DATABASE_DIR, args.experiment_name, args.run_name)
-if not os.path.isfile(CONVERTED_DATABASE_NAME):
-    print("The converted database is required but doesn't exist: {}".format(CONVERTED_DATABASE_NAME))
+CONVERTED_DATAbasename = "{}/exp-{}-run-{}-converted.sqlite".format(CONVERTED_DATABASE_DIR, args.experiment_name, args.run_name)
+if not os.path.isfile(CONVERTED_DATAbasename):
+    print("The converted database is required but doesn't exist: {}".format(CONVERTED_DATAbasename))
     sys.exit(1)
 
 # check the extracted features directory
@@ -274,8 +274,8 @@ sequences_df['mz_lower'] = sequences_df.apply(lambda row: np.min([i[0] for i in 
 sequences_df['mz_upper'] = sequences_df.apply(lambda row: np.max([i[0] for i in row.isotope_intensities_l[row.number_of_isotopes-1][4]]), axis=1)
 
 # get the frame properties so we can map frame ID to RT
-logger.info("reading frame IDs from {}".format(CONVERTED_DATABASE_NAME))
-db_conn = sqlite3.connect(CONVERTED_DATABASE_NAME)
+logger.info("reading frame IDs from {}".format(CONVERTED_DATAbasename))
+db_conn = sqlite3.connect(CONVERTED_DATAbasename)
 ms1_frame_properties_df = pd.read_sql_query("select Id,Time from frame_properties where Time >= {} and Time <= {} and MsMsType == {}".format(args.rt_lower, args.rt_upper, FRAME_TYPE_MS1), db_conn)
 min_frame_id = ms1_frame_properties_df.Id.min()
 max_frame_id = ms1_frame_properties_df.Id.max()
@@ -290,11 +290,11 @@ for tile_idx in indexes_l:
         file_list = sorted(glob.glob("{}/frame-*-tile-*.png".format(tile_dir)))
         logger.info("copying tiles within the RT range from {} to {}".format(tile_dir, PRE_ASSIGNED_FILES_DIR))
         for file in file_list:
-            base_name = os.path.basename(file)
+            basename = os.path.basename(file)
             # if the frame_id is within the specified RT range
-            frame_id = int(base_name.split('-')[1])
+            frame_id = int(basename.split('-')[1])
             if (frame_id >= min_frame_id) and (frame_id <= max_frame_id):
-                destination_name = '{}/{}'.format(PRE_ASSIGNED_FILES_DIR, base_name)
+                destination_name = '{}/{}'.format(PRE_ASSIGNED_FILES_DIR, basename)
                 shutil.copyfile(file, destination_name)
                 tile_count += 1
         logger.info("copied {} tiles for index {}".format(tile_count, tile_idx))
@@ -324,9 +324,9 @@ for idx,tile_filename in enumerate(tile_filename_list):
     if idx % 100 == 0:
         logger.info("processing {} of {} tiles".format(idx+1, len(tile_filename_list)))
 
-    base_name = os.path.basename(tile_filename)
-    frame_id = int(base_name.split('-')[1])
-    tile_id = int(base_name.split('-')[3].split('.')[0])
+    basename = os.path.basename(tile_filename)
+    frame_id = int(basename.split('-')[1])
+    tile_id = int(basename.split('-')[3].split('.')[0])
 
     number_of_objects_this_tile = 0
 
@@ -336,11 +336,11 @@ for idx,tile_filename in enumerate(tile_filename_list):
     mask_region_y_left,mask_region_y_right = scan_coords_for_single_charge_region(tile_mz_lower, tile_mz_upper)
 
     # store metadata for this tile
-    tile_metadata = {'frame_id':frame_id, 'tile_id':tile_id, 'base_name':base_name, 'mask_region_y_left':mask_region_y_left, 'mask_region_y_right':mask_region_y_right}
+    tile_metadata = {'frame_id':frame_id, 'tile_id':tile_id, 'basename':basename, 'mask_region_y_left':mask_region_y_left, 'mask_region_y_right':mask_region_y_right}
 
-    annotations_filename = '{}.txt'.format(os.path.splitext(base_name)[0])
+    annotations_filename = '{}.txt'.format(os.path.splitext(basename)[0])
     annotations_path = '{}/{}'.format(PRE_ASSIGNED_FILES_DIR, annotations_filename)
-    tile_list.append((base_name, annotations_filename))
+    tile_list.append((basename, annotations_filename))
 
     # get the retention time for this frame
     frame_rt = ms1_frame_properties_df[ms1_frame_properties_df.Id == frame_id].iloc[0].Time
@@ -400,7 +400,7 @@ for idx,tile_filename in enumerate(tile_filename_list):
     tile_metadata_l.append(tile_metadata)
 
     # write the overlay tile
-    img.save('{}/{}'.format(OVERLAY_FILES_DIR, base_name))
+    img.save('{}/{}'.format(OVERLAY_FILES_DIR, basename))
 
     # write the annotations text file
     with open(annotations_path, 'w') as f:
@@ -468,12 +468,12 @@ for file_pair in train_set:
         mask_draw.rectangle(xy=[(x0_buffer-X_EXPANDED_PIXELS, y0-Y_EXPANDED_PIXELS), (x1_buffer+X_EXPANDED_PIXELS, y1+Y_EXPANDED_PIXELS)], fill='white', outline='white')
 
     # save the bare mask
-    mask.save('{}/{}'.format(MASK_FILES_DIR, base_name))
+    mask.save('{}/{}'.format(MASK_FILES_DIR, basename))
 
     # apply the mask to the tile
-    img = Image.open("{}/{}".format(TRAIN_SET_DIR, base_name))
+    img = Image.open("{}/{}".format(TRAIN_SET_DIR, basename))
     masked_tile = ImageChops.multiply(img, mask)
-    masked_tile.save("{}/{}".format(TRAIN_SET_DIR, base_name))
+    masked_tile.save("{}/{}".format(TRAIN_SET_DIR, basename))
 
     # count how many objects there are in this set
     train_set_object_count += len(tile_features_l)
