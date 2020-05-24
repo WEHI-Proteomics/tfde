@@ -30,6 +30,9 @@ from ctypes import *
 import math
 import random
 import os
+import numpy as np
+from PIL import Image, ImageDraw, ImageChops
+
 
 def sample(probs):
     s = sum(probs)
@@ -456,22 +459,17 @@ def performDetect(imagePath="data/dog.jpg", thresh= 0.25, configPath = "./cfg/yo
     return detections
 
 def performBatchDetect(thresh= 0.25, configPath = "./cfg/yolov4.cfg", weightPath = "yolov4.weights", metaPath= "./cfg/coco.data", hier_thresh=.5, nms=.45, batch_size=3):
-    import cv2
-    import numpy as np
     # NB! Image sizes should be the same
-    # You can change the images, yet, be sure that they have the same width and height
     img_samples = ['/data/tiles-for-inference/tile-31/frame-1889-tile-31.png','/data/tiles-for-inference/tile-31/frame-1889-tile-31.png','/data/tiles-for-inference/tile-31/frame-1889-tile-31.png']
-    image_list = [cv2.imread(k) for k in img_samples]
+    image_list = [Image.open(k) for k in img_samples]
 
     net = load_net_custom(configPath.encode('utf-8'), weightPath.encode('utf-8'), 0, batch_size)
     meta = load_meta(metaPath.encode('utf-8'))
     pred_height, pred_width, c = image_list[0].shape
     net_width, net_height = (network_width(net), network_height(net))
     img_list = []
-    for custom_image_bgr in image_list:
-        custom_image = cv2.cvtColor(custom_image_bgr, cv2.COLOR_BGR2RGB)
-        custom_image = cv2.resize(
-            custom_image, (net_width, net_height), interpolation=cv2.INTER_NEAREST)
+    for custom_image in image_list:
+        custom_image = custom_image.resize((net_width, net_height), resample=Image.NEAREST)
         custom_image = custom_image.transpose(2, 0, 1)
         img_list.append(custom_image)
 
@@ -509,10 +507,6 @@ def performBatchDetect(thresh= 0.25, configPath = "./cfg/yolov4.cfg", weightPath
                 boxes.append((top, left, bottom, right))
                 scores.append(score)
                 classes.append(label)
-                boxColor = (int(255 * (1 - (score ** 2))), int(255 * (score ** 2)), 0)
-                cv2.rectangle(image_list[b], (left, top),
-                          (right, bottom), boxColor, 2)
-        cv2.imwrite(os.path.basename(img_samples[b]),image_list[b])
 
         batch_boxes.append(boxes)
         batch_scores.append(scores)
