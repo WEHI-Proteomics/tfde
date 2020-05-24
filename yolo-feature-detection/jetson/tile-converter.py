@@ -125,13 +125,13 @@ def consumer():
     while True:
         message = consumer_receiver.recv_json()
         start_run = time.time()
-        print("message received: {}".format(message))
         frame_id = message['frame_id']
         base_name = message['base_name']
+        print("rendering frame {}".format(frame_id))
 
         frame_file_name = '{}/{}'.format(PUBLISHED_FRAMES_DIR, base_name)
         frame_df = pd.read_pickle(frame_file_name)
-        print("loaded {} points from {}".format(len(frame_df), base_name))
+        render_frame(frame_id, frame_df)
         stop_run = time.time()
         print("processed message in {} seconds".format(round(stop_run-start_run,1)))
 
