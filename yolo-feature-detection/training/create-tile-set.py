@@ -193,8 +193,11 @@ def render_frame(frame_id, tile_dir_d, idx, total_frames):
     raw_points_df = pd.read_sql_query("select mz,scan,intensity from frames where frame_id == {} and mz >= {} and mz <= {}".format(frame_id, frame_mz_lower, frame_mz_upper), db_conn)
     db_conn.close()
 
+    # assign a tile_id and a pixel x value to each raw point
     tile_pixels_df = pd.DataFrame(raw_points_df.apply(lambda row: tile_pixel_x_from_mz(row.mz), axis=1).tolist(), columns=['tile_id', 'pixel_x'])
     raw_points_df = pd.concat([raw_points_df, tile_pixels_df], axis=1)
+
+    # sum the intensity of raw points that have been assigned to each pixel
     pixel_intensity_df = raw_points_df.groupby(by=['tile_id', 'pixel_x', 'scan'], as_index=False).intensity.sum()
 
     # create the colour map to convert intensity to colour
