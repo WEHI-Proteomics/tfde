@@ -5,6 +5,7 @@ import sys
 import argparse
 import os, shutil
 import time
+import zmq
 
 # frame types for PASEF mode
 FRAME_TYPE_MS1 = 0
@@ -31,8 +32,13 @@ ms1_frame_properties_df = pd.read_sql_query("select Id,Time from frame_propertie
 ms1_frame_ids = tuple(ms1_frame_properties_df.Id)
 db_conn.close()
 
+# set up the zmq socket
+context = zmq.Context()
+zmq_socket = context.socket(zmq.PUSH)
+zmq_socket.bind("tcp://127.0.0.1:5557")
+
 # publish the frames
-print("load the frame ids")
+print("publish the frames")
 for frame_idx,frame_id in enumerate(ms1_frame_ids[:50]):
     print("frame id {} ({} of {})".format(frame_id, frame_idx+1, len(ms1_frame_ids)))
     # load the frame's data
@@ -41,8 +47,10 @@ for frame_idx,frame_id in enumerate(ms1_frame_ids[:50]):
     db_conn.close()
 
     # save it to a file
-    frame_file_name = '{}/{}'.format(PUBLISHED_FRAMES_DIR, 'frame-{}.pkl'.format(frame_id))
+    base_name = 'frame-{}.pkl'.format(frame_id)
+    frame_file_name = '{}/{}'.format(PUBLISHED_FRAMES_DIR, base_name)
     frame_df.to_pickle(frame_file_name)
 
-    # post a message with some metadata
-    
+    # post a message with some frame metadata
+    message = {'frame_id' : frame_id, 'base_name':base_name}
+    zmq_socket.send_json(message)
