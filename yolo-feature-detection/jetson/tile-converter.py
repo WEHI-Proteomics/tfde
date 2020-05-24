@@ -108,7 +108,7 @@ def render_frame(frame_id, frame_df):
             tile_im_array[y,x,:] = c
 
         # fill in zero pixels with interpolated values
-        tile_im_array = interpolate_pixels(tile_im_array)
+        # tile_im_array = interpolate_pixels(tile_im_array)
 
         # create an image of the intensity array
         tile = Image.fromarray(tile_im_array, 'RGB')
