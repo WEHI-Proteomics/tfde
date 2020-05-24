@@ -35,6 +35,10 @@ MAX_CHARGE = 4
 # in YOLO a small object is smaller than 16x16 @ 416x416 image size.
 SMALL_OBJECT_W = SMALL_OBJECT_H = 16/416
 
+# the expanded area in pixels around a feature for masking
+X_EXPANDED_PIXELS = 10
+Y_EXPANDED_PIXELS = 10
+
 # get the m/z extent for the specified tile ID
 def mz_range_for_tile(tile_id):
     assert (tile_id >= 0) and (tile_id <= TILES_PER_FRAME-1), "tile_id not in range"
@@ -99,7 +103,7 @@ parser.add_argument('-tn','--training_set_name', type=str, default='yolo', help=
 parser.add_argument('-rtl','--rt_lower', type=int, default=200, help='Lower bound of the RT range.', required=False)
 parser.add_argument('-rtu','--rt_upper', type=int, default=800, help='Upper bound of the RT range.', required=False)
 parser.add_argument('-tidx','--tile_idx_list', type=str, help='Indexes of the tiles to use for the training set. Can specify several ranges (e.g. 10-20,21-30,31-40), a single range (e.g. 10-24), individual indexes (e.g. 34,56,32), or a single index (e.g. 54). Indexes must be between {} and {}'.format(MIN_TILE_IDX,MAX_TILE_IDX), required=True)
-parser.add_argument('-inf','--inference_mode', action='store_true', help='This set of labelled tiles is for inference (without feature-masking) rather than training (with feature-masking).')
+parser.add_argument('-inf','--inference_mode', action='store_true', help='This set of labelled tiles is for testing a model\'s inference rather than for training a new model.')
 parser.add_argument('-ssm','--small_set_mode', action='store_true', help='A small subset of the data for testing purposes.')
 parser.add_argument('-ssms','--small_set_mode_size', type=int, default='100', help='The number of tiles to sample for small set mode.', required=False)
 args = parser.parse_args()
@@ -229,7 +233,16 @@ logger.addHandler(console_handler)
 
 logger.info("{} info: {}".format(parser.prog, info))
 
-
+# determine tile allocation proportions - not using the test set at the moment because we'll create separate inference sets
+if args.inference_mode:
+    train_proportion = 0.0
+    val_proportion = 1.0  # darknet mAP calculation uses the validation set
+    test_proportion = 0.0
+else:
+    train_proportion = 0.8
+    val_proportion = 0.2
+    test_proportion = 0.0
+logger.info("set proportions: train {}, validation {}, test {}".format(train_proportion, val_proportion, test_proportion))
 
 # load the extracted features for the specified run
 logger.info("reading the extracted features from {}".format(EXTRACTED_FEATURES_DB_NAME))
@@ -304,6 +317,7 @@ small_objects = 0
 total_objects = 0
 tile_list = []
 objects_per_tile = []
+tile_metadata_l = []
 
 # for each raw tile, create its overlay and label text file
 for idx,tile_filename in enumerate(tile_filename_list):
@@ -318,6 +332,11 @@ for idx,tile_filename in enumerate(tile_filename_list):
 
     # get the m/z range for this tile
     (tile_mz_lower,tile_mz_upper) = mz_range_for_tile(tile_id)
+    # define the charge-1 region
+    mask_region_y_left,mask_region_y_right = scan_coords_for_single_charge_region(tile_mz_lower, tile_mz_upper)
+
+    # store metadata for this tile
+    tile_metadata = {'frame_id':frame_id, 'tile_id':tile_id, 'base_name':base_name, 'mask_region_y_left':mask_region_y_left, 'mask_region_y_right':mask_region_y_right}
 
     annotations_filename = '{}.txt'.format(os.path.splitext(base_name)[0])
     annotations_path = '{}/{}'.format(PRE_ASSIGNED_FILES_DIR, annotations_filename)
@@ -329,14 +348,8 @@ for idx,tile_filename in enumerate(tile_filename_list):
     intersecting_features_df = sequences_df[(sequences_df.rt_lower <= frame_rt) & (sequences_df.rt_upper >= frame_rt) & (sequences_df.mz_lower >= tile_mz_lower) & (sequences_df.mz_upper <= tile_mz_upper)]
     # remember the coordinates so we can write them to the annotations file
     feature_coordinates = []
-    if not args.inference_mode:
-        # create a feature mask
-        mask_im_array = np.zeros([PIXELS_Y+1, PIXELS_X+1, 3], dtype=np.uint8)  # container for the image mask
-        mask = Image.fromarray(mask_im_array, 'RGB')
-        mask_draw = ImageDraw.Draw(mask)
-        # fill in the charge-1 area that we want to preserve
-        mask_region_y_left,mask_region_y_right = scan_coords_for_single_charge_region(tile_mz_lower, tile_mz_upper)
-        mask_draw.polygon(xy=[(0,0),(PIXELS_X,0),(PIXELS_X,mask_region_y_right),(0,mask_region_y_left)], fill='white', outline='white')
+    # store the features for each tile so we can mask them later
+    tile_features_l = []
     # draw the labels on the raw tile
     img = Image.open(tile_filename)
     draw = ImageDraw.Draw(img)
@@ -371,11 +384,8 @@ for idx,tile_filename in enumerate(tile_filename_list):
                 feature_coordinates.append(("{} {:.6f} {:.6f} {:.6f} {:.6f}".format(feature_class, yolo_x, yolo_y, yolo_w, yolo_h)))
                 # draw the rectangle on the overlay
                 draw.rectangle(xy=[(x0_buffer, y0), (x1_buffer, y1)], fill=None, outline='red')
-                if not args.inference_mode:
-                    # draw the mask for this feature
-                    x_expanded_pixels = 10  # mask a little wider than the feature to include some context
-                    y_expanded_pixels = 10
-                    mask_draw.rectangle(xy=[(x0_buffer-x_expanded_pixels, y0-y_expanded_pixels), (x1_buffer+x_expanded_pixels, y1+y_expanded_pixels)], fill='white', outline='white')
+                # store the pixel coords for each feature for this tile so we can mask the features later
+                tile_features_l.append({'x0_buffer':x0_buffer, 'y0':y0, 'x1_buffer':x1_buffer, 'y1':y1})
                 # keep record of the 'small' objects
                 total_objects += 1
                 if (yolo_w <= SMALL_OBJECT_W) or (yolo_h <= SMALL_OBJECT_H):
@@ -385,23 +395,12 @@ for idx,tile_filename in enumerate(tile_filename_list):
             else:
                 logger.info("found a charge-{} feature - not included in the training set".format(charge))
 
-    if args.inference_mode:
-        # write the overlay tile
-        img.save('{}/{}'.format(OVERLAY_FILES_DIR, base_name))
-    else:
-        # apply the mask to the overlay
-        masked_overlay = ImageChops.multiply(img, mask)
+    # add it to the list
+    tile_metadata['tile_features_l'] = tile_features_l
+    tile_metadata_l.append(tile_metadata)
 
-        # write the overlay tile
-        masked_overlay.save('{}/{}'.format(OVERLAY_FILES_DIR, base_name))
-
-        # write the mask
-        mask.save('{}/{}'.format(MASK_FILES_DIR, base_name))
-
-        # apply the mask to the tile
-        img = Image.open("{}/{}".format(PRE_ASSIGNED_FILES_DIR, base_name))
-        masked_tile = ImageChops.multiply(img, mask)
-        masked_tile.save("{}/{}".format(PRE_ASSIGNED_FILES_DIR, base_name))
+    # write the overlay tile
+    img.save('{}/{}'.format(OVERLAY_FILES_DIR, base_name))
 
     # write the annotations text file
     with open(annotations_path, 'w') as f:
@@ -422,9 +421,6 @@ logger.info("There are {} tiles with no objects.".format(len(objects_per_tile_df
 logger.info("On average there are {} objects per tile.".format(round(np.mean(objects_per_tile_df.number_of_objects),1)))
 
 # assign the tiles to the training sets
-
-train_proportion = 0.8
-val_proportion = 0.15
 train_n = round(len(tile_list) * train_proportion)
 val_n = round(len(tile_list) * val_proportion)
 
@@ -433,22 +429,98 @@ val_test_set = list(set(tile_list) - set(train_set))
 val_set = random.sample(val_test_set, val_n)
 test_set = list(set(val_test_set) - set(val_set))
 
-logger.info("tile set counts - train {}, validation {}, test {}".format(len(train_set), len(val_set), len(test_set)))
+logger.info("tile counts - train {}, validation {}, test {}".format(len(train_set), len(val_set), len(test_set)))
 number_of_classes = MAX_CHARGE - MIN_CHARGE + 1
-max_batches = max(6000, max(2000*number_of_classes, len(train_set)))
+max_batches = max(6000, max(2000*number_of_classes, len(train_set)))  # recommendation from AlexeyAB
 logger.info("set max_batches={}, steps={},{},{},{}".format(max_batches, int(0.4*max_batches), int(0.6*max_batches), int(0.8*max_batches), int(0.9*max_batches)))
 
+# copy the training set tiles and their annotation files to the training set directory
+train_set_object_count = 0
 for file_pair in train_set:
     shutil.copyfile('{}/{}'.format(PRE_ASSIGNED_FILES_DIR, file_pair[0]), '{}/{}'.format(TRAIN_SET_DIR, file_pair[0]))
     shutil.copyfile('{}/{}'.format(PRE_ASSIGNED_FILES_DIR, file_pair[1]), '{}/{}'.format(TRAIN_SET_DIR, file_pair[1]))
 
+    # find this tile in the tile metadata
+    basename = file_pair[0]
+    found = False
+    for tile in tile_metadata_l:
+        if tile['basename'] == basename:
+            mask_region_y_left = tile['mask_region_y_left']
+            mask_region_y_right = tile['mask_region_y_right']
+            tile_features_l = tile['tile_features_l']
+            found = True
+            break
+    assert(found == True), "could not find the metadata for tile {}".format(basename)
+
+    # create a feature mask
+    mask_im_array = np.zeros([PIXELS_Y+1, PIXELS_X+1, 3], dtype=np.uint8)  # container for the image mask
+    mask = Image.fromarray(mask_im_array, 'RGB')
+    mask_draw = ImageDraw.Draw(mask)
+    # fill in the charge-1 area that we want to preserve
+    mask_draw.polygon(xy=[(0,0),(PIXELS_X,0),(PIXELS_X,mask_region_y_right),(0,mask_region_y_left)], fill='white', outline='white')
+    # draw a mask for each features on this tile
+    for feature in tile_features_l:
+        # draw the mask for this feature
+        x0_buffer = feature['x0_buffer']
+        y0 = feature['y0']
+        x1_buffer = feature['x1_buffer']
+        y1 = feature['y1']
+        mask_draw.rectangle(xy=[(x0_buffer-X_EXPANDED_PIXELS, y0-Y_EXPANDED_PIXELS), (x1_buffer+X_EXPANDED_PIXELS, y1+Y_EXPANDED_PIXELS)], fill='white', outline='white')
+
+    # save the bare mask
+    mask.save('{}/{}'.format(MASK_FILES_DIR, base_name))
+
+    # apply the mask to the tile
+    img = Image.open("{}/{}".format(TRAIN_SET_DIR, base_name))
+    masked_tile = ImageChops.multiply(img, mask)
+    masked_tile.save("{}/{}".format(TRAIN_SET_DIR, base_name))
+
+    # count how many objects there are in this set
+    train_set_object_count += len(tile_features_l)
+
+# copy the validation set tiles and their annotation files to the validation set directory
+valid_set_object_count = 0
 for file_pair in val_set:
     shutil.copyfile('{}/{}'.format(PRE_ASSIGNED_FILES_DIR, file_pair[0]), '{}/{}'.format(VAL_SET_DIR, file_pair[0]))
     shutil.copyfile('{}/{}'.format(PRE_ASSIGNED_FILES_DIR, file_pair[1]), '{}/{}'.format(VAL_SET_DIR, file_pair[1]))
 
+    # find this tile in the tile metadata
+    basename = file_pair[0]
+    found = False
+    for tile in tile_metadata_l:
+        if tile['basename'] == basename:
+            mask_region_y_left = tile['mask_region_y_left']
+            mask_region_y_right = tile['mask_region_y_right']
+            tile_features_l = tile['tile_features_l']
+            found = True
+            break
+    assert(found == True), "could not find the metadata for tile {}".format(basename)
+
+    # count how many objects there are in this set
+    valid_set_object_count += len(tile_features_l)
+
+# copy the test set tiles and their annotation files to the test set directory
+test_set_object_count = 0
 for file_pair in test_set:
     shutil.copyfile('{}/{}'.format(PRE_ASSIGNED_FILES_DIR, file_pair[0]), '{}/{}'.format(TEST_SET_DIR, file_pair[0]))
     shutil.copyfile('{}/{}'.format(PRE_ASSIGNED_FILES_DIR, file_pair[1]), '{}/{}'.format(TEST_SET_DIR, file_pair[1]))
+
+    # find this tile in the tile metadata
+    basename = file_pair[0]
+    found = False
+    for tile in tile_metadata_l:
+        if tile['basename'] == basename:
+            mask_region_y_left = tile['mask_region_y_left']
+            mask_region_y_right = tile['mask_region_y_right']
+            tile_features_l = tile['tile_features_l']
+            found = True
+            break
+    assert(found == True), "could not find the metadata for tile {}".format(basename)
+
+    # count how many objects there are in this set
+    test_set_object_count += len(tile_features_l)
+
+logger.info("set object counts - train {}, validation {}, test {}".format(train_set_object_count, valid_set_object_count, test_set_object_count))
 
 # create obj.names, for copying to ./darknet/data, with the object names, each one on a new line
 LOCAL_NAMES_FILENAME = "{}/peptides-obj.names".format(TRAINING_SET_BASE_DIR)
