@@ -35,10 +35,6 @@ MAX_CHARGE = 4
 # in YOLO a small object is smaller than 16x16 @ 416x416 image size.
 SMALL_OBJECT_W = SMALL_OBJECT_H = 16/416
 
-# the expanded area in pixels around a feature for masking
-X_EXPANDED_PIXELS = 10
-Y_EXPANDED_PIXELS = 10
-
 # get the m/z extent for the specified tile ID
 def mz_range_for_tile(tile_id):
     assert (tile_id >= 0) and (tile_id <= TILES_PER_FRAME-1), "tile_id not in range"
@@ -453,11 +449,10 @@ for file_pair in train_set:
     assert(found == True), "could not find the metadata for tile {}".format(basename)
 
     # create a feature mask
-    mask_im_array = np.random.randint(low = 10, high = 200, size = (PIXELS_Y+1, PIXELS_X+1, 3))  # initialise the mask with random noise
+    mask_im_array = np.random.randint(low = 0, high = 255, size = (PIXELS_Y+1, PIXELS_X+1, 3))  # initialise the mask with random noise
     mask = Image.fromarray(mask_im_array.astype('uint8'), 'RGB')
     mask_draw = ImageDraw.Draw(mask)
-    # fill in the charge-1 area that we want to preserve
-    mask_draw.polygon(xy=[(0,0),(PIXELS_X,0),(PIXELS_X,mask_region_y_right),(0,mask_region_y_left)], fill='white', outline='white')
+
     # draw a mask for each features on this tile
     for feature in tile_features_l:
         # draw the mask for this feature
@@ -465,14 +460,14 @@ for file_pair in train_set:
         y0 = feature['y0']
         x1_buffer = feature['x1_buffer']
         y1 = feature['y1']
-        mask_draw.rectangle(xy=[(x0_buffer-X_EXPANDED_PIXELS, y0-Y_EXPANDED_PIXELS), (x1_buffer+X_EXPANDED_PIXELS, y1+Y_EXPANDED_PIXELS)], fill='white', outline='white')
+        mask_draw.rectangle(xy=[(x0_buffer, y0), (x1_buffer, y1)], fill='black', outline='black')
 
     # save the bare mask
     mask.save('{}/{}'.format(MASK_FILES_DIR, basename))
 
     # apply the mask to the tile
     img = Image.open("{}/{}".format(TRAIN_SET_DIR, basename))
-    masked_tile = ImageChops.multiply(img, mask)
+    masked_tile = ImageChops.lighter(mask, img)
     masked_tile.save("{}/{}".format(TRAIN_SET_DIR, basename))
 
     # count how many objects there are in this set
