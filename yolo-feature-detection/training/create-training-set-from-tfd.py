@@ -35,6 +35,10 @@ MAX_CHARGE = 4
 # in YOLO a small object is smaller than 16x16 @ 416x416 image size.
 SMALL_OBJECT_W = SMALL_OBJECT_H = 16/416
 
+# allow for some buffer area around the features
+MZ_BUFFER = 0.25
+SCAN_BUFFER = 5
+
 # get the m/z extent for the specified tile ID
 def mz_range_for_tile(tile_id):
     assert (tile_id >= 0) and (tile_id <= TILES_PER_FRAME-1), "tile_id not in range"
@@ -350,20 +354,22 @@ for idx,tile_filename in enumerate(tile_filename_list):
     img = Image.open(tile_filename)
     draw = ImageDraw.Draw(img)
     for idx,feature in intersecting_features_df.iterrows():
-        (t,x0_buffer) = tile_pixel_x_from_mz(feature.mz_lower - 0.25)
+        (t,x0_buffer) = tile_pixel_x_from_mz(feature.mz_lower - MZ_BUFFER)
         if t < tile_id:
             x0_buffer = 1
-        (t,x1_buffer) = tile_pixel_x_from_mz(feature.mz_upper + 0.25)
+        (t,x1_buffer) = tile_pixel_x_from_mz(feature.mz_upper + MZ_BUFFER)
         if t > tile_id:
             x1_buffer = PIXELS_X
         y0 = feature.scan_lower
+        y0_buffer = max((y0 - SCAN_BUFFER), SCAN_MIN)
         y1 = feature.scan_upper
+        y1_buffer = min((y1 + SCAN_BUFFER), SCAN_MAX)
         w = x1_buffer - x0_buffer
-        h = y1 - y0
+        h = y1_buffer - y0_buffer
         charge = feature.charge
         # calculate the annotation coordinates for the text file
         yolo_x = (x0_buffer + (w / 2)) / PIXELS_X
-        yolo_y = (y0 + (h / 2)) / PIXELS_Y
+        yolo_y = (y0_buffer + (h / 2)) / PIXELS_Y
         yolo_w = w / PIXELS_X
         yolo_h = h / PIXELS_Y
         # label this object if it meets the criteria
@@ -379,9 +385,9 @@ for idx,tile_filename in enumerate(tile_filename_list):
                 # add it to the list
                 feature_coordinates.append(("{} {:.6f} {:.6f} {:.6f} {:.6f}".format(feature_class, yolo_x, yolo_y, yolo_w, yolo_h)))
                 # draw the rectangle on the overlay
-                draw.rectangle(xy=[(x0_buffer, y0), (x1_buffer, y1)], fill=None, outline='red')
+                draw.rectangle(xy=[(x0_buffer, y0_buffer), (x1_buffer, y1_buffer)], fill=None, outline='red')
                 # store the pixel coords for each feature for this tile so we can mask the features later
-                tile_features_l.append({'x0_buffer':x0_buffer, 'y0':y0, 'x1_buffer':x1_buffer, 'y1':y1})
+                tile_features_l.append({'x0_buffer':x0_buffer, 'y0_buffer':y0_buffer, 'x1_buffer':x1_buffer, 'y1_buffer':y1_buffer})
                 # keep record of the 'small' objects
                 total_objects += 1
                 if (yolo_w <= SMALL_OBJECT_W) or (yolo_h <= SMALL_OBJECT_H):
@@ -449,7 +455,7 @@ for file_pair in train_set:
     assert(found == True), "could not find the metadata for tile {}".format(basename)
 
     # create a feature mask
-    mask_im_array = np.random.randint(low = 0, high = 255, size = (PIXELS_Y+1, PIXELS_X+1, 3))  # initialise the mask with random noise
+    mask_im_array = np.zeros([PIXELS_Y+1, PIXELS_X+1, 3], dtype=np.uint8)
     mask = Image.fromarray(mask_im_array.astype('uint8'), 'RGB')
     mask_draw = ImageDraw.Draw(mask)
 
@@ -457,17 +463,17 @@ for file_pair in train_set:
     for feature in tile_features_l:
         # draw the mask for this feature
         x0_buffer = feature['x0_buffer']
-        y0 = feature['y0']
+        y0_buffer = feature['y0_buffer']
         x1_buffer = feature['x1_buffer']
-        y1 = feature['y1']
-        mask_draw.rectangle(xy=[(x0_buffer, y0), (x1_buffer, y1)], fill='black', outline='black')
+        y1_buffer = feature['y1_buffer']
+        mask_draw.rectangle(xy=[(x0_buffer, y0_buffer), (x1_buffer, y1_buffer)], fill='white', outline='white')
 
     # save the bare mask
     mask.save('{}/{}'.format(MASK_FILES_DIR, basename))
 
     # apply the mask to the tile
     img = Image.open("{}/{}".format(TRAIN_SET_DIR, basename))
-    masked_tile = ImageChops.lighter(mask, img)
+    masked_tile = ImageChops.multiply(img, mask)
     masked_tile.save("{}/{}".format(TRAIN_SET_DIR, basename))
 
     # count how many objects there are in this set
