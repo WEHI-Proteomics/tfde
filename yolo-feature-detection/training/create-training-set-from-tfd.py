@@ -453,8 +453,8 @@ for file_pair in train_set:
     assert(found == True), "could not find the metadata for tile {}".format(basename)
 
     # create a feature mask
-    mask_im_array = np.random.randint(low = 0, high = 255, size = (PIXELS_Y+1, PIXELS_X+1, 3))  # initialise the mask with random noise
-    mask = Image.fromarray(mask_im_array, 'RGB')
+    mask_im_array = np.random.randint(low = 10, high = 200, size = (PIXELS_Y+1, PIXELS_X+1, 3))  # initialise the mask with random noise
+    mask = Image.fromarray(mask_im_array.astype('uint8'), 'RGB')
     mask_draw = ImageDraw.Draw(mask)
     # fill in the charge-1 area that we want to preserve
     mask_draw.polygon(xy=[(0,0),(PIXELS_X,0),(PIXELS_X,mask_region_y_right),(0,mask_region_y_left)], fill='white', outline='white')
