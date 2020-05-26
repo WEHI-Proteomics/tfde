@@ -507,7 +507,7 @@ logger.info("set max_batches={}, steps={},{},{},{}".format(max_batches, int(0.4*
 # copy the training set tiles and their annotation files to the training set directory
 print("copying the training set to {}".format(TRAIN_SET_DIR))
 train_set_object_count = 0
-_ = ray.get([apply_feature_mask.remote() for file_pair in train_set])
+_ = ray.get([apply_feature_mask.remote(file_pair) for file_pair in train_set])
 
 # copy the validation set tiles and their annotation files to the validation set directory
 print("copying the validation set to {}".format(VAL_SET_DIR))
