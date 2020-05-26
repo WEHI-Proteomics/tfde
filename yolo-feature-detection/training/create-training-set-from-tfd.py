@@ -11,9 +11,6 @@ import sys
 import pickle
 import numpy as np
 import logging
-import ray
-import time
-import multiprocessing as mp
 
 
 PIXELS_X = 910
@@ -95,105 +92,6 @@ def scan_coords_for_single_charge_region(mz_lower, mz_upper):
     scan_for_mz_upper = -1 * ((1.2 * mz_upper) - 1252)
     return (scan_for_mz_lower,scan_for_mz_upper)
 
-# determine the number of workers based on the number of available cores and the proportion of the machine to be used
-def number_of_workers():
-    number_of_cores = mp.cpu_count()
-    number_of_workers = int(args.proportion_of_cores_to_use * number_of_cores)
-    return number_of_workers
-
-@ray.remote
-def create_annotation(idx, tile_filename):
-    if idx % 100 == 0:
-        logger.info("processing {} of {} tiles".format(idx+1, len(tile_filename_list)))
-
-    basename = os.path.basename(tile_filename)
-    frame_id = int(basename.split('-')[1])
-    tile_id = int(basename.split('-')[3].split('.')[0])
-
-    number_of_objects_this_tile = 0
-
-    # get the m/z range for this tile
-    (tile_mz_lower,tile_mz_upper) = mz_range_for_tile(tile_id)
-    # define the charge-1 region
-    mask_region_y_left,mask_region_y_right = scan_coords_for_single_charge_region(tile_mz_lower, tile_mz_upper)
-
-    # store metadata for this tile
-    tile_metadata = {'frame_id':frame_id, 'tile_id':tile_id, 'basename':basename, 'mask_region_y_left':mask_region_y_left, 'mask_region_y_right':mask_region_y_right}
-
-    annotations_filename = '{}.txt'.format(os.path.splitext(basename)[0])
-    annotations_path = '{}/{}'.format(PRE_ASSIGNED_FILES_DIR, annotations_filename)
-    tile_list.append((basename, annotations_filename))
-
-    # get the retention time for this frame
-    frame_rt = ms1_frame_properties_df[ms1_frame_properties_df.Id == frame_id].iloc[0].Time
-    # find the features intersecting with this frame
-    intersecting_features_df = sequences_df[(sequences_df.rt_lower <= frame_rt) & (sequences_df.rt_upper >= frame_rt) & (sequences_df.mz_lower >= tile_mz_lower) & (sequences_df.mz_upper <= tile_mz_upper)]
-    # remember the coordinates so we can write them to the annotations file
-    feature_coordinates = []
-    # store the features for each tile so we can mask them later
-    tile_features_l = []
-    # draw the labels on the raw tile
-    img = Image.open(tile_filename)
-    draw = ImageDraw.Draw(img)
-    for idx,feature in intersecting_features_df.iterrows():
-        (t,x0_buffer) = tile_pixel_x_from_mz(feature.mz_lower - MZ_BUFFER)
-        if t < tile_id:
-            x0_buffer = 1
-        (t,x1_buffer) = tile_pixel_x_from_mz(feature.mz_upper + MZ_BUFFER)
-        if t > tile_id:
-            x1_buffer = PIXELS_X
-        y0 = feature.scan_lower
-        y0_buffer = max((y0 - SCAN_BUFFER), SCAN_MIN)
-        y1 = feature.scan_upper
-        y1_buffer = min((y1 + SCAN_BUFFER), SCAN_MAX)
-        w = x1_buffer - x0_buffer
-        h = y1_buffer - y0_buffer
-        charge = feature.charge
-        # calculate the annotation coordinates for the text file
-        yolo_x = (x0_buffer + (w / 2)) / PIXELS_X
-        yolo_y = (y0_buffer + (h / 2)) / PIXELS_Y
-        yolo_w = w / PIXELS_X
-        yolo_h = h / PIXELS_Y
-        # label this object if it meets the criteria
-        if label_this_object(frame_id, feature):
-            # we are only interested in charge 2 and higher
-            if (charge >= MIN_CHARGE) and (charge <= MAX_CHARGE):
-                feature_class = charge - MIN_CHARGE
-                # keep record of how many instances of each class
-                if feature_class in classes_d.keys():
-                    classes_d[feature_class] += 1
-                else:
-                    classes_d[feature_class] = 1
-                # add it to the list
-                feature_coordinates.append(("{} {:.6f} {:.6f} {:.6f} {:.6f}".format(feature_class, yolo_x, yolo_y, yolo_w, yolo_h)))
-                # draw the rectangle on the overlay
-                draw.rectangle(xy=[(x0_buffer, y0_buffer), (x1_buffer, y1_buffer)], fill=None, outline='red')
-                # store the pixel coords for each feature for this tile so we can mask the features later
-                tile_features_l.append({'x0_buffer':x0_buffer, 'y0_buffer':y0_buffer, 'x1_buffer':x1_buffer, 'y1_buffer':y1_buffer})
-                # keep record of the 'small' objects
-                total_objects += 1
-                if (yolo_w <= SMALL_OBJECT_W) or (yolo_h <= SMALL_OBJECT_H):
-                    small_objects += 1
-                # keep track of the number of objects in this tile
-                number_of_objects_this_tile += 1
-            else:
-                logger.info("found a charge-{} feature - not included in the training set".format(charge))
-
-    # add it to the list
-    tile_metadata['tile_features_l'] = tile_features_l
-    tile_metadata_l.append(tile_metadata)
-
-    # write the overlay tile
-    img.save('{}/{}'.format(OVERLAY_FILES_DIR, basename))
-
-    # write the annotations text file
-    with open(annotations_path, 'w') as f:
-        for item in feature_coordinates:
-            f.write("%s\n" % item)
-    
-    objects_per_tile.append((tile_id, frame_id, number_of_objects_this_tile))
-
-
 # python ./otf-peak-detect/yolo-feature-detection/training/create-training-set-from-tfd.py -eb ~/Downloads/experiments -en dwm-test -rn 190719_Hela_Ecoli_1to1_01 -tidx 34
 
 parser = argparse.ArgumentParser(description='Set up a training set from raw tiles.')
@@ -208,15 +106,12 @@ parser.add_argument('-tidx','--tile_idx_list', type=str, help='Indexes of the ti
 parser.add_argument('-inf','--inference_mode', action='store_true', help='This set of labelled tiles is for testing a model\'s inference rather than for training a new model.')
 parser.add_argument('-ssm','--small_set_mode', action='store_true', help='A small subset of the data for testing purposes.')
 parser.add_argument('-ssms','--small_set_mode_size', type=int, default='100', help='The number of tiles to sample for small set mode.', required=False)
-parser.add_argument('-rm','--ray_mode', type=str, choices=['local','cluster'], default='cluster', help='The Ray mode to use.', required=False)
 args = parser.parse_args()
 
 # store the command line arguments as metadata for later reference
 info = []
 for arg in vars(args):
     info.append((arg, getattr(args, arg)))
-
-start_run = time.time()
 
 # parse the tile indexes
 indexes_l = []
@@ -338,15 +233,6 @@ logger.addHandler(console_handler)
 
 logger.info("{} info: {}".format(parser.prog, info))
 
-print("setting up Ray")
-if not ray.is_initialized():
-    if args.ray_mode == "cluster":
-        ray.init(object_store_memory=20000000000,
-                    redis_max_memory=25000000000,
-                    num_cpus=number_of_workers())
-    else:
-        ray.init(local_mode=True)
-
 # determine tile allocation proportions - not using the test set at the moment because we'll create separate inference sets
 if args.inference_mode:
     train_proportion = 0.0
@@ -434,7 +320,96 @@ objects_per_tile = []
 tile_metadata_l = []
 
 # for each raw tile, create its overlay and label text file
-_ = ray.get([create_annotation.remote(idx, tile_filename) for idx,tile_filename in enumerate(tile_filename_list)])
+for idx,tile_filename in enumerate(tile_filename_list):
+    if idx % 100 == 0:
+        logger.info("processing {} of {} tiles".format(idx+1, len(tile_filename_list)))
+
+    basename = os.path.basename(tile_filename)
+    frame_id = int(basename.split('-')[1])
+    tile_id = int(basename.split('-')[3].split('.')[0])
+
+    number_of_objects_this_tile = 0
+
+    # get the m/z range for this tile
+    (tile_mz_lower,tile_mz_upper) = mz_range_for_tile(tile_id)
+    # define the charge-1 region
+    mask_region_y_left,mask_region_y_right = scan_coords_for_single_charge_region(tile_mz_lower, tile_mz_upper)
+
+    # store metadata for this tile
+    tile_metadata = {'frame_id':frame_id, 'tile_id':tile_id, 'basename':basename, 'mask_region_y_left':mask_region_y_left, 'mask_region_y_right':mask_region_y_right}
+
+    annotations_filename = '{}.txt'.format(os.path.splitext(basename)[0])
+    annotations_path = '{}/{}'.format(PRE_ASSIGNED_FILES_DIR, annotations_filename)
+    tile_list.append((basename, annotations_filename))
+
+    # get the retention time for this frame
+    frame_rt = ms1_frame_properties_df[ms1_frame_properties_df.Id == frame_id].iloc[0].Time
+    # find the features intersecting with this frame
+    intersecting_features_df = sequences_df[(sequences_df.rt_lower <= frame_rt) & (sequences_df.rt_upper >= frame_rt) & (sequences_df.mz_lower >= tile_mz_lower) & (sequences_df.mz_upper <= tile_mz_upper)]
+    # remember the coordinates so we can write them to the annotations file
+    feature_coordinates = []
+    # store the features for each tile so we can mask them later
+    tile_features_l = []
+    # draw the labels on the raw tile
+    img = Image.open(tile_filename)
+    draw = ImageDraw.Draw(img)
+    for idx,feature in intersecting_features_df.iterrows():
+        (t,x0_buffer) = tile_pixel_x_from_mz(feature.mz_lower - MZ_BUFFER)
+        if t < tile_id:
+            x0_buffer = 1
+        (t,x1_buffer) = tile_pixel_x_from_mz(feature.mz_upper + MZ_BUFFER)
+        if t > tile_id:
+            x1_buffer = PIXELS_X
+        y0 = feature.scan_lower
+        y0_buffer = max((y0 - SCAN_BUFFER), SCAN_MIN)
+        y1 = feature.scan_upper
+        y1_buffer = min((y1 + SCAN_BUFFER), SCAN_MAX)
+        w = x1_buffer - x0_buffer
+        h = y1_buffer - y0_buffer
+        charge = feature.charge
+        # calculate the annotation coordinates for the text file
+        yolo_x = (x0_buffer + (w / 2)) / PIXELS_X
+        yolo_y = (y0_buffer + (h / 2)) / PIXELS_Y
+        yolo_w = w / PIXELS_X
+        yolo_h = h / PIXELS_Y
+        # label this object if it meets the criteria
+        if label_this_object(frame_id, feature):
+            # we are only interested in charge 2 and higher
+            if (charge >= MIN_CHARGE) and (charge <= MAX_CHARGE):
+                feature_class = charge - MIN_CHARGE
+                # keep record of how many instances of each class
+                if feature_class in classes_d.keys():
+                    classes_d[feature_class] += 1
+                else:
+                    classes_d[feature_class] = 1
+                # add it to the list
+                feature_coordinates.append(("{} {:.6f} {:.6f} {:.6f} {:.6f}".format(feature_class, yolo_x, yolo_y, yolo_w, yolo_h)))
+                # draw the rectangle on the overlay
+                draw.rectangle(xy=[(x0_buffer, y0_buffer), (x1_buffer, y1_buffer)], fill=None, outline='red')
+                # store the pixel coords for each feature for this tile so we can mask the features later
+                tile_features_l.append({'x0_buffer':x0_buffer, 'y0_buffer':y0_buffer, 'x1_buffer':x1_buffer, 'y1_buffer':y1_buffer})
+                # keep record of the 'small' objects
+                total_objects += 1
+                if (yolo_w <= SMALL_OBJECT_W) or (yolo_h <= SMALL_OBJECT_H):
+                    small_objects += 1
+                # keep track of the number of objects in this tile
+                number_of_objects_this_tile += 1
+            else:
+                logger.info("found a charge-{} feature - not included in the training set".format(charge))
+
+    # add it to the list
+    tile_metadata['tile_features_l'] = tile_features_l
+    tile_metadata_l.append(tile_metadata)
+
+    # write the overlay tile
+    img.save('{}/{}'.format(OVERLAY_FILES_DIR, basename))
+
+    # write the annotations text file
+    with open(annotations_path, 'w') as f:
+        for item in feature_coordinates:
+            f.write("%s\n" % item)
+    
+    objects_per_tile.append((tile_id, frame_id, number_of_objects_this_tile))
 
 # display the object counts for each class
 for c in sorted(classes_d.keys()):
@@ -585,11 +560,7 @@ with open('{}/test.txt'.format(TRAINING_SET_BASE_DIR), 'w') as f:
         f.write('data/peptides/sets/test/{}\n'.format(file_pair[0]))
 
 # take a copy of the training set because we'll be augmenting it later
-print("taking a backup of the training set")
 backup_training_set_dir = "{}-backup".format(TRAIN_SET_DIR)
 if os.path.exists(backup_training_set_dir):
     shutil.rmtree(backup_training_set_dir)
 shutil.copytree(TRAIN_SET_DIR, backup_training_set_dir)
-
-stop_run = time.time()
-print("total running time ({}): {} seconds".format(parser.prog, round(stop_run-start_run,1)))
