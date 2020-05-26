@@ -462,6 +462,7 @@ max_batches = max(6000, max(2000*number_of_classes, len(train_set)))  # recommen
 logger.info("set max_batches={}, steps={},{},{},{}".format(max_batches, int(0.4*max_batches), int(0.6*max_batches), int(0.8*max_batches), int(0.9*max_batches)))
 
 # copy the training set tiles and their annotation files to the training set directory
+print("copying the training set to {}".format(TRAIN_SET_DIR))
 train_set_object_count = 0
 for file_pair in train_set:
     shutil.copyfile('{}/{}'.format(PRE_ASSIGNED_FILES_DIR, file_pair[0]), '{}/{}'.format(TRAIN_SET_DIR, file_pair[0]))
@@ -505,6 +506,7 @@ for file_pair in train_set:
     train_set_object_count += len(tile_features_l)
 
 # copy the validation set tiles and their annotation files to the validation set directory
+print("copying the validation set to {}".format(VAL_SET_DIR))
 valid_set_object_count = 0
 for file_pair in val_set:
     shutil.copyfile('{}/{}'.format(PRE_ASSIGNED_FILES_DIR, file_pair[0]), '{}/{}'.format(VAL_SET_DIR, file_pair[0]))
@@ -526,6 +528,7 @@ for file_pair in val_set:
     valid_set_object_count += len(tile_features_l)
 
 # copy the test set tiles and their annotation files to the test set directory
+print("copying the test set to {}".format(TEST_SET_DIR))
 test_set_object_count = 0
 for file_pair in test_set:
     shutil.copyfile('{}/{}'.format(PRE_ASSIGNED_FILES_DIR, file_pair[0]), '{}/{}'.format(TEST_SET_DIR, file_pair[0]))
@@ -550,6 +553,7 @@ logger.info("set object counts - train {}, validation {}, test {}".format(train_
 
 # create obj.names, for copying to ./darknet/data, with the object names, each one on a new line
 LOCAL_NAMES_FILENAME = "{}/peptides-obj.names".format(TRAINING_SET_BASE_DIR)
+print("writing {}".format(LOCAL_NAMES_FILENAME))
 
 # class labels
 with open(LOCAL_NAMES_FILENAME, 'w') as f:
@@ -558,6 +562,7 @@ with open(LOCAL_NAMES_FILENAME, 'w') as f:
 
 # create obj.data, for copying to ./darknet/data
 LOCAL_DATA_FILENAME = "{}/peptides-obj.data".format(TRAINING_SET_BASE_DIR)
+print("writing {}".format(LOCAL_DATA_FILENAME))
 
 with open(LOCAL_DATA_FILENAME, 'w') as f:
     f.write("classes={}\n".format(MAX_CHARGE - MIN_CHARGE + 1))
