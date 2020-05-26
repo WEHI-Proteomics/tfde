@@ -11,6 +11,7 @@ import sys
 import pickle
 import numpy as np
 import logging
+import time
 
 
 PIXELS_X = 910
@@ -112,6 +113,8 @@ args = parser.parse_args()
 info = []
 for arg in vars(args):
     info.append((arg, getattr(args, arg)))
+
+start_run = time.time()
 
 # parse the tile indexes
 indexes_l = []
@@ -559,8 +562,5 @@ with open('{}/test.txt'.format(TRAINING_SET_BASE_DIR), 'w') as f:
     for file_pair in test_set:
         f.write('data/peptides/sets/test/{}\n'.format(file_pair[0]))
 
-# take a copy of the training set because we'll be augmenting it later
-backup_training_set_dir = "{}-backup".format(TRAIN_SET_DIR)
-if os.path.exists(backup_training_set_dir):
-    shutil.rmtree(backup_training_set_dir)
-shutil.copytree(TRAIN_SET_DIR, backup_training_set_dir)
+stop_run = time.time()
+print("total running time ({}): {} seconds".format(parser.prog, round(stop_run-start_run,1)))
