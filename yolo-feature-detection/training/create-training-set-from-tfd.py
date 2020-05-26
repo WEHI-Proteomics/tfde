@@ -118,6 +118,9 @@ def apply_feature_mask(file_pair):
     mask = Image.fromarray(mask_im_array.astype('uint8'), 'RGB')
     mask_draw = ImageDraw.Draw(mask)
 
+    # fill in the charge-1 area that we want to preserve
+    mask_draw.polygon(xy=[(0,0), (PIXELS_X,0), (PIXELS_X,mask_region_y_right), (0,mask_region_y_left)], fill='white', outline='white')
+
     # draw a mask for each features on this tile
     for feature in tile_features_l:
         # draw the mask for this feature
