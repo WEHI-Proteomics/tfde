@@ -97,8 +97,6 @@ def scan_coords_for_single_charge_region(mz_lower, mz_upper):
 
 @ray.remote
 def apply_feature_mask(file_pair):
-    global train_set_object_count
-
     # copy the tiles to their training set directory
     shutil.copyfile('{}/{}'.format(PRE_ASSIGNED_FILES_DIR, file_pair[0]), '{}/{}'.format(TRAIN_SET_DIR, file_pair[0]))
     shutil.copyfile('{}/{}'.format(PRE_ASSIGNED_FILES_DIR, file_pair[1]), '{}/{}'.format(TRAIN_SET_DIR, file_pair[1]))
@@ -137,8 +135,8 @@ def apply_feature_mask(file_pair):
     masked_tile = ImageChops.multiply(img, mask)
     masked_tile.save("{}/{}".format(TRAIN_SET_DIR, basename))
 
-    # count how many objects there are in this set
-    train_set_object_count += len(tile_features_l)
+    # return how many objects there are in this set
+    return len(tile_features_l)
 
 # determine the number of workers based on the number of available cores and the proportion of the machine to be used
 def number_of_workers():
@@ -484,6 +482,8 @@ for c in sorted(classes_d.keys()):
     logger.info("charge {} objects: {}".format(c+2, classes_d[c]))
 if total_objects > 0:
     logger.info("{} out of {} objects ({}%) are small.".format(small_objects, total_objects, round(small_objects/total_objects*100,1)))
+else:
+    logger.info("note: there are no objects on these tiles")
 
 # display the number of objects per tile
 objects_per_tile_df = pd.DataFrame(objects_per_tile, columns=['tile_id','frame_id','number_of_objects'])
@@ -507,8 +507,8 @@ logger.info("set max_batches={}, steps={},{},{},{}".format(max_batches, int(0.4*
 
 # copy the training set tiles and their annotation files to the training set directory
 print("copying the training set to {}".format(TRAIN_SET_DIR))
-train_set_object_count = 0
-_ = ray.get([apply_feature_mask.remote(file_pair) for file_pair in train_set])
+feature_counts_l = ray.get([apply_feature_mask.remote(file_pair) for file_pair in train_set])
+train_set_object_count = sum(feature_counts_l)
 
 # copy the validation set tiles and their annotation files to the validation set directory
 print("copying the validation set to {}".format(VAL_SET_DIR))
