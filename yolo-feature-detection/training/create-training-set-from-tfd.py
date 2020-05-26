@@ -12,6 +12,8 @@ import pickle
 import numpy as np
 import logging
 import time
+import multiprocessing as mp
+import ray
 
 
 PIXELS_X = 910
@@ -93,6 +95,58 @@ def scan_coords_for_single_charge_region(mz_lower, mz_upper):
     scan_for_mz_upper = -1 * ((1.2 * mz_upper) - 1252)
     return (scan_for_mz_lower,scan_for_mz_upper)
 
+@ray.remote
+def apply_feature_mask(file_pair):
+    global train_set_object_count
+
+    # copy the tiles to their training set directory
+    shutil.copyfile('{}/{}'.format(PRE_ASSIGNED_FILES_DIR, file_pair[0]), '{}/{}'.format(TRAIN_SET_DIR, file_pair[0]))
+    shutil.copyfile('{}/{}'.format(PRE_ASSIGNED_FILES_DIR, file_pair[1]), '{}/{}'.format(TRAIN_SET_DIR, file_pair[1]))
+
+    # find this tile in the tile metadata
+    basename = file_pair[0]
+    found = False
+    for tile in tile_metadata_l:
+        if tile['basename'] == basename:
+            mask_region_y_left = tile['mask_region_y_left']
+            mask_region_y_right = tile['mask_region_y_right']
+            tile_features_l = tile['tile_features_l']
+            found = True
+            break
+    assert(found == True), "could not find the metadata for tile {}".format(basename)
+
+    # create a feature mask
+    mask_im_array = np.zeros([PIXELS_Y+1, PIXELS_X+1, 3], dtype=np.uint8)
+    mask = Image.fromarray(mask_im_array.astype('uint8'), 'RGB')
+    mask_draw = ImageDraw.Draw(mask)
+
+    # draw a mask for each features on this tile
+    for feature in tile_features_l:
+        # draw the mask for this feature
+        x0_buffer = feature['x0_buffer']
+        y0_buffer = feature['y0_buffer']
+        x1_buffer = feature['x1_buffer']
+        y1_buffer = feature['y1_buffer']
+        mask_draw.rectangle(xy=[(x0_buffer, y0_buffer), (x1_buffer, y1_buffer)], fill='white', outline='white')
+
+    # save the bare mask
+    mask.save('{}/{}'.format(MASK_FILES_DIR, basename))
+
+    # apply the mask to the tile
+    img = Image.open("{}/{}".format(TRAIN_SET_DIR, basename))
+    masked_tile = ImageChops.multiply(img, mask)
+    masked_tile.save("{}/{}".format(TRAIN_SET_DIR, basename))
+
+    # count how many objects there are in this set
+    train_set_object_count += len(tile_features_l)
+
+# determine the number of workers based on the number of available cores and the proportion of the machine to be used
+def number_of_workers():
+    number_of_cores = mp.cpu_count()
+    number_of_workers = int(args.proportion_of_cores_to_use * number_of_cores)
+    return number_of_workers
+
+
 # python ./otf-peak-detect/yolo-feature-detection/training/create-training-set-from-tfd.py -eb ~/Downloads/experiments -en dwm-test -rn 190719_Hela_Ecoli_1to1_01 -tidx 34
 
 parser = argparse.ArgumentParser(description='Set up a training set from raw tiles.')
@@ -107,6 +161,8 @@ parser.add_argument('-tidx','--tile_idx_list', type=str, help='Indexes of the ti
 parser.add_argument('-inf','--inference_mode', action='store_true', help='This set of labelled tiles is for testing a model\'s inference rather than for training a new model.')
 parser.add_argument('-ssm','--small_set_mode', action='store_true', help='A small subset of the data for testing purposes.')
 parser.add_argument('-ssms','--small_set_mode_size', type=int, default='100', help='The number of tiles to sample for small set mode.', required=False)
+parser.add_argument('-rm','--ray_mode', type=str, choices=['local','cluster'], default='cluster', help='The Ray mode to use.', required=False)
+parser.add_argument('-pc','--proportion_of_cores_to_use', type=float, default=0.6, help='Proportion of the machine\'s cores to use for this program.', required=False)
 args = parser.parse_args()
 
 # store the command line arguments as metadata for later reference
@@ -246,6 +302,15 @@ else:
     val_proportion = 0.2
     test_proportion = 0.0
 logger.info("set proportions: train {}, validation {}, test {}".format(train_proportion, val_proportion, test_proportion))
+
+print("setting up Ray")
+if not ray.is_initialized():
+    if args.ray_mode == "cluster":
+        ray.init(object_store_memory=20000000000,
+                    redis_max_memory=25000000000,
+                    num_cpus=number_of_workers())
+    else:
+        ray.init(local_mode=True)
 
 # load the extracted features for the specified run
 logger.info("reading the extracted features from {}".format(EXTRACTED_FEATURES_DB_NAME))
@@ -442,46 +507,7 @@ logger.info("set max_batches={}, steps={},{},{},{}".format(max_batches, int(0.4*
 # copy the training set tiles and their annotation files to the training set directory
 print("copying the training set to {}".format(TRAIN_SET_DIR))
 train_set_object_count = 0
-for file_pair in train_set:
-    shutil.copyfile('{}/{}'.format(PRE_ASSIGNED_FILES_DIR, file_pair[0]), '{}/{}'.format(TRAIN_SET_DIR, file_pair[0]))
-    shutil.copyfile('{}/{}'.format(PRE_ASSIGNED_FILES_DIR, file_pair[1]), '{}/{}'.format(TRAIN_SET_DIR, file_pair[1]))
-
-    # find this tile in the tile metadata
-    basename = file_pair[0]
-    found = False
-    for tile in tile_metadata_l:
-        if tile['basename'] == basename:
-            mask_region_y_left = tile['mask_region_y_left']
-            mask_region_y_right = tile['mask_region_y_right']
-            tile_features_l = tile['tile_features_l']
-            found = True
-            break
-    assert(found == True), "could not find the metadata for tile {}".format(basename)
-
-    # create a feature mask
-    mask_im_array = np.zeros([PIXELS_Y+1, PIXELS_X+1, 3], dtype=np.uint8)
-    mask = Image.fromarray(mask_im_array.astype('uint8'), 'RGB')
-    mask_draw = ImageDraw.Draw(mask)
-
-    # draw a mask for each features on this tile
-    for feature in tile_features_l:
-        # draw the mask for this feature
-        x0_buffer = feature['x0_buffer']
-        y0_buffer = feature['y0_buffer']
-        x1_buffer = feature['x1_buffer']
-        y1_buffer = feature['y1_buffer']
-        mask_draw.rectangle(xy=[(x0_buffer, y0_buffer), (x1_buffer, y1_buffer)], fill='white', outline='white')
-
-    # save the bare mask
-    mask.save('{}/{}'.format(MASK_FILES_DIR, basename))
-
-    # apply the mask to the tile
-    img = Image.open("{}/{}".format(TRAIN_SET_DIR, basename))
-    masked_tile = ImageChops.multiply(img, mask)
-    masked_tile.save("{}/{}".format(TRAIN_SET_DIR, basename))
-
-    # count how many objects there are in this set
-    train_set_object_count += len(tile_features_l)
+_ = ray.get([apply_feature_mask.remote() for file_pair in train_set])
 
 # copy the validation set tiles and their annotation files to the validation set directory
 print("copying the validation set to {}".format(VAL_SET_DIR))
