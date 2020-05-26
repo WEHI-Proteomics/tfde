@@ -103,6 +103,9 @@ def number_of_workers():
 
 @ray.remote
 def create_annotation(idx, tile_filename):
+    global total_objects
+    global small_objects
+
     if idx % 100 == 0:
         logger.info("processing {} of {} tiles".format(idx+1, len(tile_filename_list)))
 
