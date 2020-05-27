@@ -130,6 +130,9 @@ def apply_feature_mask(file_pair):
         y1_buffer = feature['y1_buffer']
         mask_draw.rectangle(xy=[(x0_buffer, y0_buffer), (x1_buffer, y1_buffer)], fill='white', outline='white')
 
+    # finish drawing
+    del mask_draw
+
     # save the bare mask
     mask.save('{}/{}'.format(MASK_FILES_DIR, basename))
 
