@@ -340,8 +340,8 @@ sequences_df['rt_lower'] = sequences_df.apply(lambda row: np.min([i[0] for i in 
 sequences_df['rt_upper'] = sequences_df.apply(lambda row: np.max([i[1] for i in [row.mono_rt_bounds,row.isotope_1_rt_bounds,row.isotope_2_rt_bounds]]), axis=1)
 
 # aim to label the most intense part of the peak in RT
-sequences_df.rt_lower = sequences_df.rt_apex - (abs(sequences_df.rt_apex - sequences_df.rt_lower) / 2)
-sequences_df.rt_upper = sequences_df.rt_apex + (abs(sequences_df.rt_apex - sequences_df.rt_upper) / 2)
+sequences_df.rt_lower = sequences_df.rt_apex - 1
+sequences_df.rt_upper = sequences_df.rt_apex + 1
 
 sequences_df['scan_lower'] = sequences_df.apply(lambda row: np.min([i[0] for i in [row.mono_scan_bounds,row.isotope_1_scan_bounds,row.isotope_2_scan_bounds]]), axis=1)
 sequences_df['scan_upper'] = sequences_df.apply(lambda row: np.max([i[1] for i in [row.mono_scan_bounds,row.isotope_1_scan_bounds,row.isotope_2_scan_bounds]]), axis=1)
