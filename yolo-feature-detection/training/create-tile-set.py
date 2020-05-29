@@ -108,88 +108,16 @@ def create_indexes(db_file_name):
     src_c.execute("create index if not exists idx_tile_set_1 on frames (frame_id, mz)")
     db_conn.close()
 
-
-parser = argparse.ArgumentParser(description='Create the tiles from raw data.')
-parser.add_argument('-eb','--experiment_base_dir', type=str, default='./experiments', help='Path to the experiments directory.', required=False)
-parser.add_argument('-en','--experiment_name', type=str, help='Name of the experiment.', required=True)
-parser.add_argument('-rn','--run_name', type=str, help='Name of the run.', required=True)
-parser.add_argument('-tsn','--tile_set_name', type=str, default='tile-set', help='Name of the tile set.', required=False)
-parser.add_argument('-rtl','--rt_lower', type=int, default=200, help='Lower bound of the RT range.', required=False)
-parser.add_argument('-rtu','--rt_upper', type=int, default=800, help='Upper bound of the RT range.', required=False)
-parser.add_argument('-maxpi','--maximum_pixel_intensity', type=int, default=1000, help='Maximum pixel intensity for encoding, above which will be clipped.', required=False)
-parser.add_argument('-minpi','--minimum_pixel_intensity', type=int, default=1, help='Minimum pixel intensity for encoding, below which will be clipped.', required=False)
-parser.add_argument('-inp','--interpolate_neighbouring_pixels', action='store_true', help='Use the value of surrounding pixels to fill zero pixels.')
-parser.add_argument('-tidl','--tile_idx_lower', type=int, help='Lower range of the tile indexes to render. Must be between {} and {}'.format(MIN_TILE_IDX,MAX_TILE_IDX), required=True)
-parser.add_argument('-tidu','--tile_idx_upper', type=int, help='Upper range of the tile indexes to render. Must be between {} and {}'.format(MIN_TILE_IDX,MAX_TILE_IDX), required=True)
-parser.add_argument('-np','--number_of_processors', type=int, default=8, help='The number of processors to use.', required=False)
-parser.add_argument('-shutdown','--shutdown', action='store_true', help='Shut down the machine when complete.')
-args = parser.parse_args()
-
-# Store the arguments as metadata for later reference
-info = []
-for arg in vars(args):
-    info.append((arg, getattr(args, arg)))
-
-print("{} info: {}".format(parser.prog, info))
-
-# check the tile index range
-if (args.tile_idx_lower < MIN_TILE_IDX) or (args.tile_idx_lower > MAX_TILE_IDX) or (args.tile_idx_upper < MIN_TILE_IDX) or (args.tile_idx_upper > MAX_TILE_IDX):
-    print("The tile index must be between {} and {} inclusive".format(MIN_TILE_IDX, MAX_TILE_IDX))
-    sys.exit(1)
-
-# check the experiment directory exists
-EXPERIMENT_DIR = "{}/{}".format(args.experiment_base_dir, args.experiment_name)
-if not os.path.exists(EXPERIMENT_DIR):
-    print("The experiment directory is required but doesn't exist: {}".format(EXPERIMENT_DIR))
-    sys.exit(1)
-
-# check the run directory exists
-RUN_DIR = '{}/converted-databases'.format(EXPERIMENT_DIR)
-if not os.path.exists(RUN_DIR):
-    os.makedirs(RUN_DIR)
-
-# check the converted database exists
-CONVERTED_DATABASE_NAME = "{}/exp-{}-run-{}-converted.sqlite".format(RUN_DIR, args.experiment_name, args.run_name)
-if not os.path.isfile(CONVERTED_DATABASE_NAME):
-    print("The converted database is required but doesn't exist: {}".format(CONVERTED_DATABASE_NAME))
-    sys.exit(1)
-
-# create the tiles base directory
-TILES_BASE_DIR = '{}/tiles/{}/{}'.format(EXPERIMENT_DIR, args.run_name, args.tile_set_name)
-if not os.path.exists(TILES_BASE_DIR):
-    os.makedirs(TILES_BASE_DIR)
-    print("The tiles base directory was created: {}".format(TILES_BASE_DIR))
-
-# set up a tile directory for each run
-tile_dir_d = {}
-for tile_idx in range(args.tile_idx_lower, args.tile_idx_upper+1):
-    tile_dir = "{}/tile-{}".format(TILES_BASE_DIR, tile_idx)
-    tile_dir_d[tile_idx] = tile_dir
-    if os.path.exists(tile_dir):
-        shutil.rmtree(tile_dir)
-    os.makedirs(tile_dir)
-    print("Created {}".format(tile_dir))
-
-start_run = time.time()
-
-print("creating indexes")
-create_indexes(CONVERTED_DATABASE_NAME)
-
-print("rendering tiles {} to {}, with m/z range {} to {}".format(args.tile_idx_lower, args.tile_idx_upper, round(mz_range_for_tile(args.tile_idx_lower)[0],1), round(mz_range_for_tile(args.tile_idx_upper)[1],1)))
-
-if not ray.is_initialized():
-    ray.init(num_cpus=args.number_of_processors)
-
 @ray.remote
-def render_frame(run_name, frame_id, tile_dir_d, idx, total_frames):
-    print("processing frame {} of {}".format(idx, total_frames))
+def render_frame(run_name, converted_db_name, frame_id, min_tile_id, max_tile_id, frame_idx, total_frames):
+    print("processing frame {} of {} for run {}".format(frame_idx, total_frames, run_name))
 
     # find the mz range for the tiles specified
-    frame_mz_lower = mz_range_for_tile(min(tile_dir_d.keys()))[0]  # the lower mz range for the lowest tile index specified
-    frame_mz_upper = mz_range_for_tile(max(tile_dir_d.keys()))[1]  # the upper mz range for the highest tile index specified
+    frame_mz_lower = mz_range_for_tile(min_tile_id)[0]  # the lower mz range for the lowest tile index specified
+    frame_mz_upper = mz_range_for_tile(max_tile_id)[1]  # the upper mz range for the highest tile index specified
 
     # read the raw points for the frame
-    db_conn = sqlite3.connect(CONVERTED_DATABASE_NAME)
+    db_conn = sqlite3.connect(converted_db_name)
     raw_points_df = pd.read_sql_query("select mz,scan,intensity from frames where frame_id == {} and mz >= {} and mz <= {}".format(frame_id, frame_mz_lower, frame_mz_upper), db_conn)
     db_conn.close()
 
@@ -211,7 +139,7 @@ def render_frame(run_name, frame_id, tile_dir_d, idx, total_frames):
     pixel_intensity_df['colour'] = colour_l
 
     # extract the pixels for the frame for the specified tiles
-    for tile_idx in tile_dir_d.keys():
+    for tile_idx in range(min_tile_id, max_tile_id+1):
         tile_df = pixel_intensity_df[(pixel_intensity_df.tile_id == tile_idx)]
 
         # create an intensity array
@@ -228,16 +156,81 @@ def render_frame(run_name, frame_id, tile_dir_d, idx, total_frames):
 
         # create an image of the intensity array
         tile = Image.fromarray(tile_im_array, 'RGB')
-        mz_lower,mz_upper = mz_range_for_tile(tile_idx)
-        tile.save('{}/{}-frame-{}-tile-{}.png'.format(tile_dir_d[tile_idx], run_name, frame_id, tile_idx))
+        tile.save('{}/run-{}-frame-{}-tile-{}.png'.format(TILES_BASE_DIR, run_name, frame_id, tile_idx))
 
-# get the ms1 frame ids within the specified retention time
-db_conn = sqlite3.connect(CONVERTED_DATABASE_NAME)
-ms1_frame_properties_df = pd.read_sql_query("select Id,Time from frame_properties where Time >= {} and Time <= {} and MsMsType == {}".format(args.rt_lower, args.rt_upper, FRAME_TYPE_MS1), db_conn)
-ms1_frame_ids = tuple(ms1_frame_properties_df.Id)
-db_conn.close()
 
-ray.get([render_frame.remote(args.run_name, frame_id, tile_dir_d, idx, len(ms1_frame_ids)) for idx,frame_id in enumerate(ms1_frame_ids, start=1)])
+parser = argparse.ArgumentParser(description='Create the tiles from raw data.')
+parser.add_argument('-eb','--experiment_base_dir', type=str, default='./experiments', help='Path to the experiments directory.', required=False)
+parser.add_argument('-en','--experiment_name', type=str, help='Name of the experiment.', required=True)
+parser.add_argument('-rn','--run_names', nargs='+', type=str, help='Space-separated names of runs to include.', required=True)
+parser.add_argument('-tsn','--tile_set_name', type=str, default='tile-set', help='Name of the tile set.', required=False)
+parser.add_argument('-rtl','--rt_lower', type=int, default=200, help='Lower bound of the RT range.', required=False)
+parser.add_argument('-rtu','--rt_upper', type=int, default=800, help='Upper bound of the RT range.', required=False)
+parser.add_argument('-maxpi','--maximum_pixel_intensity', type=int, default=1000, help='Maximum pixel intensity for encoding, above which will be clipped.', required=False)
+parser.add_argument('-minpi','--minimum_pixel_intensity', type=int, default=1, help='Minimum pixel intensity for encoding, below which will be clipped.', required=False)
+parser.add_argument('-inp','--interpolate_neighbouring_pixels', action='store_true', help='Use the value of surrounding pixels to fill zero pixels.')
+parser.add_argument('-tidl','--tile_idx_lower', type=int, help='Lower range of the tile indexes to render. Must be between {} and {}'.format(MIN_TILE_IDX,MAX_TILE_IDX), required=True)
+parser.add_argument('-tidu','--tile_idx_upper', type=int, help='Upper range of the tile indexes to render. Must be between {} and {}'.format(MIN_TILE_IDX,MAX_TILE_IDX), required=True)
+parser.add_argument('-np','--number_of_processors', type=int, default=20, help='The number of processors to use.', required=False)
+parser.add_argument('-shutdown','--shutdown', action='store_true', help='Shut down the machine when complete.')
+args = parser.parse_args()
+
+# Store the arguments as metadata for later reference
+info = []
+for arg in vars(args):
+    info.append((arg, getattr(args, arg)))
+
+print("{} info: {}".format(parser.prog, info))
+
+# check the tile index range is valid
+if (args.tile_idx_lower < MIN_TILE_IDX) or (args.tile_idx_lower > MAX_TILE_IDX) or (args.tile_idx_upper < MIN_TILE_IDX) or (args.tile_idx_upper > MAX_TILE_IDX):
+    print("The tile index must be between {} and {} inclusive".format(MIN_TILE_IDX, MAX_TILE_IDX))
+    sys.exit(1)
+
+# check the experiment directory exists
+EXPERIMENT_DIR = "{}/{}".format(args.experiment_base_dir, args.experiment_name)
+if not os.path.exists(EXPERIMENT_DIR):
+    print("The experiment directory is required but doesn't exist: {}".format(EXPERIMENT_DIR))
+    sys.exit(1)
+
+# check the converted database directory exists
+CONVERTED_DATABASE_DIR = '{}/converted-databases'.format(EXPERIMENT_DIR)
+if not os.path.exists(CONVERTED_DATABASE_DIR):
+    print("The converted database directory is required but doesn't exist: {}".format(CONVERTED_DATABASE_DIR))
+    sys.exit(1)
+
+# create the tiles base directory
+TILES_BASE_DIR = '{}/tiles/{}'.format(EXPERIMENT_DIR, args.tile_set_name)
+if os.path.exists(TILES_BASE_DIR):
+    shutil.rmtree(TILES_BASE_DIR)
+os.makedirs(TILES_BASE_DIR)
+
+
+##############################
+start_run = time.time()
+
+if not ray.is_initialized():
+    ray.init(num_cpus=args.number_of_processors)
+
+for run_name in args.run_names:
+    # check the converted database exists
+    CONVERTED_DATABASE_NAME = "{}/exp-{}-run-{}-converted.sqlite".format(CONVERTED_DATABASE_DIR, args.experiment_name, run_name)
+    if not os.path.isfile(CONVERTED_DATABASE_NAME):
+        print("The converted database is required but doesn't exist: {}".format(CONVERTED_DATABASE_NAME))
+        sys.exit(1)
+
+    print("creating indexes if they don't already exist")
+    create_indexes(CONVERTED_DATABASE_NAME)
+
+    print("rendering tiles {} to {} from run {}, with m/z range {} to {}".format(args.tile_idx_lower, args.tile_idx_upper, run_name, round(mz_range_for_tile(args.tile_idx_lower)[0],1), round(mz_range_for_tile(args.tile_idx_upper)[1],1)))
+
+    # get the ms1 frame ids within the specified retention time
+    db_conn = sqlite3.connect(CONVERTED_DATABASE_NAME)
+    ms1_frame_properties_df = pd.read_sql_query("select Id,Time from frame_properties where Time >= {} and Time <= {} and MsMsType == {}".format(args.rt_lower, args.rt_upper, FRAME_TYPE_MS1), db_conn)
+    ms1_frame_ids = tuple(ms1_frame_properties_df.Id)
+    db_conn.close()
+
+    ray.get([render_frame.remote(run_name, CONVERTED_DATABASE_NAME, frame_id, args.tile_idx_lower, args.tile_idx_upper, frame_idx, len(ms1_frame_ids)) for frame_idx,frame_id in enumerate(ms1_frame_ids, start=1)])
 
 stop_run = time.time()
 info.append(("run processing time (sec)", round(stop_run-start_run,1)))
