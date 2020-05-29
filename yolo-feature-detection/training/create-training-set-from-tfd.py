@@ -156,7 +156,7 @@ def number_of_workers():
 parser = argparse.ArgumentParser(description='Set up a training set from raw tiles.')
 parser.add_argument('-eb','--experiment_base_dir', type=str, default='./experiments', help='Path to the experiments directory.', required=False)
 parser.add_argument('-en','--experiment_name', type=str, help='Name of the experiment.', required=True)
-parser.add_argument('-rn','--run_name', type=str, help='Name of the run.', required=True)
+parser.add_argument('-rn','--run_names', nargs='+', type=str, help='Space-separated names of runs to include.', required=True)
 parser.add_argument('-tsn','--tile_set_name', type=str, default='tile-set', help='Name of the tile set.', required=False)
 parser.add_argument('-tn','--training_set_name', type=str, default='yolo', help='Name of the training set.', required=False)
 parser.add_argument('-rtl','--rt_lower', type=int, default=200, help='Lower bound of the RT range.', required=False)
@@ -201,17 +201,18 @@ if not os.path.exists(EXPERIMENT_DIR):
     print("The experiment directory is required but doesn't exist: {}".format(EXPERIMENT_DIR))
     sys.exit(1)
 
-# check the run directory exists
+# check the converted database directory exists
 CONVERTED_DATABASE_DIR = '{}/converted-databases'.format(EXPERIMENT_DIR)
 if not os.path.exists(CONVERTED_DATABASE_DIR):
     print("The run directory is required but doesn't exist: {}".format(CONVERTED_DATABASE_DIR))
     sys.exit(1)
 
-# check the converted database exists
-CONVERTED_DATAbasename = "{}/exp-{}-run-{}-converted.sqlite".format(CONVERTED_DATABASE_DIR, args.experiment_name, args.run_name)
-if not os.path.isfile(CONVERTED_DATAbasename):
-    print("The converted database is required but doesn't exist: {}".format(CONVERTED_DATAbasename))
-    sys.exit(1)
+for run_name in args.run_names:
+    # check the converted database exists for each run specified
+    CONVERTED_DATABASE_NAME = "{}/exp-{}-run-{}-converted.sqlite".format(CONVERTED_DATABASE_DIR, args.experiment_name, run_name)
+    if not os.path.isfile(CONVERTED_DATABASE_NAME):
+        print("The converted database is required but doesn't exist: {}".format(CONVERTED_DATABASE_NAME))
+        sys.exit(1)
 
 # check the extracted features directory
 EXTRACTED_FEATURES_DIR = "{}/extracted-features".format(EXPERIMENT_DIR)
@@ -316,70 +317,76 @@ if not ray.is_initialized():
     else:
         ray.init(local_mode=True)
 
-# load the extracted features for the specified run
-logger.info("reading the extracted features from {}".format(EXTRACTED_FEATURES_DB_NAME))
-db_conn = sqlite3.connect(EXTRACTED_FEATURES_DB_NAME)
-sequences_df = pd.read_sql_query('select sequence,charge,run_name,monoisotopic_mz_centroid,number_of_isotopes,rt_apex,mono_rt_bounds,mono_scan_bounds,isotope_1_rt_bounds,isotope_1_scan_bounds,isotope_2_rt_bounds,isotope_2_scan_bounds,isotope_intensities_l from features where file_idx=={}'.format(file_idx_for_run(args.run_name)), db_conn)
-db_conn.close()
-logger.info("loaded {} extracted features from {}".format(len(sequences_df), EXTRACTED_FEATURES_DB_NAME))
+# process each run
+run_info_d = {}
+for run_name in args.run_names:
+    # load the extracted features for the specified run
+    logger.info("reading the extracted features from {}".format(EXTRACTED_FEATURES_DB_NAME))
+    db_conn = sqlite3.connect(EXTRACTED_FEATURES_DB_NAME)
+    sequences_df = pd.read_sql_query('select sequence,charge,run_name,monoisotopic_mz_centroid,number_of_isotopes,rt_apex,mono_rt_bounds,mono_scan_bounds,isotope_1_rt_bounds,isotope_1_scan_bounds,isotope_2_rt_bounds,isotope_2_scan_bounds,isotope_intensities_l from features where file_idx=={}'.format(file_idx_for_run(args.run_name)), db_conn)
+    db_conn.close()
+    logger.info("loaded {} extracted features from {}".format(len(sequences_df), EXTRACTED_FEATURES_DB_NAME))
 
-# unpack the feature extents
-logger.info("unpacking the feature extents")
-sequences_df.mono_rt_bounds = sequences_df.apply(lambda row: json.loads(row.mono_rt_bounds), axis=1)
-sequences_df.mono_scan_bounds = sequences_df.apply(lambda row: json.loads(row.mono_scan_bounds), axis=1)
+    # unpack the feature extents
+    logger.info("unpacking the feature extents")
+    sequences_df.mono_rt_bounds = sequences_df.apply(lambda row: json.loads(row.mono_rt_bounds), axis=1)
+    sequences_df.mono_scan_bounds = sequences_df.apply(lambda row: json.loads(row.mono_scan_bounds), axis=1)
 
-sequences_df.isotope_1_rt_bounds = sequences_df.apply(lambda row: json.loads(row.isotope_1_rt_bounds), axis=1)
-sequences_df.isotope_1_scan_bounds = sequences_df.apply(lambda row: json.loads(row.isotope_1_scan_bounds), axis=1)
+    sequences_df.isotope_1_rt_bounds = sequences_df.apply(lambda row: json.loads(row.isotope_1_rt_bounds), axis=1)
+    sequences_df.isotope_1_scan_bounds = sequences_df.apply(lambda row: json.loads(row.isotope_1_scan_bounds), axis=1)
 
-sequences_df.isotope_2_rt_bounds = sequences_df.apply(lambda row: json.loads(row.isotope_2_rt_bounds), axis=1)
-sequences_df.isotope_2_scan_bounds = sequences_df.apply(lambda row: json.loads(row.isotope_2_scan_bounds), axis=1)
+    sequences_df.isotope_2_rt_bounds = sequences_df.apply(lambda row: json.loads(row.isotope_2_rt_bounds), axis=1)
+    sequences_df.isotope_2_scan_bounds = sequences_df.apply(lambda row: json.loads(row.isotope_2_scan_bounds), axis=1)
 
-sequences_df.isotope_intensities_l = sequences_df.apply(lambda row: json.loads(row.isotope_intensities_l), axis=1)
+    sequences_df.isotope_intensities_l = sequences_df.apply(lambda row: json.loads(row.isotope_intensities_l), axis=1)
 
-sequences_df['rt_lower'] = sequences_df.apply(lambda row: np.min([i[0] for i in [row.mono_rt_bounds,row.isotope_1_rt_bounds,row.isotope_2_rt_bounds]]), axis=1)
-sequences_df['rt_upper'] = sequences_df.apply(lambda row: np.max([i[1] for i in [row.mono_rt_bounds,row.isotope_1_rt_bounds,row.isotope_2_rt_bounds]]), axis=1)
+    sequences_df['rt_lower'] = sequences_df.apply(lambda row: np.min([i[0] for i in [row.mono_rt_bounds,row.isotope_1_rt_bounds,row.isotope_2_rt_bounds]]), axis=1)
+    sequences_df['rt_upper'] = sequences_df.apply(lambda row: np.max([i[1] for i in [row.mono_rt_bounds,row.isotope_1_rt_bounds,row.isotope_2_rt_bounds]]), axis=1)
 
-# aim to label the most intense part of the peak in RT
-sequences_df.rt_lower = sequences_df.rt_apex - 1.0
-sequences_df.rt_upper = sequences_df.rt_apex + 1.0
+    # aim to label the most intense part of the peak in RT
+    sequences_df.rt_lower = sequences_df.rt_apex - 1.0
+    sequences_df.rt_upper = sequences_df.rt_apex + 1.0
 
-sequences_df['scan_lower'] = sequences_df.apply(lambda row: np.min([i[0] for i in [row.mono_scan_bounds,row.isotope_1_scan_bounds,row.isotope_2_scan_bounds]]), axis=1)
-sequences_df['scan_upper'] = sequences_df.apply(lambda row: np.max([i[1] for i in [row.mono_scan_bounds,row.isotope_1_scan_bounds,row.isotope_2_scan_bounds]]), axis=1)
+    sequences_df['scan_lower'] = sequences_df.apply(lambda row: np.min([i[0] for i in [row.mono_scan_bounds,row.isotope_1_scan_bounds,row.isotope_2_scan_bounds]]), axis=1)
+    sequences_df['scan_upper'] = sequences_df.apply(lambda row: np.max([i[1] for i in [row.mono_scan_bounds,row.isotope_1_scan_bounds,row.isotope_2_scan_bounds]]), axis=1)
 
-sequences_df['mz_lower'] = sequences_df.apply(lambda row: np.min([i[0] for i in row.isotope_intensities_l[0][4]]), axis=1)  # [0][4] refers to the isotope points of the monoisotope; i[0] refers to the m/z values
-sequences_df['mz_upper'] = sequences_df.apply(lambda row: np.max([i[0] for i in row.isotope_intensities_l[row.number_of_isotopes-1][4]]), axis=1)
+    sequences_df['mz_lower'] = sequences_df.apply(lambda row: np.min([i[0] for i in row.isotope_intensities_l[0][4]]), axis=1)  # [0][4] refers to the isotope points of the monoisotope; i[0] refers to the m/z values
+    sequences_df['mz_upper'] = sequences_df.apply(lambda row: np.max([i[0] for i in row.isotope_intensities_l[row.number_of_isotopes-1][4]]), axis=1)
 
-# get the frame properties so we can map frame ID to RT
-logger.info("reading frame IDs from {}".format(CONVERTED_DATAbasename))
-db_conn = sqlite3.connect(CONVERTED_DATAbasename)
-ms1_frame_properties_df = pd.read_sql_query("select Id,Time from frame_properties where Time >= {} and Time <= {} and MsMsType == {}".format(args.rt_lower, args.rt_upper, FRAME_TYPE_MS1), db_conn)
-min_frame_id = ms1_frame_properties_df.Id.min()
-max_frame_id = ms1_frame_properties_df.Id.max()
-db_conn.close()
+    # get the frame properties so we can map frame ID to RT
+    CONVERTED_DATABASE_NAME = "{}/exp-{}-run-{}-converted.sqlite".format(CONVERTED_DATABASE_DIR, args.experiment_name, run_name)
+    logger.info("reading frame IDs from {}".format(CONVERTED_DATABASE_NAME))
+    db_conn = sqlite3.connect(CONVERTED_DATABASE_NAME)
+    ms1_frame_properties_df = pd.read_sql_query("select Id,Time from frame_properties where Time >= {} and Time <= {} and MsMsType == {}".format(args.rt_lower, args.rt_upper, FRAME_TYPE_MS1), db_conn)
+    min_frame_id = ms1_frame_properties_df.Id.min()
+    max_frame_id = ms1_frame_properties_df.Id.max()
+    db_conn.close()
 
-# check the tiles directory exists for each tile index we need
-for tile_idx in indexes_l:
-    tile_count = 0
-    tile_dir = "{}/tile-{}".format(TILES_BASE_DIR, tile_idx)
-    if os.path.exists(tile_dir):
-        # copy the raw tiles to the pre-assigned tiles directory
-        file_list = sorted(glob.glob("{}/frame-*-tile-*.png".format(tile_dir)))
-        logger.info("copying tiles within the RT range from {} to {}".format(tile_dir, PRE_ASSIGNED_FILES_DIR))
-        for file in file_list:
-            basename = os.path.basename(file)
-            # if the frame_id is within the specified RT range
-            frame_id = int(basename.split('-')[1])
-            if (frame_id >= min_frame_id) and (frame_id <= max_frame_id):
-                destination_name = '{}/{}'.format(PRE_ASSIGNED_FILES_DIR, basename)
-                shutil.copyfile(file, destination_name)
-                tile_count += 1
-        logger.info("copied {} tiles for index {}".format(tile_count, tile_idx))
-    else:
-        print("The tiles directory is required but does not exist: {}".format(tile_dir))
-        sys.exit(1)
+    # check the tiles directory exists for each tile index we need, and copy them to the pre-assigned directory
+    for tile_idx in indexes_l:
+        tile_count = 0
+        tile_dir = "{}/tile-{}".format(TILES_BASE_DIR, tile_idx)
+        if os.path.exists(tile_dir):
+            # copy the raw tiles to the pre-assigned tiles directory
+            file_list = sorted(glob.glob("{}/{}-frame-*-tile-*.png".format(tile_dir, run_name)))
+            logger.info("copying tiles within the RT range from {} to {}".format(tile_dir, PRE_ASSIGNED_FILES_DIR))
+            for file in file_list:
+                basename = os.path.basename(file)
+                # if the frame_id is within the specified RT range
+                frame_id = int(basename.split('-')[1])
+                if (frame_id >= min_frame_id) and (frame_id <= max_frame_id):
+                    destination_name = '{}/{}'.format(PRE_ASSIGNED_FILES_DIR, basename)
+                    shutil.copyfile(file, destination_name)
+                    tile_count += 1
+            logger.info("copied {} tiles for index {}".format(tile_count, tile_idx))
+        else:
+            print("The tiles directory is required but does not exist: {}".format(tile_dir))
+            sys.exit(1)
+
+    run_info_d[run_name] = {'sequences_df':sequences_df, 'ms1_frame_properties_df':ms1_frame_properties_df}
 
 # get all the tiles that have been generated from the raw data
-tile_filename_list = sorted(glob.glob("{}/frame-*-tile-*.png".format(PRE_ASSIGNED_FILES_DIR)))
+tile_filename_list = sorted(glob.glob("{}/*-frame-*-tile-*.png".format(PRE_ASSIGNED_FILES_DIR)))
 if len(tile_filename_list) == 0:
     print("Found no tiles to process in the pre-assigned directory: {}".format(PRE_ASSIGNED_FILES_DIR))
     sys.exit(1)
@@ -401,8 +408,10 @@ for idx,tile_filename in enumerate(tile_filename_list):
         logger.info("processing {} of {} tiles".format(idx+1, len(tile_filename_list)))
 
     basename = os.path.basename(tile_filename)
-    frame_id = int(basename.split('-')[1])
-    tile_id = int(basename.split('-')[3].split('.')[0])
+    splits = basename.split('-')
+    run_name = splits[0]
+    frame_id = int(splits[2])
+    tile_id = int(splits[4].split('.')[0])  # need to separate it from the file extension
 
     number_of_objects_this_tile = 0
 
@@ -412,11 +421,14 @@ for idx,tile_filename in enumerate(tile_filename_list):
     mask_region_y_left,mask_region_y_right = scan_coords_for_single_charge_region(tile_mz_lower, tile_mz_upper)
 
     # store metadata for this tile
-    tile_metadata = {'frame_id':frame_id, 'tile_id':tile_id, 'basename':basename, 'mask_region_y_left':mask_region_y_left, 'mask_region_y_right':mask_region_y_right}
+    tile_metadata = {'run_name':run_name, 'frame_id':frame_id, 'tile_id':tile_id, 'basename':basename, 'mask_region_y_left':mask_region_y_left, 'mask_region_y_right':mask_region_y_right}
 
     annotations_filename = '{}.txt'.format(os.path.splitext(basename)[0])
     annotations_path = '{}/{}'.format(PRE_ASSIGNED_FILES_DIR, annotations_filename)
     tile_list.append((basename, annotations_filename))
+
+    ms1_frame_properties_df = run_info_d[run_name]['ms1_frame_properties_df']
+    sequences_df = run_info_d[run_name]['sequences_df']
 
     # get the retention time for this frame
     frame_rt = ms1_frame_properties_df[ms1_frame_properties_df.Id == frame_id].iloc[0].Time
