@@ -181,7 +181,7 @@ if not ray.is_initialized():
     ray.init(num_cpus=args.number_of_processors)
 
 @ray.remote
-def render_frame(frame_id, tile_dir_d, idx, total_frames):
+def render_frame(run_name, frame_id, tile_dir_d, idx, total_frames):
     print("processing frame {} of {}".format(idx, total_frames))
 
     # find the mz range for the tiles specified
@@ -229,7 +229,7 @@ def render_frame(frame_id, tile_dir_d, idx, total_frames):
         # create an image of the intensity array
         tile = Image.fromarray(tile_im_array, 'RGB')
         mz_lower,mz_upper = mz_range_for_tile(tile_idx)
-        tile.save('{}/frame-{}-tile-{}.png'.format(tile_dir_d[tile_idx], frame_id, tile_idx))
+        tile.save('{}/{}-frame-{}-tile-{}.png'.format(tile_dir_d[tile_idx], run_name, frame_id, tile_idx))
 
 # get the ms1 frame ids within the specified retention time
 db_conn = sqlite3.connect(CONVERTED_DATABASE_NAME)
@@ -237,7 +237,7 @@ ms1_frame_properties_df = pd.read_sql_query("select Id,Time from frame_propertie
 ms1_frame_ids = tuple(ms1_frame_properties_df.Id)
 db_conn.close()
 
-ray.get([render_frame.remote(frame_id, tile_dir_d, idx, len(ms1_frame_ids)) for idx,frame_id in enumerate(ms1_frame_ids, start=1)])
+ray.get([render_frame.remote(args.run_name, frame_id, tile_dir_d, idx, len(ms1_frame_ids)) for idx,frame_id in enumerate(ms1_frame_ids, start=1)])
 
 stop_run = time.time()
 info.append(("run processing time (sec)", round(stop_run-start_run,1)))
