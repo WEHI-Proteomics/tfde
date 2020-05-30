@@ -165,7 +165,7 @@ def render_frame(run_name, converted_db_name, frame_id, retention_time_secs, min
             tile.save(tile_file_name)
 
             tile_mz_lower,tile_mz_upper = mz_range_for_tile(tile_id)
-            tile_list.append({'run':run_name, 'frame_id':frame_id, 'tile_id':tile_id, 'mz_lower':tile_mz_lower, 'mz_upper':tile_mz_upper, 'retention_time_secs':retention_time_secs, 'tile_file_name':tile_file_name})
+            tile_list.append({'run_name':run_name, 'frame_id':frame_id, 'tile_id':tile_id, 'mz_lower':tile_mz_lower, 'mz_upper':tile_mz_upper, 'retention_time_secs':retention_time_secs, 'tile_file_name':tile_file_name})
 
     return tile_list
 
