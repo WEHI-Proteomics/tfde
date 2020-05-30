@@ -124,42 +124,43 @@ def render_frame(run_name, converted_db_name, frame_id, min_tile_id, max_tile_id
     raw_points_df = pd.read_sql_query("select mz,scan,intensity from frames where frame_id == {} and mz >= {} and mz <= {}".format(frame_id, frame_mz_lower, frame_mz_upper), db_conn)
     db_conn.close()
 
-    # assign a tile_id and a pixel x value to each raw point
-    tile_pixels_df = pd.DataFrame(raw_points_df.apply(lambda row: tile_pixel_x_from_mz(row.mz), axis=1).tolist(), columns=['tile_id', 'pixel_x'])
-    raw_points_df = pd.concat([raw_points_df, tile_pixels_df], axis=1)
+    if len(raw_points_df) > 0:
+        # assign a tile_id and a pixel x value to each raw point
+        tile_pixels_df = pd.DataFrame(raw_points_df.apply(lambda row: tile_pixel_x_from_mz(row.mz), axis=1).tolist(), columns=['tile_id', 'pixel_x'])
+        raw_points_df = pd.concat([raw_points_df, tile_pixels_df], axis=1)
 
-    # sum the intensity of raw points that have been assigned to each pixel
-    pixel_intensity_df = raw_points_df.groupby(by=['tile_id', 'pixel_x', 'scan'], as_index=False).intensity.sum()
+        # sum the intensity of raw points that have been assigned to each pixel
+        pixel_intensity_df = raw_points_df.groupby(by=['tile_id', 'pixel_x', 'scan'], as_index=False).intensity.sum()
 
-    # create the colour map to convert intensity to colour
-    colour_map = plt.get_cmap('rainbow')
-    norm = colors.LogNorm(vmin=args.minimum_pixel_intensity, vmax=args.maximum_pixel_intensity, clip=True)  # aiming to get good colour variation in the lower range, and clipping everything else
+        # create the colour map to convert intensity to colour
+        colour_map = plt.get_cmap('rainbow')
+        norm = colors.LogNorm(vmin=args.minimum_pixel_intensity, vmax=args.maximum_pixel_intensity, clip=True)  # aiming to get good colour variation in the lower range, and clipping everything else
 
-    # calculate the colour to represent the intensity
-    colour_l = []
-    for r in zip(pixel_intensity_df.intensity):
-        colour_l.append((colour_map(norm(r[0]), bytes=True)[:3]))
-    pixel_intensity_df['colour'] = colour_l
+        # calculate the colour to represent the intensity
+        colour_l = []
+        for r in zip(pixel_intensity_df.intensity):
+            colour_l.append((colour_map(norm(r[0]), bytes=True)[:3]))
+        pixel_intensity_df['colour'] = colour_l
 
-    # extract the pixels for the frame for the specified tiles
-    for tile_idx in range(min_tile_id, max_tile_id+1):
-        tile_df = pixel_intensity_df[(pixel_intensity_df.tile_id == tile_idx)]
+        # extract the pixels for the frame for the specified tiles
+        for tile_idx in range(min_tile_id, max_tile_id+1):
+            tile_df = pixel_intensity_df[(pixel_intensity_df.tile_id == tile_idx)]
 
-        # create an intensity array
-        tile_im_array = np.zeros([PIXELS_Y+1, PIXELS_X+1, 3], dtype=np.uint8)  # container for the image
-        for r in zip(tile_df.pixel_x, tile_df.scan, tile_df.colour):
-            x = r[0]
-            y = r[1]
-            c = r[2]
-            tile_im_array[y,x,:] = c
+            # create an intensity array
+            tile_im_array = np.zeros([PIXELS_Y+1, PIXELS_X+1, 3], dtype=np.uint8)  # container for the image
+            for r in zip(tile_df.pixel_x, tile_df.scan, tile_df.colour):
+                x = r[0]
+                y = r[1]
+                c = r[2]
+                tile_im_array[y,x,:] = c
 
-        if args.interpolate_neighbouring_pixels:
-            # fill in zero pixels with interpolated values
-            tile_im_array = interpolate_pixels(tile_im_array)
+            if args.interpolate_neighbouring_pixels:
+                # fill in zero pixels with interpolated values
+                tile_im_array = interpolate_pixels(tile_im_array)
 
-        # create an image of the intensity array
-        tile = Image.fromarray(tile_im_array, 'RGB')
-        tile.save('{}/run-{}-frame-{}-tile-{}.png'.format(TILES_BASE_DIR, run_name, frame_id, tile_idx))
+            # create an image of the intensity array
+            tile = Image.fromarray(tile_im_array, 'RGB')
+            tile.save('{}/run-{}-frame-{}-tile-{}.png'.format(TILES_BASE_DIR, run_name, frame_id, tile_idx))
 
 # determine the number of workers based on the number of available cores and the proportion of the machine to be used
 def number_of_workers():
