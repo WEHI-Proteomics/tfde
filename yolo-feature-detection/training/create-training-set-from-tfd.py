@@ -40,7 +40,7 @@ SMALL_OBJECT_W = SMALL_OBJECT_H = 16/416
 
 # allow for some buffer area around the features
 MZ_BUFFER = 0.25
-SCAN_BUFFER = 10
+SCAN_BUFFER = 20
 
 # get the m/z extent for the specified tile ID
 def mz_range_for_tile(tile_id):
@@ -57,14 +57,6 @@ def tile_pixel_x_from_mz(mz):
     tile_id = int((mz - MZ_MIN) / MZ_PER_TILE)
     pixel_x = int(((mz - MZ_MIN) % MZ_PER_TILE) / MZ_PER_TILE * PIXELS_X)
     return (tile_id, pixel_x)
-
-# decide whether there is sufficient data in this region to justify labelling it for the training set
-def label_this_object(frame_id, feature):
-    # are there any points in this region of the frame?
-    db_conn = sqlite3.connect(CONVERTED_DATAbasename)
-    points_df = pd.read_sql_query("select * from frames where frame_id == {} and mz >= {} and mz <= {} and scan >= {} and scan <= {}".format(frame_id, feature.mz_lower, feature.mz_upper, feature.scan_lower, feature.scan_upper), db_conn)
-    db_conn.close()
-    return (len(points_df) > 0)
 
 # determine the mapping between the percolator index and the run file name
 def get_percolator_run_mapping(mapping_file_name):
@@ -156,11 +148,8 @@ def number_of_workers():
 parser = argparse.ArgumentParser(description='Set up a training set from raw tiles.')
 parser.add_argument('-eb','--experiment_base_dir', type=str, default='./experiments', help='Path to the experiments directory.', required=False)
 parser.add_argument('-en','--experiment_name', type=str, help='Name of the experiment.', required=True)
-parser.add_argument('-rn','--run_names', nargs='+', type=str, help='Space-separated names of runs to include.', required=True)
 parser.add_argument('-tsn','--tile_set_name', type=str, default='tile-set', help='Name of the tile set.', required=False)
 parser.add_argument('-tn','--training_set_name', type=str, default='yolo', help='Name of the training set.', required=False)
-parser.add_argument('-rtl','--rt_lower', type=int, default=200, help='Lower bound of the RT range.', required=False)
-parser.add_argument('-rtu','--rt_upper', type=int, default=800, help='Upper bound of the RT range.', required=False)
 parser.add_argument('-tidx','--tile_idx_list', type=str, help='Indexes of the tiles to use for the training set. Can specify several ranges (e.g. 10-20,21-30,31-40), a single range (e.g. 10-24), individual indexes (e.g. 34,56,32), or a single index (e.g. 54). Indexes must be between {} and {}'.format(MIN_TILE_IDX,MAX_TILE_IDX), required=True)
 parser.add_argument('-inf','--inference_mode', action='store_true', help='This set of labelled tiles is for testing a model\'s inference rather than for training a new model.')
 parser.add_argument('-ssm','--small_set_mode', action='store_true', help='A small subset of the data for testing purposes.')
@@ -170,9 +159,7 @@ parser.add_argument('-pc','--proportion_of_cores_to_use', type=float, default=0.
 args = parser.parse_args()
 
 # store the command line arguments as metadata for later reference
-info = []
-for arg in vars(args):
-    info.append((arg, getattr(args, arg)))
+tile_set_metadata = {'arguments':vars(args)}
 
 start_run = time.time()
 
@@ -186,11 +173,10 @@ for item in args.tile_idx_list.replace(" ", "").split(','):
             index_lower = min(index_range)
             index_upper = max(index_range)
             indexes_l.append([i for i in range(index_lower, index_upper+1)])
-            info.append("tile range {}-{}, with m/z range {} to {}".format(index_lower, index_upper, round(mz_range_for_tile(index_lower)[0],1), round(mz_range_for_tile(index_upper)[1],1)))
         else:
             indexes_l.append(index_range)
-            info.append("tile index {}, with m/z range {} to {}".format(index_range[0], round(mz_range_for_tile(index_range[0])[0],1), round(mz_range_for_tile(index_range[0])[1],1)))
 indexes_l = [item for sublist in indexes_l for item in sublist]
+tile_set_metadata['indexes'] = indexes_l
 if len(indexes_l) == 0:
     print("Need to specify at least one tile index to include training set: {}".format(args.tile_idx_list))
     sys.exit(1)
@@ -206,13 +192,6 @@ CONVERTED_DATABASE_DIR = '{}/converted-databases'.format(EXPERIMENT_DIR)
 if not os.path.exists(CONVERTED_DATABASE_DIR):
     print("The run directory is required but doesn't exist: {}".format(CONVERTED_DATABASE_DIR))
     sys.exit(1)
-
-for run_name in args.run_names:
-    # check the converted database exists for each run specified
-    CONVERTED_DATABASE_NAME = "{}/exp-{}-run-{}-converted.sqlite".format(CONVERTED_DATABASE_DIR, args.experiment_name, run_name)
-    if not os.path.isfile(CONVERTED_DATABASE_NAME):
-        print("The converted database is required but doesn't exist: {}".format(CONVERTED_DATABASE_NAME))
-        sys.exit(1)
 
 # check the extracted features directory
 EXTRACTED_FEATURES_DIR = "{}/extracted-features".format(EXPERIMENT_DIR)
@@ -252,7 +231,7 @@ if os.path.exists(MASK_FILES_DIR):
 os.makedirs(MASK_FILES_DIR)
 
 # check the raw tiles base directory exists
-TILES_BASE_DIR = '{}/tiles/{}/{}'.format(EXPERIMENT_DIR, args.run_name, args.tile_set_name)
+TILES_BASE_DIR = '{}/tiles/{}'.format(EXPERIMENT_DIR, args.tile_set_name)
 if not os.path.exists(TILES_BASE_DIR):
     print("The raw tiles base directory is required but does not exist: {}".format(TILES_BASE_DIR))
     sys.exit(1)
@@ -295,7 +274,7 @@ console_handler = logging.StreamHandler()
 console_handler.setFormatter(formatter)
 logger.addHandler(console_handler)
 
-logger.info("{} info: {}".format(parser.prog, info))
+logger.info("{} info: {}".format(parser.prog, tile_set_metadata))
 
 # determine tile allocation proportions - not using the test set at the moment because we'll create separate inference sets
 if args.inference_mode:
@@ -317,84 +296,69 @@ if not ray.is_initialized():
     else:
         ray.init(local_mode=True)
 
-# process each run
-run_info_d = {}
-for run_name in args.run_names:
-    # load the extracted features for the specified run
-    logger.info("reading the extracted features from {}".format(EXTRACTED_FEATURES_DB_NAME))
-    db_conn = sqlite3.connect(EXTRACTED_FEATURES_DB_NAME)
-    sequences_df = pd.read_sql_query('select sequence,charge,run_name,monoisotopic_mz_centroid,number_of_isotopes,rt_apex,mono_rt_bounds,mono_scan_bounds,isotope_1_rt_bounds,isotope_1_scan_bounds,isotope_2_rt_bounds,isotope_2_scan_bounds,isotope_intensities_l from features where file_idx=={}'.format(file_idx_for_run(args.run_name)), db_conn)
-    db_conn.close()
-    logger.info("loaded {} extracted features from {}".format(len(sequences_df), EXTRACTED_FEATURES_DB_NAME))
-
-    # unpack the feature extents
-    logger.info("unpacking the feature extents")
-    sequences_df.mono_rt_bounds = sequences_df.apply(lambda row: json.loads(row.mono_rt_bounds), axis=1)
-    sequences_df.mono_scan_bounds = sequences_df.apply(lambda row: json.loads(row.mono_scan_bounds), axis=1)
-
-    sequences_df.isotope_1_rt_bounds = sequences_df.apply(lambda row: json.loads(row.isotope_1_rt_bounds), axis=1)
-    sequences_df.isotope_1_scan_bounds = sequences_df.apply(lambda row: json.loads(row.isotope_1_scan_bounds), axis=1)
-
-    sequences_df.isotope_2_rt_bounds = sequences_df.apply(lambda row: json.loads(row.isotope_2_rt_bounds), axis=1)
-    sequences_df.isotope_2_scan_bounds = sequences_df.apply(lambda row: json.loads(row.isotope_2_scan_bounds), axis=1)
-
-    sequences_df.isotope_intensities_l = sequences_df.apply(lambda row: json.loads(row.isotope_intensities_l), axis=1)
-
-    sequences_df['rt_lower'] = sequences_df.apply(lambda row: np.min([i[0] for i in [row.mono_rt_bounds,row.isotope_1_rt_bounds,row.isotope_2_rt_bounds]]), axis=1)
-    sequences_df['rt_upper'] = sequences_df.apply(lambda row: np.max([i[1] for i in [row.mono_rt_bounds,row.isotope_1_rt_bounds,row.isotope_2_rt_bounds]]), axis=1)
-
-    # aim to label the most intense part of the peak in RT
-    sequences_df.rt_lower = sequences_df.rt_apex - 1.0
-    sequences_df.rt_upper = sequences_df.rt_apex + 1.0
-
-    sequences_df['scan_lower'] = sequences_df.apply(lambda row: np.min([i[0] for i in [row.mono_scan_bounds,row.isotope_1_scan_bounds,row.isotope_2_scan_bounds]]), axis=1)
-    sequences_df['scan_upper'] = sequences_df.apply(lambda row: np.max([i[1] for i in [row.mono_scan_bounds,row.isotope_1_scan_bounds,row.isotope_2_scan_bounds]]), axis=1)
-
-    sequences_df['mz_lower'] = sequences_df.apply(lambda row: np.min([i[0] for i in row.isotope_intensities_l[0][4]]), axis=1)  # [0][4] refers to the isotope points of the monoisotope; i[0] refers to the m/z values
-    sequences_df['mz_upper'] = sequences_df.apply(lambda row: np.max([i[0] for i in row.isotope_intensities_l[row.number_of_isotopes-1][4]]), axis=1)
-
-    # get the frame properties so we can map frame ID to RT
-    CONVERTED_DATABASE_NAME = "{}/exp-{}-run-{}-converted.sqlite".format(CONVERTED_DATABASE_DIR, args.experiment_name, run_name)
-    logger.info("reading frame IDs from {}".format(CONVERTED_DATABASE_NAME))
-    db_conn = sqlite3.connect(CONVERTED_DATABASE_NAME)
-    ms1_frame_properties_df = pd.read_sql_query("select Id,Time from frame_properties where Time >= {} and Time <= {} and MsMsType == {}".format(args.rt_lower, args.rt_upper, FRAME_TYPE_MS1), db_conn)
-    min_frame_id = ms1_frame_properties_df.Id.min()
-    max_frame_id = ms1_frame_properties_df.Id.max()
-    db_conn.close()
-
-    # check the tiles directory exists for each tile index we need, and copy them to the pre-assigned directory
-    for tile_idx in indexes_l:
-        tile_count = 0
-        tile_dir = "{}/tile-{}".format(TILES_BASE_DIR, tile_idx)
-        if os.path.exists(tile_dir):
-            # copy the raw tiles to the pre-assigned tiles directory
-            file_list = sorted(glob.glob("{}/{}-frame-*-tile-*.png".format(tile_dir, run_name)))
-            logger.info("copying tiles within the RT range from {} to {}".format(tile_dir, PRE_ASSIGNED_FILES_DIR))
-            for file in file_list:
-                basename = os.path.basename(file)
-                # if the frame_id is within the specified RT range
-                frame_id = int(basename.split('-')[1])
-                if (frame_id >= min_frame_id) and (frame_id <= max_frame_id):
-                    destination_name = '{}/{}'.format(PRE_ASSIGNED_FILES_DIR, basename)
-                    shutil.copyfile(file, destination_name)
-                    tile_count += 1
-            logger.info("copied {} tiles for index {}".format(tile_count, tile_idx))
-        else:
-            print("The tiles directory is required but does not exist: {}".format(tile_dir))
-            sys.exit(1)
-
-    run_info_d[run_name] = {'sequences_df':sequences_df, 'ms1_frame_properties_df':ms1_frame_properties_df}
-
-# get all the tiles that have been generated from the raw data
-tile_filename_list = sorted(glob.glob("{}/*-frame-*-tile-*.png".format(PRE_ASSIGNED_FILES_DIR)))
-if len(tile_filename_list) == 0:
-    print("Found no tiles to process in the pre-assigned directory: {}".format(PRE_ASSIGNED_FILES_DIR))
+# load the tile set metadata file
+tile_set_metadata_file_name = '{}/metadata.json'.format(TILES_BASE_DIR)
+if os.path.isfile(tile_set_metadata_file_name):
+    with open(tile_set_metadata_file_name) as json_file:
+        tile_set_metadata = json.load(json_file)
+else:
+    print("Could not find the tile set's metadata file: {}".format(tile_set_metadata_file_name))
     sys.exit(1)
+
+# determine the RT range for the tile set so we only need to load extracted features in that range
+rt_lower = tile_set_metadata['arguments']['rt_lower']
+rt_upper = tile_set_metadata['arguments']['rt_upper']
+
+# trim the tile list according to the tile ID list specified for the training set
+tiles_df = pd.DataFrame(tile_set_metadata['tiles'])
+tiles_df = tiles_df[tiles_df.tile_id.isin(indexes_l)]
 
 # limit the number of tiles for small set mode
 if args.small_set_mode:
-    tile_filename_list = tile_filename_list[:args.small_set_mode_size]
+    tiles_df = tiles_df.sample(n=args.small_set_mode_size)
 
+# determine the runs used for this tile set
+run_names = tiles_df.run_name.unique()
+file_idxs = [file_idx_for_run(run_name) for run_name in run_names]
+if len(file_idxs) == 1:
+    file_idxs = (file_idxs[0])
+else:
+    file_idxs = tuple(file_idxs)
+
+# load the extracted features for the runs specified in the tile set
+logger.info("reading the extracted features for runs {} from {}".format(run_names, EXTRACTED_FEATURES_DB_NAME))
+db_conn = sqlite3.connect(EXTRACTED_FEATURES_DB_NAME)
+sequences_df = pd.read_sql_query('select sequence,charge,run_name,monoisotopic_mz_centroid,number_of_isotopes,rt_apex,mono_rt_bounds,mono_scan_bounds,isotope_1_rt_bounds,isotope_1_scan_bounds,isotope_2_rt_bounds,isotope_2_scan_bounds,isotope_intensities_l from features where file_idx in {} and rt_apex >= {} and rt_apex <= {}'.format(file_idxs, rt_lower, rt_upper), db_conn)
+db_conn.close()
+logger.info("loaded {} extracted features from {}".format(len(sequences_df), EXTRACTED_FEATURES_DB_NAME))
+
+# unpack the feature extents
+logger.info("unpacking the feature extents")
+sequences_df.mono_rt_bounds = sequences_df.apply(lambda row: json.loads(row.mono_rt_bounds), axis=1)
+sequences_df.mono_scan_bounds = sequences_df.apply(lambda row: json.loads(row.mono_scan_bounds), axis=1)
+
+sequences_df.isotope_1_rt_bounds = sequences_df.apply(lambda row: json.loads(row.isotope_1_rt_bounds), axis=1)
+sequences_df.isotope_1_scan_bounds = sequences_df.apply(lambda row: json.loads(row.isotope_1_scan_bounds), axis=1)
+
+sequences_df.isotope_2_rt_bounds = sequences_df.apply(lambda row: json.loads(row.isotope_2_rt_bounds), axis=1)
+sequences_df.isotope_2_scan_bounds = sequences_df.apply(lambda row: json.loads(row.isotope_2_scan_bounds), axis=1)
+
+sequences_df.isotope_intensities_l = sequences_df.apply(lambda row: json.loads(row.isotope_intensities_l), axis=1)
+
+sequences_df['rt_lower'] = sequences_df.apply(lambda row: np.min([i[0] for i in [row.mono_rt_bounds,row.isotope_1_rt_bounds,row.isotope_2_rt_bounds]]), axis=1)
+sequences_df['rt_upper'] = sequences_df.apply(lambda row: np.max([i[1] for i in [row.mono_rt_bounds,row.isotope_1_rt_bounds,row.isotope_2_rt_bounds]]), axis=1)
+
+# aim to label the most intense part of the peak in RT
+sequences_df.rt_lower = sequences_df.rt_apex - 1.0
+sequences_df.rt_upper = sequences_df.rt_apex + 1.0
+
+sequences_df['scan_lower'] = sequences_df.apply(lambda row: np.min([i[0] for i in [row.mono_scan_bounds,row.isotope_1_scan_bounds,row.isotope_2_scan_bounds]]), axis=1)
+sequences_df['scan_upper'] = sequences_df.apply(lambda row: np.max([i[1] for i in [row.mono_scan_bounds,row.isotope_1_scan_bounds,row.isotope_2_scan_bounds]]), axis=1)
+
+sequences_df['mz_lower'] = sequences_df.apply(lambda row: np.min([i[0] for i in row.isotope_intensities_l[0][4]]), axis=1)  # [0][4] refers to the isotope points of the monoisotope; i[0] refers to the m/z values
+sequences_df['mz_upper'] = sequences_df.apply(lambda row: np.max([i[0] for i in row.isotope_intensities_l[row.number_of_isotopes-1][4]]), axis=1)
+
+# copy the tiles from the tile set to the pre-assigned directory, create its overlay and label text file
 classes_d = {}
 small_objects = 0
 total_objects = 0
@@ -402,21 +366,24 @@ tile_list = []
 objects_per_tile = []
 tile_metadata_l = []
 
-# for each raw tile, create its overlay and label text file
-for idx,tile_filename in enumerate(tile_filename_list):
-    if idx % 100 == 0:
-        logger.info("processing {} of {} tiles".format(idx+1, len(tile_filename_list)))
+for idx,row in enumerate(tiles_df.itertuples()):
+    basename = os.path.basename(row.tile_file_name)
+    destination_name = '{}/{}'.format(PRE_ASSIGNED_FILES_DIR, basename)
+    shutil.copyfile(row.tile_file_name, destination_name)
 
-    basename = os.path.basename(tile_filename)
-    splits = basename.split('-')
-    run_name = splits[0]
-    frame_id = int(splits[2])
-    tile_id = int(splits[4].split('.')[0])  # need to separate it from the file extension
+    if idx % 100 == 0:
+        logger.info("processed {} of {} tiles".format(idx+1, len(tiles_df)))
+
+    run_name = row.run_name
+    frame_id = row.frame_id
+    tile_id = row.tile_id
+    tile_mz_lower = row.tile_mz_lower
+    tile_mz_upper = row.tile_mz_upper
+    file_idx = file_idx_for_run(run_name)
+    tile_rt = row.retention_time_secs
 
     number_of_objects_this_tile = 0
 
-    # get the m/z range for this tile
-    (tile_mz_lower,tile_mz_upper) = mz_range_for_tile(tile_id)
     # define the charge-1 region
     mask_region_y_left,mask_region_y_right = scan_coords_for_single_charge_region(tile_mz_lower, tile_mz_upper)
 
@@ -427,19 +394,14 @@ for idx,tile_filename in enumerate(tile_filename_list):
     annotations_path = '{}/{}'.format(PRE_ASSIGNED_FILES_DIR, annotations_filename)
     tile_list.append((basename, annotations_filename))
 
-    ms1_frame_properties_df = run_info_d[run_name]['ms1_frame_properties_df']
-    sequences_df = run_info_d[run_name]['sequences_df']
-
-    # get the retention time for this frame
-    frame_rt = ms1_frame_properties_df[ms1_frame_properties_df.Id == frame_id].iloc[0].Time
     # find the features intersecting with this frame
-    intersecting_features_df = sequences_df[(sequences_df.rt_lower <= frame_rt) & (sequences_df.rt_upper >= frame_rt) & (sequences_df.mz_lower >= tile_mz_lower) & (sequences_df.mz_upper <= tile_mz_upper)]
+    intersecting_features_df = sequences_df[(sequences_df.file_idx <= file_idx) & (sequences_df.rt_lower <= tile_rt) & (sequences_df.rt_upper >= tile_rt) & (sequences_df.mz_lower >= tile_mz_lower) & (sequences_df.mz_upper <= tile_mz_upper)]
     # remember the coordinates so we can write them to the annotations file
     feature_coordinates = []
     # store the features for each tile so we can mask them later
     tile_features_l = []
     # draw the labels on the raw tile
-    img = Image.open(tile_filename)
+    img = Image.open(destination_name)
     draw = ImageDraw.Draw(img)
     for idx,feature in intersecting_features_df.iterrows():
         (t,x0_buffer) = tile_pixel_x_from_mz(feature.mz_lower - MZ_BUFFER)
@@ -460,30 +422,28 @@ for idx,tile_filename in enumerate(tile_filename_list):
         yolo_y = (y0_buffer + (h / 2)) / PIXELS_Y
         yolo_w = w / PIXELS_X
         yolo_h = h / PIXELS_Y
-        # label this object if it meets the criteria
-        if label_this_object(frame_id, feature):
-            # we are only interested in charge 2 and higher
-            if (charge >= MIN_CHARGE) and (charge <= MAX_CHARGE):
-                feature_class = charge - MIN_CHARGE
-                # keep record of how many instances of each class
-                if feature_class in classes_d.keys():
-                    classes_d[feature_class] += 1
-                else:
-                    classes_d[feature_class] = 1
-                # add it to the list
-                feature_coordinates.append(("{} {:.6f} {:.6f} {:.6f} {:.6f}".format(feature_class, yolo_x, yolo_y, yolo_w, yolo_h)))
-                # draw the rectangle on the overlay
-                draw.rectangle(xy=[(x0_buffer, y0_buffer), (x1_buffer, y1_buffer)], fill=None, outline='red')
-                # store the pixel coords for each feature for this tile so we can mask the features later
-                tile_features_l.append({'x0_buffer':x0_buffer, 'y0_buffer':y0_buffer, 'x1_buffer':x1_buffer, 'y1_buffer':y1_buffer})
-                # keep record of the 'small' objects
-                total_objects += 1
-                if (yolo_w <= SMALL_OBJECT_W) or (yolo_h <= SMALL_OBJECT_H):
-                    small_objects += 1
-                # keep track of the number of objects in this tile
-                number_of_objects_this_tile += 1
+        # label the charge states we want to detect
+        if (charge >= MIN_CHARGE) and (charge <= MAX_CHARGE):
+            feature_class = charge - MIN_CHARGE
+            # keep record of how many instances of each class
+            if feature_class in classes_d.keys():
+                classes_d[feature_class] += 1
             else:
-                logger.info("found a charge-{} feature - not included in the training set".format(charge))
+                classes_d[feature_class] = 1
+            # add it to the list
+            feature_coordinates.append(("{} {:.6f} {:.6f} {:.6f} {:.6f}".format(feature_class, yolo_x, yolo_y, yolo_w, yolo_h)))
+            # draw the rectangle on the overlay
+            draw.rectangle(xy=[(x0_buffer, y0_buffer), (x1_buffer, y1_buffer)], fill=None, outline='red')
+            # store the pixel coords for each feature for this tile so we can mask the features later
+            tile_features_l.append({'x0_buffer':x0_buffer, 'y0_buffer':y0_buffer, 'x1_buffer':x1_buffer, 'y1_buffer':y1_buffer})
+            # keep record of the 'small' objects
+            total_objects += 1
+            if (yolo_w <= SMALL_OBJECT_W) or (yolo_h <= SMALL_OBJECT_H):
+                small_objects += 1
+            # keep track of the number of objects in this tile
+            number_of_objects_this_tile += 1
+        else:
+            logger.info("found a charge-{} feature - not included in the training set".format(charge))
 
     # add it to the list
     tile_metadata['tile_features_l'] = tile_features_l
