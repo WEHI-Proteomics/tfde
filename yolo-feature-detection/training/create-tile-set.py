@@ -109,6 +109,7 @@ def create_indexes(db_file_name):
     db_conn = sqlite3.connect(db_file_name)
     src_c = db_conn.cursor()
     src_c.execute("create index if not exists idx_tile_set_1 on frames (frame_id, mz)")
+    src_c.execute("create index if not exists idx_tile_set_2 on frame_properties (Time, MsMsType)")
     db_conn.close()
 
 @ray.remote
