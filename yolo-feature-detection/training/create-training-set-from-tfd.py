@@ -342,7 +342,7 @@ print('file indexes: {}'.format(file_idxs))
 # load the extracted features for the runs specified in the tile set
 logger.info("reading the extracted features for runs {} from {}".format(run_names, EXTRACTED_FEATURES_DB_NAME))
 db_conn = sqlite3.connect(EXTRACTED_FEATURES_DB_NAME)
-sequences_df = pd.read_sql_query('select sequence,charge,run_name,monoisotopic_mz_centroid,number_of_isotopes,rt_apex,mono_rt_bounds,mono_scan_bounds,isotope_1_rt_bounds,isotope_1_scan_bounds,isotope_2_rt_bounds,isotope_2_scan_bounds,isotope_intensities_l from features where file_idx in {} and rt_apex >= {} and rt_apex <= {}'.format(file_idxs, rt_lower, rt_upper), db_conn)
+sequences_df = pd.read_sql_query('select sequence,charge,run_name,file_idx,monoisotopic_mz_centroid,number_of_isotopes,rt_apex,mono_rt_bounds,mono_scan_bounds,isotope_1_rt_bounds,isotope_1_scan_bounds,isotope_2_rt_bounds,isotope_2_scan_bounds,isotope_intensities_l from features where file_idx in {} and rt_apex >= {} and rt_apex <= {}'.format(file_idxs, rt_lower, rt_upper), db_conn)
 db_conn.close()
 logger.info("loaded {} extracted features from {}".format(len(sequences_df), EXTRACTED_FEATURES_DB_NAME))
 
@@ -409,7 +409,7 @@ for idx,row in enumerate(tiles_df.itertuples()):
     tile_list.append((basename, annotations_filename))
 
     # find the features intersecting with this frame
-    intersecting_features_df = sequences_df[(sequences_df.file_idx <= file_idx) & (sequences_df.rt_lower <= tile_rt) & (sequences_df.rt_upper >= tile_rt) & (sequences_df.mz_lower >= tile_mz_lower) & (sequences_df.mz_upper <= tile_mz_upper)]
+    intersecting_features_df = sequences_df[(sequences_df.file_idx == file_idx) & (sequences_df.rt_lower <= tile_rt) & (sequences_df.rt_upper >= tile_rt) & (sequences_df.mz_lower >= tile_mz_lower) & (sequences_df.mz_upper <= tile_mz_upper)]
     # remember the coordinates so we can write them to the annotations file
     feature_coordinates = []
     # store the features for each tile so we can mask them later
