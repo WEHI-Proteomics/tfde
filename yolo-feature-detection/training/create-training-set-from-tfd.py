@@ -332,9 +332,9 @@ if args.small_set_mode:
 run_names = tiles_df.run_name.unique()
 file_idxs = [file_idx_for_run(run_name) for run_name in run_names]
 if len(file_idxs) == 1:
-    file_idxs = (file_idxs[0])
+    file_idxs = '({})'.format(file_idxs[0])
 else:
-    file_idxs = tuple(file_idxs)
+    file_idxs = '{}'.format(tuple(file_idxs))
 
 # load the extracted features for the runs specified in the tile set
 logger.info("reading the extracted features for runs {} from {}".format(run_names, EXTRACTED_FEATURES_DB_NAME))
