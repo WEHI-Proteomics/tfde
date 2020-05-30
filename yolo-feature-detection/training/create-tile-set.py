@@ -234,6 +234,7 @@ if not ray.is_initialized():
     else:
         ray.init(local_mode=True)
 
+tile_metadata_l = []
 for run_name in args.run_names:
     # check the converted database exists
     CONVERTED_DATABASE_NAME = "{}/exp-{}-run-{}-converted.sqlite".format(CONVERTED_DATABASE_DIR, args.experiment_name, run_name)
@@ -252,7 +253,9 @@ for run_name in args.run_names:
     ms1_frame_ids = tuple(ms1_frame_properties_df.Id)
     db_conn.close()
 
-    tile_metadata_l = ray.get([render_frame.remote(run_name, CONVERTED_DATABASE_NAME, frame_id, ms1_frame_properties_df[ms1_frame_properties_df.Id == frame_id].iloc[0].Time, args.tile_idx_lower, args.tile_idx_upper, frame_idx, len(ms1_frame_ids)) for frame_idx,frame_id in enumerate(ms1_frame_ids, start=1)])
+    l = ray.get([render_frame.remote(run_name, CONVERTED_DATABASE_NAME, frame_id, ms1_frame_properties_df[ms1_frame_properties_df.Id == frame_id].iloc[0].Time, args.tile_idx_lower, args.tile_idx_upper, frame_idx, len(ms1_frame_ids)) for frame_idx,frame_id in enumerate(ms1_frame_ids, start=1)])
+    for item in l:
+        tile_metadata_l.append(item)
 
 tile_metadata_l = [item for sublist in tile_metadata_l for item in sublist]  # tile_metadata_l is a list of lists, so we need to flatten it
 
