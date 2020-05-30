@@ -322,6 +322,7 @@ rt_upper = tile_set_metadata['arguments']['rt_upper']
 
 # trim the tile list according to the tile ID list specified for the training set
 tiles_df = pd.DataFrame(tile_set_metadata['tiles'])
+print(tiles_df)
 tiles_df = tiles_df[tiles_df.tile_id.isin(indexes_l)]
 
 # limit the number of tiles for small set mode
