@@ -187,15 +187,8 @@ parser.add_argument('-pc','--proportion_of_cores_to_use', type=float, default=0.
 parser.add_argument('-shutdown','--shutdown', action='store_true', help='Shut down the machine when complete.')
 args = parser.parse_args()
 
-# Store the arguments as metadata for later reference
-command_line_arguments = []
-for arg in vars(args):
-    command_line_arguments.append((arg, getattr(args, arg)))
-
-tile_set_metadata = {'command_line_arguments':command_line_arguments}
-tile_set_metadata['run_names'] = args.run_names
-
-print("{} command line arguments: {}".format(parser.prog, command_line_arguments))
+# store the arguments as metadata for later reference
+tile_set_metadata = {'arguments':vars(args)}
 
 # check the tile index range is valid
 if (args.tile_idx_lower < MIN_TILE_IDX) or (args.tile_idx_lower > MAX_TILE_IDX) or (args.tile_idx_upper < MIN_TILE_IDX) or (args.tile_idx_upper > MAX_TILE_IDX):
@@ -260,7 +253,7 @@ tile_set_metadata["processor"] = parser.prog
 print("{} info: {}".format(parser.prog, tile_set_metadata))
 
 # write out the metadata file
-metadata_filename = '{}/tile-set-metadata.json'.format(TILES_BASE_DIR)
+metadata_filename = '{}/metadata.json'.format(TILES_BASE_DIR)
 with open(metadata_filename, 'w') as outfile:
     json.dump(tile_set_metadata, outfile)
 
