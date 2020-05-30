@@ -142,6 +142,13 @@ def number_of_workers():
     number_of_workers = int(args.proportion_of_cores_to_use * number_of_cores)
     return number_of_workers
 
+# create the indexes we need for this application
+def create_indexes(db_file_name):
+    db_conn = sqlite3.connect(db_file_name)
+    src_c = db_conn.cursor()
+    src_c.execute("create index if not exists idx_training_set_1 on features (file_idx,rt_apex)")
+    db_conn.close()
+
 
 # python ./otf-peak-detect/yolo-feature-detection/training/create-training-set-from-tfd.py -eb ~/Downloads/experiments -en dwm-test -rn 190719_Hela_Ecoli_1to1_01 -tidx 34
 
@@ -287,6 +294,10 @@ else:
     test_proportion = 0.0
 logger.info("set proportions: train {}, validation {}, test {}".format(train_proportion, val_proportion, test_proportion))
 
+# set up indexes
+print("creating indexes if they don't already exist")
+create_indexes(EXTRACTED_FEATURES_DB_NAME)
+
 print("setting up Ray")
 if not ray.is_initialized():
     if args.ray_mode == "cluster":
@@ -317,7 +328,7 @@ tiles_df = tiles_df[tiles_df.tile_id.isin(indexes_l)]
 if args.small_set_mode:
     tiles_df = tiles_df.sample(n=args.small_set_mode_size)
 
-# determine the runs used for this tile set
+# determine the runs in this tile set
 run_names = tiles_df.run_name.unique()
 file_idxs = [file_idx_for_run(run_name) for run_name in run_names]
 if len(file_idxs) == 1:
