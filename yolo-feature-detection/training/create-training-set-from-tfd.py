@@ -35,6 +35,10 @@ FRAME_TYPE_MS2 = 8
 MIN_CHARGE = 2
 MAX_CHARGE = 4
 
+# number of isotopes of interest
+MIN_ISOTOPES = 3
+MAX_ISOTOPES = 7
+
 # in YOLO a small object is smaller than 16x16 @ 416x416 image size.
 SMALL_OBJECT_W = SMALL_OBJECT_H = 16/416
 
@@ -148,6 +152,22 @@ def create_indexes(db_file_name):
     src_c = db_conn.cursor()
     src_c.execute("create index if not exists idx_training_set_1 on features (file_idx,rt_apex)")
     db_conn.close()
+
+def calculate_feature_class(isotopes, charge):
+    charge_idx = charge - MIN_CHARGE
+    isotope_idx = isotopes - MIN_ISOTOPES
+    feature_class = charge_idx * (MAX_ISOTOPES-MIN_ISOTOPES+1) + isotope_idx
+    return feature_class
+
+def number_of_feature_classes():
+    return (MAX_ISOTOPES-MIN_ISOTOPES+1) * (MAX_CHARGE-MIN_CHARGE+1)
+
+def feature_names():
+    names = []
+    for ch in range(MIN_CHARGE,MAX_CHARGE+1):
+        for iso in range(MIN_ISOTOPES,MAX_ISOTOPES+1):
+            names.append('charge-{}-isotopes-{}'.format(ch, iso))
+    return names
 
 
 # python ./otf-peak-detect/yolo-feature-detection/training/create-training-set-from-tfd.py -eb ~/Downloads/experiments -en dwm-test -rn 190719_Hela_Ecoli_1to1_01 -tidx 34
@@ -431,6 +451,7 @@ for idx,row in enumerate(tiles_df.itertuples()):
         w = x1_buffer - x0_buffer
         h = y1_buffer - y0_buffer
         charge = feature.charge
+        isotopes = feature.number_of_isotopes
         # calculate the annotation coordinates for the text file
         yolo_x = (x0_buffer + (w / 2)) / PIXELS_X
         yolo_y = (y0_buffer + (h / 2)) / PIXELS_Y
@@ -438,7 +459,7 @@ for idx,row in enumerate(tiles_df.itertuples()):
         yolo_h = h / PIXELS_Y
         # label the charge states we want to detect
         if (charge >= MIN_CHARGE) and (charge <= MAX_CHARGE):
-            feature_class = charge - MIN_CHARGE
+            feature_class = calculate_feature_class(isotopes, charge)
             # keep record of how many instances of each class
             if feature_class in classes_d.keys():
                 classes_d[feature_class] += 1
@@ -474,8 +495,9 @@ for idx,row in enumerate(tiles_df.itertuples()):
     objects_per_tile.append((tile_id, frame_id, number_of_objects_this_tile))
 
 # display the object counts for each class
+names = feature_names()
 for c in sorted(classes_d.keys()):
-    logger.info("charge {} objects: {}".format(c+2, classes_d[c]))
+    logger.info("{} objects: {}".format(names[c], classes_d[c]))
 if total_objects > 0:
     logger.info("{} out of {} objects ({}%) are small.".format(small_objects, total_objects, round(small_objects/total_objects*100,1)))
 else:
@@ -558,15 +580,15 @@ print("writing {}".format(LOCAL_NAMES_FILENAME))
 
 # class labels
 with open(LOCAL_NAMES_FILENAME, 'w') as f:
-    for charge in range(MIN_CHARGE, MAX_CHARGE+1):
-        f.write("charge-{}\n".format(charge))
+    for name in feature_names():
+        f.write("{}\n".format(name))
 
 # create obj.data, for copying to ./darknet/data
 LOCAL_DATA_FILENAME = "{}/peptides-obj.data".format(TRAINING_SET_BASE_DIR)
 print("writing {}".format(LOCAL_DATA_FILENAME))
 
 with open(LOCAL_DATA_FILENAME, 'w') as f:
-    f.write("classes={}\n".format(MAX_CHARGE - MIN_CHARGE + 1))
+    f.write("classes={}\n".format(number_of_feature_classes()))
     f.write("train=data/peptides/train.txt\n")
     f.write("valid=data/peptides/validation.txt\n")
     f.write("names=data/peptides/peptides-obj.names\n")
