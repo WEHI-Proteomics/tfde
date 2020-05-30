@@ -391,8 +391,8 @@ for idx,row in enumerate(tiles_df.itertuples()):
     run_name = row.run_name
     frame_id = row.frame_id
     tile_id = row.tile_id
-    tile_mz_lower = row.tile_mz_lower
-    tile_mz_upper = row.tile_mz_upper
+    tile_mz_lower = row.mz_lower
+    tile_mz_upper = row.mz_upper
     file_idx = file_idx_for_run(run_name)
     tile_rt = row.retention_time_secs
 
