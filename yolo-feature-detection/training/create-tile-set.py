@@ -112,7 +112,7 @@ def create_indexes(db_file_name):
     db_conn.close()
 
 @ray.remote
-def render_frame(run_name, converted_db_name, frame_id, min_tile_id, max_tile_id, frame_idx, total_frames):
+def render_frame(run_name, converted_db_name, frame_id, retention_time_secs, min_tile_id, max_tile_id, frame_idx, total_frames):
     print("processing frame {} of {} for run {}".format(frame_idx, total_frames, run_name))
 
     # find the mz range for the tiles specified
@@ -124,6 +124,7 @@ def render_frame(run_name, converted_db_name, frame_id, min_tile_id, max_tile_id
     raw_points_df = pd.read_sql_query("select mz,scan,intensity from frames where frame_id == {} and mz >= {} and mz <= {}".format(frame_id, frame_mz_lower, frame_mz_upper), db_conn)
     db_conn.close()
 
+    tile_list = []
     if len(raw_points_df) > 0:
         # assign a tile_id and a pixel x value to each raw point
         tile_pixels_df = pd.DataFrame(raw_points_df.apply(lambda row: tile_pixel_x_from_mz(row.mz), axis=1).tolist(), columns=['tile_id', 'pixel_x'])
@@ -143,8 +144,8 @@ def render_frame(run_name, converted_db_name, frame_id, min_tile_id, max_tile_id
         pixel_intensity_df['colour'] = colour_l
 
         # extract the pixels for the frame for the specified tiles
-        for tile_idx in range(min_tile_id, max_tile_id+1):
-            tile_df = pixel_intensity_df[(pixel_intensity_df.tile_id == tile_idx)]
+        for tile_id in range(min_tile_id, max_tile_id+1):
+            tile_df = pixel_intensity_df[(pixel_intensity_df.tile_id == tile_id)]
 
             # create an intensity array
             tile_im_array = np.zeros([PIXELS_Y+1, PIXELS_X+1, 3], dtype=np.uint8)  # container for the image
@@ -160,7 +161,13 @@ def render_frame(run_name, converted_db_name, frame_id, min_tile_id, max_tile_id
 
             # create an image of the intensity array
             tile = Image.fromarray(tile_im_array, 'RGB')
-            tile.save('{}/run-{}-frame-{}-tile-{}.png'.format(TILES_BASE_DIR, run_name, frame_id, tile_idx))
+            tile_file_name = '{}/run-{}-frame-{}-tile-{}.png'.format(TILES_BASE_DIR, run_name, frame_id, tile_id)
+            tile.save(tile_file_name)
+
+            tile_mz_lower,tile_mz_upper = mz_range_for_tile(tile_id)
+            tile_list.append({'run':run_name, 'frame_id':frame_id, 'tile_id':tile_id, 'mz_lower':tile_mz_lower, 'mz_upper':tile_mz_upper, 'retention_time_secs':retention_time_secs, 'tile_file_name':tile_file_name})
+
+    return tile_list
 
 # determine the number of workers based on the number of available cores and the proportion of the machine to be used
 def number_of_workers():
@@ -244,7 +251,9 @@ for run_name in args.run_names:
     ms1_frame_ids = tuple(ms1_frame_properties_df.Id)
     db_conn.close()
 
-    ray.get([render_frame.remote(run_name, CONVERTED_DATABASE_NAME, frame_id, args.tile_idx_lower, args.tile_idx_upper, frame_idx, len(ms1_frame_ids)) for frame_idx,frame_id in enumerate(ms1_frame_ids, start=1)])
+    tile_metadata_l = ray.get([render_frame.remote(run_name, CONVERTED_DATABASE_NAME, frame_id, ms1_frame_properties_df[ms1_frame_properties_df.Id == frame_id].iloc[0].Time, args.tile_idx_lower, args.tile_idx_upper, frame_idx, len(ms1_frame_ids)) for frame_idx,frame_id in enumerate(ms1_frame_ids, start=1)])
+
+tile_metadata_l = [item for sublist in tile_metadata_l for item in sublist]  # tile_metadata_l is a list of lists, so we need to flatten it
 
 stop_run = time.time()
 tile_set_metadata["run processing time (sec)"] = round(stop_run-start_run,1)
@@ -253,6 +262,7 @@ tile_set_metadata["processor"] = parser.prog
 print("{} info: {}".format(parser.prog, tile_set_metadata))
 
 # write out the metadata file
+tile_set_metadata['tiles'] = tile_metadata_l
 metadata_filename = '{}/metadata.json'.format(TILES_BASE_DIR)
 with open(metadata_filename, 'w') as outfile:
     json.dump(tile_set_metadata, outfile)
