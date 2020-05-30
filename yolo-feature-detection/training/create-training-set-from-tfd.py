@@ -428,8 +428,9 @@ for idx,row in enumerate(tiles_df.itertuples()):
     annotations_path = '{}/{}'.format(PRE_ASSIGNED_FILES_DIR, annotations_filename)
     tile_list.append((basename, annotations_filename))
 
-    # find the features intersecting with this frame
+    # find the features intersecting with this tile
     intersecting_features_df = sequences_df[(sequences_df.file_idx == file_idx) & (sequences_df.rt_lower <= tile_rt) & (sequences_df.rt_upper >= tile_rt) & (sequences_df.mz_lower >= tile_mz_lower) & (sequences_df.mz_upper <= tile_mz_upper)]
+    print('found {} intersecting features for {}'.format(len(intersecting_features_df), destination_name))
     # remember the coordinates so we can write them to the annotations file
     feature_coordinates = []
     # store the features for each tile so we can mask them later
