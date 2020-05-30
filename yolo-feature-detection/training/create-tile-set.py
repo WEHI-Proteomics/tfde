@@ -8,6 +8,9 @@ import os, shutil
 from PIL import Image, ImageFont, ImageDraw, ImageEnhance
 import time
 import ray
+import json
+import multiprocessing as mp
+
 
 # Create a set of tiles without labels for training purposes. This version uses Mk3 of the tile rendering algorithm.
 # Example: python ./otf-peak-detect/yolo-feature-detection/training/create-raw-data-tiles.py -eb ~/Downloads/experiments -en 190719_Hela_Ecoli -rn 190719_Hela_Ecoli_1to3_06 -tidx 33 34
@@ -158,7 +161,14 @@ def render_frame(run_name, converted_db_name, frame_id, min_tile_id, max_tile_id
         tile = Image.fromarray(tile_im_array, 'RGB')
         tile.save('{}/run-{}-frame-{}-tile-{}.png'.format(TILES_BASE_DIR, run_name, frame_id, tile_idx))
 
+# determine the number of workers based on the number of available cores and the proportion of the machine to be used
+def number_of_workers():
+    number_of_cores = mp.cpu_count()
+    number_of_workers = int(args.proportion_of_cores_to_use * number_of_cores)
+    return number_of_workers
 
+
+##################################
 parser = argparse.ArgumentParser(description='Create the tiles from raw data.')
 parser.add_argument('-eb','--experiment_base_dir', type=str, default='./experiments', help='Path to the experiments directory.', required=False)
 parser.add_argument('-en','--experiment_name', type=str, help='Name of the experiment.', required=True)
@@ -169,18 +179,22 @@ parser.add_argument('-rtu','--rt_upper', type=int, default=800, help='Upper boun
 parser.add_argument('-maxpi','--maximum_pixel_intensity', type=int, default=1000, help='Maximum pixel intensity for encoding, above which will be clipped.', required=False)
 parser.add_argument('-minpi','--minimum_pixel_intensity', type=int, default=1, help='Minimum pixel intensity for encoding, below which will be clipped.', required=False)
 parser.add_argument('-inp','--interpolate_neighbouring_pixels', action='store_true', help='Use the value of surrounding pixels to fill zero pixels.')
-parser.add_argument('-tidl','--tile_idx_lower', type=int, help='Lower range of the tile indexes to render. Must be between {} and {}'.format(MIN_TILE_IDX,MAX_TILE_IDX), required=True)
-parser.add_argument('-tidu','--tile_idx_upper', type=int, help='Upper range of the tile indexes to render. Must be between {} and {}'.format(MIN_TILE_IDX,MAX_TILE_IDX), required=True)
-parser.add_argument('-np','--number_of_processors', type=int, default=20, help='The number of processors to use.', required=False)
+parser.add_argument('-tidl','--tile_idx_lower', type=int, default=20, help='Lower range of the tile indexes to render. Must be between {} and {}'.format(MIN_TILE_IDX,MAX_TILE_IDX), required=True)
+parser.add_argument('-tidu','--tile_idx_upper', type=int, default=40, help='Upper range of the tile indexes to render. Must be between {} and {}'.format(MIN_TILE_IDX,MAX_TILE_IDX), required=True)
+parser.add_argument('-rm','--ray_mode', type=str, choices=['local','cluster'], default='cluster', help='The Ray mode to use.', required=False)
+parser.add_argument('-pc','--proportion_of_cores_to_use', type=float, default=0.6, help='Proportion of the machine\'s cores to use for this program.', required=False)
 parser.add_argument('-shutdown','--shutdown', action='store_true', help='Shut down the machine when complete.')
 args = parser.parse_args()
 
 # Store the arguments as metadata for later reference
-info = []
+command_line_arguments = []
 for arg in vars(args):
-    info.append((arg, getattr(args, arg)))
+    command_line_arguments.append((arg, getattr(args, arg)))
 
-print("{} info: {}".format(parser.prog, info))
+tile_set_metadata = {'command_line_arguments':command_line_arguments}
+tile_set_metadata['run_names'] = args.run_names
+
+print("{} command line arguments: {}".format(parser.prog, command_line_arguments))
 
 # check the tile index range is valid
 if (args.tile_idx_lower < MIN_TILE_IDX) or (args.tile_idx_lower > MAX_TILE_IDX) or (args.tile_idx_upper < MIN_TILE_IDX) or (args.tile_idx_upper > MAX_TILE_IDX):
@@ -209,8 +223,14 @@ os.makedirs(TILES_BASE_DIR)
 ##############################
 start_run = time.time()
 
+print("setting up Ray")
 if not ray.is_initialized():
-    ray.init(num_cpus=args.number_of_processors)
+    if args.ray_mode == "cluster":
+        ray.init(object_store_memory=20000000000,
+                    redis_max_memory=25000000000,
+                    num_cpus=number_of_workers())
+    else:
+        ray.init(local_mode=True)
 
 for run_name in args.run_names:
     # check the converted database exists
@@ -233,10 +253,15 @@ for run_name in args.run_names:
     ray.get([render_frame.remote(run_name, CONVERTED_DATABASE_NAME, frame_id, args.tile_idx_lower, args.tile_idx_upper, frame_idx, len(ms1_frame_ids)) for frame_idx,frame_id in enumerate(ms1_frame_ids, start=1)])
 
 stop_run = time.time()
-info.append(("run processing time (sec)", round(stop_run-start_run,1)))
-info.append(("processed", time.ctime()))
-info.append(("processor", parser.prog))
-print("{} info: {}".format(parser.prog, info))
+tile_set_metadata["run processing time (sec)"] = round(stop_run-start_run,1)
+tile_set_metadata["processed"] = time.ctime()
+tile_set_metadata["processor"] = parser.prog
+print("{} info: {}".format(parser.prog, tile_set_metadata))
+
+# write out the metadata file
+metadata_filename = '{}/tile-set-metadata.json'.format(TILES_BASE_DIR)
+with open(metadata_filename, 'w') as outfile:
+    json.dump(tile_set_metadata, outfile)
 
 print("shutting down ray")
 ray.shutdown()
