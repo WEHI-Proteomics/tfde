@@ -241,7 +241,7 @@ for run_name in args.run_names:
         print("The converted database is required but doesn't exist: {}".format(CONVERTED_DATABASE_NAME))
         sys.exit(1)
 
-    print("creating indexes if they don't already exist")
+    print("creating indexes in {} if they don't already exist".format(CONVERTED_DATABASE_NAME))
     create_indexes(CONVERTED_DATABASE_NAME)
 
     print("rendering tiles {} to {} from run {}, with m/z range {} to {}".format(args.tile_idx_lower, args.tile_idx_upper, run_name, round(mz_range_for_tile(args.tile_idx_lower)[0],1), round(mz_range_for_tile(args.tile_idx_upper)[1],1)))
