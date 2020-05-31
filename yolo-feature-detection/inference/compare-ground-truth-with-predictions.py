@@ -1,6 +1,5 @@
 import json
-from urllib.request import urlopen
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageFont
 import pandas as pd
 import sqlite3
 import numpy as np
@@ -14,6 +13,43 @@ import shutil
 PIXELS_X = 910
 PIXELS_Y = 910  # equal to the number of scan lines
 
+# charge states of interest
+MIN_CHARGE = 2
+MAX_CHARGE = 4
+
+# number of isotopes of interest
+MIN_ISOTOPES = 3
+MAX_ISOTOPES = 7
+
+# define the feature class colours
+CLASS_COLOUR = [
+    '#132580',  # class 0
+    '#4b27ff',  # class 1
+    '#9427ff',  # class 2
+    '#ff27fb',  # class 3
+    '#ff2781',  # class 4
+    '#ff3527',  # class 5
+    '#ff6727',  # class 6
+    '#ff9a27',  # class 7
+    '#ffc127',  # class 8
+    '#ffe527',  # class 9
+    '#e0ff27',  # class 10
+    '#63da21',  # class 11
+    '#27ff45',  # class 12
+    '#21daa5',  # class 13
+    '#135e80'   # class 14
+]
+
+# font paths for overlay labels
+UBUNTU_FONT_PATH = '/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf'
+MACOS_FONT_PATH = '/Library/Fonts/Arial.ttf'
+
+def feature_names():
+    names = []
+    for ch in range(MIN_CHARGE,MAX_CHARGE+1):
+        for iso in range(MIN_ISOTOPES,MAX_ISOTOPES+1):
+            names.append('charge-{}-isotopes-{}'.format(ch, iso))
+    return names
 
 #####################################
 parser = argparse.ArgumentParser(description='Create composite tiles that show predictions and ground truth.')
@@ -70,6 +106,12 @@ if os.path.exists(COMPOSITE_TILE_DIR):
     shutil.rmtree(COMPOSITE_TILE_DIR)
 os.makedirs(COMPOSITE_TILE_DIR)
 
+# load the font to use for labelling the overlays
+if os.path.isfile(UBUNTU_FONT_PATH):
+    feature_label_font = ImageFont.truetype(UBUNTU_FONT_PATH, 10)
+else:
+    feature_label_font = ImageFont.truetype(MACOS_FONT_PATH, 10)
+
 prediction_json_file = '{}/predictions.json'.format(TILE_PREDICTIONS_DIR)
 with open(prediction_json_file) as file:
     prediction_json = json.load(file)
@@ -83,13 +125,17 @@ for prediction_idx in range(len(prediction_json)):
     draw_predictions = ImageDraw.Draw(img)
     predictions = prediction_json[prediction_idx]['objects']
     for prediction in predictions:
-        charge_state_label = prediction['name']
+        feature_class_name = prediction['name']
+        feature_class = prediction['class_id']
         coordinates = prediction['relative_coordinates']
         x = (coordinates['center_x'] - (coordinates['width'] / 2)) * PIXELS_X
         y = (coordinates['center_y'] - (coordinates['height'] / 2)) * PIXELS_Y
         width = coordinates['width'] * PIXELS_X
         height = coordinates['height'] * PIXELS_Y
-        draw_predictions.rectangle(xy=[(x, y), (x+width, y+height)], fill=None, outline=(100,255,100,20))
+        # draw the bounding box
+        draw_predictions.rectangle(xy=[(x, y), (x+width, y+height)], fill=None, outline=CLASS_COLOUR[feature_class])
+        # draw the feature class name
+        draw_predictions.text((x, y-12), feature_class_name, font=feature_label_font, fill=CLASS_COLOUR[feature_class])
 
     # write the annotated tile to the predictions directory
     individual_name = '{}/{}'.format(INDIVIDUAL_TILE_DIR, base_name)
