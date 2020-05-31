@@ -1,6 +1,6 @@
 # This application creates everything YOLO needs in the training set. The output base directory should be copied to ~/darket/data/peptides on the training machine with scp -rp. Prior to this step, the raw tiles must be created with create-raw-data-tiles.py.
 import json
-from PIL import Image, ImageDraw, ImageChops
+from PIL import Image, ImageDraw, ImageChops, ImageFont
 import os, shutil
 import random
 import argparse
@@ -45,6 +45,29 @@ SMALL_OBJECT_W = SMALL_OBJECT_H = 16/416
 # allow for some buffer area around the features
 MZ_BUFFER = 0.25
 SCAN_BUFFER = 20
+
+# define the feature class colours
+CLASS_COLOUR = [
+    '#132580',  # class 0
+    '#4b27ff',  # class 1
+    '#9427ff',  # class 2
+    '#ff27fb',  # class 3
+    '#ff2781',  # class 4
+    '#ff3527',  # class 5
+    '#ff6727',  # class 6
+    '#ff9a27',  # class 7
+    '#ffc127',  # class 8
+    '#ffe527',  # class 9
+    '#e0ff27',  # class 10
+    '#63da21',  # class 11
+    '#27ff45',  # class 12
+    '#21daa5',  # class 13
+    '#135e80'   # class 14
+]
+
+# font paths for overlay labels
+UBUNTU_FONT_PATH = '/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf'
+MACOS_FONT_PATH = '/Library/Fonts/Arial.ttf'
 
 # get the m/z extent for the specified tile ID
 def mz_range_for_tile(tile_id):
@@ -393,6 +416,12 @@ if not ray.is_initialized():
     else:
         ray.init(local_mode=True)
 
+# load the font to use for labelling the overlays
+if os.path.isfile(UBUNTU_FONT_PATH):
+    feature_label_font = ImageFont.truetype(UBUNTU_FONT_PATH, 10)
+else:
+    feature_label_font = ImageFont.truetype(MACOS_FONT_PATH, 10)
+
 # copy the tiles from the tile set to the pre-assigned directory, create its overlay and label text file
 classes_d = {}
 small_objects = 0
@@ -470,7 +499,9 @@ for idx,row in enumerate(tiles_df.itertuples()):
             # add it to the list
             feature_coordinates.append(("{} {:.6f} {:.6f} {:.6f} {:.6f}".format(feature_class, yolo_x, yolo_y, yolo_w, yolo_h)))
             # draw the rectangle on the overlay
-            draw.rectangle(xy=[(x0_buffer, y0_buffer), (x1_buffer, y1_buffer)], fill=None, outline='red')
+            draw.rectangle(xy=[(x0_buffer, y0_buffer), (x1_buffer, y1_buffer)], fill=None, outline=CLASS_COLOUR[feature_class])
+            # draw the feature class name
+            draw.text((x0_buffer, y0_buffer-12), feature_names()[feature_class], font=feature_label_font, fill=CLASS_COLOUR[feature_class])
             # store the pixel coords for each feature for this tile so we can mask the features later
             tile_features_l.append({'x0_buffer':x0_buffer, 'y0_buffer':y0_buffer, 'x1_buffer':x1_buffer, 'y1_buffer':y1_buffer})
             # keep record of the 'small' objects
