@@ -49,7 +49,7 @@ os.makedirs(TILE_PREDICTIONS_DIR)
 TILE_FILE_NAME = '{}/batch-inference-tile-{}.txt'.format(TILE_PREDICTIONS_DIR, args.tile_id)
 
 # we will use the tiles in the pre-assigned directory for inference
-file_list = sorted(glob.glob("{}/frame-*-tile-{}.png".format(PRE_ASSIGNED_FILES_DIR, args.tile_id)))
+file_list = sorted(glob.glob("{}/run-*-frame-*-tile-{}.png".format(PRE_ASSIGNED_FILES_DIR, args.tile_id)))
 if len(file_list) > 0:
     print("writing {} entries to {}".format(len(file_list), TILE_FILE_NAME))
     with open(TILE_FILE_NAME, 'w') as f:
