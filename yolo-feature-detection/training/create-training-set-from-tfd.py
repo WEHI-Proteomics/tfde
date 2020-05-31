@@ -314,19 +314,6 @@ else:
     test_proportion = 0.0
 logger.info("set proportions: train {}, validation {}, test {}".format(train_proportion, val_proportion, test_proportion))
 
-# set up indexes
-print("creating indexes if they don't already exist")
-create_indexes(EXTRACTED_FEATURES_DB_NAME)
-
-print("setting up Ray")
-if not ray.is_initialized():
-    if args.ray_mode == "cluster":
-        ray.init(object_store_memory=20000000000,
-                    redis_max_memory=25000000000,
-                    num_cpus=number_of_workers())
-    else:
-        ray.init(local_mode=True)
-
 # load the tile set metadata file
 tile_set_metadata_file_name = '{}/metadata.json'.format(TILES_BASE_DIR)
 if os.path.isfile(tile_set_metadata_file_name):
@@ -342,8 +329,11 @@ rt_upper = tile_set_metadata['arguments']['rt_upper']
 
 # trim the tile list according to the tile ID list specified for the training set
 tiles_df = pd.DataFrame(tile_set_metadata['tiles'])
-print(tiles_df)
+tile_set_indexes = tiles_df.tile_id.unique()
 tiles_df = tiles_df[tiles_df.tile_id.isin(indexes_l)]
+if len(tiles_df) == 0:
+    print("There is no intersection between the tile IDs specified for the training set ({}) and the tiles in the tile set ({})".format(indexes_l, tile_set_indexes))
+    sys.exit(1)
 
 # limit the number of tiles for small set mode
 if args.small_set_mode:
@@ -351,13 +341,15 @@ if args.small_set_mode:
 
 # determine the runs in this tile set
 run_names = tiles_df.run_name.unique()
-print('run names: {}'.format(run_names))
 file_idxs = [file_idx_for_run(run_name) for run_name in run_names]
 if len(file_idxs) == 1:
     file_idxs = '({})'.format(file_idxs[0])
 else:
     file_idxs = '{}'.format(tuple(file_idxs))
-print('file indexes: {}'.format(file_idxs))
+
+# set up indexes
+print("creating indexes in {} if they don't already exist".format(EXTRACTED_FEATURES_DB_NAME))
+create_indexes(EXTRACTED_FEATURES_DB_NAME)
 
 # load the extracted features for the runs specified in the tile set
 logger.info("reading the extracted features for runs {} from {}".format(run_names, EXTRACTED_FEATURES_DB_NAME))
@@ -391,6 +383,15 @@ sequences_df['scan_upper'] = sequences_df.apply(lambda row: np.max([i[1] for i i
 
 sequences_df['mz_lower'] = sequences_df.apply(lambda row: np.min([i[0] for i in row.isotope_intensities_l[0][4]]), axis=1)  # [0][4] refers to the isotope points of the monoisotope; i[0] refers to the m/z values
 sequences_df['mz_upper'] = sequences_df.apply(lambda row: np.max([i[0] for i in row.isotope_intensities_l[row.number_of_isotopes-1][4]]), axis=1)
+
+print("setting up Ray")
+if not ray.is_initialized():
+    if args.ray_mode == "cluster":
+        ray.init(object_store_memory=20000000000,
+                    redis_max_memory=25000000000,
+                    num_cpus=number_of_workers())
+    else:
+        ray.init(local_mode=True)
 
 # copy the tiles from the tile set to the pre-assigned directory, create its overlay and label text file
 classes_d = {}
