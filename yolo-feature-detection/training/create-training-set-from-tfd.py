@@ -413,9 +413,9 @@ for charge in range(MIN_CHARGE, MAX_CHARGE+1):
         if len(df) >= args.number_of_object_instances:
             df = df.sample(n=args.number_of_object_instances)
             df_l.append(df)
-        print("found {} instances of features with charge {}, isotopes {}".format(len(df), charge, isotopes))
+        print("found {} instances of features with charge {}, isotopes {} (class {})".format(len(df), charge, isotopes, feature_class))
 
-if not all(len(df) == args.number_of_object_instances for df in df_l):
+if len(df_l) < number_of_feature_classes():
     print('could not find enough instances of all feature classes')
     sys.exit(1)
 else:
