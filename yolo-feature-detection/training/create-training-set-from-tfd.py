@@ -413,10 +413,12 @@ for charge in range(MIN_CHARGE, MAX_CHARGE+1):
         if len(df) >= args.number_of_object_instances:
             df = df.sample(n=args.number_of_object_instances)
             df_l.append(df)
-        else:
-            print('could only find {} instances of feature class {}'.format(len(df), feature_class))
-            sys.exit(1)
+        print("found {} instances of features with charge {}, isotopes {}".format(charge, isotopes))
 sequences_df = pd.concat(df_l, axis=0, sort=False)
+
+if not all(len(df) == args.number_of_object_instances for df in df_l):
+    print('could not find enough instances of all feature classes")
+    sys.exit(1)
 
 # unpack the feature extents
 logger.info("unpacking the feature extents")
