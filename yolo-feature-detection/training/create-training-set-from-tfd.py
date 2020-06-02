@@ -173,7 +173,8 @@ def number_of_workers():
 def create_indexes(db_file_name):
     db_conn = sqlite3.connect(db_file_name)
     src_c = db_conn.cursor()
-    src_c.execute("create index if not exists idx_training_set_1 on features (file_idx,rt_apex)")
+    src_c.execute("drop index if exists idx_training_set_1")
+    src_c.execute("create index if not exists idx_training_set_2 on features (file_idx,rt_apex,monoisotopic_mz_centroid)")
     db_conn.close()
 
 def calculate_feature_class(isotopes, charge):
@@ -198,6 +199,7 @@ def feature_names():
 parser = argparse.ArgumentParser(description='Set up a training set from raw tiles.')
 parser.add_argument('-eb','--experiment_base_dir', type=str, default='./experiments', help='Path to the experiments directory.', required=False)
 parser.add_argument('-en','--experiment_name', type=str, help='Name of the experiment.', required=True)
+parser.add_argument('-rn','--run_names', nargs='+', type=str, help='Space-separated names of runs to include.', required=True)
 parser.add_argument('-tsn','--tile_set_name', type=str, default='tile-set', help='Name of the tile set.', required=False)
 parser.add_argument('-tn','--training_set_name', type=str, default='yolo', help='Name of the training set.', required=False)
 parser.add_argument('-tidx','--tile_idx_list', type=str, help='Indexes of the tiles to use for the training set. Can specify several ranges (e.g. 10-20,21-30,31-40), a single range (e.g. 10-24), individual indexes (e.g. 34,56,32), or a single index (e.g. 54). Indexes must be between {} and {}'.format(MIN_TILE_IDX,MAX_TILE_IDX), required=True)
@@ -358,11 +360,17 @@ if len(tiles_df) == 0:
     print("There is no intersection between the tile IDs specified for the training set ({}) and the tiles in the tile set ({})".format(indexes_l, tile_set_indexes))
     sys.exit(1)
 
+# trim the tile set's runs according to the runs specified for the training set
+tiles_df = tiles_df[tiles_df.run_name.isin(args.run_names)]
+if len(tiles_df) == 0:
+    print("There is no intersection between the runs specified for the training set ({}) and the runs in the tile set ({})".format(args.run_names, tiles_df.run_name.unique()))
+    sys.exit(1)
+
 # limit the number of tiles for small set mode
 if args.small_set_mode:
     tiles_df = tiles_df.sample(n=args.small_set_mode_size)
 
-# determine the runs in this tile set
+# determine the file indexes for the runs in this tile set
 run_names = tiles_df.run_name.unique()
 file_idxs = [file_idx_for_run(run_name) for run_name in run_names]
 if len(file_idxs) == 1:
@@ -370,14 +378,18 @@ if len(file_idxs) == 1:
 else:
     file_idxs = '{}'.format(tuple(file_idxs))
 
+# find the mz range for the tiles specified
+training_set_mz_lower = mz_range_for_tile(tiles_df.tile_id.min())[0]  # the lower mz range for the lowest tile index specified
+training_set_mz_upper = mz_range_for_tile(tiles_df.tile_id.max())[1]  # the upper mz range for the highest tile index specified
+
 # set up indexes
 print("creating indexes in {} if they don't already exist".format(EXTRACTED_FEATURES_DB_NAME))
 create_indexes(EXTRACTED_FEATURES_DB_NAME)
 
-# load the extracted features for the runs specified in the tile set
+# only load the extracted features that will appear in the tile set
 logger.info("reading the extracted features for runs {} from {}".format(run_names, EXTRACTED_FEATURES_DB_NAME))
 db_conn = sqlite3.connect(EXTRACTED_FEATURES_DB_NAME)
-sequences_df = pd.read_sql_query('select sequence,charge,run_name,file_idx,monoisotopic_mz_centroid,number_of_isotopes,rt_apex,mono_rt_bounds,mono_scan_bounds,isotope_1_rt_bounds,isotope_1_scan_bounds,isotope_2_rt_bounds,isotope_2_scan_bounds,isotope_intensities_l from features where file_idx in {} and rt_apex >= {} and rt_apex <= {}'.format(file_idxs, rt_lower, rt_upper), db_conn)
+sequences_df = pd.read_sql_query('select sequence,charge,run_name,file_idx,monoisotopic_mz_centroid,number_of_isotopes,rt_apex,mono_rt_bounds,mono_scan_bounds,isotope_1_rt_bounds,isotope_1_scan_bounds,isotope_2_rt_bounds,isotope_2_scan_bounds,isotope_intensities_l from features where file_idx in {} and rt_apex >= {} and rt_apex <= {} and monoisotopic_mz_centroid >= {} and monoisotopic_mz_centroid <= {}'.format(file_idxs, rt_lower, rt_upper, training_set_mz_lower, training_set_mz_upper), db_conn)
 db_conn.close()
 logger.info("loaded {} extracted features from {}".format(len(sequences_df), EXTRACTED_FEATURES_DB_NAME))
 
