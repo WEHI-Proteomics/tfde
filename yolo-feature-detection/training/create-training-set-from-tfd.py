@@ -413,7 +413,7 @@ for charge in range(MIN_CHARGE, MAX_CHARGE+1):
         if len(df) >= args.number_of_object_instances:
             df = df.sample(n=args.number_of_object_instances)
             df_l.append(df)
-        print("found {} instances of features with charge {}, isotopes {}".format(charge, isotopes))
+        print("found {} instances of features with charge {}, isotopes {}".format(len(df), charge, isotopes))
 sequences_df = pd.concat(df_l, axis=0, sort=False)
 
 if not all(len(df) == args.number_of_object_instances for df in df_l):
