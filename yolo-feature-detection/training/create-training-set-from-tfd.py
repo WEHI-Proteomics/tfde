@@ -447,11 +447,6 @@ sequences_df['scan_upper'] = sequences_df.apply(lambda row: np.max([i[1] for i i
 sequences_df['mz_lower'] = sequences_df.apply(lambda row: np.min([i[0] for i in row.isotope_intensities_l[0][4]]), axis=1)  # [0][4] refers to the isotope points of the monoisotope; i[0] refers to the m/z values
 sequences_df['mz_upper'] = sequences_df.apply(lambda row: np.max([i[0] for i in row.isotope_intensities_l[row.number_of_isotopes-1][4]]), axis=1)
 
-
-
-
-
-
 print("setting up Ray")
 if not ray.is_initialized():
     if args.ray_mode == "cluster":
