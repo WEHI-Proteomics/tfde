@@ -195,14 +195,6 @@ def feature_names():
             names.append('charge-{}-isotopes-{}'.format(ch, iso))
     return names
 
-def feature_charge_isotopes_from_class(feature_class):
-    feature_class = charge_idx * (MAX_ISOTOPES-MIN_ISOTOPES+1) + isotope_idx
-
-    charge_idx = int(feature_class / (MAX_ISOTOPES-MIN_ISOTOPES+1))
-
-    charge_idx = charge - MIN_CHARGE
-    isotope_idx = isotopes - MIN_ISOTOPES
-
 
 # python ./otf-peak-detect/yolo-feature-detection/training/create-training-set-from-tfd.py -eb ~/Downloads/experiments -en dwm-test -rn 190719_Hela_Ecoli_1to1_01 -tidx 34
 
@@ -358,6 +350,9 @@ if os.path.isfile(tile_set_metadata_file_name):
 else:
     print("Could not find the tile set's metadata file: {}".format(tile_set_metadata_file_name))
     sys.exit(1)
+
+# print some information about the specified tile set
+print("tile set {}: {}".format(args.tile_set_name, tile_set_metadata['arguments']))
 
 # determine the RT range for the tile set so we only need to load extracted features in that range
 rt_lower = tile_set_metadata['arguments']['rt_lower']
