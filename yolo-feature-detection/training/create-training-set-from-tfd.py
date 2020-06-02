@@ -178,6 +178,8 @@ def create_indexes(db_file_name):
     db_conn.close()
 
 def calculate_feature_class(isotopes, charge):
+    assert ((isotopes >= MIN_ISOTOPES) and (isotopes <= MAX_ISOTOPES)), "isotopes must be between {} and {}".format(MIN_ISOTOPES, MAX_ISOTOPES)
+    assert ((charge >= MIN_CHARGE) and (charge <= MAX_CHARGE)), "charge must be between {} and {}".format(MIN_CHARGE, MAX_CHARGE)
     charge_idx = charge - MIN_CHARGE
     isotope_idx = isotopes - MIN_ISOTOPES
     feature_class = charge_idx * (MAX_ISOTOPES-MIN_ISOTOPES+1) + isotope_idx
@@ -192,6 +194,14 @@ def feature_names():
         for iso in range(MIN_ISOTOPES,MAX_ISOTOPES+1):
             names.append('charge-{}-isotopes-{}'.format(ch, iso))
     return names
+
+def feature_charge_isotopes_from_class(feature_class):
+    feature_class = charge_idx * (MAX_ISOTOPES-MIN_ISOTOPES+1) + isotope_idx
+
+    charge_idx = int(feature_class / (MAX_ISOTOPES-MIN_ISOTOPES+1))
+
+    charge_idx = charge - MIN_CHARGE
+    isotope_idx = isotopes - MIN_ISOTOPES
 
 
 # python ./otf-peak-detect/yolo-feature-detection/training/create-training-set-from-tfd.py -eb ~/Downloads/experiments -en dwm-test -rn 190719_Hela_Ecoli_1to1_01 -tidx 34
@@ -208,6 +218,7 @@ parser.add_argument('-ssm','--small_set_mode', action='store_true', help='A smal
 parser.add_argument('-ssms','--small_set_mode_size', type=int, default='100', help='The number of tiles to sample for small set mode.', required=False)
 parser.add_argument('-rm','--ray_mode', type=str, choices=['local','cluster'], default='cluster', help='The Ray mode to use.', required=False)
 parser.add_argument('-pc','--proportion_of_cores_to_use', type=float, default=0.6, help='Proportion of the machine\'s cores to use for this program.', required=False)
+parser.add_argument('-noi','--number_of_object_instances', type=int, default='2000', help='The number of object instances to harvest from the tile set for each feature class.', required=False)
 args = parser.parse_args()
 
 # store the command line arguments as metadata for later reference
@@ -393,6 +404,20 @@ sequences_df = pd.read_sql_query('select sequence,charge,run_name,file_idx,monoi
 db_conn.close()
 logger.info("loaded {} extracted features from {}".format(len(sequences_df), EXTRACTED_FEATURES_DB_NAME))
 
+# at this point we have the sequences that should appear in the tile set, so now find out whether there are enough instances of each feature class
+df_l = []
+for charge in range(MIN_CHARGE, MAX_CHARGE+1):
+    for isotopes in range(MIN_ISOTOPES, MAX_ISOTOPES+1):
+        feature_class = calculate_feature_class(isotopes, charge)
+        df = sequences_df[(sequences_df.number_of_isotopes == isotopes) & (sequences_df.charge == charge)]
+        if len(df) >= args.number_of_object_instances:
+            df = df.sample(n=args.number_of_object_instances)
+            df_l.append(df)
+        else:
+            print('could only find {} instances of feature class {}'.format(len(df), feature_class))
+            sys.exit(1)
+sequences_df = pd.concat(df_l, axis=0, sort=False)
+
 # unpack the feature extents
 logger.info("unpacking the feature extents")
 sequences_df.mono_rt_bounds = sequences_df.apply(lambda row: json.loads(row.mono_rt_bounds), axis=1)
@@ -418,6 +443,11 @@ sequences_df['scan_upper'] = sequences_df.apply(lambda row: np.max([i[1] for i i
 
 sequences_df['mz_lower'] = sequences_df.apply(lambda row: np.min([i[0] for i in row.isotope_intensities_l[0][4]]), axis=1)  # [0][4] refers to the isotope points of the monoisotope; i[0] refers to the m/z values
 sequences_df['mz_upper'] = sequences_df.apply(lambda row: np.max([i[0] for i in row.isotope_intensities_l[row.number_of_isotopes-1][4]]), axis=1)
+
+
+
+
+
 
 print("setting up Ray")
 if not ray.is_initialized():
