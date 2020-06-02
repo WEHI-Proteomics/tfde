@@ -411,10 +411,10 @@ if args.number_of_object_instances is not None:
         for isotopes in range(MIN_ISOTOPES, MAX_ISOTOPES+1):
             feature_class = calculate_feature_class(isotopes, charge)
             df = sequences_df[(sequences_df.number_of_isotopes == isotopes) & (sequences_df.charge == charge)]
+            print("found {} instances of features with charge {}, isotopes {} (class {})".format(len(df), charge, isotopes, feature_class))
             if len(df) >= args.number_of_object_instances:
                 df = df.sample(n=args.number_of_object_instances)
                 df_l.append(df)
-            print("found {} instances of features with charge {}, isotopes {} (class {})".format(len(df), charge, isotopes, feature_class))
 
     if len(df_l) < number_of_feature_classes():
         print('could not find enough instances of all feature classes')
