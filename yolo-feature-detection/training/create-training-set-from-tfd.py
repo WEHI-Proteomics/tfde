@@ -218,7 +218,7 @@ parser.add_argument('-ssm','--small_set_mode', action='store_true', help='A smal
 parser.add_argument('-ssms','--small_set_mode_size', type=int, default='100', help='The number of tiles to sample for small set mode.', required=False)
 parser.add_argument('-rm','--ray_mode', type=str, choices=['local','cluster'], default='cluster', help='The Ray mode to use.', required=False)
 parser.add_argument('-pc','--proportion_of_cores_to_use', type=float, default=0.6, help='Proportion of the machine\'s cores to use for this program.', required=False)
-parser.add_argument('-noi','--number_of_object_instances', type=int, default='2000', help='The number of object instances to harvest from the tile set for each feature class.', required=False)
+parser.add_argument('-noi','--number_of_object_instances', type=int, help='The number of object instances to harvest from the tile set for each feature class.', required=False)
 args = parser.parse_args()
 
 # store the command line arguments as metadata for later reference
@@ -404,22 +404,23 @@ sequences_df = pd.read_sql_query('select sequence,charge,run_name,file_idx,monoi
 db_conn.close()
 logger.info("loaded {} extracted features from {}".format(len(sequences_df), EXTRACTED_FEATURES_DB_NAME))
 
-# at this point we have the sequences that should appear in the tile set, so now find out whether there are enough instances of each feature class
-df_l = []
-for charge in range(MIN_CHARGE, MAX_CHARGE+1):
-    for isotopes in range(MIN_ISOTOPES, MAX_ISOTOPES+1):
-        feature_class = calculate_feature_class(isotopes, charge)
-        df = sequences_df[(sequences_df.number_of_isotopes == isotopes) & (sequences_df.charge == charge)]
-        if len(df) >= args.number_of_object_instances:
-            df = df.sample(n=args.number_of_object_instances)
-            df_l.append(df)
-        print("found {} instances of features with charge {}, isotopes {} (class {})".format(len(df), charge, isotopes, feature_class))
+if args.number_of_object_instances is not None:
+    # at this point we have the sequences that should appear in the tile set, so now find out whether there are enough instances of each feature class
+    df_l = []
+    for charge in range(MIN_CHARGE, MAX_CHARGE+1):
+        for isotopes in range(MIN_ISOTOPES, MAX_ISOTOPES+1):
+            feature_class = calculate_feature_class(isotopes, charge)
+            df = sequences_df[(sequences_df.number_of_isotopes == isotopes) & (sequences_df.charge == charge)]
+            if len(df) >= args.number_of_object_instances:
+                df = df.sample(n=args.number_of_object_instances)
+                df_l.append(df)
+            print("found {} instances of features with charge {}, isotopes {} (class {})".format(len(df), charge, isotopes, feature_class))
 
-if len(df_l) < number_of_feature_classes():
-    print('could not find enough instances of all feature classes')
-    sys.exit(1)
-else:
-    sequences_df = pd.concat(df_l, axis=0, sort=False)
+    if len(df_l) < number_of_feature_classes():
+        print('could not find enough instances of all feature classes')
+        sys.exit(1)
+    else:
+        sequences_df = pd.concat(df_l, axis=0, sort=False)
 
 # unpack the feature extents
 logger.info("unpacking the feature extents")
