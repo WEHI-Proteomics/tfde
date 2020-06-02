@@ -363,7 +363,7 @@ if len(tiles_df) == 0:
 # trim the tile set's runs according to the runs specified for the training set
 tiles_df = tiles_df[tiles_df.run_name.isin(args.run_names)]
 if len(tiles_df) == 0:
-    print("There is no intersection between the runs specified for the training set ({}) and the runs in the tile set ({})".format(args.run_names, tiles_df.run_name.unique()))
+    print("There is no intersection between the runs specified for the training set ({}) and the runs in the tile set ({})".format(args.run_names, tile_set_metadata['arguments']['run_names']))
     sys.exit(1)
 
 # limit the number of tiles for small set mode
