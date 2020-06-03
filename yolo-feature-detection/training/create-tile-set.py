@@ -56,53 +56,15 @@ def mz_range_for_tile(tile_id):
     mz_upper = mz_lower + MZ_PER_TILE
     return (mz_lower, mz_upper)
 
+# set a zero pixel's colour to be the channel-wise mean of its neighbours
 def interpolate_pixels(tile_im_array):
-    z = np.array([0,0,0])
     for x in range(4, PIXELS_X-4):
         for y in range(4, PIXELS_Y-4):
             c = tile_im_array[y,x]
-            if (c == z).all():  # only change pixels that are [0,0,0]
-                # build the list of this pixel's neighbours to average
-                n = []
-                n.append(tile_im_array[y+1,x-1])
-                n.append(tile_im_array[y+1,x])
-                n.append(tile_im_array[y+1,x+1])
-
-                n.append(tile_im_array[y-1,x-1])
-                n.append(tile_im_array[y-1,x])
-                n.append(tile_im_array[y-1,x+1])
-
-                n.append(tile_im_array[y+2,x-1])
-                n.append(tile_im_array[y+2,x])
-                n.append(tile_im_array[y+2,x+1])
-
-                n.append(tile_im_array[y-2,x-1])
-                n.append(tile_im_array[y-2,x])
-                n.append(tile_im_array[y-2,x+1])
-
-                n.append(tile_im_array[y+3,x-1])
-                n.append(tile_im_array[y+3,x])
-                n.append(tile_im_array[y+3,x+1])
-
-                n.append(tile_im_array[y-3,x-1])
-                n.append(tile_im_array[y-3,x])
-                n.append(tile_im_array[y-3,x+1])
-
-                n.append(tile_im_array[y+4,x-1])
-                n.append(tile_im_array[y+4,x])
-                n.append(tile_im_array[y+4,x+1])
-
-                n.append(tile_im_array[y-4,x-1])
-                n.append(tile_im_array[y-4,x])
-                n.append(tile_im_array[y-4,x+1])
-
-                n.append(tile_im_array[y,x-1])
-                n.append(tile_im_array[y,x+1])
-
-                # set the pixel's colour to be the channel-wise mean of its neighbours
-                neighbours_a = np.array(n)
-                tile_im_array[y,x] = np.mean(neighbours_a, axis=0)
-
+            n = tile_im_array[y-4:y+5,x-1:x+2]
+            if (not c.any()) and n.any():  # this is a zero pixel and there is at least one non-zero pixel in this region
+                n = n.reshape((n.shape[0] * n.shape[1], n.shape[2]))
+                tile_im_array[y,x] = np.mean(n, axis=0)
     return tile_im_array
 
 def create_indexes(db_file_name):
@@ -139,10 +101,11 @@ def render_frame(run_name, converted_db_name, frame_id, retention_time_secs, min
         norm = colors.LogNorm(vmin=args.minimum_pixel_intensity, vmax=args.maximum_pixel_intensity, clip=True)  # aiming to get good colour variation in the lower range, and clipping everything else
 
         # calculate the colour to represent the intensity
-        colour_l = []
-        for r in zip(pixel_intensity_df.intensity):
-            colour_l.append((colour_map(norm(r[0]), bytes=True)[:3]))
-        pixel_intensity_df['colour'] = colour_l
+        colours_l = []
+        for i in pixel_intensity_df.intensity.unique():
+            colours_l.append((i, colour_map(norm(i), bytes=True)[:3]))
+        colours_df = pd.DataFrame(colours_l, columns=['intensity','colour'])
+        pixel_intensity_df = pd.merge(pixel_intensity_df, colours_df, how='left', left_on=['intensity'], right_on=['intensity'])
 
         # extract the pixels for the frame for the specified tiles
         for tile_id in range(min_tile_id, max_tile_id+1):
