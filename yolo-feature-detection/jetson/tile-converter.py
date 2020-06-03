@@ -80,7 +80,6 @@ def interpolate_pixels(tile_im_array):
 
     return tile_im_array
 
-@jit(nopython=False, parallel=True)
 def render_frame(frame_id, frame_df):
     # assign a tile_id and a pixel x value to each raw point
     tile_pixels_df = pd.DataFrame(frame_df.apply(lambda row: tile_pixel_x_from_mz(row.mz), axis=1).tolist(), columns=['tile_id', 'pixel_x'])
