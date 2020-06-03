@@ -31,11 +31,11 @@ def tile_pixel_x_from_mz(mz):
     return (tile_id, pixel_x)
 
 def interpolate_pixels(tile_im_array):
-    z = np.array([0,0,0])
+    z = np.array([0,0,0])  # empty pixel check
     for x in range(4, PIXELS_X-4):
         for y in range(4, PIXELS_Y-4):
             c = tile_im_array[y,x]
-            if (c == z).all():  # only change pixels that are [0,0,0]
+            if (not c.any()) and tile_im_array[y-4:y+4,x-1:x+1].any():  # this is a zero pixel and there is a non-zero pixel in this region
                 # build the list of this pixel's neighbours to average
                 n = []
                 n.append(tile_im_array[y+1,x-1])
@@ -90,10 +90,11 @@ def render_frame(frame_id, frame_df):
     norm = colors.LogNorm(vmin=MINIMUM_PIXEL_INTENSITY, vmax=MAXIMUM_PIXEL_INTENSITY, clip=True)  # aiming to get good colour variation in the lower range, and clipping everything else
 
     # calculate the colour to represent the intensity
-    colour_l = []
-    for r in zip(pixel_intensity_df.intensity):
-        colour_l.append((colour_map(norm(r[0]), bytes=True)[:3]))
-    pixel_intensity_df['colour'] = colour_l
+    colours_l = []
+    for i in pixel_intensity_df.intensity.unique():
+        colours_l.append((i, colour_map(norm(i), bytes=True)[:3]))
+    colours_df = pd.DataFrame(colours_l, columns=['intensity','colour'])
+    pixel_intensity_df = pd.merge(pixel_intensity_df, colours_df, how='left', left_on=['intensity'], right_on=['intensity'])
 
     # extract the pixels for the frame for the specified tiles
     for tile_idx in range(MIN_TILE_IDX, MAX_TILE_IDX+1):
@@ -108,7 +109,7 @@ def render_frame(frame_id, frame_df):
             tile_im_array[y,x,:] = c
 
         # fill in zero pixels with interpolated values
-        tile_im_array = interpolate_pixels(tile_im_array)
+        # tile_im_array = interpolate_pixels(tile_im_array)
 
         # create an image of the intensity array
         tile = Image.fromarray(tile_im_array, 'RGB')
