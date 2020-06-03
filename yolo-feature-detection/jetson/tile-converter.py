@@ -99,21 +99,21 @@ def render_frame(frame_id, frame_df):
     # extract the pixels for the frame for the specified tiles
     for tile_idx in range(MIN_TILE_IDX, MAX_TILE_IDX+1):
         tile_df = pixel_intensity_df[(pixel_intensity_df.tile_id == tile_idx)]
-        if len(tile_df) > 0:
-            # create an intensity array
-            tile_im_array = np.zeros([PIXELS_Y+1, PIXELS_X+1, 3], dtype=np.uint8)  # container for the image
-            for r in zip(tile_df.pixel_x, tile_df.scan, tile_df.colour):
-                x = r[0]
-                y = r[1]
-                c = r[2]
-                tile_im_array[y,x,:] = c
 
-            # fill in zero pixels with interpolated values
-            # tile_im_array = interpolate_pixels(tile_im_array)
+        # create an intensity array
+        tile_im_array = np.zeros([PIXELS_Y+1, PIXELS_X+1, 3], dtype=np.uint8)  # container for the image
+        for r in zip(tile_df.pixel_x, tile_df.scan, tile_df.colour):
+            x = r[0]
+            y = r[1]
+            c = r[2]
+            tile_im_array[y,x,:] = c
 
-            # create an image of the intensity array
-            tile = Image.fromarray(tile_im_array, 'RGB')
-            tile.save('{}/frame-{}-tile-{}.png'.format(TILES_DIR, frame_id, tile_idx))
+        # fill in zero pixels with interpolated values
+        # tile_im_array = interpolate_pixels(tile_im_array)
+
+        # create an image of the intensity array
+        tile = Image.fromarray(tile_im_array, 'RGB')
+        tile.save('{}/frame-{}-tile-{}.png'.format(TILES_DIR, frame_id, tile_idx))
 
 def consumer():
     consumer_id = random.randrange(1,10005)
