@@ -12,8 +12,7 @@ FRAME_TYPE_MS1 = 0
 FRAME_TYPE_MS2 = 8
 
 CONVERTED_DATABASE_NAME = '/data/exp-dwm-test-run-190719_Hela_Ecoli_1to1_01-converted.sqlite'
-# PUBLISHED_FRAMES_DIR = '/data/published-frames'
-PUBLISHED_FRAMES_DIR = '/home/daryl/published-frames'
+PUBLISHED_FRAMES_DIR = '/data/published-frames'
 
 if os.path.exists(PUBLISHED_FRAMES_DIR):
     shutil.rmtree(PUBLISHED_FRAMES_DIR)
