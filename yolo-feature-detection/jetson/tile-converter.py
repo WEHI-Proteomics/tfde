@@ -122,18 +122,23 @@ def consumer():
     # receive work
     consumer_receiver = context.socket(zmq.PULL)
     consumer_receiver.connect("tcp://127.0.0.1:5557")
+
+    timings_l = []
     
     while True:
         message = consumer_receiver.recv_json()
         start_run = time.time()
         frame_id = message['frame_id']
         base_name = message['base_name']
-        print("rendering frame {}".format(frame_id))
 
         frame_file_name = '{}/{}'.format(PUBLISHED_FRAMES_DIR, base_name)
         frame_df = pd.read_pickle(frame_file_name)
         render_frame(frame_id, frame_df)
         stop_run = time.time()
-        print("processed message in {} seconds".format(round(stop_run-start_run,1)))
+
+        time_taken = stop_run-start_run
+        timings_l.append(time_taken)
+        
+        print("processed frame {} in {} seconds - mean time {}".format(frame_id, round(time_taken,1), round(np.mean(timings_l),1)))
 
 consumer()
