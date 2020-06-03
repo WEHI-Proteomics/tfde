@@ -6,8 +6,10 @@ from matplotlib import colors, cm, pyplot as plt
 import numpy as np
 from PIL import Image
 
-PUBLISHED_FRAMES_DIR = '/data/published-frames'
-TILES_DIR = '/data/tiles'
+# PUBLISHED_FRAMES_DIR = '/data/published-frames'
+# TILES_DIR = '/data/tiles'
+PUBLISHED_FRAMES_DIR = '/home/daryl/published-frames'
+TILES_DIR = '/home/daryl/tiles'
 
 PIXELS_X = 910
 PIXELS_Y = 910  # equal to the number of scan lines
