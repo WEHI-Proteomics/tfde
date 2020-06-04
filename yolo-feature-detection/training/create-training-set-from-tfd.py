@@ -681,5 +681,8 @@ with open('{}/test.txt'.format(TRAINING_SET_BASE_DIR), 'w') as f:
     for file_pair in test_set:
         f.write('data/peptides/sets/test/{}\n'.format(file_pair[0]))
 
+# shutdown Ray so we don't leave idle daemons around
+ray.shutdown()
+
 stop_run = time.time()
 print("total running time ({}): {} seconds".format(parser.prog, round(stop_run-start_run,1)))
