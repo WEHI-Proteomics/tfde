@@ -115,10 +115,10 @@ def scan_coords_for_single_charge_region(mz_lower, mz_upper):
     return (scan_for_mz_lower,scan_for_mz_upper)
 
 @ray.remote
-def apply_feature_mask(file_pair):
+def apply_feature_mask(file_pair, set_directory):
     # copy the tiles to their training set directory
-    shutil.copyfile('{}/{}'.format(PRE_ASSIGNED_FILES_DIR, file_pair[0]), '{}/{}'.format(TRAIN_SET_DIR, file_pair[0]))
-    shutil.copyfile('{}/{}'.format(PRE_ASSIGNED_FILES_DIR, file_pair[1]), '{}/{}'.format(TRAIN_SET_DIR, file_pair[1]))
+    shutil.copyfile('{}/{}'.format(PRE_ASSIGNED_FILES_DIR, file_pair[0]), '{}/{}'.format(set_directory, file_pair[0]))
+    shutil.copyfile('{}/{}'.format(PRE_ASSIGNED_FILES_DIR, file_pair[1]), '{}/{}'.format(set_directory, file_pair[1]))
 
     # find this tile in the tile metadata
     basename = file_pair[0]
@@ -156,9 +156,9 @@ def apply_feature_mask(file_pair):
     mask.save('{}/{}'.format(MASK_FILES_DIR, basename))
 
     # apply the mask to the tile
-    img = Image.open("{}/{}".format(TRAIN_SET_DIR, basename))
+    img = Image.open("{}/{}".format(set_directory, basename))
     masked_tile = ImageChops.multiply(img, mask)
-    masked_tile.save("{}/{}".format(TRAIN_SET_DIR, basename))
+    masked_tile.save("{}/{}".format(set_directory, basename))
 
     # return how many objects there are in this set
     return len(tile_features_l)
@@ -593,30 +593,36 @@ logger.info("set max_batches={}, steps={},{},{},{}".format(max_batches, int(0.4*
 
 # copy the training set tiles and their annotation files to the training set directory
 print("copying the training set to {}".format(TRAIN_SET_DIR))
-feature_counts_l = ray.get([apply_feature_mask.remote(file_pair) for file_pair in train_set])
+feature_counts_l = ray.get([apply_feature_mask.remote(file_pair, TRAIN_SET_DIR) for file_pair in train_set])
 train_set_object_count = sum(feature_counts_l)
 
 # copy the validation set tiles and their annotation files to the validation set directory
 print("copying the validation set to {}".format(VAL_SET_DIR))
-valid_set_object_count = 0
-for file_pair in val_set:
-    shutil.copyfile('{}/{}'.format(PRE_ASSIGNED_FILES_DIR, file_pair[0]), '{}/{}'.format(VAL_SET_DIR, file_pair[0]))
-    shutil.copyfile('{}/{}'.format(PRE_ASSIGNED_FILES_DIR, file_pair[1]), '{}/{}'.format(VAL_SET_DIR, file_pair[1]))
+if args.inference_mode:
+    # in inference mode we don't want to mask anything
+    valid_set_object_count = 0
+    for file_pair in val_set:
+        shutil.copyfile('{}/{}'.format(PRE_ASSIGNED_FILES_DIR, file_pair[0]), '{}/{}'.format(VAL_SET_DIR, file_pair[0]))
+        shutil.copyfile('{}/{}'.format(PRE_ASSIGNED_FILES_DIR, file_pair[1]), '{}/{}'.format(VAL_SET_DIR, file_pair[1]))
 
-    # find this tile in the tile metadata
-    basename = file_pair[0]
-    found = False
-    for tile in tile_metadata_l:
-        if tile['basename'] == basename:
-            mask_region_y_left = tile['mask_region_y_left']
-            mask_region_y_right = tile['mask_region_y_right']
-            tile_features_l = tile['tile_features_l']
-            found = True
-            break
-    assert(found == True), "could not find the metadata for tile {}".format(basename)
+        # find this tile in the tile metadata
+        basename = file_pair[0]
+        found = False
+        for tile in tile_metadata_l:
+            if tile['basename'] == basename:
+                mask_region_y_left = tile['mask_region_y_left']
+                mask_region_y_right = tile['mask_region_y_right']
+                tile_features_l = tile['tile_features_l']
+                found = True
+                break
+        assert(found == True), "could not find the metadata for tile {}".format(basename)
 
-    # count how many objects there are in this set
-    valid_set_object_count += len(tile_features_l)
+        # count how many objects there are in this set
+        valid_set_object_count += len(tile_features_l)
+else:
+    # training mode, so we want to mask the validation set
+    feature_counts_l = ray.get([apply_feature_mask.remote(file_pair, VAL_SET_DIR) for file_pair in val_set])
+    valid_set_object_count = sum(feature_counts_l)
 
 # copy the test set tiles and their annotation files to the test set directory
 print("copying the test set to {}".format(TEST_SET_DIR))
