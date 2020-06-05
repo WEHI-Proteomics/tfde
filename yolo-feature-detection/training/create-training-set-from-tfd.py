@@ -536,6 +536,7 @@ for idx,row in enumerate(tiles_df.itertuples()):
             # draw the rectangle on the overlay
             draw.rectangle(xy=[(x0_buffer, y0_buffer), (x1_buffer, y1_buffer)], fill=None, outline=CLASS_COLOUR[feature_class])
             # draw the feature class name
+            draw.rectangle(xy=[(x0_buffer, y0_buffer-12), (x1_buffer, y0_buffer)], fill='darkgrey', outline=CLASS_COLOUR[feature_class])
             draw.text((x0_buffer, y0_buffer-12), feature_names()[feature_class], font=feature_label_font, fill=CLASS_COLOUR[feature_class])
             # store the pixel coords for each feature for this tile so we can mask the features later
             tile_features_l.append({'x0_buffer':x0_buffer, 'y0_buffer':y0_buffer, 'x1_buffer':x1_buffer, 'y1_buffer':y1_buffer})
