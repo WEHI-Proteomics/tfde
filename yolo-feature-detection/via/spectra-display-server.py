@@ -279,8 +279,9 @@ def image_from_raw_data(data_coords, charge, isotopes):
 def tile_coords_to_data_coords(tile_name, tile_width, tile_height, region_x, region_y, region_width, region_height, canvas_scale):
     # determine the tile id and frame id from the tile URL
     elements = tile_name.split('/')
-    tile_id = int(elements[4])
-    frame_id = int(elements[6])
+    run_name = int(elements[5])
+    tile_id = int(elements[7])
+    frame_id = int(elements[9])
 
     tile_mz_lower = MZ_MIN + (tile_id * MZ_PER_TILE)
     tile_mz_upper = tile_mz_lower + MZ_PER_TILE
