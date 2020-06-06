@@ -265,7 +265,7 @@ def image_from_raw_data(data_coords, charge, isotopes):
 
             ax.scatter(peak_points_df.intensity, peak_points_df.scan, marker='o', color='tab:orange', lw=0, s=30, alpha=0.8)
             plt.ylim([scan_upper,scan_lower])
-            plt.xlim([0,maximum_region_intensity])
+            plt.xlim([0,maximum_region_intensity*1.1])
             # turn off tick labels
             if peak_idx > 0:
                 ax.set_yticklabels([])
