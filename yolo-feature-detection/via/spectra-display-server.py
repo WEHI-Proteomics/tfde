@@ -241,7 +241,7 @@ def image_from_raw_data(data_coords, charge, isotopes):
             for isotope in range(isotopes):
                 rect_base_mz = selected_peak_mz + (isotope * expected_peak_spacing_mz) - (MS1_PEAK_DELTA/2)
                 peak_intensity = isotope_intensities[sulphurs][isotope]
-                rect = patches.Rectangle((rect_base_mz,0), MS1_PEAK_DELTA, peak_intensity, edgecolor='silver', linewidth=1.0, facecolor='silver', alpha=0.3, label='theoretical')
+                rect = patches.Rectangle((rect_base_mz,0), 2*MS1_PEAK_DELTA, peak_intensity, edgecolor='silver', linewidth=1.0, facecolor='silver', alpha=0.3, label='theoretical')
                 ax1.add_patch(rect)
         markerline, stemlines, baseline = ax1.stem(peaks_a[:,0], peaks_a[:,1], colors[1], use_line_collection=True, label='peak summed from raw data')
         plt.setp(markerline, linewidth=1, color=colors[1])
