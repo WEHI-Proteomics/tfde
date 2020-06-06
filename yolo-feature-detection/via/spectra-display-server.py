@@ -277,10 +277,9 @@ def image_from_raw_data(data_coords, charge, isotopes):
     return image_file_name
 
 def tile_coords_to_data_coords(tile_name, tile_width, tile_height, region_x, region_y, region_width, region_height, canvas_scale):
-    print('tile name: {}'.format(tile_name))
     # determine the tile id and frame id from the tile URL
     elements = tile_name.split('/')
-    run_name = int(elements[5])
+    run_name = elements[5]
     tile_id = int(elements[7])
     frame_id = int(elements[9])
 
