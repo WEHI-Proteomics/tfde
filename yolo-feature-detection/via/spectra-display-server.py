@@ -24,6 +24,11 @@ PROTON_MASS = 1.0073  # Mass of a proton in unified atomic mass units, or Da. Fo
 INSTRUMENT_RESOLUTION = 40000.0
 NUMBER_OF_STD_DEV_MZ = 3
 
+# the width to use for isotopic width, in Da
+MZ_TOLERANCE_PPM = 5  # +/- this amount
+MZ_TOLERANCE_PERCENT = MZ_TOLERANCE_PPM * 10**-4
+
+# tile m/z range
 MZ_MIN = 100.0
 MZ_PER_TILE = 18.0
 
@@ -220,6 +225,8 @@ def image_from_raw_data(data_coords, charge, isotopes):
         expected_peak_spacing_mz = MASS_DIFFERENCE_C12_C13_MZ / charge
         maximum_region_intensity = raw_points_df.intensity.max()
 
+        MS1_PEAK_DELTA = estimated_monoisotopic_mz * MZ_TOLERANCE_PERCENT / 100
+
         isotope_intensities = np.empty(MAX_NUMBER_OF_SULPHUR_ATOMS, dtype=np.ndarray)
         for sulphurs in range(MAX_NUMBER_OF_SULPHUR_ATOMS):
             isotope_intensities[sulphurs] = calculate_peak_intensities(estimated_monoisotopic_mass, selected_peak_intensity, isotopes, sulphurs)
@@ -251,9 +258,9 @@ def image_from_raw_data(data_coords, charge, isotopes):
             ax = plt.subplot2grid((2, len(peaks_a)), (1, peak_idx), colspan=1)
 
             peak_mz = peaks_a[peak_idx][0]
-            mz_delta = standard_deviation(peak_mz) * NUMBER_OF_STD_DEV_MZ
-            peak_mz_lower = peak_mz - mz_delta
-            peak_mz_upper = peak_mz + mz_delta
+            MS1_PEAK_DELTA = peak_mz * MZ_TOLERANCE_PERCENT / 100
+            peak_mz_lower = peak_mz - MS1_PEAK_DELTA
+            peak_mz_upper = peak_mz + MS1_PEAK_DELTA
             peak_points_df = raw_points_df[(raw_points_df.mz >= peak_mz_lower) & (raw_points_df.mz <= peak_mz_upper)]
 
             ax.scatter(peak_points_df.intensity, peak_points_df.scan, marker='o', color='tab:orange', lw=0, s=30, alpha=0.8)
