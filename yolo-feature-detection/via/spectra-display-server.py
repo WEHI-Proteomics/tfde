@@ -225,7 +225,7 @@ def image_from_raw_data(data_coords, charge, isotopes):
         expected_peak_spacing_mz = MASS_DIFFERENCE_C12_C13_MZ / charge
         maximum_region_intensity = raw_points_df.intensity.max()
 
-        MS1_PEAK_DELTA = estimated_monoisotopic_mz * MZ_TOLERANCE_PERCENT / 100
+        MS1_PEAK_DELTA = selected_peak_mz * MZ_TOLERANCE_PERCENT / 100
 
         isotope_intensities = np.empty(MAX_NUMBER_OF_SULPHUR_ATOMS, dtype=np.ndarray)
         for sulphurs in range(MAX_NUMBER_OF_SULPHUR_ATOMS):
@@ -235,7 +235,7 @@ def image_from_raw_data(data_coords, charge, isotopes):
         plt.margins(0.06)
         plt.rcParams['axes.linewidth'] = 0.1
 
-        # plot the isotopes in the m/z dimension
+        # plot the theoretical isotopic model using the monoisotopic as a reference for intensity
         ax1 = plt.subplot2grid((2, len(peaks_a)), (0, 0), colspan=len(peaks_a))
         for sulphurs in range(MAX_NUMBER_OF_SULPHUR_ATOMS):
             for isotope in range(isotopes):
@@ -243,6 +243,8 @@ def image_from_raw_data(data_coords, charge, isotopes):
                 peak_intensity = isotope_intensities[sulphurs][isotope]
                 rect = patches.Rectangle((rect_base_mz,0), 2*MS1_PEAK_DELTA, peak_intensity, edgecolor='silver', linewidth=1.0, facecolor='silver', alpha=0.3, label='theoretical')
                 ax1.add_patch(rect)
+
+        # plot the isotopes in the m/z dimension
         markerline, stemlines, baseline = ax1.stem(peaks_a[:,0], peaks_a[:,1], colors[1], use_line_collection=True, label='peak summed from raw data')
         plt.setp(markerline, linewidth=1, color=colors[1])
         plt.setp(markerline, markersize=3, color=colors[1])
