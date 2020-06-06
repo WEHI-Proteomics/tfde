@@ -27,8 +27,7 @@ NUMBER_OF_STD_DEV_MZ = 3
 MZ_MIN = 100.0
 MZ_PER_TILE = 18.0
 
-# SERVER_URL = "http://spectra-server-lb-1653892276.ap-southeast-2.elb.amazonaws.com"
-SERVER_URL = "http://localhost"
+SERVER_URL = "http://spectra-server-lb-1653892276.ap-southeast-2.elb.amazonaws.com"
 
 # This is the Flask server for the Via-based labelling tool for YOLO
 
