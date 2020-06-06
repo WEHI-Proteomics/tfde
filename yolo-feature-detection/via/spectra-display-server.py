@@ -10,11 +10,13 @@ import tempfile
 import matplotlib.patches as patches
 import matplotlib.gridspec as gridspec
 import argparse
-import os
+import os, shutil
 import glob
 import sys
 from pathlib import Path
 import time
+import logging
+import json
 
 MS1_PEAK_DELTA = 0.1
 MASS_DIFFERENCE_C12_C13_MZ = 1.003355     # Mass difference between Carbon-12 and Carbon-13 isotopes, in Da. For calculating the spacing between isotopic peaks.
@@ -25,36 +27,51 @@ NUMBER_OF_STD_DEV_MZ = 3
 MZ_MIN = 100.0
 MZ_PER_TILE = 18.0
 
-SERVER_URL = "http://spectra-server-lb-1653892276.ap-southeast-2.elb.amazonaws.com"
+# SERVER_URL = "http://spectra-server-lb-1653892276.ap-southeast-2.elb.amazonaws.com"
+SERVER_URL = "http://localhost"
 
 # This is the Flask server for the Via-based labelling tool for YOLO
-# Example: python ./otf-peak-detect/yolo/via/spectra-display-server.py -eb ~/Downloads/experiments -en 190719_Hela_Ecoli -rn 190719_Hela_Ecoli_1to1_01
-#          /tile-list/33 to download a text file with a list of URLs for this tile index
 
 parser = argparse.ArgumentParser(description='Create the tiles from raw data.')
 parser.add_argument('-eb','--experiment_base_dir', type=str, default='./experiments', help='Path to the experiments directory.', required=False)
 parser.add_argument('-en','--experiment_name', type=str, help='Name of the experiment.', required=True)
-parser.add_argument('-rn','--run_name', type=str, help='Name of the run.', required=True)
+parser.add_argument('-tsn','--tile_set_name', type=str, default='tile-set', help='Name of the tile set.', required=False)
 args = parser.parse_args()
+
+# set up the logging directory
+LOGGING_DIR = './logging'
+if os.path.exists(LOGGING_DIR):
+    shutil.rmtree(LOGGING_DIR)
+os.makedirs(LOGGING_DIR)
+
+# set up logging
+logger = logging.getLogger(__name__)  
+logger.setLevel(logging.INFO)
+formatter = logging.Formatter('%(asctime)s : %(levelname)s : %(name)s : %(message)s')
+# set the file handler
+file_handler = logging.FileHandler('{}/{}.log'.format(LOGGING_DIR, parser.prog))
+file_handler.setFormatter(formatter)
+logger.addHandler(file_handler)
 
 # check the experiment directory exists
 EXPERIMENT_DIR = "{}/{}".format(args.experiment_base_dir, args.experiment_name)
 if not os.path.exists(EXPERIMENT_DIR):
-    print("The experiment directory is required but doesn't exist: {}".format(EXPERIMENT_DIR))
+    logger.info("The experiment directory is required but doesn't exist: {}".format(EXPERIMENT_DIR))
     sys.exit(1)
 
-# check the converted database exists
-CONVERTED_DATABASE_NAME = "{}/converted-databases/{}-converted.sqlite".format(EXPERIMENT_DIR, args.run_name)
-if not os.path.isfile(CONVERTED_DATABASE_NAME):
-    print("The converted database is required but doesn't exist: {}".format(CONVERTED_DATABASE_NAME))
+# check the converted database directory exists
+CONVERTED_DATABASE_DIR = '{}/converted-databases'.format(EXPERIMENT_DIR)
+if not os.path.exists(CONVERTED_DATABASE_DIR):
+    logger.info("The converted databases directory is required but doesn't exist: {}".format(CONVERTED_DATABASE_DIR))
     sys.exit(1)
 
-# check the tiles base directory exists
-TILES_BASE_DIR = '{}/tiles/{}'.format(EXPERIMENT_DIR, args.run_name)
+# check the raw tiles base directory exists
+TILES_BASE_DIR = '{}/tiles/{}'.format(EXPERIMENT_DIR, args.tile_set_name)
 if not os.path.exists(TILES_BASE_DIR):
-    print("The tiles base directory is required but doesn't exist: {}".format(TILES_BASE_DIR))
+    logger.info("The raw tiles base directory is required but does not exist: {}".format(TILES_BASE_DIR))
     sys.exit(1)
 
+# create the Flask application
 app = Flask(__name__)
 
 def mz_centroid(_int_f, _mz_f):
@@ -169,6 +186,7 @@ def standard_deviation(mz):
 def image_from_raw_data(data_coords, charge, isotopes):
     image_file_name = ""
 
+    run_name = data_coords['run_name']
     frame_id = data_coords['frame_id']
     mz_lower = data_coords['mz_lower']
     mz_upper = data_coords['mz_upper']
@@ -176,6 +194,7 @@ def image_from_raw_data(data_coords, charge, isotopes):
     scan_upper = data_coords['scan_upper']
 
     # get the raw points
+    CONVERTED_DATABASE_NAME = "{}/exp-{}-run-{}-converted.sqlite".format(CONVERTED_DATABASE_DIR, args.experiment_name, run_name)
     db_conn = sqlite3.connect(CONVERTED_DATABASE_NAME)
     raw_points_df = pd.read_sql_query("select mz,scan,intensity from frames where frame_id == {} and mz >= {} and mz <= {} and scan >= {} and scan <= {}".format(frame_id, mz_lower, mz_upper, scan_lower, scan_upper), db_conn)
     db_conn.close()
@@ -252,7 +271,7 @@ def image_from_raw_data(data_coords, charge, isotopes):
 
     # save the chart as an image
     image_file_name = tempfile.NamedTemporaryFile(suffix='.png').name
-    print("image file: {}".format(image_file_name))
+    logger.info("image file: {}".format(image_file_name))
     plt.savefig(image_file_name, bbox_inches='tight')
     plt.close()
 
@@ -279,12 +298,20 @@ def tile_coords_to_data_coords(tile_name, tile_width, tile_height, region_x, reg
     region_scan_upper = region_y + region_height
 
     d = {}
+    d['run_name'] = run_name
     d['frame_id'] = frame_id
     d['mz_lower'] = region_mz_lower
     d['mz_upper'] = region_mz_upper
     d['scan_lower'] = region_scan_lower
     d['scan_upper'] = region_scan_upper
     return d
+
+# create the indexes we need for this application
+def create_indexes(db_file_name):
+    db_conn = sqlite3.connect(db_file_name)
+    src_c = db_conn.cursor()
+    src_c.execute("create index if not exists idx_spectra_server on frames (frame_id,mz,scan)")
+    db_conn.close()
 
 @app.route('/spectra', methods=['POST'])
 def spectra():
@@ -307,49 +334,49 @@ def spectra():
         else:
             charge = 0
             isotopes = 0
-        print(request.json)
+        logger.info(request.json)
         # convert to data coordinates
         data_coords = tile_coords_to_data_coords(tile_name, tile_width, tile_height, x, y, width, height, canvas_scale)
-        print("data coords: {}".format(data_coords))
+        logger.info("data coords: {}".format(data_coords))
         # create image
         filename = image_from_raw_data(data_coords, charge, isotopes)
         response = send_file(filename)
         stop_time = time.time()
-        print("served the request in {} seconds".format(round(stop_time-start_time,1)))
+        logger.info("served the request in {} seconds".format(round(stop_time-start_time,1)))
         return response
     else:
         abort(400)
 
 # retrieve the tile-frame for this run
-@app.route('/tile/<int:tile_id>/frame/<int:frame_id>')
-def tile(tile_id, frame_id):
+@app.route('/run/<string:run_name>/tile/<int:tile_id>/frame/<int:frame_id>')
+def tile(run_name, tile_id, frame_id):
     # determine the file name for this tile
-    file_list = glob.glob("{}/tile-{}/frame-{}-tile-{}*.png".format(TILES_BASE_DIR, tile_id, frame_id, tile_id))
+    file_list = glob.glob("{}/run-{}-frame-{}-tile-{}*.png".format(TILES_BASE_DIR, run_name, frame_id, tile_id))
     if len(file_list) > 0:
         tile_file_name = file_list[0]
         # send it to the client
-        print("serving {}".format(tile_file_name))
+        logger.info("serving {}".format(tile_file_name))
         response = send_file(tile_file_name)
         return response
     else:
-        print("tile for tile {} frame {} does not exist in {}".format(tile_id, frame_id, TILES_BASE_DIR))
+        logger.info("tile for tile {} frame {} run {} does not exist in {}".format(tile_id, frame_id, run_name, TILES_BASE_DIR))
         abort(400)
 
 # retrieve the list of tile URLs for a specific tile index
-@app.route('/tile-list/<int:tile_id>')
-def tile_list(tile_id):
-    tile_list = sorted(glob.glob("{}/tile-{}/*.png".format(TILES_BASE_DIR, tile_id)))
+@app.route('/tile-list/<string:run_name>/<int:tile_id>')
+def tile_list(run_name, tile_id):
+    tile_list = sorted(glob.glob("{}/run-{}-frame-*-tile-{}/*.png".format(TILES_BASE_DIR, run_name, tile_id)))
     if len(tile_list) > 0:
         temp_file_name = tempfile.NamedTemporaryFile(suffix='.txt').name
         with open(temp_file_name, 'w') as filehandle:
             for idx,tile_file_path in enumerate(tile_list):
                 tile_file_name = os.path.basename(tile_file_path)
                 # get the frame id for this tile
-                frame_id = int(tile_file_name.split('-')[1])
+                frame_id = int(tile_file_name.split('-')[3])
                 # create the URL
-                print(SERVER_URL)
-                tile_url = "{}/tile/{}/frame/{}".format(SERVER_URL, tile_id, frame_id)
-                print(tile_url)
+                logger.info(SERVER_URL)
+                tile_url = "{}/run/{}/tile/{}/frame/{}".format(SERVER_URL, run_name, tile_id, frame_id)
+                logger.info(tile_url)
                 if idx < len(tile_list):
                     filehandle.write('{}\n'.format(tile_url))
                 else:
@@ -358,7 +385,7 @@ def tile_list(tile_id):
         os.remove(temp_file_name)
         return response
     else:
-        print("tiles in the series for tile index {} do not exist in {}".format(tile_id, TILES_BASE_DIR))
+        logger.info("tiles in the series for run {} tile index {} do not exist in {}".format(run_name, tile_id, TILES_BASE_DIR))
         abort(400)
 
 # retrieve the via annotation tool
@@ -374,7 +401,7 @@ def via():
 def set_server_url(server_url):
     global SERVER_URL
     SERVER_URL = "http://{}".format(server_url)
-    print("server URL is now {}".format(SERVER_URL))
+    logger.info("server URL is now {}".format(SERVER_URL))
     return make_response()
 
 @app.route('/index.html')
@@ -385,11 +412,22 @@ def index():
 
 
 if __name__ == '__main__':
-    print("setting up indexes on {}".format(CONVERTED_DATABASE_NAME))
-    db_conn = sqlite3.connect(CONVERTED_DATABASE_NAME)
-    src_c = db_conn.cursor()
-    src_c.execute("create index if not exists idx_frames_1 on frames (frame_id, mz, scan)")
-    db_conn.close()
+    # load the tile set metadata file
+    tile_set_metadata_file_name = '{}/metadata.json'.format(TILES_BASE_DIR)
+    if os.path.isfile(tile_set_metadata_file_name):
+        with open(tile_set_metadata_file_name) as json_file:
+            tile_set_metadata = json.load(json_file)
+    else:
+        print("Could not find the tile set's metadata file: {}".format(tile_set_metadata_file_name))
+        sys.exit(1)
+    # print some information about the specified tile set
+    print("tile set {}: {}".format(args.tile_set_name, tile_set_metadata['arguments']))
 
-    print("running the server")
+    # set up indexes on the converted databases in this tile set
+    for run_name in tile_set_metadata['arguments']['run_names']:
+        CONVERTED_DATABASE_NAME = "{}/exp-{}-run-{}-converted.sqlite".format(CONVERTED_DATABASE_DIR, args.experiment_name, run_name)
+        logger.info("setting up indexes on {}".format(CONVERTED_DATABASE_NAME))
+        create_indexes(CONVERTED_DATABASE_NAME)
+
+    logger.info("running the server")
     app.run(host='0.0.0.0')
