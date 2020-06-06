@@ -351,7 +351,7 @@ def spectra():
 @app.route('/tile/run/<string:run_name>/tile/<int:tile_id>/frame/<int:frame_id>')
 def tile(run_name, tile_id, frame_id):
     # determine the file name for this tile
-    file_list = glob.glob("{}/run-{}-frame-{}-tile-{}*.png".format(TILES_BASE_DIR, run_name, frame_id, tile_id))
+    file_list = glob.glob("{}/run-{}-frame-{}-tile-{}.png".format(TILES_BASE_DIR, run_name, frame_id, tile_id))
     if len(file_list) > 0:
         tile_file_name = file_list[0]
         # send it to the client
@@ -365,7 +365,7 @@ def tile(run_name, tile_id, frame_id):
 # retrieve the list of tile URLs for a specific tile index
 @app.route('/tile-list/run/<string:run_name>/tile/<int:tile_id>')
 def tile_list(run_name, tile_id):
-    tile_list = sorted(glob.glob("{}/run-{}-frame-*-tile-{}/*.png".format(TILES_BASE_DIR, run_name, tile_id)))
+    tile_list = sorted(glob.glob("{}/run-{}-frame-*-tile-{}.png".format(TILES_BASE_DIR, run_name, tile_id)))
     if len(tile_list) > 0:
         temp_file_name = tempfile.NamedTemporaryFile(suffix='.txt').name
         with open(temp_file_name, 'w') as filehandle:
