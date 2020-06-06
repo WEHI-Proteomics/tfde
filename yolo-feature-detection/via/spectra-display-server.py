@@ -348,7 +348,7 @@ def spectra():
         abort(400)
 
 # retrieve the tile-frame for this run
-@app.route('/run/<string:run_name>/tile/<int:tile_id>/frame/<int:frame_id>')
+@app.route('/tile/run/<string:run_name>/tile/<int:tile_id>/frame/<int:frame_id>')
 def tile(run_name, tile_id, frame_id):
     # determine the file name for this tile
     file_list = glob.glob("{}/run-{}-frame-{}-tile-{}*.png".format(TILES_BASE_DIR, run_name, frame_id, tile_id))
@@ -363,7 +363,7 @@ def tile(run_name, tile_id, frame_id):
         abort(400)
 
 # retrieve the list of tile URLs for a specific tile index
-@app.route('/tile-list/<string:run_name>/<int:tile_id>')
+@app.route('/tile-list/run/<string:run_name>/tile/<int:tile_id>')
 def tile_list(run_name, tile_id):
     tile_list = sorted(glob.glob("{}/run-{}-frame-*-tile-{}/*.png".format(TILES_BASE_DIR, run_name, tile_id)))
     if len(tile_list) > 0:
@@ -375,7 +375,7 @@ def tile_list(run_name, tile_id):
                 frame_id = int(tile_file_name.split('-')[3])
                 # create the URL
                 logger.info(SERVER_URL)
-                tile_url = "{}/run/{}/tile/{}/frame/{}".format(SERVER_URL, run_name, tile_id, frame_id)
+                tile_url = "{}/tile/run/{}/tile/{}/frame/{}".format(SERVER_URL, run_name, tile_id, frame_id)
                 logger.info(tile_url)
                 if idx < len(tile_list):
                     filehandle.write('{}\n'.format(tile_url))
