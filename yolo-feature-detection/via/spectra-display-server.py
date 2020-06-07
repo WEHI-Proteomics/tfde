@@ -277,7 +277,12 @@ def image_from_raw_data(data_coords, charge, isotopes):
                 plt.ylabel('scan')
             ax.set_xticklabels([])
             ax.set_xticks([])
-        plt.xlabel('intensity')
+
+        # add a big axis, hide frame
+        fig.add_subplot(111, frameon=False)
+        # hide tick and tick label of the big axis
+        plt.tick_params(labelcolor='none', top=False, bottom=False, left=False, right=False)
+        plt.xlabel("intensity")
 
     # save the chart as an image
     image_file_name = tempfile.NamedTemporaryFile(suffix='.png').name
