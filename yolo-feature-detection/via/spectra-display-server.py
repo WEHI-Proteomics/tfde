@@ -241,9 +241,9 @@ def image_from_raw_data(data_coords, charge, isotopes):
         ax1 = plt.subplot2grid((2, len(peaks_a)), (0, 0), colspan=len(peaks_a))
         for sulphurs in range(MAX_NUMBER_OF_SULPHUR_ATOMS):
             for isotope in range(isotopes):
-                rect_base_mz = selected_peak_mz + (isotope * expected_peak_spacing_mz) - MS1_PEAK_DELTA_FOR_INTENSITY_DESCENT
+                rect_base_mz = selected_peak_mz + (isotope * expected_peak_spacing_mz) - MS1_PEAK_DELTA
                 peak_intensity = isotope_intensities[sulphurs][isotope]
-                rect = patches.Rectangle((rect_base_mz,0), (2 * MS1_PEAK_DELTA_FOR_INTENSITY_DESCENT), peak_intensity, edgecolor='silver', linewidth=1.0, facecolor='silver', alpha=0.3, label='theoretical')
+                rect = patches.Rectangle((rect_base_mz,0), (2 * MS1_PEAK_DELTA), peak_intensity, edgecolor='silver', linewidth=1.0, facecolor='silver', alpha=0.3, label='theoretical')
                 ax1.add_patch(rect)
 
         # plot the isotopes in the m/z dimension
