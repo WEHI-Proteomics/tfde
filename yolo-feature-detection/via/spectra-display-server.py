@@ -18,7 +18,6 @@ import time
 import logging
 import json
 
-MS1_PEAK_DELTA = 0.1
 MASS_DIFFERENCE_C12_C13_MZ = 1.003355     # Mass difference between Carbon-12 and Carbon-13 isotopes, in Da. For calculating the spacing between isotopic peaks.
 PROTON_MASS = 1.0073  # Mass of a proton in unified atomic mass units, or Da. For calculating the monoisotopic mass.
 INSTRUMENT_RESOLUTION = 40000.0
@@ -84,14 +83,15 @@ def mz_centroid(_int_f, _mz_f):
 # ms1_peaks_a is a numpy array of [mz,intensity]
 # returns a numpy array of [mz_centroid,summed_intensity]
 def ms1_intensity_descent(ms1_peaks_a):
+    MS1_PEAK_DELTA_FOR_INTENSITY_DESCENT = 0.1  # in m/z
     # intensity descent
     ms1_peaks_l = []
     while len(ms1_peaks_a) > 0:
         # find the most intense point
         max_intensity_index = np.argmax(ms1_peaks_a[:,1])
         peak_mz = ms1_peaks_a[max_intensity_index,0]
-        peak_mz_lower = peak_mz - MS1_PEAK_DELTA
-        peak_mz_upper = peak_mz + MS1_PEAK_DELTA
+        peak_mz_lower = peak_mz - MS1_PEAK_DELTA_FOR_INTENSITY_DESCENT
+        peak_mz_upper = peak_mz + MS1_PEAK_DELTA_FOR_INTENSITY_DESCENT
 
         # get all the raw points within this m/z region
         peak_indexes = np.where((ms1_peaks_a[:,0] >= peak_mz_lower) & (ms1_peaks_a[:,0] <= peak_mz_upper))[0]
@@ -218,14 +218,14 @@ def image_from_raw_data(data_coords, charge, isotopes):
 
         # monoisotopic determined by the guide
         estimated_monoisotopic_mz = mz_lower + MZ_FROM_EDGE
-        selected_peak_idx = find_nearest_idx(peaks_a[:,0], estimated_monoisotopic_mz)
+        selected_peak_idx = find_nearest_idx(peaks_a[:,0], estimated_monoisotopic_mz)  # finds the closest peak obtained with intensity descent to the visual guide
         selected_peak_mz = peaks_a[selected_peak_idx,0]
         selected_peak_intensity = peaks_a[selected_peak_idx,1]
         estimated_monoisotopic_mass = calculate_monoisotopic_mass(estimated_monoisotopic_mz, charge)
         expected_peak_spacing_mz = MASS_DIFFERENCE_C12_C13_MZ / charge
         maximum_region_intensity = raw_points_df.intensity.max()
 
-        MS1_PEAK_DELTA = selected_peak_mz * MZ_TOLERANCE_PERCENT / 100
+        MS1_PEAK_DELTA = selected_peak_mz * MZ_TOLERANCE_PERCENT / 100  # the ppm tolerance either side
 
         isotope_intensities = np.empty(MAX_NUMBER_OF_SULPHUR_ATOMS, dtype=np.ndarray)
         for sulphurs in range(MAX_NUMBER_OF_SULPHUR_ATOMS):
@@ -268,6 +268,8 @@ def image_from_raw_data(data_coords, charge, isotopes):
             ax.scatter(peak_points_df.intensity, peak_points_df.scan, marker='o', color='tab:orange', lw=0, s=30, alpha=0.8)
             plt.ylim([scan_upper,scan_lower])
             plt.xlim([0,maximum_region_intensity*1.1])
+            ax.set_title('isotope {}'.format(peak_idx))
+
             # turn off tick labels
             if peak_idx > 0:
                 ax.set_yticklabels([])
