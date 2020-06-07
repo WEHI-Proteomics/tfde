@@ -1,4 +1,3 @@
-from numba import jit
 import time
 import zmq
 import random
