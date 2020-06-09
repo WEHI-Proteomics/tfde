@@ -5,6 +5,7 @@ import pandas as pd
 from matplotlib import colors, cm, pyplot as plt
 import numpy as np
 from PIL import Image
+import os, shutil
 
 PUBLISHED_FRAMES_DIR = '/data/published-frames'
 TILES_DIR = '/data/tiles'
@@ -71,6 +72,11 @@ def consumer():
     # create the colour map to convert intensity to colour
     colour_map = plt.get_cmap('rainbow')
     norm = colors.LogNorm(vmin=MINIMUM_PIXEL_INTENSITY, vmax=MAXIMUM_PIXEL_INTENSITY, clip=True)  # aiming to get good colour variation in the lower range, and clipping everything else
+
+    # make a fresh output directory
+    if os.path.exists(TILES_DIR):
+        shutil.rmtree(TILES_DIR)
+    os.makedirs(TILES_DIR)
 
     timings_l = []
     
