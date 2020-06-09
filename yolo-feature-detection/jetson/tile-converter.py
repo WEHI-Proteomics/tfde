@@ -30,7 +30,7 @@ def tile_pixel_x_from_mz(mz):
     pixel_x = int((mz_adj - (tile_id * MZ_PER_TILE)) / TILE_SCALE)
     return (tile_id, pixel_x)
 
-def render_frame(frame_id, frame_df):
+def render_frame(frame_id, frame_df, colour_map, norm):
     # assign a tile_id and a pixel x value to each raw point
     tile_pixel_l = []
     for row in zip(frame_df.mz):
@@ -38,10 +38,6 @@ def render_frame(frame_id, frame_df):
     tile_pixels_df = pd.DataFrame(tile_pixel_l, columns=['tile_id','pixel_x'])
     raw_points_df = pd.concat([frame_df, tile_pixels_df], axis=1)
     pixel_intensity_df = raw_points_df.groupby(by=['tile_id', 'pixel_x', 'scan'], as_index=False).intensity.sum()
-
-    # create the colour map to convert intensity to colour
-    colour_map = plt.get_cmap('rainbow')
-    norm = colors.LogNorm(vmin=MINIMUM_PIXEL_INTENSITY, vmax=MAXIMUM_PIXEL_INTENSITY, clip=True)  # aiming to get good colour variation in the lower range, and clipping everything else
 
     # calculate the colour to represent the intensity
     colours_l = []
@@ -74,6 +70,10 @@ def consumer():
     consumer_receiver = context.socket(zmq.PULL)
     consumer_receiver.connect("tcp://127.0.0.1:5557")
 
+    # create the colour map to convert intensity to colour
+    colour_map = plt.get_cmap('rainbow')
+    norm = colors.LogNorm(vmin=MINIMUM_PIXEL_INTENSITY, vmax=MAXIMUM_PIXEL_INTENSITY, clip=True)  # aiming to get good colour variation in the lower range, and clipping everything else
+
     timings_l = []
     
     while True:
@@ -84,7 +84,7 @@ def consumer():
 
         frame_file_name = '{}/{}'.format(PUBLISHED_FRAMES_DIR, base_name)
         frame_df = pd.read_pickle(frame_file_name)
-        render_frame(frame_id, frame_df)
+        render_frame(frame_id, frame_df, colour_map, norm)
         stop_run = time.time()
 
         time_taken = stop_run-start_run
