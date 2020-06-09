@@ -24,6 +24,7 @@ TILE_SCALE = MZ_PER_TILE * PIXELS_X
 MINIMUM_PIXEL_INTENSITY = 1
 MAXIMUM_PIXEL_INTENSITY = 1000
 
+@profile
 def tile_pixel_x_from_mz(mz):
     assert (mz >= MZ_MIN) and (mz <= MZ_MAX), "m/z not in range"
 
@@ -32,7 +33,6 @@ def tile_pixel_x_from_mz(mz):
     pixel_x = int((mz_adj - (tile_id * MZ_PER_TILE)) / TILE_SCALE)
     return (tile_id, pixel_x)
 
-@profile
 def render_frame(frame_id, frame_df):
     # assign a tile_id and a pixel x value to each raw point
     tile_pixels_df = pd.DataFrame(frame_df.apply(lambda row: tile_pixel_x_from_mz(row.mz), axis=1).tolist(), columns=['tile_id', 'pixel_x'])
