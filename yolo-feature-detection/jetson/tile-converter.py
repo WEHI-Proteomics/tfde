@@ -58,6 +58,7 @@ def render_frame(frame_id, frame_df, colour_map, norm):
 
         # create an image of the intensity array
         tile = Image.fromarray(tile_im_array, 'RGB')
+        tile.save('{}/frame-{}-tile-{}.png'.format(TILES_DIR, frame_id, tile_idx))
         tile.save('{}/frame-{}-tile-{}.jpg'.format(TILES_DIR, frame_id, tile_idx))
 
 def consumer():
