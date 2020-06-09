@@ -41,10 +41,8 @@ def render_frame(frame_id, frame_df, colour_map, norm):
     pixel_intensity_df = raw_points_df.groupby(by=['tile_id', 'pixel_x', 'scan'], as_index=False).intensity.sum()
 
     # calculate the colour to represent the intensity
-    colours_l = []
-    for i in pixel_intensity_df.intensity.unique():
-        colours_l.append((i, colour_map(norm(i), bytes=True)[:3]))
-    colours_df = pd.DataFrame(colours_l, columns=['intensity','colour'])
+    colours_l = list(zip(list(pixel_intensity_df.intensity.unique()), list(map(tuple, colour_map(norm(pixel_intensity_df.intensity.unique()), bytes=True)[:,:3]))))
+    colours_df = pd.DataFrame(colours_l, columns=['intensity','colour'])    
     pixel_intensity_df = pd.merge(pixel_intensity_df, colours_df, how='left', left_on=['intensity'], right_on=['intensity'])
 
     # extract the pixels for the frame for the specified tiles
