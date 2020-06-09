@@ -29,6 +29,7 @@ db_conn.close()
 print("load the frame ids")
 db_conn = sqlite3.connect(CONVERTED_DATABASE_NAME)
 ms1_frame_properties_df = pd.read_sql_query("select Id,Time from frame_properties where MsMsType == {} order by Time".format(FRAME_TYPE_MS1), db_conn)
+ms1_frame_properties_df = ms1_frame_properties_df.sample(n=50)
 ms1_frame_ids = tuple(ms1_frame_properties_df.Id)
 db_conn.close()
 
@@ -39,7 +40,7 @@ zmq_socket.bind("tcp://127.0.0.1:5557")
 
 # publish the frames
 print("publish the frames")
-for frame_idx,frame_id in enumerate(ms1_frame_ids[:50]):
+for frame_idx,frame_id in enumerate(ms1_frame_ids):
     print("frame id {} ({} of {})".format(frame_id, frame_idx+1, len(ms1_frame_ids)))
     # load the frame's data
     db_conn = sqlite3.connect(CONVERTED_DATABASE_NAME)
