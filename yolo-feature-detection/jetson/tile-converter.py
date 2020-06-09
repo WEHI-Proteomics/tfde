@@ -25,8 +25,6 @@ MINIMUM_PIXEL_INTENSITY = 1
 MAXIMUM_PIXEL_INTENSITY = 1000
 
 def tile_pixel_x_from_mz(mz):
-    assert (mz >= MZ_MIN) and (mz <= MZ_MAX), "m/z not in range"
-
     mz_adj = mz - MZ_MIN
     tile_id = int(mz_adj / MZ_PER_TILE)
     pixel_x = int((mz_adj - (tile_id * MZ_PER_TILE)) / TILE_SCALE)
@@ -34,7 +32,10 @@ def tile_pixel_x_from_mz(mz):
 
 def render_frame(frame_id, frame_df):
     # assign a tile_id and a pixel x value to each raw point
-    tile_pixels_df = pd.DataFrame(frame_df.apply(lambda row: tile_pixel_x_from_mz(row.mz), axis=1).tolist(), columns=['tile_id', 'pixel_x'])
+    tile_pixel_l = []
+    for row in zip(frame_df.mz):
+        tile_pixel_l.append(tile_pixel_x_from_mz(row[0]))
+    tile_pixels_df = pd.DataFrame(tile_pixel_l, columns=['tile_id','pixel_x'])
     raw_points_df = pd.concat([frame_df, tile_pixels_df], axis=1)
     pixel_intensity_df = raw_points_df.groupby(by=['tile_id', 'pixel_x', 'scan'], as_index=False).intensity.sum()
 
@@ -65,7 +66,6 @@ def render_frame(frame_id, frame_df):
         tile = Image.fromarray(tile_im_array, 'RGB')
         tile.save('{}/frame-{}-tile-{}.png'.format(TILES_DIR, frame_id, tile_idx))
 
-@profile
 def consumer():
     consumer_id = random.randrange(1,10005)
     print("consumer {}".format(consumer_id))
