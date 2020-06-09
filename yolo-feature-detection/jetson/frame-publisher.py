@@ -53,5 +53,5 @@ for frame_idx,frame_id in enumerate(ms1_frame_ids):
     frame_df.to_pickle(frame_file_name)
 
     # post a message with some frame metadata
-    message = {'frame_id' : frame_id, 'base_name':base_name}
+    message = {'frame_id' : frame_id, 'base_name':base_name, 'message_number':frame_idx+1, 'total_messages':len(ms1_frame_ids)}
     zmq_socket.send_json(message)

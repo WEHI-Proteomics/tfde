@@ -94,4 +94,7 @@ def consumer():
         
         print("processed frame {} in {} seconds - mean time {}".format(frame_id, round(time_taken,1), round(np.mean(timings_l),1)))
 
+        if message['message_number'] == message['total_messages']:
+            break
+
 consumer()
