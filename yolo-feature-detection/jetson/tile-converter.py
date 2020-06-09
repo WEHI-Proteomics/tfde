@@ -47,17 +47,8 @@ def render_frame(frame_id, frame_df, colour_map, norm):
     # extract the pixels for the frame for the specified tiles
     for tile_idx in range(MIN_TILE_IDX, MAX_TILE_IDX+1):
         tile_df = pixel_intensity_df[(pixel_intensity_df.tile_id == tile_idx)]
-
-        # create an intensity array
-        tile_im_array = np.zeros([PIXELS_Y+1, PIXELS_X+1, 3], dtype=np.uint8)  # container for the image
-        for r in zip(tile_df.pixel_x, tile_df.scan, tile_df.colour):
-            x = r[0]
-            y = r[1]
-            c = r[2]
-            tile_im_array[y,x,:] = c
-
-        # save the intensity array
-        np.save('{}/frame-{}-tile-{}.png'.format(TILES_DIR, frame_id, tile_idx), tile_im_array)
+        # save the pixel information
+        tile_df.to_pickle('{}/frame-{}-tile-{}.pkl'.format(TILES_DIR, frame_id, tile_idx))
 
 def consumer():
     consumer_id = random.randrange(1,10005)
