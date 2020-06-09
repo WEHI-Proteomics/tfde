@@ -24,7 +24,6 @@ TILE_SCALE = MZ_PER_TILE * PIXELS_X
 MINIMUM_PIXEL_INTENSITY = 1
 MAXIMUM_PIXEL_INTENSITY = 1000
 
-@profile
 def tile_pixel_x_from_mz(mz):
     assert (mz >= MZ_MIN) and (mz <= MZ_MAX), "m/z not in range"
 
@@ -66,6 +65,7 @@ def render_frame(frame_id, frame_df):
         tile = Image.fromarray(tile_im_array, 'RGB')
         tile.save('{}/frame-{}-tile-{}.png'.format(TILES_DIR, frame_id, tile_idx))
 
+@profile
 def consumer():
     consumer_id = random.randrange(1,10005)
     print("consumer {}".format(consumer_id))
