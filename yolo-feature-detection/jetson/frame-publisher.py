@@ -29,7 +29,7 @@ db_conn.close()
 print("load the frame ids")
 db_conn = sqlite3.connect(CONVERTED_DATABASE_NAME)
 ms1_frame_properties_df = pd.read_sql_query("select Id,Time from frame_properties where MsMsType == {} order by Time".format(FRAME_TYPE_MS1), db_conn)
-ms1_frame_properties_df = ms1_frame_properties_df.sample(n=50)
+ms1_frame_properties_df = ms1_frame_properties_df.sample(n=5)
 ms1_frame_ids = tuple(ms1_frame_properties_df.Id)
 db_conn.close()
 
