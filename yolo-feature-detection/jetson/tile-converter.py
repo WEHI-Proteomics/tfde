@@ -47,7 +47,7 @@ def render_frame(frame_id, frame_df, colour_map, norm):
 
     # extract the pixels for the frame for the specified tiles
     for tile_idx in range(MIN_TILE_IDX, MAX_TILE_IDX+1):
-        tile_df = pixel_intensity_df.loc[np.isin(pixel_intensity_df['tile_id'], [tile_idx])]
+        tile_df = pixel_intensity_df[(pixel_intensity_df.tile_id == tile_idx)]
 
         # create an intensity array
         tile_im_array = np.zeros([PIXELS_Y+1, PIXELS_X+1, 3], dtype=np.uint8)  # container for the image
