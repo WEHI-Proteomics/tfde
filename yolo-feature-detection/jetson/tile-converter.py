@@ -20,7 +20,6 @@ MZ_PER_TILE = 18.0
 TILES_PER_FRAME = int((MZ_MAX - MZ_MIN) / MZ_PER_TILE) + 1
 MIN_TILE_IDX = 0
 MAX_TILE_IDX = TILES_PER_FRAME-1
-TILE_SCALE = MZ_PER_TILE * PIXELS_X
 
 MINIMUM_PIXEL_INTENSITY = 1
 MAXIMUM_PIXEL_INTENSITY = 1000
@@ -28,7 +27,7 @@ MAXIMUM_PIXEL_INTENSITY = 1000
 def tile_pixel_x_from_mz(mz):
     mz_adj = mz - MZ_MIN
     tile_id = int(mz_adj / MZ_PER_TILE)
-    pixel_x = int((mz_adj - (tile_id * MZ_PER_TILE)) / TILE_SCALE)
+    pixel_x = int((mz_adj % MZ_PER_TILE) / MZ_PER_TILE * PIXELS_X)
     return (tile_id, pixel_x)
 
 def render_frame(frame_id, frame_df, colour_map, norm):
