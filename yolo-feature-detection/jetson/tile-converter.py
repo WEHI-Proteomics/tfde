@@ -30,7 +30,6 @@ def tile_pixel_x_from_mz(mz):
     pixel_x = int((mz_adj - (tile_id * MZ_PER_TILE)) / TILE_SCALE)
     return (tile_id, pixel_x)
 
-@profile
 def render_frame(frame_id, frame_df, colour_map, norm):
     # assign a tile_id and a pixel x value to each raw point
     tile_pixel_l = []
