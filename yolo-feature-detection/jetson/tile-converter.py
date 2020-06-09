@@ -56,10 +56,8 @@ def render_frame(frame_id, frame_df, colour_map, norm):
             c = r[2]
             tile_im_array[y,x,:] = c
 
-        # create an image of the intensity array
-        tile = Image.fromarray(tile_im_array, 'RGB')
-        tile.save('{}/frame-{}-tile-{}.png'.format(TILES_DIR, frame_id, tile_idx))
-        tile.save('{}/frame-{}-tile-{}.jpg'.format(TILES_DIR, frame_id, tile_idx))
+        # save the intensity array
+        np.save('{}/frame-{}-tile-{}.png'.format(TILES_DIR, frame_id, tile_idx), tile_im_array)
 
 def consumer():
     consumer_id = random.randrange(1,10005)
