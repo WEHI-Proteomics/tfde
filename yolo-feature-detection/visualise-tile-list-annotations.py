@@ -119,77 +119,76 @@ if not os.path.exists(EXPERIMENT_DIR):
     print("The annotations directory is required but doesn't exist: {}".format(ANNOTATIONS_DIR))
     sys.exit(1)
 
-# load the annotations file
-print('loading the annotations')
-ANNOTATIONS_FILE_NAME = '{}/tile-list-{}-annotations.json'.format(ANNOTATIONS_DIR, args.tile_list_name)
-if os.path.isfile(ANNOTATIONS_FILE_NAME):
-    with open(ANNOTATIONS_FILE_NAME) as file:
-        annotations = json.load(file)
-else:
-    print("The annotations file is required but does not exist: {}".format(ANNOTATIONS_FILE_NAME))
-    sys.exit(1)
-
 # check the base overlay directory
 OVERLAY_BASE_DIR = '{}/overlays'.format(ANNOTATIONS_DIR)
 if os.path.exists(OVERLAY_BASE_DIR):
     shutil.rmtree(OVERLAY_BASE_DIR)
 os.makedirs(OVERLAY_BASE_DIR)
 
+# initialise the feature class names
 feature_names = feature_names()
 
-digits = '0123456789'
-for tile in list(annotations.items()):
-    tile_d = tile[1]
-    tile_regions = tile_d['regions']
-    # process this tile if there are annotations for it
-    if len(tile_regions) > 0:
-        # load the tile
-        tile_url = tile_d['filename']  # this is the URL so we need to download it
+# load the annotations file(s)
+annotations_file_list = sorted(glob.glob("{}/annotations-run-*-tile-*.json".format(ANNOTATIONS_DIR)))
+for annotation_file_name in annotations_file_list:
+    # load the annotations file
+    print('processing {}'.format(annotation_file_name))
+    with open(annotation_file_name) as file:
+        annotations = json.load(file)
 
-        # determine the frame_id and tile_id
-        splits = tile_url.split('/')
-        run_name = splits[5]
-        tile_id = int(splits[7])
-        frame_id = int(splits[9])
+    digits = '0123456789'
+    for tile in list(annotations.items()):
+        tile_d = tile[1]
+        tile_regions = tile_d['regions']
+        # process this tile if there are annotations for it
+        if len(tile_regions) > 0:
+            # load the tile
+            tile_url = tile_d['filename']  # this is the URL so we need to download it
 
-        base_name = "run-{}-frame-{}-tile-{}.png".format(run_name, frame_id, tile_id)
-        bn = tile_file_names_df[tile_file_names_df.base_name == base_name]
-        if len(bn) == 1:
-            full_path = bn.iloc[0].full_path
-        else:
-            print('encountered a tile in the annotations that is not in the tile list: {}'.format(base_name))
-            sys.exit(1)
+            # determine the frame_id and tile_id
+            splits = tile_url.split('/')
+            run_name = splits[5]
+            tile_id = int(splits[7])
+            frame_id = int(splits[9])
 
-        # load the tile from the tile set
-        print("processing {}".format(base_name))
-        img = Image.open(full_path)
+            base_name = "run-{}-frame-{}-tile-{}.png".format(run_name, frame_id, tile_id)
+            bn = tile_file_names_df[tile_file_names_df.base_name == base_name]
+            if len(bn) == 1:
+                full_path = bn.iloc[0].full_path
+            else:
+                print('encountered a tile in the annotations that is not in the tile list: {}'.format(base_name))
+                sys.exit(1)
 
-        # get a drawing context for the tile
-        draw = ImageDraw.Draw(img)
+            # load the tile from the tile set
+            print("processing {}".format(base_name))
+            img = Image.open(full_path)
 
-        # render the annotations
-        feature_coordinates = []
-        for region in tile_regions:
-            shape_attributes = region['shape_attributes']
-            x = shape_attributes['x']
-            y = shape_attributes['y']
-            width = shape_attributes['width']
-            height = shape_attributes['height']
-            # determine the attributes of this feature
-            region_attributes = region['region_attributes']
-            charge = int(''.join(c for c in region_attributes['charge'] if c in digits))
-            isotopes = int(region_attributes['isotopes'])
-            feature_class = calculate_feature_class(isotopes, charge)
-            # draw the bounding box
-            draw.rectangle(xy=[(x, y), (x+width, y+height)], fill=None, outline=CLASS_COLOUR[feature_class])
-            # draw the feature class name
-            draw.text((x, y-12), feature_names[feature_class], font=feature_label_font, fill=CLASS_COLOUR[feature_class])
+            # get a drawing context for the tile
+            draw = ImageDraw.Draw(img)
 
-        # write the annotated tile to the annotations directory
-        TILE_DIR = '{}/run-{}/tile-{}'.format(OVERLAY_BASE_DIR, run_name, tile_id)
-        if not os.path.exists(TILE_DIR):
-            os.makedirs(TILE_DIR)
-        tile_name = '{}/{}'.format(TILE_DIR, base_name)
-        img.save(tile_name)
+            # render the annotations
+            feature_coordinates = []
+            for region in tile_regions:
+                shape_attributes = region['shape_attributes']
+                x = shape_attributes['x']
+                y = shape_attributes['y']
+                width = shape_attributes['width']
+                height = shape_attributes['height']
+                # determine the attributes of this feature
+                region_attributes = region['region_attributes']
+                charge = int(''.join(c for c in region_attributes['charge'] if c in digits))
+                isotopes = int(region_attributes['isotopes'])
+                feature_class = calculate_feature_class(isotopes, charge)
+                # draw the bounding box
+                draw.rectangle(xy=[(x, y), (x+width, y+height)], fill=None, outline=CLASS_COLOUR[feature_class])
+                # draw the feature class name
+                draw.text((x, y-12), feature_names[feature_class], font=feature_label_font, fill=CLASS_COLOUR[feature_class])
+
+            # write the annotated tile to the annotations directory
+            TILE_DIR = '{}/run-{}/tile-{}'.format(OVERLAY_BASE_DIR, run_name, tile_id)
+            if not os.path.exists(TILE_DIR):
+                os.makedirs(TILE_DIR)
+            tile_name = '{}/{}'.format(TILE_DIR, base_name)
+            img.save(tile_name)
 
 print('wrote {} tiles to {}'.format(len(annotations.items()), ANNOTATIONS_DIR))
