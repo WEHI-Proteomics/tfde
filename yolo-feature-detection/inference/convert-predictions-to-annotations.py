@@ -69,10 +69,10 @@ else:
     sys.exit(1)
 
 # check the annotations directory
-ANNOTATIONS_DIR = '{}/annotations'.format(TILE_LIST_DIR)
-if not os.path.exists(EXPERIMENT_DIR):
-    print("The annotations directory is required but doesn't exist: {}".format(ANNOTATIONS_DIR))
-    sys.exit(1)
+ANNOTATIONS_DIR = '{}/annotations-from-predictions'.format(TILE_LIST_DIR)
+if os.path.exists(ANNOTATIONS_DIR):
+    shutil.rmtree(ANNOTATIONS_DIR)
+os.makedirs(ANNOTATIONS_DIR)
 
 # for each prediction in the file, create an annotation
 tiles_d = {}

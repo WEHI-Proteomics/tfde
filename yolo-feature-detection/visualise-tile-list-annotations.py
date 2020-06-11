@@ -72,6 +72,7 @@ parser = argparse.ArgumentParser(description='Visualise tile list annotations.')
 parser.add_argument('-eb','--experiment_base_dir', type=str, default='./experiments', help='Path to the experiments directory.', required=False)
 parser.add_argument('-en','--experiment_name', type=str, help='Name of the experiment.', required=True)
 parser.add_argument('-tln','--tile_list_name', type=str, help='Name of the tile list.', required=True)
+parser.add_argument('-as','--annotations_source', type=str, choices=['via','tfe','predictions'], help='Source of the annotations.', required=True)
 
 args = parser.parse_args()
 
@@ -113,7 +114,7 @@ else:
     feature_label_font = ImageFont.truetype(MACOS_FONT_PATH, 10)
 
 # check the annotations directory
-ANNOTATIONS_DIR = '{}/annotations'.format(TILE_LIST_DIR)
+ANNOTATIONS_DIR = '{}/annotations-from-{}'.format(TILE_LIST_DIR, args.annotations_source)
 if not os.path.exists(EXPERIMENT_DIR):
     print("The annotations directory is required but doesn't exist: {}".format(ANNOTATIONS_DIR))
     sys.exit(1)

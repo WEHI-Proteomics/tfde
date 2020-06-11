@@ -60,9 +60,10 @@ TILE_LIST_DIR = '{}/{}'.format(TILE_LIST_BASE_DIR, args.tile_list_name)
 if os.path.exists(TILE_LIST_DIR):
     shutil.rmtree(TILE_LIST_DIR)
 os.makedirs(TILE_LIST_DIR)
-os.makedirs('{}/predictions'.format(TILE_LIST_DIR))  # labels predicted by a model
-os.makedirs('{}/annotations'.format(TILE_LIST_DIR))  # labels edited by a human expert
-os.makedirs('{}/tfe-labels'.format(TILE_LIST_DIR))   # labels from TFE features
+os.makedirs('{}/predictions'.format(TILE_LIST_DIR))                     # predictions from a model
+os.makedirs('{}/annotations-from-predictions'.format(TILE_LIST_DIR))    # annotations by converting predictions
+os.makedirs('{}/annotations-from-via'.format(TILE_LIST_DIR))            # annotations edited by a human expert
+os.makedirs('{}/annotations-from-tfe'.format(TILE_LIST_DIR))            # annotations from TFE features
 
 # the file we will create
 TILE_LIST_FILE_NAME = '{}/tile-list-{}.txt'.format(TILE_LIST_DIR, args.tile_list_name)
