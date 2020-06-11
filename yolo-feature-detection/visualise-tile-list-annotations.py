@@ -128,6 +128,12 @@ else:
     print("The annotations file is required but does not exist: {}".format(ANNOTATIONS_FILE_NAME))
     sys.exit(1)
 
+# check the base overlay directory
+OVERLAY_BASE_DIR = '{}/overlays'.format(ANNOTATIONS_DIR)
+if os.path.exists(OVERLAY_BASE_DIR):
+    shutil.rmtree(OVERLAY_BASE_DIR)
+os.makedirs(OVERLAY_BASE_DIR)
+
 feature_names = feature_names()
 
 digits = '0123456789'
@@ -178,8 +184,11 @@ for tile in list(annotations.items()):
             # draw the feature class name
             draw.text((x, y-12), feature_names[feature_class], font=feature_label_font, fill=CLASS_COLOUR[feature_class])
 
-        # write the tile to the annotations directory
-        tile_name = '{}/run-{}/tile-{}/{}'.format(ANNOTATIONS_DIR, run_name, tile_id, base_name)
+        # write the annotated tile to the annotations directory
+        TILE_DIR = '{}/run-{}/tile-{}'.format(OVERLAY_BASE_DIR, run_name, tile_id)
+        if not os.path.exists(TILE_DIR):
+            os.makedirs(TILE_DIR)
+        tile_name = '{}/{}'.format(TILE_DIR, base_name)
         img.save(tile_name)
 
 print('wrote {} tiles to {}'.format(len(annotations.items()), ANNOTATIONS_DIR))
