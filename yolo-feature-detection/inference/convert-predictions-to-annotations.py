@@ -68,15 +68,6 @@ else:
     print("The predictions file is required but does not exist: {}".format(PREDICTIONS_FILE_NAME))
     sys.exit(1)
 
-# load the predictions file
-print('loading the predictions')
-if os.path.isfile(PREDICTIONS_FILE_NAME):
-    with open(PREDICTIONS_FILE_NAME) as file:
-        prediction_json = json.load(file)
-else:
-    print("The predictions file is required but does not exist: {}".format(PREDICTIONS_FILE_NAME))
-    sys.exit(1)
-
 # check the annotations directory
 ANNOTATIONS_DIR = '{}/annotations'.format(TILE_LIST_DIR)
 if not os.path.exists(EXPERIMENT_DIR):
