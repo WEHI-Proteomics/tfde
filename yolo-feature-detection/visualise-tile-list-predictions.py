@@ -89,9 +89,12 @@ else:
 for prediction_idx in range(len(prediction_json)):
     tile_file_name = prediction_json[prediction_idx]['filename']
     base_name = os.path.basename(tile_file_name)
+    splits = base_name.splits('-')
+    run_name = splits[1]
+    tile_id = int(splits[5])
     print("processing {}".format(base_name))
-    img = Image.open(tile_file_name)
 
+    img = Image.open(tile_file_name)
     draw_predictions = ImageDraw.Draw(img)
     predictions = prediction_json[prediction_idx]['objects']
     for prediction in predictions:
@@ -108,7 +111,7 @@ for prediction_idx in range(len(prediction_json)):
         draw_predictions.text((x, y-12), feature_class_name, font=feature_label_font, fill=CLASS_COLOUR[feature_class])
 
     # write the annotated tile to the predictions directory
-    tile_name = '{}/{}'.format(PREDICTIONS_DIR, base_name)
+    tile_name = '{}/run-{}/tile-{}/{}'.format(PREDICTIONS_DIR, run_name, tile_id, base_name)
     img.save(tile_name)
 
 print('wrote {} tiles to {}'.format(len(prediction_json), PREDICTIONS_DIR))
