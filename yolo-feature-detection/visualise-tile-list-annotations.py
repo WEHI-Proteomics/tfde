@@ -104,7 +104,7 @@ else:
     with open(TILE_LIST_FILE_NAME) as f:
         tile_file_names_l = f.read().splitlines()
     tile_file_names_df = pd.DataFrame(tile_file_names_l, columns=['full_path'])
-    tile_file_names_df['base_name'] = tile_file_names_df.apply(lambda row: os.path(row.full_path), axis=1)
+    tile_file_names_df['base_name'] = tile_file_names_df.apply(lambda row: os.path.basename(row.full_path), axis=1)
 
 # load the font to use for labelling the overlays
 if os.path.isfile(UBUNTU_FONT_PATH):
