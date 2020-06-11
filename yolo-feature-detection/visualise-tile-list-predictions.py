@@ -89,7 +89,7 @@ else:
 for prediction_idx in range(len(prediction_json)):
     tile_file_name = prediction_json[prediction_idx]['filename']
     base_name = os.path.basename(tile_file_name)
-    splits = base_name.splits('-')
+    splits = base_name.split('-')
     run_name = splits[1]
     tile_id = int(splits[5])
     print("processing {}".format(base_name))
