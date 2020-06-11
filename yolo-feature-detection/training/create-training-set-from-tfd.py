@@ -4,7 +4,6 @@ from PIL import Image, ImageDraw, ImageChops, ImageFont
 import os, shutil
 import random
 import argparse
-import glob
 import sqlite3
 import pandas as pd
 import sys
