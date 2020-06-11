@@ -91,7 +91,7 @@ for prediction_idx in range(len(prediction_json)):
     base_name = os.path.basename(tile_file_name)
     splits = base_name.split('-')
     run_name = splits[1]
-    tile_id = int(splits[5].split['.'][0])
+    tile_id = int(splits[5].split('.')[0])
     print("processing {}".format(base_name))
 
     img = Image.open(tile_file_name)
