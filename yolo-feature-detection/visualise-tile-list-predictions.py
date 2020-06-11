@@ -75,6 +75,12 @@ if not os.path.exists(EXPERIMENT_DIR):
     print("The predictions directory is required but doesn't exist: {}".format(PREDICTIONS_DIR))
     sys.exit(1)
 
+# check the base overlay directory
+OVERLAY_BASE_DIR = '{}/overlays'.format(PREDICTIONS_DIR)
+if os.path.exists(OVERLAY_BASE_DIR):
+    shutil.rmtree(OVERLAY_BASE_DIR)
+os.makedirs(OVERLAY_BASE_DIR)
+
 # load the predictions file
 print('loading the predictions')
 PREDICTIONS_FILE_NAME = '{}/tile-list-{}-predictions.json'.format(PREDICTIONS_DIR, args.tile_list_name)
@@ -111,7 +117,10 @@ for prediction_idx in range(len(prediction_json)):
         draw_predictions.text((x, y-12), feature_class_name, font=feature_label_font, fill=CLASS_COLOUR[feature_class])
 
     # write the annotated tile to the predictions directory
-    tile_name = '{}/run-{}/tile-{}/{}'.format(PREDICTIONS_DIR, run_name, tile_id, base_name)
+    TILE_DIR = '{}/run-{}/tile-{}'.format(OVERLAY_BASE_DIR, run_name, tile_id)
+    if not os.path.exists(TILE_DIR):
+        os.makedirs(TILE_DIR)
+    tile_name = '{}/{}'.format(TILE_DIR, base_name)
     img.save(tile_name)
 
 print('wrote {} tiles to {}'.format(len(prediction_json), PREDICTIONS_DIR))
