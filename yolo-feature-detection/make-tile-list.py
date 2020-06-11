@@ -10,6 +10,7 @@ parser.add_argument('-en','--experiment_name', type=str, help='Name of the exper
 parser.add_argument('-tln','--tile_list_name', type=str, help='Name of the tile list.', required=True)
 parser.add_argument('-tid','--tile_id_list', type=str, help='IDs of the tiles to use for the list. Can specify several ranges (e.g. 10-20,21-30,31-40), a single range (e.g. 10-24), individual tiles (e.g. 34,56,32), or a single tile (e.g. 54). Tile IDs must be between 0 and 89 inclusive', required=True)
 parser.add_argument('-rn','--run_names', nargs='+', type=str, help='Space-separated names of runs to include.', required=True)
+parser.add_argument('-tsn','--tile_set_name', type=str, default='tile-set', help='Name of the tile set.', required=False)
 
 args = parser.parse_args()
 
@@ -56,8 +57,9 @@ if not os.path.exists(TILE_LIST_BASE_DIR):
 
 # the directory for this tile list
 TILE_LIST_DIR = '{}/{}'.format(TILE_LIST_BASE_DIR, args.tile_list_name)
-if not os.path.exists(TILE_LIST_DIR):
-    os.makedirs(TILE_LIST_DIR)
+if os.path.exists(TILE_LIST_DIR):
+    shutil.rmtree(TILE_LIST_DIR)
+os.makedirs(TILE_LIST_DIR)
 
 # the file we will create
 TILE_LIST_FILE_NAME = '{}/tile-list-{}.txt'.format(TILE_LIST_DIR, args.tile_set_name)
