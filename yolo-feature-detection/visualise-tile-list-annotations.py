@@ -179,7 +179,7 @@ for tile in list(annotations.items()):
             draw.text((x, y-12), feature_names[feature_class], font=feature_label_font, fill=CLASS_COLOUR[feature_class])
 
         # write the tile to the annotations directory
-        tile_name = '{}/{}'.format(ANNOTATIONS_DIR, base_name)
+        tile_name = '{}/run-{}/tile-{}/{}'.format(ANNOTATIONS_DIR, run_name, tile_id, base_name)
         img.save(tile_name)
 
 print('wrote {} tiles to {}'.format(len(annotations.items()), ANNOTATIONS_DIR))
