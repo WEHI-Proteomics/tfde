@@ -25,10 +25,10 @@ SERVER_URL = "http://spectra-server-lb-1653892276.ap-southeast-2.elb.amazonaws.c
 
 
 #####################################
-parser = argparse.ArgumentParser(description='Create annotation files for each prediction in a tile set.')
+parser = argparse.ArgumentParser(description='Create annotation files for each prediction in a tile list.')
 parser.add_argument('-eb','--experiment_base_dir', type=str, default='./experiments', help='Path to the experiments directory.', required=False)
 parser.add_argument('-en','--experiment_name', type=str, help='Name of the experiment.', required=True)
-parser.add_argument('-tsn','--tile_set_name', type=str, default='tile-set', help='Name of the tile set.', required=False)
+parser.add_argument('-tln','--tile_list_name', type=str, help='Name of the tile list.', required=True)
 args = parser.parse_args()
 
 # Print the arguments for the log
@@ -45,27 +45,43 @@ if not os.path.exists(EXPERIMENT_DIR):
     print("The experiment directory is required but doesn't exist: {}".format(EXPERIMENT_DIR))
     sys.exit(1)
 
-# check the predictions directory exists
-PREDICTIONS_BASE_DIR = '{}/predictions/tile-sets/{}'.format(EXPERIMENT_DIR, args.tile_set_name)
-if not os.path.exists(PREDICTIONS_BASE_DIR):
-    print("The predictions directory is required but does not exist: {}".format(PREDICTIONS_BASE_DIR))
+# the directory for this tile list
+TILE_LIST_BASE_DIR = '{}/tile-lists'.format(EXPERIMENT_DIR)
+TILE_LIST_DIR = '{}/{}'.format(TILE_LIST_BASE_DIR, args.tile_list_name)
+if not os.path.exists(TILE_LIST_DIR):
+    print("The tile list directory is required but doesn't exist: {}".format(TILE_LIST_DIR))
+    sys.exit(1)
+
+# check the predictions directory
+PREDICTIONS_DIR = '{}/predictions'.format(TILE_LIST_DIR)
+if not os.path.exists(EXPERIMENT_DIR):
+    print("The predictions directory is required but doesn't exist: {}".format(PREDICTIONS_DIR))
     sys.exit(1)
 
 # load the predictions file
 print('loading the predictions')
-prediction_json_file = '{}/batch-inference-tile-set-{}.json'.format(PREDICTIONS_BASE_DIR, args.tile_set_name)
-if os.path.isfile(prediction_json_file):
-    with open(prediction_json_file) as file:
+PREDICTIONS_FILE_NAME = '{}/tile-list-{}-predictions.json'.format(PREDICTIONS_DIR, args.tile_list_name)
+if os.path.isfile(PREDICTIONS_FILE_NAME):
+    with open(PREDICTIONS_FILE_NAME) as file:
         prediction_json = json.load(file)
 else:
-    print("The predictions file is required but does not exist: {}".format(prediction_json_file))
+    print("The predictions file is required but does not exist: {}".format(PREDICTIONS_FILE_NAME))
     sys.exit(1)
 
-# check the annotations directory exists
-ANNOTATIONS_BASE_DIR = '{}/annotations/tile-sets/{}'.format(EXPERIMENT_DIR, args.tile_set_name)
-if os.path.exists(ANNOTATIONS_BASE_DIR):
-    shutil.rmtree(ANNOTATIONS_BASE_DIR)
-os.makedirs(ANNOTATIONS_BASE_DIR)
+# load the predictions file
+print('loading the predictions')
+if os.path.isfile(PREDICTIONS_FILE_NAME):
+    with open(PREDICTIONS_FILE_NAME) as file:
+        prediction_json = json.load(file)
+else:
+    print("The predictions file is required but does not exist: {}".format(PREDICTIONS_FILE_NAME))
+    sys.exit(1)
+
+# check the annotations directory
+ANNOTATIONS_DIR = '{}/annotations'.format(TILE_LIST_DIR)
+if not os.path.exists(EXPERIMENT_DIR):
+    print("The annotations directory is required but doesn't exist: {}".format(ANNOTATIONS_DIR))
+    sys.exit(1)
 
 # for each prediction in the file, create an annotation
 tiles_d = {}
@@ -99,13 +115,13 @@ for prediction_idx in range(len(prediction_json)):
     tiles_d[tiles_key]['{}-1'.format(tile_url)] = {'filename':tile_url, 'size':-1, 'regions':regions_l, 'file_attributes':{}}
 
 # write out a separate JSON file for the annotations for each run and tile
-print('writing annotation files to {}'.format(ANNOTATIONS_BASE_DIR))
+print('writing annotation files to {}'.format(ANNOTATIONS_DIR))
 for key, value in tiles_d.items():
     splits = key.split('-')
     run_name = splits[1]
     tile_id = int(splits[3])
-    annotations_file_name = '{}/annotations-run-{}-tile-{}.json'.format(ANNOTATIONS_BASE_DIR, run_name, tile_id)
+    annotations_file_name = '{}/annotations-run-{}-tile-{}.json'.format(ANNOTATIONS_DIR, run_name, tile_id)
     with open(annotations_file_name, 'w') as outfile:
         json.dump(value, outfile)
 
-print("wrote out {} annotations files to {}".format(len(tiles_d), ANNOTATIONS_BASE_DIR))
+print("wrote out {} annotations files to {}".format(len(tiles_d), ANNOTATIONS_DIR))
