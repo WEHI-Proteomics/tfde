@@ -62,7 +62,7 @@ if os.path.exists(TILE_LIST_DIR):
 os.makedirs(TILE_LIST_DIR)
 
 # the file we will create
-TILE_LIST_FILE_NAME = '{}/tile-list-{}.txt'.format(TILE_LIST_DIR, args.tile_set_name)
+TILE_LIST_FILE_NAME = '{}/tile-list-{}.txt'.format(TILE_LIST_DIR, args.tile_list_name)
 if os.path.isfile(TILE_LIST_FILE_NAME):
     os.remove(TILE_LIST_FILE_NAME)
 
