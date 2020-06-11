@@ -3,7 +3,6 @@ from PIL import Image, ImageDraw, ImageFont
 import pandas as pd
 import sqlite3
 import numpy as np
-import glob
 import os
 import argparse
 import time
