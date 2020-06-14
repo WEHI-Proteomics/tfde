@@ -3,6 +3,8 @@ import os
 import argparse
 import shutil
 import sys
+import time
+import json
 
 parser = argparse.ArgumentParser(description='Create a tile list from a tile set.')
 parser.add_argument('-eb','--experiment_base_dir', type=str, default='./experiments', help='Path to the experiments directory.', required=False)
@@ -14,12 +16,9 @@ parser.add_argument('-tsn','--tile_set_name', type=str, default='tile-set', help
 
 args = parser.parse_args()
 
-# Store the arguments as metadata for later reference
-info = []
-for arg in vars(args):
-    info.append((arg, getattr(args, arg)))
-
-print("{} info: {}".format(parser.prog, info))
+# store the arguments as metadata for later reference
+metadata = {'arguments':vars(args)}
+print("{} metadata: {}".format(parser.prog, metadata))
 
 # parse the tile indexes
 indexes_l = []
@@ -84,3 +83,12 @@ if len(file_list) > 0:
             f.write('{}\n'.format(file))
 else:
     print("could not find any tiles in the tile set directory: {}".format(TILES_BASE_DIR))
+
+metadata["processed"] = time.ctime()
+metadata["processor"] = parser.prog
+print("{} metadata: {}".format(parser.prog, metadata))
+
+# write out the metadata file
+metadata_filename = '{}/metadata.json'.format(TILE_LIST_DIR)
+with open(metadata_filename, 'w') as outfile:
+    json.dump(metadata, outfile)
