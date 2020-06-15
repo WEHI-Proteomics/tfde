@@ -140,52 +140,52 @@ if not os.path.exists(EXPERIMENT_DIR):
     print("The annotations directory is required but doesn't exist: {}".format(ANNOTATIONS_DIR))
     sys.exit(1)
 
-# set up the training base directories
-TRAINING_SET_BASE_DIR = '{}/training-sets/{}'.format(EXPERIMENT_DIR, args.training_set_name)
-PRE_ASSIGNED_FILES_DIR = '{}/pre-assigned'.format(TRAINING_SET_BASE_DIR)
-OVERLAY_FILES_DIR = '{}/overlays'.format(TRAINING_SET_BASE_DIR)
-MASK_FILES_DIR = '{}/masks'.format(TRAINING_SET_BASE_DIR)
-
-# make sure they're empty for a fresh start
+# set up the training set directories
+TRAINING_SET_BASE_DIR = '{}/training-set'.format(ANNOTATIONS_DIR)
 if os.path.exists(TRAINING_SET_BASE_DIR):
     shutil.rmtree(TRAINING_SET_BASE_DIR)
 os.makedirs(TRAINING_SET_BASE_DIR)
 
+PRE_ASSIGNED_FILES_DIR = '{}/pre-assigned'.format(TRAINING_SET_BASE_DIR)
 if os.path.exists(PRE_ASSIGNED_FILES_DIR):
     shutil.rmtree(PRE_ASSIGNED_FILES_DIR)
 os.makedirs(PRE_ASSIGNED_FILES_DIR)
 
+OVERLAY_FILES_DIR = '{}/overlays'.format(TRAINING_SET_BASE_DIR)
 if os.path.exists(OVERLAY_FILES_DIR):
     shutil.rmtree(OVERLAY_FILES_DIR)
 os.makedirs(OVERLAY_FILES_DIR)
 
+MASK_FILES_DIR = '{}/masks'.format(TRAINING_SET_BASE_DIR)
 if os.path.exists(MASK_FILES_DIR):
     shutil.rmtree(MASK_FILES_DIR)
 os.makedirs(MASK_FILES_DIR)
+
+SETS_BASE_DIR = '{}/sets'.format(TRAINING_SET_BASE_DIR)
+if os.path.exists(SETS_BASE_DIR):
+    shutil.rmtree(SETS_BASE_DIR)
+os.makedirs(SETS_BASE_DIR)
+
+TRAIN_SET_DIR = '{}/train'.format(SETS_BASE_DIR)
+if os.path.exists(TRAIN_SET_DIR):
+    shutil.rmtree(TRAIN_SET_DIR)
+os.makedirs(TRAIN_SET_DIR)
+
+VAL_SET_DIR = '{}/validation'.format(SETS_BASE_DIR)
+if os.path.exists(VAL_SET_DIR):
+    shutil.rmtree(VAL_SET_DIR)
+os.makedirs(VAL_SET_DIR)
+
+TEST_SET_DIR = '{}/test'.format(SETS_BASE_DIR)
+if os.path.exists(TEST_SET_DIR):
+    shutil.rmtree(TEST_SET_DIR)
+os.makedirs(TEST_SET_DIR)
 
 # check the raw tiles base directory exists
 TILES_BASE_DIR = '{}/tiles/{}'.format(EXPERIMENT_DIR, args.tile_set_name)
 if not os.path.exists(TILES_BASE_DIR):
     print("The raw tiles base directory is required but does not exist: {}".format(TILES_BASE_DIR))
     sys.exit(1)
-
-# set up the training sets directories
-SETS_BASE_DIR = '{}/sets'.format(TRAINING_SET_BASE_DIR)
-TRAIN_SET_DIR = '{}/train'.format(SETS_BASE_DIR)
-VAL_SET_DIR = '{}/validation'.format(SETS_BASE_DIR)
-TEST_SET_DIR = '{}/test'.format(SETS_BASE_DIR)
-
-if os.path.exists(TRAIN_SET_DIR):
-    shutil.rmtree(TRAIN_SET_DIR)
-os.makedirs(TRAIN_SET_DIR)
-
-if os.path.exists(VAL_SET_DIR):
-    shutil.rmtree(VAL_SET_DIR)
-os.makedirs(VAL_SET_DIR)
-
-if os.path.exists(TEST_SET_DIR):
-    shutil.rmtree(TEST_SET_DIR)
-os.makedirs(TEST_SET_DIR)
 
 # set up logging
 logger = logging.getLogger(__name__)  
