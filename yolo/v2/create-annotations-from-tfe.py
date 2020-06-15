@@ -186,7 +186,7 @@ console_handler = logging.StreamHandler()
 console_handler.setFormatter(formatter)
 logger.addHandler(console_handler)
 
-logger.info("{} info: {}".format(parser.prog, tile_set_metadata))
+logger.info("{} info: {}".format(parser.prog, metadata))
 
 # find the extent of the tile list in m/z, RT, runs
 tile_list_df['run_name'] = tile_list_df.apply(lambda row: row.base_name.split('-')[1], axis=1)
