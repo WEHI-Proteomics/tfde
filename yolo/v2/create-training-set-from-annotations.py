@@ -134,6 +134,21 @@ if not os.path.exists(TILE_LIST_DIR):
     print("The tile list directory is required but doesn't exist: {}".format(TILE_LIST_DIR))
     sys.exit(1)
 
+# load the tile list metadata
+TILE_LIST_METADATA_FILE_NAME = '{}/metadata.json'.format(TILE_LIST_DIR)
+if os.path.isfile(TILE_LIST_METADATA_FILE_NAME):
+    with open(TILE_LIST_METADATA_FILE_NAME) as json_file:
+        tile_list_metadata = json.load(json_file)
+else:
+    print("Could not find the tile list's metadata file: {}".format(TILE_LIST_METADATA_FILE_NAME))
+    sys.exit(1)
+
+# check the raw tiles base directory exists
+TILES_BASE_DIR = '{}/tiles/{}'.format(EXPERIMENT_DIR, tile_list_metadata['arguments']['tile_set_name'])
+if not os.path.exists(TILES_BASE_DIR):
+    print("The raw tiles base directory is required but does not exist: {}".format(TILES_BASE_DIR))
+    sys.exit(1)
+
 # check the annotations directory
 ANNOTATIONS_DIR = '{}/annotations-from-{}'.format(TILE_LIST_DIR, args.annotations_source)
 if not os.path.exists(EXPERIMENT_DIR):
@@ -180,12 +195,6 @@ TEST_SET_DIR = '{}/test'.format(SETS_BASE_DIR)
 if os.path.exists(TEST_SET_DIR):
     shutil.rmtree(TEST_SET_DIR)
 os.makedirs(TEST_SET_DIR)
-
-# check the raw tiles base directory exists
-TILES_BASE_DIR = '{}/tiles/{}'.format(EXPERIMENT_DIR, args.tile_set_name)
-if not os.path.exists(TILES_BASE_DIR):
-    print("The raw tiles base directory is required but does not exist: {}".format(TILES_BASE_DIR))
-    sys.exit(1)
 
 # set up logging
 logger = logging.getLogger(__name__)  
