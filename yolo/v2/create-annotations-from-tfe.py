@@ -159,7 +159,8 @@ else:
     sys.exit(1)
 
 # load the tile set metadata
-TILES_BASE_DIR = '{}/tiles/{}'.format(EXPERIMENT_DIR, tile_list_metadata['arguments']['tile_set_name'])
+tile_set_name = tile_list_metadata['arguments']['tile_set_name']
+TILES_BASE_DIR = '{}/tiles/{}'.format(EXPERIMENT_DIR, tile_set_name)
 TILE_SET_METADATA_FILE_NAME = '{}/metadata.json'.format(TILES_BASE_DIR)
 if os.path.isfile(TILE_SET_METADATA_FILE_NAME):
     with open(TILE_SET_METADATA_FILE_NAME) as json_file:
@@ -259,6 +260,7 @@ for idx,row in enumerate(tile_list_df.itertuples()):
     tile_file_idx = row.file_idx
     tile_run_name = row.run_name
     tile_full_path = 'file://{}'.format(row.full_path)
+    tile_base_name = row.base_name
     tile_url = '{}/tile/run/{}/tile/{}/frame/{}'.format(SERVER_URL, tile_run_name, tile_id, tile_frame_id)
 
     # find the features intersecting with this tile
@@ -293,7 +295,7 @@ for idx,row in enumerate(tile_list_df.itertuples()):
     tiles_key = 'run-{}-tile-{}'.format(tile_run_name, tile_id)
     if not tiles_key in tiles_d:
         tiles_d[tiles_key] = {}
-    tiles_d[tiles_key]['frame-{}'.format(tile_frame_id)] = {'filename':tile_url, 'tile_set_path':tile_full_path, 'size':-1, 'regions':regions_l, 'file_attributes':{}}
+    tiles_d[tiles_key]['frame-{}'.format(tile_frame_id)] = {'filename':tile_url, 'tile_source':{'experiment_name':args.experiment_name,'tile_set':tile_set_name,'base_name':tile_base_name}, 'size':-1, 'regions':regions_l, 'file_attributes':{}}
 
 # write out a separate JSON file for the annotations for each run and tile
 print('writing annotation files to {}'.format(ANNOTATIONS_DIR))
