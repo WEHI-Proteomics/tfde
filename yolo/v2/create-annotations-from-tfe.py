@@ -163,6 +163,7 @@ if os.path.isfile(TILE_SET_METADATA_FILE_NAME):
     with open(TILE_SET_METADATA_FILE_NAME) as json_file:
         tile_set_metadata = json.load(json_file)
         tile_set_tiles_df = pd.DataFrame(tile_set_metadata['tiles'])
+        tile_set_tiles_df['base_name'] = tile_set_tiles_df.apply(lambda row: os.path.basename(row.tile_file_name), axis=1)
 else:
     print("Could not find the tile list's metadata file: {}".format(TILE_SET_METADATA_FILE_NAME))
     sys.exit(1)
@@ -204,7 +205,7 @@ print()
 print(tile_list_df.head())
 sys.exit(1)
 
-tile_list_df['retention_time_secs'] = tile_list_df.apply(lambda row: tile_set_tiles_df[tile_set_tiles_df.tile_file_name == row.full_path].iloc[0].retention_time_secs, axis=1)
+tile_list_df['retention_time_secs'] = tile_list_df.apply(lambda row: tile_set_tiles_df[tile_set_tiles_df.base_name == row.base_name].iloc[0].retention_time_secs, axis=1)
 rt_lower = tile_list_df.retention_time_secs.min()
 rt_upper = tile_list_df.retention_time_secs.max()
 
