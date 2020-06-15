@@ -98,11 +98,6 @@ parser = argparse.ArgumentParser(description='Set up a training set from raw til
 parser.add_argument('-eb','--experiment_base_dir', type=str, default='./experiments', help='Path to the experiments directory.', required=False)
 parser.add_argument('-en','--experiment_name', type=str, help='Name of the experiment.', required=True)
 parser.add_argument('-tln','--tile_list_name', type=str, help='Name of the tile list.', required=True)
-parser.add_argument('-ssm','--small_set_mode', action='store_true', help='A small subset of the data for testing purposes.')
-parser.add_argument('-ssms','--small_set_mode_size', type=int, default='100', help='The number of tiles to sample for small set mode.', required=False)
-parser.add_argument('-rm','--ray_mode', type=str, choices=['local','cluster'], default='cluster', help='The Ray mode to use.', required=False)
-parser.add_argument('-pc','--proportion_of_cores_to_use', type=float, default=0.6, help='Proportion of the machine\'s cores to use for this program.', required=False)
-parser.add_argument('-noi','--number_of_object_instances', type=int, help='The number of object instances to harvest from the tile set for each feature class.', required=False)
 args = parser.parse_args()
 
 # store the command line arguments as metadata for later reference
