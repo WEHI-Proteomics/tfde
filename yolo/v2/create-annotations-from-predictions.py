@@ -51,6 +51,18 @@ if not os.path.exists(TILE_LIST_DIR):
     print("The tile list directory is required but doesn't exist: {}".format(TILE_LIST_DIR))
     sys.exit(1)
 
+# load the tile list metadata
+TILE_LIST_METADATA_FILE_NAME = '{}/metadata.json'.format(TILE_LIST_DIR)
+if os.path.isfile(TILE_LIST_METADATA_FILE_NAME):
+    with open(TILE_LIST_METADATA_FILE_NAME) as json_file:
+        tile_list_metadata = json.load(json_file)
+else:
+    print("Could not find the tile list's metadata file: {}".format(TILE_LIST_METADATA_FILE_NAME))
+    sys.exit(1)
+
+# load the tile set metadata
+tile_set_name = tile_list_metadata['arguments']['tile_set_name']
+
 # check the predictions directory
 PREDICTIONS_DIR = '{}/predictions'.format(TILE_LIST_DIR)
 if not os.path.exists(EXPERIMENT_DIR):
@@ -77,13 +89,13 @@ os.makedirs(ANNOTATIONS_DIR)
 tiles_d = {}
 for prediction_idx in range(len(prediction_json)):
     tile_file_name = prediction_json[prediction_idx]['filename']
-    base_name = os.path.basename(tile_file_name)
-    splits = base_name.split('-')
+    tile_base_name = os.path.basename(tile_file_name)
+    splits = tile_base_name.split('-')
     run_name = splits[1]
     frame_id = int(splits[3])
     tile_id = int(splits[5].split('.')[0])
     tile_url = '{}/tile/run/{}/tile/{}/frame/{}'.format(SERVER_URL, run_name, tile_id, frame_id)
-    print("processing {}".format(base_name))
+    print("processing {}".format(tile_base_name))
     predictions = prediction_json[prediction_idx]['objects']
     regions_l = []
     for prediction in predictions:
@@ -102,7 +114,7 @@ for prediction_idx in range(len(prediction_json)):
     tiles_key = 'run-{}-tile-{}'.format(run_name, tile_id)
     if not tiles_key in tiles_d:
         tiles_d[tiles_key] = {}
-    tiles_d[tiles_key]['{}-1'.format(tile_url)] = {'filename':tile_url, 'size':-1, 'regions':regions_l, 'file_attributes':{}}
+    tiles_d[tiles_key]['frame-{}'.format(frame_id)] = {'filename':tile_url, 'source':{'annotation':'predictions','tile':{'experiment_name':args.experiment_name,'tile_set':tile_set_name,'base_name':tile_base_name}}, 'size':-1, 'regions':regions_l, 'file_attributes':{}}
 
 # write out a separate JSON file for the annotations for each run and tile
 print('writing annotation files to {}'.format(ANNOTATIONS_DIR))
