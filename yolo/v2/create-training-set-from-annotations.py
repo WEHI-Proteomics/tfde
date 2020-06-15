@@ -1,4 +1,4 @@
-# This application creates everything YOLO needs in the training set. The output base directory should be copied to ~/darket/data/peptides on the training machine with scp -rp. Prior to this step, the raw tiles must be created with create-raw-data-tiles.py.
+# This application creates everything YOLO needs in the training set. The output base directory should be symlinked to ~/darket/data/peptides on the training machine.
 import json
 from PIL import Image, ImageDraw, ImageChops, ImageFont
 import os, shutil
@@ -11,9 +11,7 @@ import pickle
 import numpy as np
 import logging
 import time
-import multiprocessing as mp
-import ray
-
+import glob
 
 PIXELS_X = 910
 PIXELS_Y = 910  # equal to the number of scan lines
@@ -84,97 +82,10 @@ def tile_pixel_x_from_mz(mz):
     pixel_x = int(((mz - MZ_MIN) % MZ_PER_TILE) / MZ_PER_TILE * PIXELS_X)
     return (tile_id, pixel_x)
 
-# determine the mapping between the percolator index and the run file name
-def get_percolator_run_mapping(mapping_file_name):
-    df = pd.read_csv(mapping_file_name)
-    mapping_l = [tuple(r) for r in df.to_numpy()]
-    return mapping_l
-
-def file_idx_for_run(run_name):
-    result = None
-    mapping_l = get_percolator_run_mapping(MAPPING_FILE_NAME)
-    for m in mapping_l:
-        if m[1] == run_name:
-            result = m[0]
-            break
-    return result
-
-def run_name_for_file_idx(file_idx):
-    result = None
-    mapping_l = get_percolator_run_mapping(MAPPING_FILE_NAME)
-    for m in mapping_l:
-        if m[0] == file_idx:
-            result = m[1]
-            break
-    return result
-
 def scan_coords_for_single_charge_region(mz_lower, mz_upper):
     scan_for_mz_lower = -1 * ((1.2 * mz_lower) - 1252)
     scan_for_mz_upper = -1 * ((1.2 * mz_upper) - 1252)
     return (scan_for_mz_lower,scan_for_mz_upper)
-
-@ray.remote
-def apply_feature_mask(file_pair, set_directory):
-    # copy the tiles to their training set directory
-    shutil.copyfile('{}/{}'.format(PRE_ASSIGNED_FILES_DIR, file_pair[0]), '{}/{}'.format(set_directory, file_pair[0]))
-    shutil.copyfile('{}/{}'.format(PRE_ASSIGNED_FILES_DIR, file_pair[1]), '{}/{}'.format(set_directory, file_pair[1]))
-
-    # find this tile in the tile metadata
-    basename = file_pair[0]
-    found = False
-    for tile in tile_metadata_l:
-        if tile['basename'] == basename:
-            mask_region_y_left = tile['mask_region_y_left']
-            mask_region_y_right = tile['mask_region_y_right']
-            tile_features_l = tile['tile_features_l']
-            found = True
-            break
-    assert(found == True), "could not find the metadata for tile {}".format(basename)
-
-    # create a feature mask
-    mask_im_array = np.zeros([PIXELS_Y+1, PIXELS_X+1, 3], dtype=np.uint8)
-    mask = Image.fromarray(mask_im_array.astype('uint8'), 'RGB')
-    mask_draw = ImageDraw.Draw(mask)
-
-    # fill in the charge-1 area that we want to preserve
-    mask_draw.polygon(xy=[(0,0), (PIXELS_X,0), (PIXELS_X,mask_region_y_right), (0,mask_region_y_left)], fill='white', outline='white')
-
-    # draw a mask for each features on this tile
-    for feature in tile_features_l:
-        # draw the mask for this feature
-        x0_buffer = feature['x0_buffer']
-        y0_buffer = feature['y0_buffer']
-        x1_buffer = feature['x1_buffer']
-        y1_buffer = feature['y1_buffer']
-        mask_draw.rectangle(xy=[(x0_buffer, y0_buffer), (x1_buffer, y1_buffer)], fill='white', outline='white')
-
-    # finish drawing
-    del mask_draw
-
-    # save the bare mask
-    mask.save('{}/{}'.format(MASK_FILES_DIR, basename))
-
-    # apply the mask to the tile
-    img = Image.open("{}/{}".format(set_directory, basename))
-    masked_tile = ImageChops.multiply(img, mask)
-    masked_tile.save("{}/{}".format(set_directory, basename))
-
-    # return how many objects there are in this set
-    return len(tile_features_l)
-
-# determine the number of workers based on the number of available cores and the proportion of the machine to be used
-def number_of_workers():
-    number_of_cores = mp.cpu_count()
-    number_of_workers = int(args.proportion_of_cores_to_use * number_of_cores)
-    return number_of_workers
-
-# create the indexes we need for this application
-def create_indexes(db_file_name):
-    db_conn = sqlite3.connect(db_file_name)
-    src_c = db_conn.cursor()
-    src_c.execute("drop index if exists idx_training_set_1")
-    src_c.execute("create index if not exists idx_training_set_2 on features (file_idx,rt_apex,monoisotopic_mz_centroid)")
-    db_conn.close()
 
 def calculate_feature_class(isotopes, charge):
     assert ((isotopes >= MIN_ISOTOPES) and (isotopes <= MAX_ISOTOPES)), "isotopes must be between {} and {}".format(MIN_ISOTOPES, MAX_ISOTOPES)
@@ -194,10 +105,11 @@ def feature_names():
             names.append('charge-{}-isotopes-{}'.format(ch, iso))
     return names
 
+########################################
 
 # python ./otf-peak-detect/yolo-feature-detection/training/create-training-set-from-tfd.py -eb ~/Downloads/experiments -en dwm-test -rn 190719_Hela_Ecoli_1to1_01 -tidx 34
 
-parser = argparse.ArgumentParser(description='Set up a training set from raw tiles.')
+parser = argparse.ArgumentParser(description='Create a YOLO training set from one or more annotations files.')
 parser.add_argument('-eb','--experiment_base_dir', type=str, default='./experiments', help='Path to the experiments directory.', required=False)
 parser.add_argument('-en','--experiment_name', type=str, help='Name of the experiment.', required=True)
 parser.add_argument('-tln','--tile_list_name', type=str, help='Name of the tile list.', required=True)
@@ -309,9 +221,9 @@ total_objects = 0
 tile_list = []
 objects_per_tile = []
 tile_metadata_l = []
+digits = '0123456789'
 
-
-# load the annotations file(s)
+# process all the annotations files
 annotations_file_list = sorted(glob.glob("{}/annotations-run-*-tile-*.json".format(ANNOTATIONS_DIR)))
 for annotation_file_name in annotations_file_list:
     # load the annotations file
@@ -319,33 +231,43 @@ for annotation_file_name in annotations_file_list:
     with open(annotation_file_name) as file:
         annotations = json.load(file)
 
-    digits = '0123456789'
     # for each tile in the annotations
     for tile in list(annotations.items()):
         tile_d = tile[1]
+        tile_base_name = tile_d['source']['tile']['base_name']
+        tile_full_path = '{}/{}'.format(TILES_BASE_DIR, tile_base_name)
+
+        # determine the frame_id and tile_id
+        splits = tile_base_name.split('-')
+        run_name = splits[1]
+        frame_id = int(splits[3])
+        tile_id = int(splits[5].split('.')[0])
+
+        # copy the tile to the pre-assigned directory
+        destination_name = '{}/{}'.format(PRE_ASSIGNED_FILES_DIR, tile_base_name)
+        shutil.copyfile(tile_full_path, destination_name)
+
+        # create a feature mask
+        mask_im_array = np.zeros([PIXELS_Y+1, PIXELS_X+1, 3], dtype=np.uint8)
+        mask = Image.fromarray(mask_im_array.astype('uint8'), 'RGB')
+        mask_draw = ImageDraw.Draw(mask)
+
+        # fill in the charge-1 area that we want to preserve
+        tile_mz_lower,tile_mz_upper = mz_range_for_tile(tile_id)
+        mask_region_y_left,mask_region_y_right = scan_coords_for_single_charge_region(tile_mz_lower, tile_mz_upper)
+        mask_draw.polygon(xy=[(0,0), (PIXELS_X,0), (PIXELS_X,mask_region_y_right), (0,mask_region_y_left)], fill='white', outline='white')
+
+        # set up the YOLO annotatiions file
+        annotations_filename = '{}.txt'.format(os.path.splitext(tile_base_name)[0])
+        annotations_path = '{}/{}'.format(PRE_ASSIGNED_FILES_DIR, annotations_filename)
+
+        # process each annotation for the tile
+        number_of_objects_this_tile = 0
         tile_regions = tile_d['regions']
-        # process this tile if there are annotations for it
         if len(tile_regions) > 0:
-            # load the tile
-            tile_url = tile_d['filename']  # this is the URL so we need to download it
-
-            # determine the frame_id and tile_id
-            splits = tile_url.split('/')
-            run_name = splits[5]
-            tile_id = int(splits[7])
-            frame_id = int(splits[9])
-
-            base_name = "run-{}-frame-{}-tile-{}.png".format(run_name, frame_id, tile_id)
-            bn = tile_file_names_df[tile_file_names_df.base_name == base_name]
-            if len(bn) == 1:
-                full_path = bn.iloc[0].full_path
-            else:
-                print('encountered a tile in the annotations that is not in the tile list: {}'.format(base_name))
-                sys.exit(1)
-
             # load the tile from the tile set
-            print("processing {}".format(base_name))
-            img = Image.open(full_path)
+            print("processing {}".format(tile_base_name))
+            img = Image.open(tile_full_path)
 
             # get a drawing context for the tile
             draw = ImageDraw.Draw(img)
@@ -358,117 +280,65 @@ for annotation_file_name in annotations_file_list:
                 y = shape_attributes['y']
                 width = shape_attributes['width']
                 height = shape_attributes['height']
+                # calculate the YOLO coordinates for the text file
+                yolo_x = (x + (width / 2)) / PIXELS_X
+                yolo_y = (y + (height / 2)) / PIXELS_Y
+                yolo_w = width / PIXELS_X
+                yolo_h = height / PIXELS_Y
                 # determine the attributes of this feature
                 region_attributes = region['region_attributes']
                 charge = int(''.join(c for c in region_attributes['charge'] if c in digits))
                 isotopes = int(region_attributes['isotopes'])
-                feature_class = calculate_feature_class(isotopes, charge)
-                # draw the bounding box
-                draw.rectangle(xy=[(x, y), (x+width, y+height)], fill=None, outline=CLASS_COLOUR[feature_class])
-                # draw the feature class name
-                draw.text((x, y-12), feature_names[feature_class], font=feature_label_font, fill=CLASS_COLOUR[feature_class])
+                # label the charge states we want to detect
+                if (charge >= MIN_CHARGE) and (charge <= MAX_CHARGE):
+                    feature_class = calculate_feature_class(isotopes, charge)
+                    # keep record of how many instances of each class
+                    if feature_class in classes_d.keys():
+                        classes_d[feature_class] += 1
+                    else:
+                        classes_d[feature_class] = 1
+                    # add it to the list
+                    feature_coordinates.append(("{} {:.6f} {:.6f} {:.6f} {:.6f}".format(feature_class, yolo_x, yolo_y, yolo_w, yolo_h)))
+                    # draw the rectangle on the overlay
+                    draw.rectangle(xy=[(x, y), (x+width, y+height)], fill=None, outline=CLASS_COLOUR[feature_class])
+                    # draw the feature class name
+                    draw.rectangle(xy=[(x, y-12), (x+width, y)], fill='darkgrey', outline=None)
+                    draw.text((x, y-12), feature_names()[feature_class], font=feature_label_font, fill=CLASS_COLOUR[feature_class])
+                    # draw the mask
+                    mask_draw.rectangle(xy=[(x, y), (x+width, y+height)], fill='white', outline='white')
+                    # keep record of the 'small' objects
+                    total_objects += 1
+                    if (yolo_w <= SMALL_OBJECT_W) or (yolo_h <= SMALL_OBJECT_H):
+                        small_objects += 1
+                    # keep track of the number of objects in this tile
+                    number_of_objects_this_tile += 1
+                else:
+                    logger.info("found a charge-{} feature - not included in the training set".format(charge))
 
+            # finish drawing the annotations on the overlay
+            del draw
+            # write the overlay tile
+            img.save('{}/{}'.format(OVERLAY_FILES_DIR, tile_base_name))
 
+        # finish drawing the mask
+        del mask_draw
+        # ...and save the mask
+        mask.save('{}/{}'.format(MASK_FILES_DIR, tile_base_name))
 
+        # apply the mask to the tile
+        img = Image.open("{}/{}".format(PRE_ASSIGNED_FILES_DIR, tile_base_name))
+        masked_tile = ImageChops.multiply(img, mask)
+        masked_tile.save("{}/{}".format(PRE_ASSIGNED_FILES_DIR, tile_base_name))
 
+        # write the annotations text file for this tile
+        with open(annotations_path, 'w') as f:
+            for item in feature_coordinates:
+                f.write("%s\n" % item)
 
+        # keep stats of the objects on each tile
+        objects_per_tile.append((tile_id, frame_id, number_of_objects_this_tile))
 
-for idx,row in enumerate(tiles_df.itertuples()):
-    basename = os.path.basename(row.tile_file_name)
-    destination_name = '{}/{}'.format(PRE_ASSIGNED_FILES_DIR, basename)
-    shutil.copyfile(row.tile_file_name, destination_name)
-
-    if idx % 100 == 0:
-        logger.info("processed {} of {} tiles".format(idx+1, len(tiles_df)))
-
-    run_name = row.run_name
-    frame_id = row.frame_id
-    tile_id = row.tile_id
-    tile_mz_lower = row.mz_lower
-    tile_mz_upper = row.mz_upper
-    file_idx = file_idx_for_run(run_name)
-    tile_rt = row.retention_time_secs
-
-    number_of_objects_this_tile = 0
-
-    # define the charge-1 region
-    mask_region_y_left,mask_region_y_right = scan_coords_for_single_charge_region(tile_mz_lower, tile_mz_upper)
-
-    # store metadata for this tile
-    tile_metadata = {'run_name':run_name, 'frame_id':frame_id, 'tile_id':tile_id, 'basename':basename, 'mask_region_y_left':mask_region_y_left, 'mask_region_y_right':mask_region_y_right}
-
-    annotations_filename = '{}.txt'.format(os.path.splitext(basename)[0])
-    annotations_path = '{}/{}'.format(PRE_ASSIGNED_FILES_DIR, annotations_filename)
-    tile_list.append((basename, annotations_filename))
-
-    # find the features intersecting with this tile
-    intersecting_features_df = sequences_df[(sequences_df.file_idx == file_idx) & (sequences_df.rt_lower <= tile_rt) & (sequences_df.rt_upper >= tile_rt) & (sequences_df.mz_lower >= tile_mz_lower) & (sequences_df.mz_upper <= tile_mz_upper)]
-    # remember the coordinates so we can write them to the annotations file
-    feature_coordinates = []
-    # store the features for each tile so we can mask them later
-    tile_features_l = []
-    # draw the labels on the raw tile
-    img = Image.open(destination_name)
-    draw = ImageDraw.Draw(img)
-    for idx,feature in intersecting_features_df.iterrows():
-        (t,x0_buffer) = tile_pixel_x_from_mz(feature.mz_lower - MZ_BUFFER)
-        if t < tile_id:
-            x0_buffer = 1
-        (t,x1_buffer) = tile_pixel_x_from_mz(feature.mz_upper + MZ_BUFFER)
-        if t > tile_id:
-            x1_buffer = PIXELS_X
-        y0 = feature.scan_lower
-        y0_buffer = max((y0 - SCAN_BUFFER), SCAN_MIN)
-        y1 = feature.scan_upper
-        y1_buffer = min((y1 + SCAN_BUFFER), SCAN_MAX)
-        w = x1_buffer - x0_buffer
-        h = y1_buffer - y0_buffer
-        charge = feature.charge
-        isotopes = feature.number_of_isotopes
-        # calculate the annotation coordinates for the text file
-        yolo_x = (x0_buffer + (w / 2)) / PIXELS_X
-        yolo_y = (y0_buffer + (h / 2)) / PIXELS_Y
-        yolo_w = w / PIXELS_X
-        yolo_h = h / PIXELS_Y
-        # label the charge states we want to detect
-        if (charge >= MIN_CHARGE) and (charge <= MAX_CHARGE):
-            feature_class = calculate_feature_class(isotopes, charge)
-            # keep record of how many instances of each class
-            if feature_class in classes_d.keys():
-                classes_d[feature_class] += 1
-            else:
-                classes_d[feature_class] = 1
-            # add it to the list
-            feature_coordinates.append(("{} {:.6f} {:.6f} {:.6f} {:.6f}".format(feature_class, yolo_x, yolo_y, yolo_w, yolo_h)))
-            # draw the rectangle on the overlay
-            draw.rectangle(xy=[(x0_buffer, y0_buffer), (x1_buffer, y1_buffer)], fill=None, outline=CLASS_COLOUR[feature_class])
-            # draw the feature class name
-            draw.rectangle(xy=[(x0_buffer, y0_buffer-12), (x1_buffer, y0_buffer)], fill='darkgrey', outline=None)
-            draw.text((x0_buffer, y0_buffer-12), feature_names()[feature_class], font=feature_label_font, fill=CLASS_COLOUR[feature_class])
-            # store the pixel coords for each feature for this tile so we can mask the features later
-            tile_features_l.append({'x0_buffer':x0_buffer, 'y0_buffer':y0_buffer, 'x1_buffer':x1_buffer, 'y1_buffer':y1_buffer})
-            # keep record of the 'small' objects
-            total_objects += 1
-            if (yolo_w <= SMALL_OBJECT_W) or (yolo_h <= SMALL_OBJECT_H):
-                small_objects += 1
-            # keep track of the number of objects in this tile
-            number_of_objects_this_tile += 1
-        else:
-            logger.info("found a charge-{} feature - not included in the training set".format(charge))
-
-    # add it to the list
-    tile_metadata['tile_features_l'] = tile_features_l
-    tile_metadata_l.append(tile_metadata)
-
-    # write the overlay tile
-    img.save('{}/{}'.format(OVERLAY_FILES_DIR, basename))
-
-    # write the annotations text file
-    with open(annotations_path, 'w') as f:
-        for item in feature_coordinates:
-            f.write("%s\n" % item)
-    
-    objects_per_tile.append((tile_id, frame_id, number_of_objects_this_tile))
+# at this point we have all the referenced tiles in the pre-assigned directory, the charge-1 cloud and all labelled features are masked, and each tile has an annotations file
 
 # display the object counts for each class
 names = feature_names()
@@ -499,62 +369,23 @@ number_of_classes = MAX_CHARGE - MIN_CHARGE + 1
 max_batches = max(6000, max(2000*number_of_classes, len(train_set)))  # recommendation from AlexeyAB
 logger.info("set max_batches={}, steps={},{},{},{}".format(max_batches, int(0.4*max_batches), int(0.6*max_batches), int(0.8*max_batches), int(0.9*max_batches)))
 
-# copy the training set tiles and their annotation files to the training set directory
+# copy the training set tiles and their annotation files
 print("copying the training set to {}".format(TRAIN_SET_DIR))
-feature_counts_l = ray.get([apply_feature_mask.remote(file_pair, TRAIN_SET_DIR) for file_pair in train_set])
-train_set_object_count = sum(feature_counts_l)
+for file_pair in train_set:
+    shutil.copyfile('{}/{}'.format(PRE_ASSIGNED_FILES_DIR, file_pair[0]), '{}/{}'.format(TRAIN_SET_DIR, file_pair[0]))
+    shutil.copyfile('{}/{}'.format(PRE_ASSIGNED_FILES_DIR, file_pair[1]), '{}/{}'.format(TRAIN_SET_DIR, file_pair[1]))
 
-# copy the validation set tiles and their annotation files to the validation set directory
+# copy the validation set tiles and their annotation files
 print("copying the validation set to {}".format(VAL_SET_DIR))
-if args.inference_mode:
-    # in inference mode we don't want to mask anything
-    valid_set_object_count = 0
-    for file_pair in val_set:
-        shutil.copyfile('{}/{}'.format(PRE_ASSIGNED_FILES_DIR, file_pair[0]), '{}/{}'.format(VAL_SET_DIR, file_pair[0]))
-        shutil.copyfile('{}/{}'.format(PRE_ASSIGNED_FILES_DIR, file_pair[1]), '{}/{}'.format(VAL_SET_DIR, file_pair[1]))
+for file_pair in val_set:
+    shutil.copyfile('{}/{}'.format(PRE_ASSIGNED_FILES_DIR, file_pair[0]), '{}/{}'.format(VAL_SET_DIR, file_pair[0]))
+    shutil.copyfile('{}/{}'.format(PRE_ASSIGNED_FILES_DIR, file_pair[1]), '{}/{}'.format(VAL_SET_DIR, file_pair[1]))
 
-        # find this tile in the tile metadata
-        basename = file_pair[0]
-        found = False
-        for tile in tile_metadata_l:
-            if tile['basename'] == basename:
-                mask_region_y_left = tile['mask_region_y_left']
-                mask_region_y_right = tile['mask_region_y_right']
-                tile_features_l = tile['tile_features_l']
-                found = True
-                break
-        assert(found == True), "could not find the metadata for tile {}".format(basename)
-
-        # count how many objects there are in this set
-        valid_set_object_count += len(tile_features_l)
-else:
-    # training mode, so we want to mask the validation set
-    feature_counts_l = ray.get([apply_feature_mask.remote(file_pair, VAL_SET_DIR) for file_pair in val_set])
-    valid_set_object_count = sum(feature_counts_l)
-
-# copy the test set tiles and their annotation files to the test set directory
+# copy the test set tiles and their annotation files
 print("copying the test set to {}".format(TEST_SET_DIR))
-test_set_object_count = 0
 for file_pair in test_set:
     shutil.copyfile('{}/{}'.format(PRE_ASSIGNED_FILES_DIR, file_pair[0]), '{}/{}'.format(TEST_SET_DIR, file_pair[0]))
     shutil.copyfile('{}/{}'.format(PRE_ASSIGNED_FILES_DIR, file_pair[1]), '{}/{}'.format(TEST_SET_DIR, file_pair[1]))
-
-    # find this tile in the tile metadata
-    basename = file_pair[0]
-    found = False
-    for tile in tile_metadata_l:
-        if tile['basename'] == basename:
-            mask_region_y_left = tile['mask_region_y_left']
-            mask_region_y_right = tile['mask_region_y_right']
-            tile_features_l = tile['tile_features_l']
-            found = True
-            break
-    assert(found == True), "could not find the metadata for tile {}".format(basename)
-
-    # count how many objects there are in this set
-    test_set_object_count += len(tile_features_l)
-
-logger.info("set object counts - train {}, validation {}, test {}".format(train_set_object_count, valid_set_object_count, test_set_object_count))
 
 # create obj.names, for copying to ./darknet/data, with the object names, each one on a new line
 LOCAL_NAMES_FILENAME = "{}/peptides-obj.names".format(TRAINING_SET_BASE_DIR)
@@ -588,9 +419,6 @@ with open('{}/validation.txt'.format(TRAINING_SET_BASE_DIR), 'w') as f:
 with open('{}/test.txt'.format(TRAINING_SET_BASE_DIR), 'w') as f:
     for file_pair in test_set:
         f.write('data/peptides/sets/test/{}\n'.format(file_pair[0]))
-
-# shutdown Ray so we don't leave idle daemons around
-ray.shutdown()
 
 stop_run = time.time()
 print("total running time ({}): {} seconds".format(parser.prog, round(stop_run-start_run,1)))
