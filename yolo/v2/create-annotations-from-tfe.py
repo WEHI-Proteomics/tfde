@@ -157,7 +157,7 @@ else:
     sys.exit(1)
 
 # load the tile set metadata
-TILES_BASE_DIR = '{}/tiles/{}'.format(EXPERIMENT_DIR, tile_list_metadata['tile_set_name'])
+TILES_BASE_DIR = '{}/tiles/{}'.format(EXPERIMENT_DIR, tile_list_metadata['arguments']['tile_set_name'])
 TILE_SET_METADATA_FILE_NAME = '{}/metadata.json'.format(TILES_BASE_DIR)
 if os.path.isfile(TILE_SET_METADATA_FILE_NAME):
     with open(TILE_SET_METADATA_FILE_NAME) as json_file:
