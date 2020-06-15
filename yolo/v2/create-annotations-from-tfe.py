@@ -281,7 +281,7 @@ for idx,row in enumerate(tile_list_df.itertuples()):
             region = {'shape_attributes':{'name':'rect','x':x0_buffer, 'y':y0_buffer, 'width':w, 'height':h}, 'region_attributes':{'charge':charge, 'isotopes':isotopes}}
             regions_l.append(region)
         else:
-            logger.info("found a charge-{} feature - not included in the training set".format(charge))
+            logger.info("found a charge-{} feature - not included in the annotations".format(charge))
 
     tiles_key = 'run-{}-tile-{}'.format(tile_run_name, tile_id)
     if not tiles_key in tiles_d:
