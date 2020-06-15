@@ -200,11 +200,6 @@ tile_list_df['mz_upper'] = tile_list_df.apply(lambda row: mz_range_for_tile(row.
 tile_list_mz_lower = tile_list_df.mz_lower.min()
 tile_list_mz_upper = tile_list_df.mz_upper.max()
 
-print(tile_set_tiles_df.head())
-print()
-print(tile_list_df.head())
-sys.exit(1)
-
 tile_list_df['retention_time_secs'] = tile_list_df.apply(lambda row: tile_set_tiles_df[tile_set_tiles_df.base_name == row.base_name].iloc[0].retention_time_secs, axis=1)
 rt_lower = tile_list_df.retention_time_secs.min()
 rt_upper = tile_list_df.retention_time_secs.max()
