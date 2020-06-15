@@ -206,6 +206,10 @@ rt_upper = tile_list_df.retention_time_secs.max()
 
 tile_list_df['file_idx'] = tile_list_df.apply(lambda row: file_idx_for_run(row.run_name), axis=1)
 file_idxs = list(tile_list_df.file_idx.unique())
+if len(file_idxs) == 1:
+    file_idxs = '({})'.format(file_idxs[0])
+else:
+    file_idxs = '{}'.format(tuple(file_idxs))
 run_names_l = list(tile_list_df.run_name.unique())
 
 # only load the extracted features that will appear in the tile list
