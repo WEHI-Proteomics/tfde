@@ -18,7 +18,6 @@ args = parser.parse_args()
 
 # store the arguments as metadata for later reference
 metadata = {'arguments':vars(args)}
-print("{} metadata: {}".format(parser.prog, metadata))
 
 # parse the tile indexes
 indexes_l = []
