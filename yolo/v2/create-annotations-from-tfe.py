@@ -33,6 +33,8 @@ MAX_ISOTOPES = 7
 MZ_BUFFER = 0.25
 SCAN_BUFFER = 20
 
+SERVER_URL = "http://spectra-server-lb-1653892276.ap-southeast-2.elb.amazonaws.com"
+
 # get the m/z extent for the specified tile ID
 def mz_range_for_tile(tile_id):
     assert (tile_id >= 0) and (tile_id <= TILES_PER_FRAME-1), "tile_id not in range"
@@ -250,12 +252,15 @@ tiles_d = {}
 for idx,row in enumerate(tile_list_df.itertuples()):
     # attributes of this tile
     tile_id = row.tile_id
+    tile_frame_id = row.frame_id
     tile_rt = row.retention_time_secs
     tile_mz_lower = row.mz_lower
     tile_mz_upper = row.mz_upper
     tile_file_idx = row.file_idx
     tile_run_name = row.run_name
     tile_full_path = 'file://{}'.format(row.full_path)
+    tile_url = '{}/tile/run/{}/tile/{}/frame/{}'.format(SERVER_URL, tile_run_name, tile_id, tile_frame_id)
+
     # find the features intersecting with this tile
     intersecting_features_df = sequences_df[(sequences_df.file_idx == tile_file_idx) & (sequences_df.rt_lower <= tile_rt) & (sequences_df.rt_upper >= tile_rt) & (sequences_df.mz_lower >= tile_mz_lower) & (sequences_df.mz_upper <= tile_mz_upper)]
     # calculate the coordinates for the annotations file
@@ -278,7 +283,9 @@ for idx,row in enumerate(tile_list_df.itertuples()):
         # label the charge states we want to detect
         if (charge >= MIN_CHARGE) and (charge <= MAX_CHARGE):
             feature_class = calculate_feature_class(isotopes, charge)
-            region = {'shape_attributes':{'name':'rect','x':x0_buffer, 'y':y0_buffer, 'width':w, 'height':h}, 'region_attributes':{'charge':charge, 'isotopes':isotopes}}
+            charge_str = '{}+'.format(charge)
+            isotopes_str = '{}'.format(isotopes)
+            region = {'shape_attributes':{'name':'rect','x':x0_buffer, 'y':y0_buffer, 'width':w, 'height':h}, 'region_attributes':{'charge':charge_str, 'isotopes':isotopes_str}}
             regions_l.append(region)
         else:
             logger.info("found a charge-{} feature - not included in the annotations".format(charge))
@@ -286,7 +293,7 @@ for idx,row in enumerate(tile_list_df.itertuples()):
     tiles_key = 'run-{}-tile-{}'.format(tile_run_name, tile_id)
     if not tiles_key in tiles_d:
         tiles_d[tiles_key] = {}
-    tiles_d[tiles_key][tile_full_path] = {'filename':tile_full_path, 'size':-1, 'regions':regions_l, 'file_attributes':{}}
+    tiles_d[tiles_key]['frame-{}'.format(tile_frame_id)] = {'filename':tile_url, 'tile_set_path':tile_full_path, 'size':-1, 'regions':regions_l, 'file_attributes':{}}
 
 # write out a separate JSON file for the annotations for each run and tile
 print('writing annotation files to {}'.format(ANNOTATIONS_DIR))
