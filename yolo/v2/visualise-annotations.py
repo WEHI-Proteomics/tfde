@@ -184,7 +184,7 @@ for annotation_file_name in annotations_file_list:
                 # draw the feature class name
                 draw.text((x, y-12), feature_names[feature_class], font=feature_label_font, fill=CLASS_COLOUR[feature_class])
 
-            # write the annotated tile to the annotations directory
+            # write the tile to the overlays directory
             TILE_DIR = '{}/run-{}/tile-{}'.format(OVERLAY_BASE_DIR, run_name, tile_id)
             if not os.path.exists(TILE_DIR):
                 os.makedirs(TILE_DIR)
