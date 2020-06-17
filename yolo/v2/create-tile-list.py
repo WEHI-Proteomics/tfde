@@ -5,6 +5,28 @@ import shutil
 import sys
 import time
 import json
+import pandas as pd
+
+
+PIXELS_X = 910
+PIXELS_Y = 910  # equal to the number of scan lines
+MZ_MIN = 100.0
+MZ_MAX = 1700.0
+SCAN_MAX = PIXELS_Y
+SCAN_MIN = 1
+MZ_PER_TILE = 18.0
+TILES_PER_FRAME = int((MZ_MAX - MZ_MIN) / MZ_PER_TILE) + 1
+MIN_TILE_IDX = 0
+MAX_TILE_IDX = TILES_PER_FRAME-1
+
+# get the m/z extent for the specified tile ID
+def mz_range_for_tile(tile_id):
+    assert (tile_id >= 0) and (tile_id <= TILES_PER_FRAME-1), "tile_id not in range"
+
+    mz_lower = MZ_MIN + (tile_id * MZ_PER_TILE)
+    mz_upper = mz_lower + MZ_PER_TILE
+    return (mz_lower, mz_upper)
+
 
 parser = argparse.ArgumentParser(description='Create a tile list from a tile set.')
 parser.add_argument('-eb','--experiment_base_dir', type=str, default='./experiments', help='Path to the experiments directory.', required=False)
@@ -81,6 +103,41 @@ if len(file_list) > 0:
             f.write('{}\n'.format(file))
 else:
     print("could not find any tiles in the tile set directory: {}".format(TILES_BASE_DIR))
+
+# create a DF to hold the metadata for each tile
+tile_list_df = pd.DataFrame(file_list, columns=['full_path'])
+tile_list_df['base_name'] = tile_list_df.apply(lambda row: os.path.basename(row.full_path), axis=1)
+
+# load the tile list metadata
+TILE_LIST_METADATA_FILE_NAME = '{}/metadata.json'.format(TILE_LIST_DIR)
+if os.path.isfile(TILE_LIST_METADATA_FILE_NAME):
+    with open(TILE_LIST_METADATA_FILE_NAME) as json_file:
+        tile_list_metadata = json.load(json_file)
+else:
+    print("Could not find the tile list's metadata file: {}".format(TILE_LIST_METADATA_FILE_NAME))
+    sys.exit(1)
+
+# load the tile set metadata so we can get the retention time for each tile
+tile_set_name = tile_list_metadata['arguments']['tile_set_name']
+TILES_BASE_DIR = '{}/tiles/{}'.format(EXPERIMENT_DIR, tile_set_name)
+TILE_SET_METADATA_FILE_NAME = '{}/metadata.json'.format(TILES_BASE_DIR)
+if os.path.isfile(TILE_SET_METADATA_FILE_NAME):
+    with open(TILE_SET_METADATA_FILE_NAME) as json_file:
+        tile_set_metadata = json.load(json_file)
+        tile_set_tiles_df = pd.DataFrame(tile_set_metadata['tiles'])
+        tile_set_tiles_df['base_name'] = tile_set_tiles_df.apply(lambda row: os.path.basename(row.tile_file_name), axis=1)
+else:
+    print("Could not find the tile list's metadata file: {}".format(TILE_SET_METADATA_FILE_NAME))
+    sys.exit(1)
+
+# find the extent of the tile list in m/z, RT, runs
+tile_list_df['run_name'] = tile_list_df.apply(lambda row: row.base_name.split('-')[1], axis=1)
+tile_list_df['frame_id'] = tile_list_df.apply(lambda row: int(row.base_name.split('-')[3]), axis=1)
+tile_list_df['tile_id'] = tile_list_df.apply(lambda row: int(row.base_name.split('-')[5].split('.')[0]), axis=1)
+tile_list_df['mz_lower'] = tile_list_df.apply(lambda row: mz_range_for_tile(row.tile_id)[0], axis=1)
+tile_list_df['mz_upper'] = tile_list_df.apply(lambda row: mz_range_for_tile(row.tile_id)[1], axis=1)
+tile_list_df['retention_time_secs'] = tile_list_df.apply(lambda row: tile_set_tiles_df[tile_set_tiles_df.base_name == row.base_name].iloc[0].retention_time_secs, axis=1)
+metadata['tile_info'] = tile_list_df.to_dict('records')
 
 metadata["processed"] = time.ctime()
 metadata["processor"] = parser.prog
