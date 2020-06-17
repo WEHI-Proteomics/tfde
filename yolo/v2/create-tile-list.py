@@ -134,7 +134,7 @@ metadata["processed"] = time.ctime()
 metadata["processor"] = parser.prog
 
 # write out the metadata file
-print('writing the metadata file')
 metadata_filename = '{}/metadata.json'.format(TILE_LIST_DIR)
+print('writing the metadata file to {}'.format(metadata_filename))
 with open(metadata_filename, 'w') as outfile:
     json.dump(metadata, outfile)
