@@ -43,29 +43,6 @@ SMALL_OBJECT_W = SMALL_OBJECT_H = 16/416
 MZ_BUFFER = 0.25
 SCAN_BUFFER = 20
 
-# define the feature class colours
-CLASS_COLOUR = [
-    '#132580',  # class 0
-    '#4b27ff',  # class 1
-    '#9427ff',  # class 2
-    '#ff27fb',  # class 3
-    '#ff2781',  # class 4
-    '#ff3527',  # class 5
-    '#ff6727',  # class 6
-    '#ff9a27',  # class 7
-    '#ffc127',  # class 8
-    '#ffe527',  # class 9
-    '#e0ff27',  # class 10
-    '#63da21',  # class 11
-    '#27ff45',  # class 12
-    '#21daa5',  # class 13
-    '#135e80'   # class 14
-]
-
-# font paths for overlay labels
-UBUNTU_FONT_PATH = '/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf'
-MACOS_FONT_PATH = '/Library/Fonts/Arial.ttf'
-
 # get the m/z extent for the specified tile ID
 def mz_range_for_tile(tile_id):
     assert (tile_id >= 0) and (tile_id <= TILES_PER_FRAME-1), "tile_id not in range"
@@ -166,11 +143,6 @@ if os.path.exists(PRE_ASSIGNED_FILES_DIR):
     shutil.rmtree(PRE_ASSIGNED_FILES_DIR)
 os.makedirs(PRE_ASSIGNED_FILES_DIR)
 
-OVERLAY_FILES_DIR = '{}/overlays'.format(TRAINING_SET_BASE_DIR)
-if os.path.exists(OVERLAY_FILES_DIR):
-    shutil.rmtree(OVERLAY_FILES_DIR)
-os.makedirs(OVERLAY_FILES_DIR)
-
 MASK_FILES_DIR = '{}/masks'.format(TRAINING_SET_BASE_DIR)
 if os.path.exists(MASK_FILES_DIR):
     shutil.rmtree(MASK_FILES_DIR)
@@ -265,7 +237,7 @@ for annotation_file_name in annotations_file_list:
         mask_region_y_left,mask_region_y_right = scan_coords_for_single_charge_region(tile_mz_lower, tile_mz_upper)
         mask_draw.polygon(xy=[(0,0), (PIXELS_X,0), (PIXELS_X,mask_region_y_right), (0,mask_region_y_left)], fill='white', outline='white')
 
-        # set up the YOLO annotatiions file
+        # set up the YOLO annotations text file
         annotations_filename = '{}.txt'.format(os.path.splitext(tile_base_name)[0])
         annotations_path = '{}/{}'.format(PRE_ASSIGNED_FILES_DIR, annotations_filename)
         tile_list.append((tile_base_name, annotations_filename))
@@ -276,11 +248,6 @@ for annotation_file_name in annotations_file_list:
         if len(tile_regions) > 0:
             # load the tile from the tile set
             print("processing {}".format(tile_base_name))
-            img = Image.open(tile_full_path)
-
-            # get a drawing context for the tile
-            draw = ImageDraw.Draw(img)
-
             # render the annotations
             feature_coordinates = []
             for region in tile_regions:
@@ -308,11 +275,6 @@ for annotation_file_name in annotations_file_list:
                         classes_d[feature_class] = 1
                     # add it to the list
                     feature_coordinates.append(("{} {:.6f} {:.6f} {:.6f} {:.6f}".format(feature_class, yolo_x, yolo_y, yolo_w, yolo_h)))
-                    # draw the rectangle on the overlay
-                    draw.rectangle(xy=[(x, y), (x+width, y+height)], fill=None, outline=CLASS_COLOUR[feature_class])
-                    # draw the feature class name
-                    draw.rectangle(xy=[(x, y-12), (x+width, y)], fill='darkgrey', outline=None)
-                    draw.text((x, y-12), feature_names()[feature_class], font=feature_label_font, fill=CLASS_COLOUR[feature_class])
                     # draw the mask
                     mask_draw.rectangle(xy=[(x, y), (x+width, y+height)], fill='white', outline='white')
                     # keep record of the 'small' objects
@@ -323,11 +285,6 @@ for annotation_file_name in annotations_file_list:
                     number_of_objects_this_tile += 1
                 else:
                     logger.info("found a charge-{} feature - not included in the training set".format(charge))
-
-            # finish drawing the annotations on the overlay
-            del draw
-            # write the overlay tile
-            img.save('{}/{}'.format(OVERLAY_FILES_DIR, tile_base_name))
 
         # finish drawing the mask
         del mask_draw
