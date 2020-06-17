@@ -28,6 +28,7 @@ parser = argparse.ArgumentParser(description='Create annotation files for each p
 parser.add_argument('-eb','--experiment_base_dir', type=str, default='./experiments', help='Path to the experiments directory.', required=False)
 parser.add_argument('-en','--experiment_name', type=str, help='Name of the experiment.', required=True)
 parser.add_argument('-tln','--tile_list_name', type=str, help='Name of the tile list.', required=True)
+parser.add_argument('-ps','--predictions_source', type=str, choices=['via','tfe'], help='Source of the predictions.', required=True)
 args = parser.parse_args()
 
 # Print the arguments for the log
@@ -64,14 +65,14 @@ else:
 tile_set_name = tile_list_metadata['arguments']['tile_set_name']
 
 # check the predictions directory
-PREDICTIONS_DIR = '{}/predictions'.format(TILE_LIST_DIR)
+PREDICTIONS_DIR = '{}/annotations-from-{}/predictions'.format(TILE_LIST_DIR, args.predictions_source)
 if not os.path.exists(EXPERIMENT_DIR):
     print("The predictions directory is required but doesn't exist: {}".format(PREDICTIONS_DIR))
     sys.exit(1)
 
 # load the predictions file
 print('loading the predictions')
-PREDICTIONS_FILE_NAME = '{}/tile-list-{}-predictions.json'.format(PREDICTIONS_DIR, args.tile_list_name)
+PREDICTIONS_FILE_NAME = '{}/predictions.json'.format(PREDICTIONS_DIR)
 if os.path.isfile(PREDICTIONS_FILE_NAME):
     with open(PREDICTIONS_FILE_NAME) as file:
         prediction_json = json.load(file)
