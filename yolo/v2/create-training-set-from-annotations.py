@@ -229,7 +229,6 @@ small_objects = 0
 total_objects = 0
 tile_list = []
 objects_per_tile = []
-tile_metadata_l = []
 digits = '0123456789'
 
 # process all the annotations files
@@ -269,6 +268,7 @@ for annotation_file_name in annotations_file_list:
         # set up the YOLO annotatiions file
         annotations_filename = '{}.txt'.format(os.path.splitext(tile_base_name)[0])
         annotations_path = '{}/{}'.format(PRE_ASSIGNED_FILES_DIR, annotations_filename)
+        tile_list.append((tile_base_name, annotations_filename))
 
         # process each annotation for the tile
         number_of_objects_this_tile = 0
