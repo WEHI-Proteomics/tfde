@@ -108,18 +108,8 @@ else:
 tile_list_df = pd.DataFrame(file_list, columns=['full_path'])
 tile_list_df['base_name'] = tile_list_df.apply(lambda row: os.path.basename(row.full_path), axis=1)
 
-# load the tile list metadata
-TILE_LIST_METADATA_FILE_NAME = '{}/metadata.json'.format(TILE_LIST_DIR)
-if os.path.isfile(TILE_LIST_METADATA_FILE_NAME):
-    with open(TILE_LIST_METADATA_FILE_NAME) as json_file:
-        tile_list_metadata = json.load(json_file)
-else:
-    print("Could not find the tile list's metadata file: {}".format(TILE_LIST_METADATA_FILE_NAME))
-    sys.exit(1)
-
 # load the tile set metadata so we can get the retention time for each tile
-tile_set_name = tile_list_metadata['arguments']['tile_set_name']
-TILES_BASE_DIR = '{}/tiles/{}'.format(EXPERIMENT_DIR, tile_set_name)
+TILES_BASE_DIR = '{}/tiles/{}'.format(EXPERIMENT_DIR, args.tile_set_name)
 TILE_SET_METADATA_FILE_NAME = '{}/metadata.json'.format(TILES_BASE_DIR)
 if os.path.isfile(TILE_SET_METADATA_FILE_NAME):
     with open(TILE_SET_METADATA_FILE_NAME) as json_file:
