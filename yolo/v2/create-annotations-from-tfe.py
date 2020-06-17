@@ -176,6 +176,7 @@ ANNOTATIONS_DIR = '{}/annotations-from-tfe'.format(TILE_LIST_DIR)
 if os.path.exists(ANNOTATIONS_DIR):
     shutil.rmtree(ANNOTATIONS_DIR)
 os.makedirs(ANNOTATIONS_DIR)
+os.makedirs('{}/predictions'.format(ANNOTATIONS_DIR))
 
 # set up logging
 logger = logging.getLogger(__name__)  
