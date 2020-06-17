@@ -1,61 +1,23 @@
 import json
 from PIL import Image, ImageDraw, ImageFont
 import pandas as pd
-import sqlite3
-import numpy as np
 import os
 import argparse
 import time
 import sys
 import shutil
 
-PIXELS_X = 910
-PIXELS_Y = 910  # equal to the number of scan lines
-
-# charge states of interest
-MIN_CHARGE = 2
-MAX_CHARGE = 4
-
-# number of isotopes of interest
-MIN_ISOTOPES = 3
-MAX_ISOTOPES = 7
-
-# define the feature class colours
-CLASS_COLOUR = [
-    '#132580',  # class 0
-    '#4b27ff',  # class 1
-    '#9427ff',  # class 2
-    '#ff27fb',  # class 3
-    '#ff2781',  # class 4
-    '#ff3527',  # class 5
-    '#ff6727',  # class 6
-    '#ff9a27',  # class 7
-    '#ffc127',  # class 8
-    '#ffe527',  # class 9
-    '#e0ff27',  # class 10
-    '#63da21',  # class 11
-    '#27ff45',  # class 12
-    '#21daa5',  # class 13
-    '#135e80'   # class 14
-]
-
 # font paths for overlay labels
 UBUNTU_FONT_PATH = '/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf'
 MACOS_FONT_PATH = '/Library/Fonts/Arial.ttf'
-
-def feature_names():
-    names = []
-    for ch in range(MIN_CHARGE,MAX_CHARGE+1):
-        for iso in range(MIN_ISOTOPES,MAX_ISOTOPES+1):
-            names.append('charge-{}-isotopes-{}'.format(ch, iso))
-    return names
 
 #####################################
 parser = argparse.ArgumentParser(description='Create composite tiles that show predictions and ground truth.')
 parser.add_argument('-eb','--experiment_base_dir', type=str, default='./experiments', help='Path to the experiments directory.', required=False)
 parser.add_argument('-en','--experiment_name', type=str, help='Name of the experiment.', required=True)
-parser.add_argument('-tn','--training_set_name', type=str, help='Name of the training set.', required=True)
-parser.add_argument('-tid','--tile_id', type=int, help='Index of the tile for comparison of predictions.', required=True)
+parser.add_argument('-tln','--tile_list_name', type=str, help='Name of the tile list.', required=True)
+parser.add_argument('-asa','--annotations_source_a', type=str, choices=['via','tfe','predictions'], help='Source of the A annotations.', required=True)
+parser.add_argument('-asb','--annotations_source_b', type=str, choices=['via','tfe','predictions'], help='Source of the B annotations.', required=True)
 args = parser.parse_args()
 
 # Print the arguments for the log
@@ -72,35 +34,52 @@ if not os.path.exists(EXPERIMENT_DIR):
     print("The experiment directory is required but doesn't exist: {}".format(EXPERIMENT_DIR))
     sys.exit(1)
 
-# set up the training base directories
-TRAINING_SET_BASE_DIR = '{}/training-sets/{}'.format(EXPERIMENT_DIR, args.training_set_name)
-PRE_ASSIGNED_FILES_DIR = '{}/pre-assigned'.format(TRAINING_SET_BASE_DIR)
-OVERLAY_FILES_DIR = '{}/overlays'.format(TRAINING_SET_BASE_DIR)
-
-if not os.path.exists(TRAINING_SET_BASE_DIR):
-    print("The training set directory is required but doesn't exist: {}".format(TRAINING_SET_BASE_DIR))
+# the directory for this tile list
+TILE_LIST_BASE_DIR = '{}/tile-lists'.format(EXPERIMENT_DIR)
+TILE_LIST_DIR = '{}/{}'.format(TILE_LIST_BASE_DIR, args.tile_list_name)
+if not os.path.exists(TILE_LIST_DIR):
+    print("The tile list directory is required but doesn't exist: {}".format(TILE_LIST_DIR))
     sys.exit(1)
 
-if not os.path.exists(PRE_ASSIGNED_FILES_DIR):
-    print("The pre-assigned directory is required but doesn't exist: {}".format(PRE_ASSIGNED_FILES_DIR))
+# load the tile list metadata
+TILE_LIST_METADATA_FILE_NAME = '{}/metadata.json'.format(TILE_LIST_DIR)
+if os.path.isfile(TILE_LIST_METADATA_FILE_NAME):
+    with open(TILE_LIST_METADATA_FILE_NAME) as json_file:
+        tile_list_metadata = json.load(json_file)
+        tile_list_df = pd.DataFrame(tile_list_metadata['tile_info'])
+
+# load the font to use for labelling the overlays
+if os.path.isfile(UBUNTU_FONT_PATH):
+    feature_label_font = ImageFont.truetype(UBUNTU_FONT_PATH, 10)
+else:
+    feature_label_font = ImageFont.truetype(MACOS_FONT_PATH, 10)
+
+# check the annotations A directory
+ANNOTATIONS_A_DIR = '{}/annotations-from-{}'.format(TILE_LIST_DIR, args.annotations_source_a)
+if not os.path.exists(ANNOTATIONS_A_DIR):
+    print("The annotations directory is required but doesn't exist: {}".format(ANNOTATIONS_A_DIR))
     sys.exit(1)
 
-if not os.path.exists(OVERLAY_FILES_DIR):
-    print("The overlay directory is required but doesn't exist: {}".format(OVERLAY_FILES_DIR))
+# check the base overlay A directory
+OVERLAY_A_BASE_DIR = '{}/overlays'.format(ANNOTATIONS_A_DIR)
+if not os.path.exists(OVERLAY_A_BASE_DIR):
+    print("The overlay A directory is required but doesn't exist: {}".format(OVERLAY_A_BASE_DIR))
     sys.exit(1)
 
-PREDICTIONS_BASE_DIR = '{}/predictions/{}'.format(EXPERIMENT_DIR, args.training_set_name)
-TILE_PREDICTIONS_DIR = '{}/tile-{}'.format(PREDICTIONS_BASE_DIR, args.tile_id)
-if not os.path.exists(TILE_PREDICTIONS_DIR):
-    print("The tile predictions directory is required but doesn't exist: {}".format(TILE_PREDICTIONS_DIR))
+# check the annotations B directory
+ANNOTATIONS_B_DIR = '{}/annotations-from-{}'.format(TILE_LIST_DIR, args.annotations_source_b)
+if not os.path.exists(ANNOTATIONS_B_DIR):
+    print("The annotations directory is required but doesn't exist: {}".format(ANNOTATIONS_B_DIR))
     sys.exit(1)
 
-INDIVIDUAL_TILE_DIR = '{}/individual'.format(TILE_PREDICTIONS_DIR)
-if os.path.exists(INDIVIDUAL_TILE_DIR):
-    shutil.rmtree(INDIVIDUAL_TILE_DIR)
-os.makedirs(INDIVIDUAL_TILE_DIR)
+# check the base overlay B directory
+OVERLAY_B_BASE_DIR = '{}/overlays'.format(ANNOTATIONS_B_DIR)
+if not os.path.exists(OVERLAY_B_BASE_DIR):
+    print("The overlay A directory is required but doesn't exist: {}".format(OVERLAY_B_BASE_DIR))
+    sys.exit(1)
 
-COMPOSITE_TILE_DIR = '{}/composite'.format(TILE_PREDICTIONS_DIR)
+# check the composite tiles directory
+COMPOSITE_TILE_DIR = '{}/composite'.format(TILE_LIST_DIR)
 if os.path.exists(COMPOSITE_TILE_DIR):
     shutil.rmtree(COMPOSITE_TILE_DIR)
 os.makedirs(COMPOSITE_TILE_DIR)
@@ -111,38 +90,35 @@ if os.path.isfile(UBUNTU_FONT_PATH):
 else:
     feature_label_font = ImageFont.truetype(MACOS_FONT_PATH, 10)
 
-prediction_json_file = '{}/predictions.json'.format(TILE_PREDICTIONS_DIR)
-with open(prediction_json_file) as file:
-    prediction_json = json.load(file)
+# for each tile in the tile list, find its A and B overlay, and create a composite of them
+composite_tile_count = 0
+for idx,row in enumerate(tile_list_df.itertuples()):
+    # attributes of this tile
+    tile_id = row.tile_id
+    tile_frame_id = row.frame_id
+    tile_rt = row.retention_time_secs
+    tile_mz_lower = row.mz_lower
+    tile_mz_upper = row.mz_upper
+    tile_file_idx = row.file_idx
+    tile_run_name = row.run_name
+    tile_base_name = row.base_name
 
-for prediction_idx in range(len(prediction_json)):
-    tile_file_name = prediction_json[prediction_idx]['filename']
-    base_name = os.path.basename(tile_file_name)
-    print("processing {}".format(base_name))
-    img = Image.open(tile_file_name)
-
-    draw_predictions = ImageDraw.Draw(img)
-    predictions = prediction_json[prediction_idx]['objects']
-    for prediction in predictions:
-        feature_class_name = prediction['name']
-        feature_class = prediction['class_id']
-        coordinates = prediction['relative_coordinates']
-        x = (coordinates['center_x'] - (coordinates['width'] / 2)) * PIXELS_X
-        y = (coordinates['center_y'] - (coordinates['height'] / 2)) * PIXELS_Y
-        width = coordinates['width'] * PIXELS_X
-        height = coordinates['height'] * PIXELS_Y
-        # draw the bounding box
-        draw_predictions.rectangle(xy=[(x, y), (x+width, y+height)], fill=None, outline=CLASS_COLOUR[feature_class])
-        # draw the feature class name
-        draw_predictions.text((x, y-12), feature_class_name, font=feature_label_font, fill=CLASS_COLOUR[feature_class])
-
-    # write the annotated tile to the predictions directory
-    individual_name = '{}/{}'.format(INDIVIDUAL_TILE_DIR, base_name)
-    img.save(individual_name)
+    overlay_a_name = '{}/{}'.format(OVERLAY_A_BASE_DIR, tile_base_name)
+    overlay_b_name = '{}/{}'.format(OVERLAY_B_BASE_DIR, tile_base_name)
+    composite_name_dir = '{}/{}/tile-{}'.format(COMPOSITE_TILE_DIR, tile_run_name, tile_id)
+    composite_name = '{}/composite-{}'.format(composite_name_dir, tile_base_name)
 
     # make the composite
-    composite_name = '{}/{}'.format(COMPOSITE_TILE_DIR, base_name)
-    overlay_name = '{}/{}'.format(OVERLAY_FILES_DIR, base_name)
-    cmd = "convert {} {} +append -background darkgrey -splice 10x0+910+0 {}".format(overlay_name, individual_name, composite_name)
-    os.system(cmd)
-print("wrote {} composite tiles to {}".format(len(prediction_json), COMPOSITE_TILE_DIR))
+    if os.path.isfile(overlay_a_name) and os.path.isfile(overlay_b_name):
+        if not os.path.exists(composite_name_dir):
+            os.makedirs(composite_name_dir)
+        cmd = "convert {} {} +append -background darkgrey -splice 10x0+910+0 {}".format(overlay_a_name, overlay_b_name, composite_name)
+        os.system(cmd)
+        composite_tile_count += 1
+    else:
+        if not os.path.isfile(overlay_a_name):
+            print('could not find {} in {}'.format(tile_base_name, OVERLAY_A_BASE_DIR))
+        if not os.path.isfile(overlay_b_name):
+            print('could not find {} in {}'.format(tile_base_name, OVERLAY_B_BASE_DIR))
+
+print('wrote {} composite tiles to {}'.format(composite_tile_count, COMPOSITE_TILE_DIR))
