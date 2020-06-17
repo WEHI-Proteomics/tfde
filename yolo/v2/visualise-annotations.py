@@ -191,4 +191,4 @@ for annotation_file_name in annotations_file_list:
             tile_name = '{}/{}'.format(TILE_DIR, base_name)
             img.save(tile_name)
 
-print('wrote {} tiles to {}'.format(len(annotations.items()), ANNOTATIONS_DIR))
+print('wrote {} tiles to {}'.format(len(annotations.items()), OVERLAY_BASE_DIR))
