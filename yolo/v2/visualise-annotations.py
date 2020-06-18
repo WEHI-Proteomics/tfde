@@ -66,6 +66,8 @@ def feature_names():
 UBUNTU_FONT_PATH = '/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf'
 MACOS_FONT_PATH = '/Library/Fonts/Arial.ttf'
 
+digits = '0123456789'
+
 
 ###########################
 parser = argparse.ArgumentParser(description='Visualise tile list annotations.')
@@ -107,11 +109,12 @@ else:
     tile_file_names_df = pd.DataFrame(tile_file_names_l, columns=['full_path'])
     tile_file_names_df['base_name'] = tile_file_names_df.apply(lambda row: os.path.basename(row.full_path), axis=1)
 
-# load the font to use for labelling the overlays
-if os.path.isfile(UBUNTU_FONT_PATH):
-    feature_label_font = ImageFont.truetype(UBUNTU_FONT_PATH, 10)
-else:
-    feature_label_font = ImageFont.truetype(MACOS_FONT_PATH, 10)
+# load the tile list metadata
+TILE_LIST_METADATA_FILE_NAME = '{}/metadata.json'.format(TILE_LIST_DIR)
+if os.path.isfile(TILE_LIST_METADATA_FILE_NAME):
+    with open(TILE_LIST_METADATA_FILE_NAME) as json_file:
+        tile_list_metadata = json.load(json_file)
+        tile_list_df = pd.DataFrame(tile_list_metadata['tile_info'])
 
 # check the annotations directory
 ANNOTATIONS_DIR = '{}/annotations-from-{}'.format(TILE_LIST_DIR, args.annotations_source)
@@ -128,6 +131,12 @@ os.makedirs(OVERLAY_BASE_DIR)
 # initialise the feature class names
 feature_names = feature_names()
 
+# load the font to use for labelling the overlays
+if os.path.isfile(UBUNTU_FONT_PATH):
+    feature_label_font = ImageFont.truetype(UBUNTU_FONT_PATH, 10)
+else:
+    feature_label_font = ImageFont.truetype(MACOS_FONT_PATH, 10)
+
 # load the annotations file(s)
 annotations_file_list = sorted(glob.glob("{}/annotations-run-*-tile-*.json".format(ANNOTATIONS_DIR)))
 for annotation_file_name in annotations_file_list:
@@ -136,32 +145,20 @@ for annotation_file_name in annotations_file_list:
     with open(annotation_file_name) as file:
         annotations = json.load(file)
 
-    digits = '0123456789'
-    for tile in list(annotations.items()):
-        tile_d = tile[1]
+    for tile_key in list(annotations.keys()):
+        tile_d = annotations[tile_key]
+        tile_base_name = tile_d['file_attributes']['source']['base_name']
+        tile_metadata = tile_list_df[tile_list_df.base_name == tile_base_name].iloc[0]
+        tile_full_path = tile_metadata.tile_file_name
+        tile_id = tile_metadata.tile_id
+        frame_id = tile_metadata.frame_id
+        run_name = tile_metadata.run_name
         tile_regions = tile_d['regions']
         # process this tile if there are annotations for it
         if len(tile_regions) > 0:
-            # load the tile
-            tile_url = tile_d['filename']  # this is the URL so we need to download it
-
-            # determine the frame_id and tile_id
-            splits = tile_url.split('/')
-            run_name = splits[5]
-            tile_id = int(splits[7])
-            frame_id = int(splits[9])
-
-            base_name = "run-{}-frame-{}-tile-{}.png".format(run_name, frame_id, tile_id)
-            bn = tile_file_names_df[tile_file_names_df.base_name == base_name]
-            if len(bn) == 1:
-                full_path = bn.iloc[0].full_path
-            else:
-                print('encountered a tile in the annotations that is not in the tile list: {}'.format(base_name))
-                sys.exit(1)
-
             # load the tile from the tile set
-            print("processing {}".format(base_name))
-            img = Image.open(full_path)
+            print("processing {}".format(tile_base_name))
+            img = Image.open(tile_full_path)
 
             # get a drawing context for the tile
             draw = ImageDraw.Draw(img)
@@ -182,13 +179,14 @@ for annotation_file_name in annotations_file_list:
                 # draw the bounding box
                 draw.rectangle(xy=[(x, y), (x+width, y+height)], fill=None, outline=CLASS_COLOUR[feature_class])
                 # draw the feature class name
+                draw.rectangle(xy=[(x, y-12), (x+width, y)], fill='darkgrey', outline=None)
                 draw.text((x, y-12), feature_names[feature_class], font=feature_label_font, fill=CLASS_COLOUR[feature_class])
 
             # write the tile to the overlays directory
             TILE_DIR = '{}/run-{}/tile-{}'.format(OVERLAY_BASE_DIR, run_name, tile_id)
             if not os.path.exists(TILE_DIR):
                 os.makedirs(TILE_DIR)
-            tile_name = '{}/{}'.format(TILE_DIR, base_name)
+            tile_name = '{}/{}'.format(TILE_DIR, tile_base_name)
             img.save(tile_name)
 
 print('wrote {} tiles to {}'.format(len(annotations.items()), OVERLAY_BASE_DIR))

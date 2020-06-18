@@ -57,6 +57,7 @@ TILE_LIST_METADATA_FILE_NAME = '{}/metadata.json'.format(TILE_LIST_DIR)
 if os.path.isfile(TILE_LIST_METADATA_FILE_NAME):
     with open(TILE_LIST_METADATA_FILE_NAME) as json_file:
         tile_list_metadata = json.load(json_file)
+        tile_list_df = pd.DataFrame(tile_list_metadata['tile_info'])
 else:
     print("Could not find the tile list's metadata file: {}".format(TILE_LIST_METADATA_FILE_NAME))
     sys.exit(1)
@@ -91,10 +92,11 @@ tiles_d = {}
 for prediction_idx in range(len(prediction_json)):
     tile_file_name = prediction_json[prediction_idx]['filename']
     tile_base_name = os.path.basename(tile_file_name)
-    splits = tile_base_name.split('-')
-    run_name = splits[1]
-    frame_id = int(splits[3])
-    tile_id = int(splits[5].split('.')[0])
+    # load the tile metadata
+    tile_metadata = tile_list_df[tile_list_df.base_name == tile_base_name].iloc[0]
+    run_name = tile_metadata.run_name
+    frame_id = tile_metadata.frame_id
+    tile_id = tile_metadata.tile_id
     tile_url = '{}/tile/run/{}/tile/{}/frame/{}'.format(SERVER_URL, run_name, tile_id, frame_id)
     print("processing {}".format(tile_base_name))
     predictions = prediction_json[prediction_idx]['objects']

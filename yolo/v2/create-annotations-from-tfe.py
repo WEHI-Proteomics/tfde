@@ -138,37 +138,14 @@ if not os.path.exists(TILE_LIST_DIR):
     print("The tile list directory is required but doesn't exist: {}".format(TILE_LIST_DIR))
     sys.exit(1)
 
-# the tile list file
-TILE_LIST_FILE_NAME = '{}/tile-list-{}.txt'.format(TILE_LIST_DIR, args.tile_list_name)
-if not os.path.isfile(TILE_LIST_FILE_NAME):
-    print("The tile list is required but doesn't exist: {}".format(TILE_LIST_FILE_NAME))
-    sys.exit(1)
-else:
-    with open(TILE_LIST_FILE_NAME) as f:
-        tile_file_names_l = f.read().splitlines()
-    tile_list_df = pd.DataFrame(tile_file_names_l, columns=['full_path'])
-    tile_list_df['base_name'] = tile_list_df.apply(lambda row: os.path.basename(row.full_path), axis=1)
-
 # load the tile list metadata
 TILE_LIST_METADATA_FILE_NAME = '{}/metadata.json'.format(TILE_LIST_DIR)
 if os.path.isfile(TILE_LIST_METADATA_FILE_NAME):
     with open(TILE_LIST_METADATA_FILE_NAME) as json_file:
         tile_list_metadata = json.load(json_file)
+        tile_list_df = pd.DataFrame(tile_list_metadata['tile_info'])
 else:
     print("Could not find the tile list's metadata file: {}".format(TILE_LIST_METADATA_FILE_NAME))
-    sys.exit(1)
-
-# load the tile set metadata
-tile_set_name = tile_list_metadata['arguments']['tile_set_name']
-TILES_BASE_DIR = '{}/tiles/{}'.format(EXPERIMENT_DIR, tile_set_name)
-TILE_SET_METADATA_FILE_NAME = '{}/metadata.json'.format(TILES_BASE_DIR)
-if os.path.isfile(TILE_SET_METADATA_FILE_NAME):
-    with open(TILE_SET_METADATA_FILE_NAME) as json_file:
-        tile_set_metadata = json.load(json_file)
-        tile_set_tiles_df = pd.DataFrame(tile_set_metadata['tiles'])
-        tile_set_tiles_df['base_name'] = tile_set_tiles_df.apply(lambda row: os.path.basename(row.tile_file_name), axis=1)
-else:
-    print("Could not find the tile list's metadata file: {}".format(TILE_SET_METADATA_FILE_NAME))
     sys.exit(1)
 
 # check the annotations directory
@@ -194,17 +171,9 @@ logger.addHandler(console_handler)
 logger.info("{} info: {}".format(parser.prog, metadata))
 
 # find the extent of the tile list in m/z, RT, runs
-tile_list_df['run_name'] = tile_list_df.apply(lambda row: row.base_name.split('-')[1], axis=1)
-tile_list_df['frame_id'] = tile_list_df.apply(lambda row: int(row.base_name.split('-')[3]), axis=1)
-tile_list_df['tile_id'] = tile_list_df.apply(lambda row: int(row.base_name.split('-')[5].split('.')[0]), axis=1)
-
-tile_list_df['mz_lower'] = tile_list_df.apply(lambda row: mz_range_for_tile(row.tile_id)[0], axis=1)
-tile_list_df['mz_upper'] = tile_list_df.apply(lambda row: mz_range_for_tile(row.tile_id)[1], axis=1)
-
 tile_list_mz_lower = tile_list_df.mz_lower.min()
 tile_list_mz_upper = tile_list_df.mz_upper.max()
 
-tile_list_df['retention_time_secs'] = tile_list_df.apply(lambda row: tile_set_tiles_df[tile_set_tiles_df.base_name == row.base_name].iloc[0].retention_time_secs, axis=1)
 rt_lower = tile_list_df.retention_time_secs.min()
 rt_upper = tile_list_df.retention_time_secs.max()
 
