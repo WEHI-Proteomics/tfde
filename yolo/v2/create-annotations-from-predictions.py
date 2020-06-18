@@ -86,6 +86,7 @@ ANNOTATIONS_DIR = '{}/annotations-from-predictions'.format(TILE_LIST_DIR)
 if os.path.exists(ANNOTATIONS_DIR):
     shutil.rmtree(ANNOTATIONS_DIR)
 os.makedirs(ANNOTATIONS_DIR)
+os.makedirs('{}/predictions'.format(ANNOTATIONS_DIR))
 
 # for each prediction in the file, create an annotation
 tiles_d = {}
