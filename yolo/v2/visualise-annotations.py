@@ -171,9 +171,10 @@ for annotation_file_name in annotations_file_list:
             draw = ImageDraw.Draw(img)
 
             # draw the tile info
-            draw.rectangle(xy=[(0, 0), (PIXELS_X, 24)], fill=TINT_COLOR+(OPACITY,), outline=None)
-            draw.text((0, 0), '{} - {} m/z'.format(mz_lower, mz_upper), font=feature_label_font, fill='lawngreen')
-            draw.text((0, 12), '{} secs'.format(retention_time), font=feature_label_font, fill='lawngreen')
+            draw.rectangle(xy=[(0, 0), (PIXELS_X, 36)], fill=TINT_COLOR+(OPACITY,), outline=None)
+            draw.text((0, 0), 'annotations from {}'.format(args.annotations_source), font=feature_label_font, fill='lawngreen')
+            draw.text((0, 12), '{} - {} m/z'.format(mz_lower, mz_upper), font=feature_label_font, fill='lawngreen')
+            draw.text((0, 24), '{} secs'.format(retention_time), font=feature_label_font, fill='lawngreen')
 
             # render the annotations
             feature_coordinates = []
