@@ -192,7 +192,7 @@ for annotation_file_name in annotations_file_list:
                 # draw the bounding box
                 draw.rectangle(xy=[(x, y), (x+width, y+height)], fill=None, outline=CLASS_COLOUR[feature_class])
                 # draw the feature class name
-                draw.rectangle(xy=[(x, y-12), (x+width, y)], fill='darkslategray', outline=None)
+                draw.rectangle(xy=[(x, y-12), (x+width, y)], fill=TINT_COLOR+(OPACITY,), outline=None)
                 draw.text((x, y-12), feature_names[feature_class], font=feature_label_font, fill=CLASS_COLOUR[feature_class])
 
             # write the tile to the overlays directory
