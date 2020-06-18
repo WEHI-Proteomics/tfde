@@ -116,6 +116,7 @@ TILE_LIST_METADATA_FILE_NAME = '{}/metadata.json'.format(TILE_LIST_DIR)
 if os.path.isfile(TILE_LIST_METADATA_FILE_NAME):
     with open(TILE_LIST_METADATA_FILE_NAME) as json_file:
         tile_list_metadata = json.load(json_file)
+        tile_list_df = pd.DataFrame(tile_list_metadata['tile_info'])
 else:
     print("Could not find the tile list's metadata file: {}".format(TILE_LIST_METADATA_FILE_NAME))
     sys.exit(1)
@@ -206,16 +207,16 @@ for annotation_file_name in annotations_file_list:
         annotations = json.load(file)
 
     # for each tile in the annotations
-    for tile in list(annotations.items()):
-        tile_d = tile[1]
-        tile_base_name = tile_d['source']['tile']['base_name']
-        tile_full_path = '{}/{}'.format(TILES_BASE_DIR, tile_base_name)
+    for tile_key in list(annotations.keys()):
+        tile_d = annotations[tile_key]
 
-        # determine the frame_id and tile_id
-        splits = tile_base_name.split('-')
-        run_name = splits[1]
-        frame_id = int(splits[3])
-        tile_id = int(splits[5].split('.')[0])
+        # get the tile's metadata
+        tile_base_name = tile_d['file_attributes']['source']['tile']['base_name']
+        tile_metadata = tile_list_df[tile_list_df.base_name == tile_base_name].iloc[0]
+        tile_full_path = tile_metadata.full_path
+        tile_id = tile_metadata.tile_id
+        frame_id = tile_metadata.frame_id
+        run_name = tile_metadata.run_name
 
         # copy the tile to the pre-assigned directory
         destination_name = '{}/{}'.format(PRE_ASSIGNED_FILES_DIR, tile_base_name)
