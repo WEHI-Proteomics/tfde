@@ -56,17 +56,6 @@ def mz_range_for_tile(tile_id):
     mz_upper = mz_lower + MZ_PER_TILE
     return (mz_lower, mz_upper)
 
-# set a zero pixel's colour to be the channel-wise mean of its neighbours
-def interpolate_pixels(tile_im_array):
-    for x in range(4, PIXELS_X-4):
-        for y in range(4, PIXELS_Y-4):
-            c = tile_im_array[y,x]
-            n = tile_im_array[y-4:y+5,x-1:x+2]
-            if (not c.any()) and n.any():  # this is a zero pixel and there is at least one non-zero pixel in this region
-                n = n.reshape((n.shape[0] * n.shape[1], n.shape[2]))
-                tile_im_array[y,x] = np.mean(n, axis=0)
-    return tile_im_array
-
 def create_indexes(db_file_name):
     db_conn = sqlite3.connect(db_file_name)
     src_c = db_conn.cursor()
@@ -119,10 +108,6 @@ def render_frame(run_name, converted_db_name, frame_id, retention_time_secs, min
                 c = r[2]
                 tile_im_array[y,x,:] = c
 
-            if args.interpolate_neighbouring_pixels:
-                # fill in zero pixels with interpolated values
-                tile_im_array = interpolate_pixels(tile_im_array)
-
             # create an image of the intensity array
             tile = Image.fromarray(tile_im_array, 'RGB')
             tile_file_name = '{}/run-{}-frame-{}-tile-{}.png'.format(TILES_BASE_DIR, run_name, frame_id, tile_id)
@@ -150,7 +135,6 @@ parser.add_argument('-rtl','--rt_lower', type=int, default=200, help='Lower boun
 parser.add_argument('-rtu','--rt_upper', type=int, default=800, help='Upper bound of the RT range.', required=False)
 parser.add_argument('-maxpi','--maximum_pixel_intensity', type=int, default=1000, help='Maximum pixel intensity for encoding, above which will be clipped.', required=False)
 parser.add_argument('-minpi','--minimum_pixel_intensity', type=int, default=1, help='Minimum pixel intensity for encoding, below which will be clipped.', required=False)
-parser.add_argument('-inp','--interpolate_neighbouring_pixels', action='store_true', help='Use the value of surrounding pixels to fill zero pixels.')
 parser.add_argument('-tidl','--tile_idx_lower', type=int, default=20, help='Lower range of the tile indexes to render. Must be between {} and {}'.format(MIN_TILE_IDX,MAX_TILE_IDX), required=False)
 parser.add_argument('-tidu','--tile_idx_upper', type=int, default=40, help='Upper range of the tile indexes to render. Must be between {} and {}'.format(MIN_TILE_IDX,MAX_TILE_IDX), required=False)
 parser.add_argument('-rm','--ray_mode', type=str, choices=['local','cluster'], default='cluster', help='The Ray mode to use.', required=False)
