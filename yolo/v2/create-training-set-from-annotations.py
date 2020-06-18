@@ -189,12 +189,6 @@ val_proportion = 0.1
 test_proportion = 0.0  # there's no need for a test set because mAP is measured on the validation set
 logger.info("set proportions: train {}, validation {}, test {}".format(train_proportion, val_proportion, test_proportion))
 
-# load the font to use for labelling the overlays
-if os.path.isfile(UBUNTU_FONT_PATH):
-    feature_label_font = ImageFont.truetype(UBUNTU_FONT_PATH, 10)
-else:
-    feature_label_font = ImageFont.truetype(MACOS_FONT_PATH, 10)
-
 # copy the tiles from the tile set to the pre-assigned directory, create its overlay and label text file
 classes_d = {}
 small_objects = 0
