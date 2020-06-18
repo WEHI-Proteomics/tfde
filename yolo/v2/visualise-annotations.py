@@ -49,8 +49,7 @@ CLASS_COLOUR = [
 
 # for drawing on tiles
 TINT_COLOR = (0, 0, 0)  # Black
-TRANSPARENCY = 0.6  # Degree of transparency, 0-100%
-OPACITY = int(255 * TRANSPARENCY)
+OPACITY = int(255 * 0.1)  # lower opacity means more transparent
 
 # font paths for overlay labels
 UBUNTU_FONT_PATH = '/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf'
