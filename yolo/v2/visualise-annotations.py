@@ -119,6 +119,9 @@ if os.path.isfile(TILE_LIST_METADATA_FILE_NAME):
     with open(TILE_LIST_METADATA_FILE_NAME) as json_file:
         tile_list_metadata = json.load(json_file)
         tile_list_df = pd.DataFrame(tile_list_metadata['tile_info'])
+else:
+    print("Could not find the tile list's metadata file: {}".format(TILE_LIST_METADATA_FILE_NAME))
+    sys.exit(1)
 
 # check the annotations directory
 ANNOTATIONS_DIR = '{}/annotations-from-{}'.format(TILE_LIST_DIR, args.annotations_source)
