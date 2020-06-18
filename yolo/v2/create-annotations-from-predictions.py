@@ -115,7 +115,7 @@ for prediction_idx in range(len(prediction_json)):
     tiles_key = 'run-{}-tile-{}'.format(run_name, tile_id)
     if not tiles_key in tiles_d:
         tiles_d[tiles_key] = {}
-    tiles_d[tiles_key]['frame-{}'.format(frame_id)] = {'filename':tile_url, 'source':{'annotation':'predictions','tile':{'experiment_name':args.experiment_name,'tile_set':tile_set_name,'base_name':tile_base_name}}, 'size':-1, 'regions':regions_l, 'file_attributes':{}}
+    tiles_d[tiles_key]['frame-{}'.format(frame_id)] = {'filename':tile_url, 'size':-1, 'regions':regions_l, 'file_attributes':{'source':{'annotation':'predictions','tile':{'experiment_name':args.experiment_name,'tile_set':tile_set_name,'base_name':tile_base_name}}}}
 
 # write out a separate JSON file for the annotations for each run and tile
 print('writing annotation files to {}'.format(ANNOTATIONS_DIR))
