@@ -149,7 +149,7 @@ for annotation_file_name in annotations_file_list:
         tile_d = annotations[tile_key]
         tile_base_name = tile_d['file_attributes']['source']['tile']['base_name']
         tile_metadata = tile_list_df[tile_list_df.base_name == tile_base_name].iloc[0]
-        tile_full_path = tile_metadata.tile_file_name
+        tile_full_path = tile_metadata.full_path
         tile_id = tile_metadata.tile_id
         frame_id = tile_metadata.frame_id
         run_name = tile_metadata.run_name
