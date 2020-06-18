@@ -49,7 +49,7 @@ CLASS_COLOUR = [
 
 # for drawing on tiles
 TINT_COLOR = (0, 0, 0)  # Black
-TRANSPARENCY = 0.25  # Degree of transparency, 0-100%
+TRANSPARENCY = 0.6  # Degree of transparency, 0-100%
 OPACITY = int(255 * TRANSPARENCY)
 
 # font paths for overlay labels
