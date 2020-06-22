@@ -111,8 +111,8 @@ for idx,row in enumerate(tile_list_df.itertuples()):
         composite_tile_count += 1
     else:
         if not os.path.isfile(overlay_a_name):
-            print('could not find {} in {}'.format(tile_base_name, OVERLAY_A_BASE_DIR))
+            print('could not find {}'.format(overlay_a_name))
         if not os.path.isfile(overlay_b_name):
-            print('could not find {} in {}'.format(tile_base_name, OVERLAY_B_BASE_DIR))
+            print('could not find {}'.format(overlay_b_name))
 
 print('wrote {} composite tiles to {}'.format(composite_tile_count, composite_tile_dir))
