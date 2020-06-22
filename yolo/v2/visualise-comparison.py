@@ -96,8 +96,8 @@ for idx,row in enumerate(tile_list_df.itertuples()):
     tile_run_name = row.run_name
     tile_id = row.tile_id
 
-    overlay_a_name = '{}/{}'.format(OVERLAY_A_BASE_DIR, tile_base_name)
-    overlay_b_name = '{}/{}'.format(OVERLAY_B_BASE_DIR, tile_base_name)
+    overlay_a_name = '{}/run-{}/tile-{}/{}'.format(OVERLAY_A_BASE_DIR, tile_run_name, tile_id, tile_base_name)
+    overlay_b_name = '{}/run-{}/tile-{}/{}'.format(OVERLAY_B_BASE_DIR, tile_run_name, tile_id, tile_base_name)
     composite_tile_dir = '{}/run-{}/tile-{}'.format(COMPOSITE_TILE_BASE_DIR, tile_run_name, tile_id)
 
     composite_name = '{}/composite-{}'.format(composite_tile_dir, tile_base_name)
