@@ -164,21 +164,22 @@ for annotation_file_name in annotations_file_list:
         mz_upper = tile_metadata.mz_upper
         retention_time = tile_metadata.retention_time_secs
         tile_regions = tile_d['regions']
+
+        # load the tile from the tile set
+        print("processing {}".format(tile_base_name))
+        img = Image.open(tile_full_path)
+
+        # get a drawing context for the tile
+        draw = ImageDraw.Draw(img)
+
+        # draw the tile info
+        draw.rectangle(xy=[(0, 0), (PIXELS_X, 36)], fill=TINT_COLOR+(OPACITY,), outline=None)
+        draw.text((0, 0), 'annotations from {}'.format(args.annotations_source), font=feature_label_font, fill='lawngreen')
+        draw.text((0, 12), '{} - {} m/z'.format(mz_lower, mz_upper), font=feature_label_font, fill='lawngreen')
+        draw.text((0, 24), '{} secs'.format(retention_time), font=feature_label_font, fill='lawngreen')
+
         # process this tile if there are annotations for it
         if len(tile_regions) > 0:
-            # load the tile from the tile set
-            print("processing {}".format(tile_base_name))
-            img = Image.open(tile_full_path)
-
-            # get a drawing context for the tile
-            draw = ImageDraw.Draw(img)
-
-            # draw the tile info
-            draw.rectangle(xy=[(0, 0), (PIXELS_X, 36)], fill=TINT_COLOR+(OPACITY,), outline=None)
-            draw.text((0, 0), 'annotations from {}'.format(args.annotations_source), font=feature_label_font, fill='lawngreen')
-            draw.text((0, 12), '{} - {} m/z'.format(mz_lower, mz_upper), font=feature_label_font, fill='lawngreen')
-            draw.text((0, 24), '{} secs'.format(retention_time), font=feature_label_font, fill='lawngreen')
-
             # render the annotations
             feature_coordinates = []
             for region in tile_regions:
@@ -198,11 +199,11 @@ for annotation_file_name in annotations_file_list:
                 draw.rectangle(xy=[(x, y-14), (x+width, y-2)], fill=TINT_COLOR+(OPACITY,), outline=None)
                 draw.text((x, y-14), feature_names[feature_class], font=feature_label_font, fill=CLASS_COLOUR[feature_class])
 
-            # write the tile to the overlays directory
-            TILE_DIR = '{}/run-{}/tile-{}'.format(OVERLAY_BASE_DIR, run_name, tile_id)
-            if not os.path.exists(TILE_DIR):
-                os.makedirs(TILE_DIR)
-            tile_name = '{}/{}'.format(TILE_DIR, tile_base_name)
-            img.save(tile_name)
+        # write the tile to the overlays directory
+        TILE_DIR = '{}/run-{}/tile-{}'.format(OVERLAY_BASE_DIR, run_name, tile_id)
+        if not os.path.exists(TILE_DIR):
+            os.makedirs(TILE_DIR)
+        tile_name = '{}/{}'.format(TILE_DIR, tile_base_name)
+        img.save(tile_name)
 
 print('wrote {} tiles to {}'.format(len(annotations.items()), OVERLAY_BASE_DIR))
