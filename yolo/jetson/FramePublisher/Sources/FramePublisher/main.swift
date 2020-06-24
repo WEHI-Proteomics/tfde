@@ -17,7 +17,7 @@ let MZ_MAX = 1700.0
 let SCAN_MAX = PIXELS_Y
 let SCAN_MIN = 1
 let MZ_PER_TILE = 18.0
-let TILES_PER_FRAME = int((MZ_MAX - MZ_MIN) / MZ_PER_TILE) + 1
+let TILES_PER_FRAME = Int((MZ_MAX - MZ_MIN) / MZ_PER_TILE) + 1
 let MIN_TILE_IDX = 0
 let MAX_TILE_IDX = TILES_PER_FRAME-1
 
@@ -30,7 +30,7 @@ func greet(person: String) -> String {
     return greeting
 }
 
-func tileAndPixelXFromMz(Double mz) {
+func tileAndPixelXFromMz(Double: mz) -> (Int, Int) {
     let mz_adj = mz - MZ_MIN
     let tile_id = Int(mz_adj / MZ_PER_TILE)
     let pixel_x = Int((mz_adj % MZ_PER_TILE) / MZ_PER_TILE * PIXELS_X)
