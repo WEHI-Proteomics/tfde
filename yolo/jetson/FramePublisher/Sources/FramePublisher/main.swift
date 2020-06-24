@@ -41,9 +41,6 @@ func tileAndPixelXFromMz(Double mz) {
 let currentDirectory = URL(fileURLWithPath: FileManager().currentDirectoryPath)
 let destination = currentDirectory.appendingPathComponent("output-1.png")
 
-let PIXELS_X = 910
-let PIXELS_Y = 910
-
 struct TilePixel {
     var mz: Double
     var scan: Int64
