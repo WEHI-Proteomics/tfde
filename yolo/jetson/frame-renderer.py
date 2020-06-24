@@ -7,6 +7,7 @@ import os, shutil
 import time
 from matplotlib import colors, cm, pyplot as plt
 from PIL import Image
+import platform
 
 # frame types for PASEF mode
 FRAME_TYPE_MS1 = 0
@@ -26,10 +27,12 @@ MAX_TILE_IDX = TILES_PER_FRAME-1
 MINIMUM_PIXEL_INTENSITY = 1
 MAXIMUM_PIXEL_INTENSITY = 1000
 
-# CONVERTED_DATABASE_NAME = '/data/exp-dwm-test-run-190719_Hela_Ecoli_1to1_01-converted.sqlite'
-# TILES_DIR = '/data/tiles'
-CONVERTED_DATABASE_NAME = '/Users/darylwilding-mcbride/Downloads/experiments/dwm-test/converted-databases/exp-dwm-test-run-190719_Hela_Ecoli_1to1_01-converted.sqlite'
-TILES_DIR = '/Users/darylwilding-mcbride/Downloads/tiles'
+if platform.system() == 'Linux':
+    CONVERTED_DATABASE_NAME = '/data/exp-dwm-test-run-190719_Hela_Ecoli_1to1_01-converted.sqlite'
+    TILES_DIR = '/data/tiles'
+else:  # Darwin
+    CONVERTED_DATABASE_NAME = '/Users/darylwilding-mcbride/Downloads/experiments/dwm-test/converted-databases/exp-dwm-test-run-190719_Hela_Ecoli_1to1_01-converted.sqlite'
+    TILES_DIR = '/Users/darylwilding-mcbride/Downloads/tiles'
 
 def tile_pixel_x_from_mz(mz):
     mz_adj = mz - MZ_MIN
