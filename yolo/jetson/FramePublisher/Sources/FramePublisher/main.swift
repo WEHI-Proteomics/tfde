@@ -1,6 +1,5 @@
-import SQLite
-import PythonKit
 import Foundation
+import SQLite
 import SwiftGD
 
 #if os(Linux)
