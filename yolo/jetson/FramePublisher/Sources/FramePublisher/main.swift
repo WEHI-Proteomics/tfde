@@ -3,9 +3,12 @@ import PythonKit
 import Foundation
 import SwiftGD
 
-// let CONVERTED_DATABASE_NAME = "/data/exp-dwm-test-run-190719_Hela_Ecoli_1to1_01-converted.sqlite"
+#if os(Linux)
+let CONVERTED_DATABASE_NAME = "/data/exp-dwm-test-run-190719_Hela_Ecoli_1to1_01-converted.sqlite"
+#else
 let CONVERTED_DATABASE_NAME = "/Users/darylwilding-mcbride/Downloads/experiments/dwm-test/converted-databases/exp-dwm-test-run-190719_Hela_Ecoli_1to1_01-converted.sqlite"
-let PUBLISHED_FRAMES_DIR = "/data/published-frames"
+#endif
+
 
 let db = try Connection(CONVERTED_DATABASE_NAME)
 
@@ -20,6 +23,33 @@ let destination = currentDirectory.appendingPathComponent("output-1.png")
 let PIXELS_X = 910
 let PIXELS_Y = 910
 
+struct TilePixel {
+    var mz: Double
+    var scan: Int64
+    var intensity: Int64
+    var tileId: Int64
+    var pixelX: Int64
+    var colourR: Double
+    var colourG: Double
+    var colourB: Double
+}
+
+let frames = Table("frames")
+let frameId = Expression<Int64>("frame_id")
+let mz = Expression<Double>("mz")
+let scan = Expression<Int64>("scan")
+let intensity = Expression<Int64>("intensity")
+
+
+// build the array of tile pixels
+var tilePixels: [TilePixel] = []
+for frame in try db.prepare(frames.filter(frameId == 1899)) {
+    // print("id: \(frame[frameId]), m/z: \(frame[mz]), scan: \(frame[scan])")
+    let pixel = TilePixel(mz: frame[mz], scan: frame[scan], intensity: frame[intensity], tileId:0, pixelX: 0, colourR: 0.2, colourG: 0.4, colourB: 0.8)
+    tilePixels.append(pixel)
+}
+
+
 // if let image = Image(width: PIXELS_X, height: PIXELS_Y) {
 //     // for each 
 //     for p in try db.prepare(query) {
@@ -33,21 +63,5 @@ let PIXELS_Y = 910
 //     // save the final image to disk
 //     image.write(to: destination)
 // }
-
-let list: PythonObject = [0, 1, 2]
-let t = PythonObject(tupleOf: 1, 2)
-
-list.append(3)
-print("list: \(list)")
-
-var numpyModule = try? Python.attemptImport("numpy")
-guard let np = numpyModule else { throw NSError(domain: "could not import numpy", code: 0, userInfo: [:] ) }
-// let numpyArrayEmpty = np.array([] as [Float], dtype: np.float32)
-
-
-// let db_conn = sqlite3.connect(converted_db_name)
-// let raw_points_df = pd.read_sql_query("select mz,scan,intensity from frames where frame_id == {}".format(1899), db_conn)
-// db_conn.close()
-
 
 print("finished")
