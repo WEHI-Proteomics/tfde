@@ -7,13 +7,35 @@ let CONVERTED_DATABASE_NAME = "/data/exp-dwm-test-run-190719_Hela_Ecoli_1to1_01-
 #else
 let CONVERTED_DATABASE_NAME = "/Users/darylwilding-mcbride/Downloads/experiments/dwm-test/converted-databases/exp-dwm-test-run-190719_Hela_Ecoli_1to1_01-converted.sqlite"
 #endif
-
-
 let db = try Connection(CONVERTED_DATABASE_NAME)
 
-print("reading the database")
 
-let query = "select mz,scan,intensity from frames where frame_id == 1899 limit 1000"
+let PIXELS_X = 910
+let PIXELS_Y = 910  // equal to the number of scan lines
+let MZ_MIN = 100.0
+let MZ_MAX = 1700.0
+let SCAN_MAX = PIXELS_Y
+let SCAN_MIN = 1
+let MZ_PER_TILE = 18.0
+let TILES_PER_FRAME = int((MZ_MAX - MZ_MIN) / MZ_PER_TILE) + 1
+let MIN_TILE_IDX = 0
+let MAX_TILE_IDX = TILES_PER_FRAME-1
+
+let MINIMUM_PIXEL_INTENSITY = 1
+let MAXIMUM_PIXEL_INTENSITY = 1000
+
+
+func greet(person: String) -> String {
+    let greeting = "Hello, " + person + "!"
+    return greeting
+}
+
+func tileAndPixelXFromMz(Double mz) {
+    let mz_adj = mz - MZ_MIN
+    let tile_id = int(mz_adj / MZ_PER_TILE)
+    let pixel_x = int((mz_adj % MZ_PER_TILE) / MZ_PER_TILE * PIXELS_X)
+    return (tile_id, pixel_x)
+}
 
 // figure out where to save our file
 let currentDirectory = URL(fileURLWithPath: FileManager().currentDirectoryPath)
@@ -41,6 +63,7 @@ let intensity = Expression<Int64>("intensity")
 
 
 // build the array of tile pixels
+print("reading the database")
 var tilePixels: [TilePixel] = []
 for frame in try db.prepare(frames.filter(frameId == 1899)) {
     // print("id: \(frame[frameId]), m/z: \(frame[mz]), scan: \(frame[scan])")
