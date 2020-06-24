@@ -32,8 +32,8 @@ func greet(person: String) -> String {
 
 func tileAndPixelXFromMz(Double mz) {
     let mz_adj = mz - MZ_MIN
-    let tile_id = int(mz_adj / MZ_PER_TILE)
-    let pixel_x = int((mz_adj % MZ_PER_TILE) / MZ_PER_TILE * PIXELS_X)
+    let tile_id = Int(mz_adj / MZ_PER_TILE)
+    let pixel_x = Int((mz_adj % MZ_PER_TILE) / MZ_PER_TILE * PIXELS_X)
     return (tile_id, pixel_x)
 }
 
