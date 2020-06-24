@@ -30,7 +30,7 @@ func greet(person: String) -> String {
     return greeting
 }
 
-func tileAndPixelXFromMz(Double: mz) -> (Int, Int) {
+func tileAndPixelXFromMz(mz: Double) -> (Int, Int) {
     let mz_adj = mz - MZ_MIN
     let tile_id = Int(mz_adj / MZ_PER_TILE)
     let pixel_x = Int((mz_adj % MZ_PER_TILE) / MZ_PER_TILE * PIXELS_X)
