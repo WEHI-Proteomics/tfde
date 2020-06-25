@@ -5,8 +5,10 @@ import SwiftyJSON
 
 #if os(Linux)
 let CONVERTED_DATABASE_NAME = "/data/exp-dwm-test-run-190719_Hela_Ecoli_1to1_01-converted.sqlite"
+let TILE_BASE_DIR = "/data/tiles"
 #else
 let CONVERTED_DATABASE_NAME = "/Users/darylwilding-mcbride/Downloads/experiments/dwm-test/converted-databases/exp-dwm-test-run-190719_Hela_Ecoli_1to1_01-converted.sqlite"
+let TILE_BASE_DIR = "/Users/darylwilding-mcbride/Downloads/swift-tiles"
 #endif
 let db = try Connection(CONVERTED_DATABASE_NAME)
 
@@ -124,7 +126,7 @@ for (key,value) in dict{
 
 
 for tileId in MIN_TILE_IDX...MAX_TILE_IDX {
-    let tilePath = URL(fileURLWithPath: "/Users/darylwilding-mcbride/Downloads/swift-tiles/tile-\(tileId).png")
+    let tilePath = URL(fileURLWithPath: "\(TILE_BASE_DIR)/tile-\(tileId).png")
 
     let filtered = groupedTilePixels.filter{ $0.tileId == tileId } 
     if let image = Image(width: PIXELS_X, height: PIXELS_Y) {
