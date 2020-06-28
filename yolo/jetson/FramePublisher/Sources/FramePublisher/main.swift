@@ -124,7 +124,7 @@ for (key,value) in dict{
     groupedTilePixels.append(GroupedTilePixel(tileId: key[0], pixelX: key[1], scan: key[2], intensity: Int64(totalIntensity), colour: pixelColour))
 }
 
-
+// generate the tiles for this frame
 for tileId in MIN_TILE_IDX...MAX_TILE_IDX {
     let tilePath = URL(fileURLWithPath: "\(TILE_BASE_DIR)/tile-\(tileId).png")
 
