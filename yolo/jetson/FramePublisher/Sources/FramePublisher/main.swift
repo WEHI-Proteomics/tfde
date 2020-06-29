@@ -106,7 +106,7 @@ let ms1FrameIDs = frameIDs.choose(50)
 print("render the frames")
 var elapsedTimes: [Double] = []
 for ms1FrameId in ms1FrameIDs {
-    let startTime = CFAbsoluteTimeGetCurrent()
+    let startTime = ProcessInfo.processInfo.systemUptime
     // build the array of tile pixels
     var tilePixels: [TilePixel] = []
     for frame in try db.prepare(frames.filter(frameId == ms1FrameId)) {
@@ -151,7 +151,7 @@ for ms1FrameId in ms1FrameIDs {
             image.write(to: tilePath, allowOverwrite:true)
         }
     }
-    let timeElapsed = CFAbsoluteTimeGetCurrent() - startTime
+    let timeElapsed = ProcessInfo.processInfo.systemUptime - startTime
     elapsedTimes.append(timeElapsed)
     let avgTime = Float(elapsedTimes.reduce(0, +)) / Float(elapsedTimes.count)
     print("processed frame \(ms1FrameId) in \(timeElapsed) secs - average \(avgTime)")
