@@ -1,16 +1,16 @@
 import Foundation
 import SQLite
 import SwiftGD
+import SwiftyJSON
 
 #if os(Linux)
 let CONVERTED_DATABASE_NAME = "/data/exp-dwm-test-run-190719_Hela_Ecoli_1to1_01-converted.sqlite"
-let COLOURMAP_DATABASE_NAME = "/data/colourmap.sqlite"
 let TILE_BASE_DIR = "/data/tiles"
 #else
 let CONVERTED_DATABASE_NAME = "/Users/darylwilding-mcbride/Downloads/experiments/dwm-test/converted-databases/exp-dwm-test-run-190719_Hela_Ecoli_1to1_01-converted.sqlite"
-let COLOURMAP_DATABASE_NAME = "/Users/darylwilding-mcbride/Downloads/colourmap.sqlite"
 let TILE_BASE_DIR = "/Users/darylwilding-mcbride/Downloads/swift-tiles"
 #endif
+let db = try Connection(CONVERTED_DATABASE_NAME)
 
 
 let PIXELS_X = 910
@@ -27,17 +27,23 @@ let MAX_TILE_IDX = TILES_PER_FRAME-1
 let MINIMUM_PIXEL_INTENSITY: Int64 = 1
 let MAXIMUM_PIXEL_INTENSITY: Int64 = 1000
 
-// frame types for PASEF mode
-let FRAME_TYPE_MS1 = 0
-let FRAME_TYPE_MS2 = 8
 
+func greet(person: String) -> String {
+    let greeting = "Hello, " + person + "!"
+    return greeting
+}
 
-// this function bins the m/z value to fit into a pixel
 func tileAndPixelXFromMz(mz: Double) -> (Int64, Int64) {
     let mzAdj = mz - MZ_MIN
     let tileId = Int64(mzAdj / MZ_PER_TILE)
     let pixelX = Int64((mzAdj.truncatingRemainder(dividingBy: MZ_PER_TILE)) / MZ_PER_TILE * Double(PIXELS_X))
     return (tileId, pixelX)
+}
+
+struct PixelColour {
+    var red: Double
+    var green: Double
+    var blue: Double
 }
 
 struct TilePixel {
@@ -53,108 +59,86 @@ struct GroupedTilePixel {
     var pixelX: Int64
     var scan: Int64
     var intensity: Int64
-    var colour: Color
+    var colour: PixelColour
 }
 
 struct IntensityColourMapping {
     var intensity: Int64
-    var colour: Color
+    var colour: PixelColour
 }
 
-extension Collection {
-    func choose(_ n: Int) -> ArraySlice<Element> { shuffled().prefix(n) }
-}
+let clipped = PixelColour(red: 1.0, green: 0.0, blue:0.0)
 
-// frames table
 let frames = Table("frames")
-let frameId = Expression<Int>("frame_id")
+let frameId = Expression<Int64>("frame_id")
 let mz = Expression<Double>("mz")
 let scan = Expression<Int64>("scan")
 let intensity = Expression<Int64>("intensity")
 
-// colourmap table
-let colourmapping = Table("colours")
-let cmIntensity = Expression<Int64>("intensity")
-let red = Expression<Double>("r")
-let green = Expression<Double>("g")
-let blue = Expression<Double>("b")
+// load colour table
+let path = URL(fileURLWithPath: "/Users/darylwilding-mcbride/Downloads/colourmap.json")
+let data = try Data(contentsOf: path, options: .mappedIfSafe)
+let json = try JSON(data: data)
 
-// frame_properties table
-let frameProperties = Table("frame_properties")
-let framePropertiesId = Expression<Int>("Id")
-let frameTime = Expression<Double>("Time")
-let frameType = Expression<Int>("MsMsType")
-
-// load the mapping of intensity to colour
-let colourmap_db = try Connection(COLOURMAP_DATABASE_NAME)
 var colourLookup: [IntensityColourMapping] = []
-for row in try colourmap_db.prepare(colourmapping) {
-    colourLookup.append(IntensityColourMapping(intensity: row[cmIntensity], colour: Color(red: row[red], green: row[green], blue: row[blue], alpha: 1.0)))
+for (_, subJson) in json {
+    let colour: JSON = subJson["colour"]
+    let r: Double = colour[0].double ?? 0.0 / 255.0
+    let g: Double = colour[1].double ?? 0.0 / 255.0
+    let b: Double = colour[2].double ?? 0.0 / 255.0
+
+    let intensity: Int64 = subJson["intensity"].int64 ?? 0
+
+    let intensityColour = IntensityColourMapping(intensity: intensity, colour: PixelColour(red: r, green: g, blue: b))
+    colourLookup.append(intensityColour)
+}
+
+// build the array of tile pixels
+print("reading the database")
+var tilePixels: [TilePixel] = []
+for frame in try db.prepare(frames.filter(frameId == 1899)) {
+    let (tileId, pixelX) = tileAndPixelXFromMz(mz: frame[mz])
+    let pixel = TilePixel(mz: frame[mz], scan: frame[scan], intensity: frame[intensity], tileId:tileId, pixelX: pixelX)
+    tilePixels.append(pixel)
 }
 
 
-// load the MS1 frame IDs
-print("load the frame ids")
-let db = try Connection(CONVERTED_DATABASE_NAME)
-var frameIDs: [Int] = []
-for frameProperty in try db.prepare(frameProperties.filter(frameType == FRAME_TYPE_MS1)) {
-    frameIDs.append(Int(frameProperty[framePropertiesId]))
+// sum the intensity values in the same (tile,scan,pixelX)
+let dict = Dictionary(grouping: tilePixels) { [$0.tileId, $0.pixelX, $0.scan] }
+var groupedTilePixels: [GroupedTilePixel] = []
+for (key,value) in dict{
+    // calculate the total intensity for this pixel
+    var totalIntensity = 0
+    for o in value {
+        totalIntensity += Int(o.intensity)
+    }
+
+    // look up the colour for this intensity
+    var intensityColourMapping: IntensityColourMapping = IntensityColourMapping(intensity: MAXIMUM_PIXEL_INTENSITY, colour: clipped)
+    if totalIntensity <= MAXIMUM_PIXEL_INTENSITY {
+        intensityColourMapping = colourLookup[totalIntensity-1]
+    }
+    let colour = intensityColourMapping.colour
+    let pixelColour = PixelColour(red: colour.red, green: colour.green, blue: colour.blue)
+
+    groupedTilePixels.append(GroupedTilePixel(tileId: key[0], pixelX: key[1], scan: key[2], intensity: Int64(totalIntensity), colour: pixelColour))
 }
-let ms1FrameIDs = frameIDs.choose(50)
 
-// generate the tiles for each frame
-print("render the frames")
-var elapsedTimes: [Double] = []
-for ms1FrameId in ms1FrameIDs {
-    let startTime = CFAbsoluteTimeGetCurrent()
-    // build the array of tile pixels
-    var tilePixels: [TilePixel] = []
-    for frame in try db.prepare(frames.filter(frameId == ms1FrameId)) {
-        let (tileId, pixelX) = tileAndPixelXFromMz(mz: frame[mz])
-        let pixel = TilePixel(mz: frame[mz], scan: frame[scan], intensity: frame[intensity], tileId:tileId, pixelX: pixelX)
-        tilePixels.append(pixel)
+// generate the tiles for this frame
+for tileId in MIN_TILE_IDX...MAX_TILE_IDX {
+    let tilePath = URL(fileURLWithPath: "\(TILE_BASE_DIR)/tile-\(tileId).png")
+
+    let filtered = groupedTilePixels.filter{ $0.tileId == tileId } 
+    if let image = Image(width: PIXELS_X, height: PIXELS_Y) {
+        // set the pixels in the image
+        for pixel in filtered {
+            let c = Color(red: pixel.colour.red, green: pixel.colour.green, blue: pixel.colour.blue, alpha: 1)
+            image.set(pixel: Point(x: Int(pixel.pixelX), y: Int(pixel.scan)), to: c)
+        }
+
+        // save the final image to disk
+        image.write(to: tilePath)
     }
-
-    // sum the intensity values in the same (tile,scan,pixelX)
-    let dict = Dictionary(grouping: tilePixels) { [$0.tileId, $0.pixelX, $0.scan] }
-    var groupedTilePixels: [GroupedTilePixel] = []
-    for (key,value) in dict{
-        // calculate the total intensity for this pixel
-        var totalIntensity = 0
-        for o in value {
-            totalIntensity += Int(o.intensity)
-        }
-
-        // look up the colour for this intensity
-        var intensityColourMapping: IntensityColourMapping
-        if totalIntensity <= MAXIMUM_PIXEL_INTENSITY {
-            intensityColourMapping = colourLookup[totalIntensity-1]
-        }
-        else {
-            intensityColourMapping = colourLookup.last ?? IntensityColourMapping(intensity: Int64(totalIntensity), colour: Color(red: 1.0, green: 0.0, blue: 0.0, alpha: 1.0))
-        }
-        groupedTilePixels.append(GroupedTilePixel(tileId: key[0], pixelX: key[1], scan: key[2], intensity: Int64(totalIntensity), colour: intensityColourMapping.colour))
-    }
-
-    // generate the tiles for this frame
-    for tileId in MIN_TILE_IDX...MAX_TILE_IDX {
-        let tilePath = URL(fileURLWithPath: "\(TILE_BASE_DIR)/frame-\(ms1FrameId)-tile-\(tileId).png")
-
-        let filtered = groupedTilePixels.filter{ $0.tileId == tileId } 
-        if let image = Image(width: PIXELS_X, height: PIXELS_Y) {
-            // set the pixels in the image
-            for pixel in filtered {
-                image.set(pixel: Point(x: Int(pixel.pixelX), y: Int(pixel.scan)), to: pixel.colour)
-            }
-
-            // save the final image to disk
-            image.write(to: tilePath, allowOverwrite:true)
-        }
-    }
-    let timeElapsed = CFAbsoluteTimeGetCurrent() - startTime
-    elapsedTimes.append(timeElapsed)
-    let avgTime = Float(elapsedTimes.reduce(0, +)) / Float(elapsedTimes.count)
-    print("processed frame \(ms1FrameId) in \(timeElapsed) secs - average \(avgTime)")
 }
 
 print("finished")
