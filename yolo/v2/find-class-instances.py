@@ -98,7 +98,7 @@ else:
 
 # check the annotations directory
 ANNOTATIONS_DIR = '{}/annotations-from-{}'.format(TILE_LIST_DIR, args.annotations_source)
-if not os.path.exists(EXPERIMENT_DIR):
+if not os.path.exists(ANNOTATIONS_DIR):
     print("The annotations directory is required but doesn't exist: {}".format(ANNOTATIONS_DIR))
     sys.exit(1)
 
