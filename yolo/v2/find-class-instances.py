@@ -147,7 +147,7 @@ print_df = df[['feature_class','charge','isotopes','run_name','tile_id','frame_i
 index_file_name = '{}/feature_index.txt'.format(ANNOTATIONS_DIR)
 print('writing the feature index to {}'.format(index_file_name))
 tfile = open(index_file_name, 'w')
-for group_name,group_df in df.groupby(['feature_class'], as_index=False):
+for group_name,group_df in print_df.groupby(['feature_class'], as_index=False):
     tfile.write(group_df.to_string())
     tfile.write('---------------------------------------------------------\n')
 tfile.close()
