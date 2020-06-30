@@ -142,12 +142,12 @@ for annotation_file_name in annotations_file_list:
 
 # write out the feature index
 df = pd.DataFrame(features_l, columns=['tile_base_name','tile_id','frame_id','run_name','mz_lower','mz_upper','retention_time','charge','isotopes','feature_class','feature_class_name'])
-df.sort_values(by=['feature_class'], ascending=False, inplace=True)
-print_df = df[['feature_class','charge','isotopes','run_name','tile_id','frame_id']]
+print_df = df[['run_name','tile_id','frame_id']]
 index_file_name = '{}/feature_index.txt'.format(ANNOTATIONS_DIR)
 print('writing the feature index to {}'.format(index_file_name))
 tfile = open(index_file_name, 'w')
 for group_name,group_df in print_df.groupby(['feature_class','charge','isotopes'], as_index=False):
+    group_df.sort_values(by=['run_name','tile_id','frame_id'], ascending=False, inplace=True)
     tfile.write('\n\nfeature class {}, charge {}, isotopes {}\n\n'.format(group_name[0], group_name[1], group_name[2]))
-    tfile.write(group_df.to_string())
+    tfile.write(group_df.to_string(index=False))
 tfile.close()
