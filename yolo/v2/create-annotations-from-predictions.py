@@ -28,7 +28,7 @@ parser = argparse.ArgumentParser(description='Create annotation files for each p
 parser.add_argument('-eb','--experiment_base_dir', type=str, default='./experiments', help='Path to the experiments directory.', required=False)
 parser.add_argument('-en','--experiment_name', type=str, help='Name of the experiment.', required=True)
 parser.add_argument('-tln','--tile_list_name', type=str, help='Name of the tile list.', required=True)
-parser.add_argument('-ps','--predictions_source', type=str, choices=['via','tfe'], help='Source of the predictions.', required=True)
+parser.add_argument('-ps','--predictions_source', type=str, choices=['via','tfe'], help='Source of the predictions. \'via\' for predictions from a model trained with Via-sourced annotations. \'tfe\' for predictions from a model trained with TFD/E-sourced annotations.', required=True)
 args = parser.parse_args()
 
 # Print the arguments for the log
