@@ -82,7 +82,7 @@ else:
     sys.exit(1)
 
 # check the target annotations directory
-ANNOTATIONS_DIR = '{}/annotations-from-{}-predictions'.format(TILE_LIST_DIR, args.predictions_source)
+ANNOTATIONS_DIR = '{}/annotations-from-{}-trained-predictions'.format(TILE_LIST_DIR, args.predictions_source)
 if os.path.exists(ANNOTATIONS_DIR):
     shutil.rmtree(ANNOTATIONS_DIR)
 os.makedirs(ANNOTATIONS_DIR)
