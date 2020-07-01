@@ -51,7 +51,7 @@ parser = argparse.ArgumentParser(description='Visualise tile list annotations.')
 parser.add_argument('-eb','--experiment_base_dir', type=str, default='./experiments', help='Path to the experiments directory.', required=False)
 parser.add_argument('-en','--experiment_name', type=str, help='Name of the experiment.', required=True)
 parser.add_argument('-tln','--tile_list_name', type=str, help='Name of the tile list.', required=True)
-parser.add_argument('-as','--annotations_source', type=str, choices=['via','tfe','predictions'], help='Source of the annotations.', required=True)
+parser.add_argument('-as','--annotations_source', type=str, choices=['via','tfe','via-trained-predictions','tfe-trained-predictions'], help='Source of the annotations.', required=True)
 
 args = parser.parse_args()
 
