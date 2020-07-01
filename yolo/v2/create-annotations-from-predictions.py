@@ -65,9 +65,9 @@ else:
 # load the tile set metadata
 tile_set_name = tile_list_metadata['arguments']['tile_set_name']
 
-# check the predictions directory
+# check the source predictions directory
 PREDICTIONS_DIR = '{}/annotations-from-{}/predictions'.format(TILE_LIST_DIR, args.predictions_source)
-if not os.path.exists(EXPERIMENT_DIR):
+if not os.path.exists(PREDICTIONS_DIR):
     print("The predictions directory is required but doesn't exist: {}".format(PREDICTIONS_DIR))
     sys.exit(1)
 
@@ -81,8 +81,8 @@ else:
     print("The predictions file is required but does not exist: {}".format(PREDICTIONS_FILE_NAME))
     sys.exit(1)
 
-# check the annotations directory
-ANNOTATIONS_DIR = '{}/annotations-from-predictions'.format(TILE_LIST_DIR)
+# check the target annotations directory
+ANNOTATIONS_DIR = '{}/annotations-from-{}-predictions'.format(TILE_LIST_DIR, args.predictions_source)
 if os.path.exists(ANNOTATIONS_DIR):
     shutil.rmtree(ANNOTATIONS_DIR)
 os.makedirs(ANNOTATIONS_DIR)
