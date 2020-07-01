@@ -13,8 +13,8 @@ parser.add_argument('-eb','--experiment_base_dir', type=str, default='./experime
 parser.add_argument('-en','--experiment_name', type=str, help='Name of the experiment.', required=True)
 parser.add_argument('-tla','--tile_list_name_a', type=str, help='Name of tile list A.', required=True)
 parser.add_argument('-tlb','--tile_list_name_b', type=str, help='Name of tile list B.', required=True)
-parser.add_argument('-asa','--annotations_source_a', type=str, choices=['via','tfe','predictions'], help='Source of the A annotations.', required=True)
-parser.add_argument('-asb','--annotations_source_b', type=str, choices=['via','tfe','predictions'], help='Source of the B annotations.', required=True)
+parser.add_argument('-asa','--annotations_source_a', type=str, choices=['via','tfe','via-trained-predictions','tfe-trained-predictions'], help='Source of the A annotations.', required=True)
+parser.add_argument('-asb','--annotations_source_b', type=str, choices=['via','tfe','via-trained-predictions','tfe-trained-predictions'], help='Source of the B annotations.', required=True)
 args = parser.parse_args()
 
 # Print the arguments for the log
