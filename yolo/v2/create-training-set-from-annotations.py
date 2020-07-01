@@ -86,11 +86,18 @@ def feature_names():
 
 # python ./otf-peak-detect/yolo-feature-detection/training/create-training-set-from-tfd.py -eb ~/Downloads/experiments -en dwm-test -rn 190719_Hela_Ecoli_1to1_01 -tidx 34
 
+# meaning of the annotations_source argument
+#
+# tfe                       annotations from features extracted with TFE; used to create a training set for seeding
+# tfe-trained-predictions   annotations from predictions made with a model trained by tfe annotations; used for review and editing in Via
+# via                       annotations that have been reviewed and edited by a human expert using Via; used to create a training set for the final model
+# via-trained-predictions   annotations from predictions made with the final model trained by via annotations; used for visualisation and evaluation of performance
+
 parser = argparse.ArgumentParser(description='Create a YOLO training set from one or more annotations files.')
 parser.add_argument('-eb','--experiment_base_dir', type=str, default='./experiments', help='Path to the experiments directory.', required=False)
 parser.add_argument('-en','--experiment_name', type=str, help='Name of the experiment.', required=True)
 parser.add_argument('-tln','--tile_list_name', type=str, help='Name of the tile list.', required=True)
-parser.add_argument('-as','--annotations_source', type=str, choices=['via','tfe','predictions'], help='Source of the annotations.', required=True)
+parser.add_argument('-as','--annotations_source', type=str, choices=['via','tfe','via-trained-predictions','tfe-trained-predictions'], help='Source of the annotations.', required=True)
 args = parser.parse_args()
 
 # store the command line arguments as metadata for later reference
