@@ -40,6 +40,19 @@ func tileAndPixelXFromMz(mz: Double) -> (Int64, Int64) {
     return (tileId, pixelX)
 }
 
+func colourMappingForIntensity(intensity: Int64, colourLookup: [IntensityColourMapping]) -> IntensityColourMapping {
+    // look up the colour for this intensity
+    var intensityColourMapping: IntensityColourMapping
+    if intensity <= MAXIMUM_PIXEL_INTENSITY {
+        intensityColourMapping = colourLookup[Int(intensity)-1]
+    }
+    else {
+        let clippedColour = Color(red: 1.0, green: 0.0, blue: 0.0, alpha: 1.0)
+        intensityColourMapping = colourLookup.last ?? IntensityColourMapping(intensity: Int64(intensity), colour: clippedColour)
+    }
+    return intensityColourMapping
+}
+
 struct TilePixel {
     var mz: Double
     var scan: Int64
@@ -102,49 +115,44 @@ for frameProperty in try db.prepare(frameProperties.filter(frameType == FRAME_TY
 }
 let ms1FrameIDs = frameIDs.choose(50)
 
+
 // generate the tiles for each frame
 print("render the frames")
 var elapsedTimes: [Double] = []
 for ms1FrameId in ms1FrameIDs {
     let startTime = ProcessInfo.processInfo.systemUptime
-    // build the array of tile pixels
-    var tilePixels: [TilePixel] = []
-    for frame in try db.prepare(frames.filter(frameId == ms1FrameId)) {
-        let (tileId, pixelX) = tileAndPixelXFromMz(mz: frame[mz])
-        let pixel = TilePixel(mz: frame[mz], scan: frame[scan], intensity: frame[intensity], tileId:tileId, pixelX: pixelX)
-        tilePixels.append(pixel)
-    }
 
-    // sum the intensity values in the same (tile,scan,pixelX)
-    let dict = Dictionary(grouping: tilePixels) { [$0.tileId, $0.pixelX, $0.scan] }
-    var groupedTilePixels: [GroupedTilePixel] = []
-    for (key,value) in dict{
-        // calculate the total intensity for this pixel
-        var totalIntensity = 0
-        for o in value {
-            totalIntensity += Int(o.intensity)
-        }
-
-        // look up the colour for this intensity
-        var intensityColourMapping: IntensityColourMapping
-        if totalIntensity <= MAXIMUM_PIXEL_INTENSITY {
-            intensityColourMapping = colourLookup[totalIntensity-1]
+    var groupedPixels: [String:GroupedTilePixel] = [:]
+    for point in try db.prepare(frames.filter(frameId == ms1FrameId)) {
+        let (tileId, pixelX) = tileAndPixelXFromMz(mz: point[mz])
+        let key = "\(tileId)-\(pixelX)-\(point[scan])"
+        var groupedPixel:GroupedTilePixel
+        // check if the key for this grouped pixel is already there; update its intensity if so; add it if not
+        if groupedPixels.keys.contains(key) {
+            groupedPixel = groupedPixels[key]!
+            groupedPixel.intensity += point[intensity]
         }
         else {
-            intensityColourMapping = colourLookup.last ?? IntensityColourMapping(intensity: Int64(totalIntensity), colour: Color(red: 1.0, green: 0.0, blue: 0.0, alpha: 1.0))
+            let blankColour = Color(red: 0.0, green: 0.0, blue: 0.0, alpha: 1.0)
+            groupedPixel = GroupedTilePixel(tileId: tileId, pixelX: pixelX, scan: point[scan], intensity: Int64(point[intensity]), colour: blankColour)
         }
-        groupedTilePixels.append(GroupedTilePixel(tileId: key[0], pixelX: key[1], scan: key[2], intensity: Int64(totalIntensity), colour: intensityColourMapping.colour))
+        groupedPixels[key] = groupedPixel
     }
+    let groupedPixelsArr = Array(groupedPixels.values.map{ $0 })
+
 
     // generate the tiles for this frame
     for tileId in MIN_TILE_IDX...MAX_TILE_IDX {
         let tilePath = URL(fileURLWithPath: "\(TILE_BASE_DIR)/frame-\(ms1FrameId)-tile-\(tileId).png")
 
-        let filtered = groupedTilePixels.filter{ $0.tileId == tileId } 
+        let filtered = groupedPixelsArr.filter{ $0.tileId == tileId } 
         if let image = Image(width: PIXELS_X, height: PIXELS_Y) {
             // set the pixels in the image
             for pixel in filtered {
-                image.set(pixel: Point(x: Int(pixel.pixelX), y: Int(pixel.scan)), to: pixel.colour)
+                // look up the colour for this intensity
+                let intensityColourMapping = colourMappingForIntensity(intensity: pixel.intensity, colourLookup: colourLookup)
+                // set the pixel
+                image.set(pixel: Point(x: Int(pixel.pixelX), y: Int(pixel.scan)), to: intensityColourMapping.colour)
             }
 
             // save the final image to disk
