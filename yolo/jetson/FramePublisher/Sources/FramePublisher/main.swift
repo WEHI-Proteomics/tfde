@@ -31,6 +31,7 @@ let MAXIMUM_PIXEL_INTENSITY: Int64 = 1000
 let FRAME_TYPE_MS1 = 0
 let FRAME_TYPE_MS2 = 8
 
+let clippedColour = Color(red: 1.0, green: 0.0, blue: 0.0, alpha: 1.0)
 
 // this function bins the m/z value to fit into a pixel
 func tileAndPixelXFromMz(mz: Double) -> (Int64, Int64) {
@@ -47,18 +48,9 @@ func colourMappingForIntensity(intensity: Int64, colourLookup: [IntensityColourM
         intensityColourMapping = colourLookup[Int(intensity)-1]
     }
     else {
-        let clippedColour = Color(red: 1.0, green: 0.0, blue: 0.0, alpha: 1.0)
         intensityColourMapping = colourLookup.last ?? IntensityColourMapping(intensity: Int64(intensity), colour: clippedColour)
     }
     return intensityColourMapping
-}
-
-struct TilePixel {
-    var mz: Double
-    var scan: Int64
-    var intensity: Int64
-    var tileId: Int64
-    var pixelX: Int64
 }
 
 struct GroupedTilePixel {
@@ -133,8 +125,7 @@ for ms1FrameId in ms1FrameIDs {
             groupedPixel.intensity += point[intensity]
         }
         else {
-            let blankColour = Color(red: 0.0, green: 0.0, blue: 0.0, alpha: 1.0)
-            groupedPixel = GroupedTilePixel(tileId: tileId, pixelX: pixelX, scan: point[scan], intensity: Int64(point[intensity]), colour: blankColour)
+            groupedPixel = GroupedTilePixel(tileId: tileId, pixelX: pixelX, scan: point[scan], intensity: Int64(point[intensity]), colour: Color(red: 0.0, green: 0.0, blue: 0.0, alpha: 1.0))
         }
         groupedPixels[key] = groupedPixel
     }
