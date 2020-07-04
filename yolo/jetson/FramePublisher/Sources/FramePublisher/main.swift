@@ -111,12 +111,14 @@ let ms1FrameIDs = frameIDs.choose(50)
 // generate the tiles for each frame
 print("render the frames")
 var elapsedTimes: [Double] = []
+var tileIds = Set<Int64>()
 for ms1FrameId in ms1FrameIDs {
     let startTime = ProcessInfo.processInfo.systemUptime
 
     var groupedPixels: [String:GroupedTilePixel] = [:]
     for point in try db.prepare(frames.filter(frameId == ms1FrameId)) {
         let (tileId, pixelX) = tileAndPixelXFromMz(mz: point[mz])
+        tileIds.insert(tileId)
         let key = "\(tileId)-\(pixelX)-\(point[scan])"
         var groupedPixel:GroupedTilePixel
         // check if the key for this grouped pixel is already there; update its intensity if so; add it if not
@@ -133,7 +135,7 @@ for ms1FrameId in ms1FrameIDs {
 
 
     // generate the tiles for this frame
-    for tileId in MIN_TILE_IDX...MAX_TILE_IDX {
+    for tileId in tileIds {
         let tilePath = URL(fileURLWithPath: "\(TILE_BASE_DIR)/frame-\(ms1FrameId)-tile-\(tileId).png")
 
         let filtered = groupedPixelsArr.filter{ $0.tileId == tileId } 
