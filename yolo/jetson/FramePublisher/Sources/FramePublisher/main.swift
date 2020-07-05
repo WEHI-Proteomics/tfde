@@ -113,10 +113,10 @@ print("render the frames")
 var elapsedTimes: [Double] = []
 var tileIds = Set<Int64>()
 for ms1FrameId in ms1FrameIDs {
-    let startTime = ProcessInfo.processInfo.systemUptime
-
     var groupedPixels: [String:GroupedTilePixel] = [:]
-    for point in try db.prepare(frames.filter(frameId == ms1FrameId)) {
+    let points = try db.prepare(frames.filter(frameId == ms1FrameId))
+    let startTime = ProcessInfo.processInfo.systemUptime
+    for point in points {
         let (tileId, pixelX) = tileAndPixelXFromMz(mz: point[mz])
         tileIds.insert(tileId)
         let key = "\(tileId)-\(pixelX)-\(point[scan])"
