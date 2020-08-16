@@ -30,7 +30,8 @@ def get_percolator_run_mapping(mapping_file_name):
     return mapping_l
 
 ##################################
-EXPERIMENT_DIR = '/Users/darylwilding-mcbride/Downloads/experiments/dwm-test'
+# EXPERIMENT_DIR = '/Users/darylwilding-mcbride/Downloads/experiments/dwm-test'
+EXPERIMENT_DIR = '/home/daryl/experiments/dwm-test'
 PERCOLATOR_OUTPUT_DIR = "{}/recalibrated-percolator-output".format(EXPERIMENT_DIR)
 MAPPING_FILE_NAME = "{}/percolator-idx-mapping.csv".format(PERCOLATOR_OUTPUT_DIR)
 RUN_NAME = '190719_Hela_Ecoli_1to1_01'
