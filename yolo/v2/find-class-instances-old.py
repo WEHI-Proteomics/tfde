@@ -104,3 +104,17 @@ for run_group_name,run_group_df in df.groupby(['run_name'], as_index=False):
         tfile.write('\n\nfeature class {}, charge {}, isotopes {}\n\n'.format(group_name[0], group_name[1], group_name[2]))
         tfile.write(sorted_group_df.to_string(columns=['run_name','tile_id','frame_id'], index=False))
     tfile.close()
+
+# which run,tile have the most instances of each feature class
+top_5_file_name = '{}/top-5-feature-index.txt'.format(ANNOTATIONS_DIR)
+tfile = open(top_5_file_name, 'w')
+for feature_class_group_name,feature_class_group_df in df.groupby(['feature_class'], as_index=False):
+    feature_class_name = feature_class_group_df.iloc[0].feature_class_name
+    counts_l = []
+    for run_group_name,run_group_df in feature_class_group_df.groupby(['run_name','tile_id'], as_index=False):
+        counts_l.append((run_group_name[0],run_group_name[1],len(run_group_df)))
+    counts_df = pd.DataFrame(counts_l, columns=['run_name','tile_id','count'])
+    counts_df.sort_values(by=['count'], ascending=False, inplace=True)
+    tfile.write('\n\nfeature class {}\n'.format(feature_class_name))
+    tfile.write(counts_df.head(5).to_string(columns=['run_name','tile_id','count'], index=False))
+tfile.close()
