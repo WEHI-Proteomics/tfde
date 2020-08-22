@@ -63,7 +63,7 @@ for feature_id in features_l:
     for feature_slice in slices_l:
         # load the image and generate the feature vector
         img = Image.open(feature_slice)
-        x = image.img_to_array(img.resize((256,256)))
+        x = image.img_to_array(img.resize((128,128)))
         feature_slices_l.append(x)
     feature_slices = np.array(feature_slices_l)
     feature_slices = feature_slices.astype('float32') / 255.
@@ -83,7 +83,7 @@ feature_movies.shape
 # build the model
 seq = Sequential()
 
-seq.add(TimeDistributed(Conv2D(128, (11, 11), strides=4, padding="same"), batch_input_shape=(None, 20, 256, 256, 3)))  # 20 images of 256x256x3
+seq.add(TimeDistributed(Conv2D(128, (11, 11), strides=4, padding="same"), batch_input_shape=(None, 20, 128, 128, 3)))
 seq.add(LayerNormalization())
 
 seq.add(TimeDistributed(Conv2D(64, (5, 5), strides=2, padding="same")))
