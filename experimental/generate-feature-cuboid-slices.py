@@ -72,7 +72,7 @@ features_l = []
 
 # filter by the run we're interested in
 combined_df = combined_df[combined_df.run_name == RUN_NAME]
-combined_df = combined_df.sample(n=100)  # limit the number of features for debugging purposes
+# combined_df = combined_df.sample(n=100)  # limit the number of features for debugging purposes
 
 for precursor_idx,precursor in enumerate(combined_df.itertuples()):
     precursor_id = precursor.precursor_id
