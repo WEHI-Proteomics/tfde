@@ -11,6 +11,9 @@ import pickle
 PIXELS_X = 224
 PIXELS_Y = 224
 
+# number of frames for the feature movies
+NUMBER_OF_FRAMES = 20
+
 # frame types for PASEF mode
 FRAME_TYPE_MS1 = 0
 FRAME_TYPE_MS2 = 8
@@ -103,43 +106,44 @@ for precursor_idx,precursor in enumerate(combined_df.itertuples()):
             print("found no raw points for feature {}".format(feature_id))
         db_conn.close()
 
-        # calculate the raw point coordinates in scaled pixels
-        pixel_df = pd.DataFrame(raw_df.apply(lambda row: pixel_xy(row.mz, row.scan, monoisotopic_mz-0.5, monoisotopic_mz+(10*0.5), scan_lower, scan_upper), axis=1).tolist(), columns=['pixel_x','pixel_y'])
-        raw_pixel_df = pd.concat([raw_df, pixel_df], axis=1)
+        if len(raw_df) > 0:
+            # calculate the raw point coordinates in scaled pixels
+            pixel_df = pd.DataFrame(raw_df.apply(lambda row: pixel_xy(row.mz, row.scan, monoisotopic_mz-0.5, monoisotopic_mz+(10*0.5), scan_lower, scan_upper), axis=1).tolist(), columns=['pixel_x','pixel_y'])
+            raw_pixel_df = pd.concat([raw_df, pixel_df], axis=1)
 
-        # sum the intensity of raw points that have been assigned to each pixel
-        pixel_intensity_df = raw_pixel_df.groupby(by=['frame_id', 'pixel_x', 'pixel_y'], as_index=False).intensity.sum()
+            # sum the intensity of raw points that have been assigned to each pixel
+            pixel_intensity_df = raw_pixel_df.groupby(by=['frame_id', 'pixel_x', 'pixel_y'], as_index=False).intensity.sum()
 
-        # calculate the colour to represent the intensity
-        colours_l = []
-        for i in pixel_intensity_df.intensity.unique():
-            colours_l.append((i, colour_map(norm(i), bytes=True)[:3]))
-        colours_df = pd.DataFrame(colours_l, columns=['intensity','colour'])
-        pixel_intensity_df = pd.merge(pixel_intensity_df, colours_df, how='left', left_on=['intensity'], right_on=['intensity'])
+            # calculate the colour to represent the intensity
+            colours_l = []
+            for i in pixel_intensity_df.intensity.unique():
+                colours_l.append((i, colour_map(norm(i), bytes=True)[:3]))
+            colours_df = pd.DataFrame(colours_l, columns=['intensity','colour'])
+            pixel_intensity_df = pd.merge(pixel_intensity_df, colours_df, how='left', left_on=['intensity'], right_on=['intensity'])
 
-        # get the frame IDs closest to the RT apex
-        movie_frame_ids = frame_properties_df.iloc[(frame_properties_df['Time'] - rt_apex).abs().argsort()[:20]].sort_values(by=['Time'], ascending=[True], inplace=False).Id.tolist()    
+            # get the frame IDs closest to the RT apex
+            movie_frame_ids = frame_properties_df.iloc[(frame_properties_df['Time'] - rt_apex).abs().argsort()[:NUMBER_OF_FRAMES]].sort_values(by=['Time'], ascending=[True], inplace=False).Id.tolist()
 
-        # write out the images to files
-        feature_slice = 0
-        for movie_frame_id in movie_frame_ids:
-            frame_df = pixel_intensity_df[(pixel_intensity_df.frame_id == movie_frame_id)]
-            # create an intensity array
-            tile_im_array = np.zeros([PIXELS_Y, PIXELS_X, 3], dtype=np.uint8)  # container for the image
-            for r in zip(frame_df.pixel_x, frame_df.pixel_y, frame_df.colour):
-                x = r[0]
-                y = r[1]
-                c = r[2]
-                tile_im_array[y,x,:] = c
+            # write out the images to files
+            feature_slice = 0
+            for movie_frame_id in movie_frame_ids:
+                frame_df = pixel_intensity_df[(pixel_intensity_df.frame_id == movie_frame_id)]
+                # create an intensity array
+                tile_im_array = np.zeros([PIXELS_Y, PIXELS_X, 3], dtype=np.uint8)  # container for the image
+                for r in zip(frame_df.pixel_x, frame_df.pixel_y, frame_df.colour):
+                    x = r[0]
+                    y = r[1]
+                    c = r[2]
+                    tile_im_array[y,x,:] = c
 
-            # create an image of the intensity array
-            feature_slice += 1
-            tile = Image.fromarray(tile_im_array, 'RGB')
-            tile_file_name = '{}/feature-{}-slice-{:03d}.png'.format(FEATURE_SLICES_DIR, feature_id, feature_slice)
-            tile.save(tile_file_name)
+                # create an image of the intensity array
+                feature_slice += 1
+                tile = Image.fromarray(tile_im_array, 'RGB')
+                tile_file_name = '{}/feature-{}-slice-{:03d}.png'.format(FEATURE_SLICES_DIR, feature_id, feature_slice)
+                tile.save(tile_file_name)
 
-        # add this to the list
-        features_l.append((precursor.sequence, precursor.charge_x, feature_id))
+            # add this to the list
+            features_l.append((precursor.sequence, precursor.charge_x, feature_id))
 
 # save the list of feature IDs we processed
 FEATURE_ID_LIST_FILE = '{}/feature_ids.pkl'.format(ENCODED_FEATURES_DIR)
