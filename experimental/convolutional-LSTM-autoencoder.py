@@ -83,9 +83,11 @@ X_val = X_test[:split_num]
 X_test = X_test[split_num:]
 
 print('train {}, validation {}, test {}'.format(X_train.shape, X_val.shape, X_test.shape))
-X_train.save('{}/train.npy'.format(ENCODED_FEATURES_DIR), allow_pickle=False)
-X_test.save('{}/test.npy'.format(ENCODED_FEATURES_DIR), allow_pickle=False)
-X_val.save('{}/validation.npy'.format(ENCODED_FEATURES_DIR), allow_pickle=False)
+
+# save the training set
+np.save('{}/train.npy'.format(ENCODED_FEATURES_DIR), X_train, allow_pickle=False)
+np.save('{}/test.npy'.format(ENCODED_FEATURES_DIR), X_test, allow_pickle=False)
+np.save('{}/validation.npy'.format(ENCODED_FEATURES_DIR), X_val, allow_pickle=False)
 
 # build the model
 seq = Sequential()
