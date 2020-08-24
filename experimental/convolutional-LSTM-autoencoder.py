@@ -12,6 +12,30 @@ import glob
 from PIL import Image
 from datetime import datetime
 from sklearn.model_selection import train_test_split
+import ray
+import multiprocessing as mp
+
+@ray.remote
+def load_feature_movie(feature_id, feature_idx, num_features):
+    print('feature {} of {}'.format(feature_idx+1, num_features))
+    # load the slices for the feature
+    slices_l = sorted(glob.glob("{}/feature-{}-slice-*.png".format(FEATURE_SLICES_DIR, feature_id)))
+    feature_slices_l = []
+    for feature_slice in slices_l:
+        # load the image and generate the feature vector
+        img = Image.open(feature_slice)
+        x = image.img_to_array(img.resize((PIXELS_X,PIXELS_Y)))
+        feature_slices_l.append(x)
+    feature_slices = np.array(feature_slices_l)
+    feature_slices = feature_slices.astype('float32') / 255.
+    return feature_slices
+
+# determine the number of workers based on the number of available cores and the proportion of the machine to be used
+def number_of_workers():
+    number_of_cores = mp.cpu_count()
+    number_of_workers = int(0.8 * number_of_cores)
+    return number_of_workers
+
 
 # EXPERIMENT_DIR = '/Users/darylwilding-mcbride/Downloads/experiments/dwm-test'
 EXPERIMENT_DIR = '/home/daryl/experiments/dwm-test'
@@ -31,24 +55,17 @@ FEATURE_ID_LIST_FILE = '{}/feature_ids.pkl'.format(ENCODED_FEATURES_DIR)
 feature_list_df = pd.read_pickle(FEATURE_ID_LIST_FILE)
 features_l = feature_list_df.feature_id.tolist()
 
+print("setting up Ray")
+if not ray.is_initialized():
+    ray.init(num_cpus=number_of_workers())
+
 # load the feature slices
 print('loading the feature slices')
-feature_movies_l = []
-for feature_idx,feature_id in enumerate(features_l):
-    if (feature_idx > 0) and (feature_idx % 1000 == 0):
-        print('loaded slices for {} features'.format(feature_idx+1))
-    # load the slices for the feature
-    slices_l = sorted(glob.glob("{}/feature-{}-slice-*.png".format(FEATURE_SLICES_DIR, feature_id)))
-    feature_slices_l = []
-    for feature_slice in slices_l:
-        # load the image and generate the feature vector
-        img = Image.open(feature_slice)
-        x = image.img_to_array(img.resize((PIXELS_X,PIXELS_Y)))
-        feature_slices_l.append(x)
-    feature_slices = np.array(feature_slices_l)
-    feature_slices = feature_slices.astype('float32') / 255.
-    feature_movies_l.append(feature_slices)
+feature_movies_l = ray.get([load_feature_movie.remote(feature_id=feature_id, feature_idx=feature_idx, num_features=len(features_l)) for feature_idx,feature_id in enumerate(features_l)])
 feature_movies = np.array(feature_movies_l)
+
+print("shutting down ray")
+ray.shutdown()
 
 # split the data into training, validation, test
 print('preparing the training set')
