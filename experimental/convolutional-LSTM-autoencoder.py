@@ -53,7 +53,7 @@ NUMBER_OF_FRAMES = 20
 # load the feature IDs that we processed earlier
 FEATURE_ID_LIST_FILE = '{}/feature_ids.pkl'.format(ENCODED_FEATURES_DIR)
 feature_list_df = pd.read_pickle(FEATURE_ID_LIST_FILE)
-features_l = feature_list_df.feature_id.tolist()
+features_l = feature_list_df.sample(n=5000).feature_id.tolist()
 
 print("setting up Ray")
 if not ray.is_initialized():
