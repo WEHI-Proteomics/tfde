@@ -50,10 +50,13 @@ PIXELS_Y = 128
 # number of frames for the feature movies
 NUMBER_OF_FRAMES = 20
 
+# number of features to use
+NUMBER_OF_FEATURES = 100
+
 # load the feature IDs that we processed earlier
 FEATURE_ID_LIST_FILE = '{}/feature_ids.pkl'.format(ENCODED_FEATURES_DIR)
 feature_list_df = pd.read_pickle(FEATURE_ID_LIST_FILE)
-features_l = feature_list_df.sample(n=5000).feature_id.tolist()
+features_l = feature_list_df.sample(n=NUMBER_OF_FEATURES).feature_id.tolist()
 
 print("setting up Ray")
 if not ray.is_initialized():
@@ -70,8 +73,9 @@ ray.shutdown()
 # split the data into training, validation, test
 print('preparing the training set')
 X_train, X_test, _, _ = train_test_split(feature_movies, feature_movies, test_size=0.20)
-X_train = np.reshape(X_train, (len(X_train), PIXELS_X, PIXELS_Y, 3))
-X_test = np.reshape(X_test, (len(X_test), PIXELS_X, PIXELS_Y, 3))
+del feature_movies
+X_train = np.reshape(X_train, (len(X_train), NUMBER_OF_FRAMES, PIXELS_X, PIXELS_Y, 3))
+X_test = np.reshape(X_test, (len(X_test), NUMBER_OF_FRAMES, PIXELS_X, PIXELS_Y, 3))
 
 # divide X_test into validation and test
 split_num = int(len(X_test)/2)
@@ -121,7 +125,7 @@ tensorboard_callback = TensorBoard(log_dir=logdir)
 
 # train the model
 print('training the model')
-seq.fit(feature_movies, feature_movies, batch_size=5, epochs=20, verbose=1, callbacks=[tensorboard_callback], shuffle=False)
+seq.fit(X_train, X_train, batch_size=5, epochs=20, verbose=1, validation_data=(X_val, X_val), callbacks=[tensorboard_callback], shuffle=False)
 
 # save the model
 print('saving the model')
