@@ -57,7 +57,10 @@ features_l = feature_list_df.feature_id.tolist()
 
 print("setting up Ray")
 if not ray.is_initialized():
-    ray.init(num_cpus=number_of_workers())
+    ray.init(memory=2000 * 1024 * 1024,
+            object_store_memory=200 * 1024 * 1024,
+            driver_object_store_memory=100 * 1024 * 1024, 
+            num_cpus=number_of_workers())
 
 # load the feature slices
 print('loading the feature slices')
