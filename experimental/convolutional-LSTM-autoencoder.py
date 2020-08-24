@@ -58,6 +58,9 @@ X_val = X_test[:split_num]
 X_test = X_test[split_num:]
 
 print('train {}, validation {}, test {}'.format(X_train.shape, X_val.shape, X_test.shape))
+X_train.save('{}/train.npy'.format(ENCODED_FEATURES_DIR), allow_pickle=False)
+X_test.save('{}/test.npy'.format(ENCODED_FEATURES_DIR), allow_pickle=False)
+X_val.save('{}/validation.npy'.format(ENCODED_FEATURES_DIR), allow_pickle=False)
 
 # build the model
 seq = Sequential()
@@ -99,4 +102,4 @@ tensorboard_callback = TensorBoard(log_dir=logdir)
 seq.fit(feature_movies, feature_movies, batch_size=5, epochs=20, verbose=1, callbacks=[tensorboard_callback], shuffle=False)
 
 # save the model
-seq.save('{}/')
+seq.save('{}/model'.format(ENCODED_FEATURES_DIR))
