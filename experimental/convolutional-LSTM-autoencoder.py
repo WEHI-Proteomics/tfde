@@ -32,8 +32,11 @@ feature_list_df = pd.read_pickle(FEATURE_ID_LIST_FILE)
 features_l = feature_list_df.feature_id.tolist()
 
 # load the feature slices
+print('loading the feature slices')
 feature_movies_l = []
-for feature_id in features_l:
+for feature_idx,feature_id in enumerate(features_l):
+    if (feature_idx > 0) and (feature_idx % 1000 == 0):
+        print('loaded slices for {} features'.format(feature_idx+1))
     # load the slices for the feature
     slices_l = sorted(glob.glob("{}/feature-{}-slice-*.png".format(FEATURE_SLICES_DIR, feature_id)))
     feature_slices_l = []
@@ -48,6 +51,7 @@ for feature_id in features_l:
 feature_movies = np.array(feature_movies_l)
 
 # split the data into training, validation, test
+print('preparing the training set')
 X_train, X_test, _, _ = train_test_split(feature_movies, feature_movies, test_size=0.20)
 X_train = np.reshape(X_train, (len(X_train), PIXELS_X, PIXELS_Y, 3))
 X_test = np.reshape(X_test, (len(X_test), PIXELS_X, PIXELS_Y, 3))
@@ -99,7 +103,9 @@ logdir = "/tmp/tb/logs/scalars/" + datetime.now().strftime("%Y%m%d-%H%M%S")
 tensorboard_callback = TensorBoard(log_dir=logdir)
 
 # train the model
+print('training the model')
 seq.fit(feature_movies, feature_movies, batch_size=5, epochs=20, verbose=1, callbacks=[tensorboard_callback], shuffle=False)
 
 # save the model
+print('saving the model')
 seq.save('{}/model'.format(ENCODED_FEATURES_DIR))
