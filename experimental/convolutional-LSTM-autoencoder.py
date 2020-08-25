@@ -161,7 +161,6 @@ else:
     print(seq.summary())
 
 # evaluate against the test set
-X_test = np.array([X_test[2]])
-loss = seq.evaluate(x=X_test, y=X_test, verbose = 1)
+loss = seq.evaluate(x=X_test, y=X_test, batch_size=1, verbose = 1)
 print(seq.metrics_names)
 print(loss)
