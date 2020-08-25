@@ -14,6 +14,7 @@ from datetime import datetime
 from sklearn.model_selection import train_test_split
 import ray
 import multiprocessing as mp
+import argparse
 
 @ray.remote
 def load_feature_movie(feature_id, feature_idx, num_features):
@@ -36,6 +37,11 @@ def number_of_workers():
     number_of_workers = int(0.8 * number_of_cores)
     return number_of_workers
 
+#################################
+parser = argparse.ArgumentParser(description='Create the tiles from raw data.')
+parser.add_argument('-cts','--create_training_set', action='store_true', help='Create a new training set.')
+args = parser.parse_args()
+
 
 # EXPERIMENT_DIR = '/Users/darylwilding-mcbride/Downloads/experiments/dwm-test'
 EXPERIMENT_DIR = '/home/daryl/experiments/dwm-test'
@@ -53,41 +59,49 @@ NUMBER_OF_FRAMES = 20
 # number of features to use
 NUMBER_OF_FEATURES = 100
 
-# load the feature IDs that we processed earlier
-FEATURE_ID_LIST_FILE = '{}/feature_ids.pkl'.format(ENCODED_FEATURES_DIR)
-feature_list_df = pd.read_pickle(FEATURE_ID_LIST_FILE)
-features_l = feature_list_df.sample(n=NUMBER_OF_FEATURES).feature_id.tolist()
+if args.create_training_set:
+    # load the feature IDs that we processed earlier
+    FEATURE_ID_LIST_FILE = '{}/feature_ids.pkl'.format(ENCODED_FEATURES_DIR)
+    feature_list_df = pd.read_pickle(FEATURE_ID_LIST_FILE)
+    features_l = feature_list_df.sample(n=NUMBER_OF_FEATURES).feature_id.tolist()
 
-print("setting up Ray")
-if not ray.is_initialized():
-    ray.init(object_store_memory=20000000000, redis_max_memory=25000000000, num_cpus=number_of_workers())
+    print("setting up Ray")
+    if not ray.is_initialized():
+        ray.init(object_store_memory=20000000000, redis_max_memory=25000000000, num_cpus=number_of_workers())
 
-# load the feature slices
-print('loading the feature slices')
-feature_movies_l = ray.get([load_feature_movie.remote(feature_id=feature_id, feature_idx=feature_idx, num_features=len(features_l)) for feature_idx,feature_id in enumerate(features_l)])
-feature_movies = np.array(feature_movies_l)
+    # load the feature slices
+    print('loading the feature slices')
+    feature_movies_l = ray.get([load_feature_movie.remote(feature_id=feature_id, feature_idx=feature_idx, num_features=len(features_l)) for feature_idx,feature_id in enumerate(features_l)])
+    feature_movies = np.array(feature_movies_l)
 
-print("shutting down ray")
-ray.shutdown()
+    print("shutting down ray")
+    ray.shutdown()
 
-# split the data into training, validation, test
-print('preparing the training set')
-X_train, X_test, _, _ = train_test_split(feature_movies, feature_movies, test_size=0.20)
-del feature_movies
-X_train = np.reshape(X_train, (len(X_train), NUMBER_OF_FRAMES, PIXELS_X, PIXELS_Y, 3))
-X_test = np.reshape(X_test, (len(X_test), NUMBER_OF_FRAMES, PIXELS_X, PIXELS_Y, 3))
+    # split the data into training, validation, test
+    print('preparing the training set')
+    X_train, X_test, _, _ = train_test_split(feature_movies, feature_movies, test_size=0.20)
+    del feature_movies
+    X_train = np.reshape(X_train, (len(X_train), NUMBER_OF_FRAMES, PIXELS_X, PIXELS_Y, 3))
+    X_test = np.reshape(X_test, (len(X_test), NUMBER_OF_FRAMES, PIXELS_X, PIXELS_Y, 3))
 
-# divide X_test into validation and test
-split_num = int(len(X_test)/2)
-X_val = X_test[:split_num]
-X_test = X_test[split_num:]
+    # divide X_test into validation and test
+    split_num = int(len(X_test)/2)
+    X_val = X_test[:split_num]
+    X_test = X_test[split_num:]
+
+    # save the training set
+    print('storing the training set.')
+    np.save('{}/train.npy'.format(ENCODED_FEATURES_DIR), X_train, allow_pickle=False)
+    np.save('{}/test.npy'.format(ENCODED_FEATURES_DIR), X_test, allow_pickle=False)
+    np.save('{}/validation.npy'.format(ENCODED_FEATURES_DIR), X_val, allow_pickle=False)
+else:
+    # load the training set
+    print('loading the training set.')
+    X_train = np.load('{}/train.npy'.format(ENCODED_FEATURES_DIR), allow_pickle=False)
+    X_test = np.load('{}/test.npy'.format(ENCODED_FEATURES_DIR), allow_pickle=False)
+    X_val = np.load('{}/validation.npy'.format(ENCODED_FEATURES_DIR), allow_pickle=False)
 
 print('train {}, validation {}, test {}'.format(X_train.shape, X_val.shape, X_test.shape))
-
-# save the training set
-np.save('{}/train.npy'.format(ENCODED_FEATURES_DIR), X_train, allow_pickle=False)
-np.save('{}/test.npy'.format(ENCODED_FEATURES_DIR), X_test, allow_pickle=False)
-np.save('{}/validation.npy'.format(ENCODED_FEATURES_DIR), X_val, allow_pickle=False)
 
 # build the model
 seq = Sequential()
@@ -100,15 +114,15 @@ seq.add(TimeDistributed(Conv2D(filters=64, kernel_size=(5, 5), strides=2, paddin
 seq.add(LayerNormalization())
 
 # temporal encoder
-seq.add(ConvLSTM2D(filters=64, kernel_size=(3, 3), padding="same", return_sequences=True))
+seq.add(ConvLSTM2D(filters=32, kernel_size=(3, 3), padding="same", return_sequences=True))
 seq.add(LayerNormalization())
 
 # bottleneck
-seq.add(ConvLSTM2D(filters=32, kernel_size=(3, 3), padding="same", return_sequences=True))
+seq.add(ConvLSTM2D(filters=16, kernel_size=(3, 3), padding="same", return_sequences=True))
 seq.add(LayerNormalization(name='encoded'))
 
 # temporal decoder
-seq.add(ConvLSTM2D(filters=64, kernel_size=(3, 3), padding="same", return_sequences=True))
+seq.add(ConvLSTM2D(filters=32, kernel_size=(3, 3), padding="same", return_sequences=True))
 seq.add(LayerNormalization())
 
 # spatial decoder
