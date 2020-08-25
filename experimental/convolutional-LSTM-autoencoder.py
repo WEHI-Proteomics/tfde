@@ -161,5 +161,6 @@ else:
     print(seq.summary())
 
 # evaluate against the test set
+X_test = [X_test[i] for i in range(X_test.shape[0])]  # convert from array of arrays to list of arrays
 loss, acc = seq.evaluate(X_test, X_test, verbose = 0)
 print('loss {}, accuracy {}'.format(loss, acc))
