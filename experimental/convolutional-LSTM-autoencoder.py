@@ -162,6 +162,6 @@ else:
 
 # evaluate against the test set
 X_test = [X_test[i] for i in range(X_test.shape[0])]  # convert from array of arrays to list of arrays
-loss = seq.evaluate(x=X_test, y=X_test, batch_size=len(X_test), verbose = 0)
+loss = seq.evaluate(x=X_test[2], y=X_test[2], verbose = 0)
 print(seq.metrics_names)
 print(loss)
