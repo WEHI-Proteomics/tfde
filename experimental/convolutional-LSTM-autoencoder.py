@@ -92,22 +92,26 @@ np.save('{}/validation.npy'.format(ENCODED_FEATURES_DIR), X_val, allow_pickle=Fa
 # build the model
 seq = Sequential()
 
+# spatial encoder
 seq.add(TimeDistributed(Conv2D(filters=128, kernel_size=(11, 11), strides=4, padding="same"), batch_input_shape=(None, NUMBER_OF_FRAMES, PIXELS_X, PIXELS_Y, 3)))
 seq.add(LayerNormalization())
 
 seq.add(TimeDistributed(Conv2D(filters=64, kernel_size=(5, 5), strides=2, padding="same")))
 seq.add(LayerNormalization())
-# # # # #
+
+# temporal encoder
 seq.add(ConvLSTM2D(filters=64, kernel_size=(3, 3), padding="same", return_sequences=True))
 seq.add(LayerNormalization())
 
+# bottleneck
 seq.add(ConvLSTM2D(filters=32, kernel_size=(3, 3), padding="same", return_sequences=True))
-seq.add(LayerNormalization())
-
-seq.add(ConvLSTM2D(filters=64, kernel_size=(3, 3), padding="same", return_sequences=True))
 seq.add(LayerNormalization(name='encoded'))
 
-# # # # #
+# temporal decoder
+seq.add(ConvLSTM2D(filters=64, kernel_size=(3, 3), padding="same", return_sequences=True))
+seq.add(LayerNormalization())
+
+# spatial decoder
 seq.add(TimeDistributed(Conv2DTranspose(filters=64, kernel_size=(5, 5), strides=2, padding="same")))
 seq.add(LayerNormalization())
 
@@ -115,6 +119,7 @@ seq.add(TimeDistributed(Conv2DTranspose(filters=128, kernel_size=(11, 11), strid
 seq.add(LayerNormalization())
 
 seq.add(TimeDistributed(Conv2D(filters=3, kernel_size=(11, 11), activation="sigmoid", padding="same")))
+
 print(seq.summary())
 
 encoder = Model(inputs=seq.inputs, outputs=seq.get_layer(name='encoded').output)
