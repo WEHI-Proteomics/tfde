@@ -146,7 +146,7 @@ tensorboard_callback = TensorBoard(log_dir=logdir)
 
 # train the model
 print('training the model')
-seq.fit(X_train, X_train, batch_size=5, epochs=20, verbose=0, validation_data=(X_val, X_val), callbacks=[tensorboard_callback], shuffle=False)
+seq.fit(X_train, X_train, batch_size=5, epochs=20, verbose=1, validation_data=(X_val, X_val), callbacks=[tensorboard_callback], shuffle=False)
 
 # save the model
 print('saving the model')
