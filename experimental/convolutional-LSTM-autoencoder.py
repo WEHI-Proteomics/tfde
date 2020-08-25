@@ -5,6 +5,7 @@ from tensorflow.keras.layers import LayerNormalization
 from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.preprocessing import image
 from tensorflow.keras.callbacks import TensorBoard
+from tensorflow.keras.models import load_model
 
 import pandas as pd
 import numpy as np
@@ -40,6 +41,7 @@ def number_of_workers():
 #################################
 parser = argparse.ArgumentParser(description='Train the convolutional LSTM autoencoder.')
 parser.add_argument('-cts','--create_training_set', action='store_true', help='Create a new training set.')
+parser.add_argument('-tnm','--train_model', action='store_true', help='Train a new model.')
 args = parser.parse_args()
 
 
@@ -103,51 +105,61 @@ else:
 
 print('train {}, validation {}, test {}'.format(X_train.shape, X_val.shape, X_test.shape))
 
-# build the model
-seq = Sequential()
+if args.train_model:
+    # build the model
+    seq = Sequential()
 
-# spatial encoder
-seq.add(TimeDistributed(Conv2D(filters=128, kernel_size=(11, 11), strides=4, padding="same"), batch_input_shape=(None, NUMBER_OF_FRAMES, PIXELS_X, PIXELS_Y, 3)))
-seq.add(LayerNormalization())
+    # spatial encoder
+    seq.add(TimeDistributed(Conv2D(filters=128, kernel_size=(11, 11), strides=4, padding="same"), batch_input_shape=(None, NUMBER_OF_FRAMES, PIXELS_X, PIXELS_Y, 3)))
+    seq.add(LayerNormalization())
 
-seq.add(TimeDistributed(Conv2D(filters=64, kernel_size=(5, 5), strides=2, padding="same")))
-seq.add(LayerNormalization())
+    seq.add(TimeDistributed(Conv2D(filters=64, kernel_size=(5, 5), strides=2, padding="same")))
+    seq.add(LayerNormalization())
 
-# temporal encoder
-seq.add(ConvLSTM2D(filters=32, kernel_size=(3, 3), padding="same", return_sequences=True))
-seq.add(LayerNormalization())
+    # temporal encoder
+    seq.add(ConvLSTM2D(filters=32, kernel_size=(3, 3), padding="same", return_sequences=True))
+    seq.add(LayerNormalization())
 
-# bottleneck
-seq.add(ConvLSTM2D(filters=16, kernel_size=(3, 3), padding="same", return_sequences=True))
-seq.add(LayerNormalization(name='encoded'))
+    # bottleneck
+    seq.add(ConvLSTM2D(filters=16, kernel_size=(3, 3), padding="same", return_sequences=True))
+    seq.add(LayerNormalization(name='encoded'))
 
-# temporal decoder
-seq.add(ConvLSTM2D(filters=32, kernel_size=(3, 3), padding="same", return_sequences=True))
-seq.add(LayerNormalization())
+    # temporal decoder
+    seq.add(ConvLSTM2D(filters=32, kernel_size=(3, 3), padding="same", return_sequences=True))
+    seq.add(LayerNormalization())
 
-# spatial decoder
-seq.add(TimeDistributed(Conv2DTranspose(filters=64, kernel_size=(5, 5), strides=2, padding="same")))
-seq.add(LayerNormalization())
+    # spatial decoder
+    seq.add(TimeDistributed(Conv2DTranspose(filters=64, kernel_size=(5, 5), strides=2, padding="same")))
+    seq.add(LayerNormalization())
 
-seq.add(TimeDistributed(Conv2DTranspose(filters=128, kernel_size=(11, 11), strides=4, padding="same")))
-seq.add(LayerNormalization())
+    seq.add(TimeDistributed(Conv2DTranspose(filters=128, kernel_size=(11, 11), strides=4, padding="same")))
+    seq.add(LayerNormalization())
 
-seq.add(TimeDistributed(Conv2D(filters=3, kernel_size=(11, 11), activation="sigmoid", padding="same")))
+    seq.add(TimeDistributed(Conv2D(filters=3, kernel_size=(11, 11), activation="sigmoid", padding="same")))
 
-print(seq.summary())
+    print(seq.summary())
 
-encoder = Model(inputs=seq.inputs, outputs=seq.get_layer(name='encoded').output)
+    encoder = Model(inputs=seq.inputs, outputs=seq.get_layer(name='encoded').output)
 
-seq.compile(loss='mse', optimizer=Adam(lr=1e-4, decay=1e-5, epsilon=1e-6))
+    seq.compile(loss='mse', optimizer=Adam(lr=1e-4, decay=1e-5, epsilon=1e-6))
 
-# set up TensorBoard
-logdir = "/tmp/tb/logs/scalars/" + datetime.now().strftime("%Y%m%d-%H%M%S")
-tensorboard_callback = TensorBoard(log_dir=logdir)
+    # set up TensorBoard
+    logdir = "/tmp/tb/logs/scalars/" + datetime.now().strftime("%Y%m%d-%H%M%S")
+    tensorboard_callback = TensorBoard(log_dir=logdir)
 
-# train the model
-print('training the model')
-seq.fit(X_train, X_train, batch_size=5, epochs=20, verbose=1, validation_data=(X_val, X_val), callbacks=[tensorboard_callback], shuffle=False)
+    # train the model
+    print('training the model')
+    seq.fit(X_train, X_train, batch_size=5, epochs=20, verbose=1, validation_data=(X_val, X_val), callbacks=[tensorboard_callback], shuffle=False)
 
-# save the model
-print('saving the model')
-seq.save('{}/model'.format(ENCODED_FEATURES_DIR))
+    # save the model
+    print('saving the model')
+    seq.save('{}/model'.format(ENCODED_FEATURES_DIR))
+else:
+    # load the model
+    print('loading the model')
+    seq = load_model('{}/model'.format(ENCODED_FEATURES_DIR))
+    print(seq.summary())
+
+# evaluate against the test set
+loss, acc = seq.evaluate(X_test, X_test, verbose = 0)
+print('loss {}, accuracy {}'.format(loss, acc))
