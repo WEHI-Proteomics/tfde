@@ -38,7 +38,7 @@ def number_of_workers():
     return number_of_workers
 
 #################################
-parser = argparse.ArgumentParser(description='Create the tiles from raw data.')
+parser = argparse.ArgumentParser(description='Train the convolutional LSTM autoencoder.')
 parser.add_argument('-cts','--create_training_set', action='store_true', help='Create a new training set.')
 args = parser.parse_args()
 
