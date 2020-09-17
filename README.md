@@ -12,4 +12,4 @@ Training a YOLO object detection ANN to detect features in ms1 frames. Intended 
 #### Also in this repository...
 - [Jupyter notebooks](https://github.com/WEHI-Proteomics/otf-peak-detect/tree/master/notebooks) for prototypying ideas.
 - [Data plotting code](https://github.com/WEHI-Proteomics/otf-peak-detect/tree/master/plotting) from the time before I got the hang of Jupyter notebooks.
-- [Experiments](https://github.com/WEHI-Proteomics/otf-peak-detect/tree/master/experiments) that didn't go very far.
+- [Experiments](https://github.com/WEHI-Proteomics/otf-peak-detect/tree/master/experiments), some of which didn't go very far.
