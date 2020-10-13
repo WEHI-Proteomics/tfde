@@ -1,5 +1,5 @@
 # otf-peak-detect
-This is the repository for Daryl's PhD project about on-the-fly detection of peptide features in timsTOF data.
+This is the repository for Daryl's PhD project about on-the-fly detection of peptide features in timsTOF data. Note this is unpublished work so please don't disseminate it outside the lab.
 
 There are a couple of approaches to feature detection here.
 
