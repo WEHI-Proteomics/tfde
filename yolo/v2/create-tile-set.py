@@ -16,10 +16,10 @@ import multiprocessing as mp
 # Example: python ./otf-peak-detect/yolo-feature-detection/training/create-raw-data-tiles.py -eb ~/Downloads/experiments -en 190719_Hela_Ecoli -rn 190719_Hela_Ecoli_1to3_06 -tidx 33 34
 
 PIXELS_X = 910
-PIXELS_Y = 910  # equal to the number of scan lines
+PIXELS_Y = 910
 MZ_MIN = 100.0
 MZ_MAX = 1700.0
-SCAN_MAX = PIXELS_Y
+SCAN_MAX = 1008
 SCAN_MIN = 1
 MZ_PER_TILE = 18.0
 TILES_PER_FRAME = int((MZ_MAX - MZ_MIN) / MZ_PER_TILE) + 1
@@ -48,6 +48,16 @@ def tile_pixel_x_from_mz(mz):
     tile_id = int((mz - MZ_MIN) / MZ_PER_TILE)
     pixel_x = int(((mz - MZ_MIN) % MZ_PER_TILE) / MZ_PER_TILE * PIXELS_X)
     return (tile_id, pixel_x)
+
+def tile_pixel_y_from_scan(scan):
+    assert (scan >= SCAN_MIN) and (scan <= SCAN_MAX), "scan not in range"
+    pixel_y = int(((scan - SCAN_MIN) / (SCAN_MAX - SCAN_MIN)) * PIXELS_Y)
+    return pixel_y
+
+def scan_from_tile_pixel(pixel_y):
+    assert (pixel_y >= 0) and (pixel_y <= PIXELS_Y), "pixel_y not in range"
+    scan = int(pixel_y / PIXELS_Y * (SCAN_MAX - SCAN_MIN))
+    return scan
 
 def mz_range_for_tile(tile_id):
     assert (tile_id >= 0) and (tile_id <= TILES_PER_FRAME-1), "tile_id not in range"
@@ -80,10 +90,11 @@ def render_frame(run_name, converted_db_name, frame_id, retention_time_secs, min
     if len(raw_points_df) > 0:
         # assign a tile_id and a pixel x value to each raw point
         tile_pixels_df = pd.DataFrame(raw_points_df.apply(lambda row: tile_pixel_x_from_mz(row.mz), axis=1).tolist(), columns=['tile_id', 'pixel_x'])
+        tile_pixels_df['pixel_y'] = tile_pixels_df.apply(lambda row: tile_pixel_y_from_scan(row.scan), axis=1)
         raw_points_df = pd.concat([raw_points_df, tile_pixels_df], axis=1)
 
         # sum the intensity of raw points that have been assigned to each pixel
-        pixel_intensity_df = raw_points_df.groupby(by=['tile_id', 'pixel_x', 'scan'], as_index=False).intensity.sum()
+        pixel_intensity_df = raw_points_df.groupby(by=['tile_id', 'pixel_x', 'pixel_y'], as_index=False).intensity.sum()
 
         # create the colour map to convert intensity to colour
         colour_map = plt.get_cmap('rainbow')
@@ -102,7 +113,7 @@ def render_frame(run_name, converted_db_name, frame_id, retention_time_secs, min
 
             # create an intensity array
             tile_im_array = np.zeros([PIXELS_Y+1, PIXELS_X+1, 3], dtype=np.uint8)  # container for the image
-            for r in zip(tile_df.pixel_x, tile_df.scan, tile_df.colour):
+            for r in zip(tile_df.pixel_x, tile_df.pixel_y, tile_df.colour):
                 x = r[0]
                 y = r[1]
                 c = r[2]
