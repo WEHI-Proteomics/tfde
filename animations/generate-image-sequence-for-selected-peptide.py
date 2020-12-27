@@ -102,6 +102,10 @@ for run_name in run_names:
     print('processing {}'.format(run_name))
 
     CONVERTED_DB = '{}/converted-databases/exp-{}-run-{}-converted.sqlite'.format(EXPERIMENT_DIR, args.experiment_name, run_name)
+    if not os.path.isfile(CONVERTED_DB):
+        print("The converted database is required but doesn't exist: {}".format(CONVERTED_DB))
+        sys.exit(1)
+
     ENCODED_FEATURES_DIR = '{}/encoded-features/{}'.format(EXPERIMENT_DIR, run_name)
     FEATURE_SLICES_DIR = '{}/slices'.format(ENCODED_FEATURES_DIR)
 
@@ -110,7 +114,12 @@ for run_name in run_names:
         shutil.rmtree(FEATURE_SLICES_DIR)
     os.makedirs(FEATURE_SLICES_DIR)
 
-    estimated_coords_df = pd.read_pickle('{}/target-decoy-models/library-sequences-in-run-{}.pkl'.format(EXPERIMENT_DIR, run_name))
+    EXTRACTED_FEATURE_PKL = '{}/target-decoy-models/library-sequences-in-run-{}.pkl'.format(EXPERIMENT_DIR, run_name)
+    if not os.path.isfile(EXTRACTED_FEATURE_PKL):
+        print("The extracted feature file is required but doesn't exist: {}".format(EXTRACTED_FEATURE_PKL))
+        sys.exit(1)
+
+    estimated_coords_df = pd.read_pickle(EXTRACTED_FEATURE_PKL)
     estimated_coords = estimated_coords_df[(estimated_coords_df.sequence == args.sequence) & (estimated_coords_df.charge == args.sequence_charge)].iloc[0].target_coords
 
     extracted_coords = estimated_coords_df[(estimated_coords_df.sequence == args.sequence) & (estimated_coords_df.charge == args.sequence_charge)].iloc[0].attributes
@@ -133,10 +142,10 @@ for run_name in run_names:
     # get the raw data for this feature
     db_conn = sqlite3.connect(CONVERTED_DB)
     raw_df = pd.read_sql_query('select mz,scan,intensity,frame_id,retention_time_secs from frames where intensity > 100 and mz >= {} and mz <= {} and scan >= {} and scan <= {} and frame_type == {} and retention_time_secs >= {} and retention_time_secs <= {}'.format(mz_lower, mz_upper, scan_lower, scan_upper, FRAME_TYPE_MS1, rt_lower, rt_upper), db_conn)
+    db_conn.close()
     if len(raw_df) == 0:
         print("found no raw points")
-        sys.exit(1)
-    db_conn.close()
+        break
 
     # get the frame ID closest to the estimated RT apex
     apex_frame_id = int(raw_df.iloc[(raw_df['retention_time_secs'] - rt_apex).abs().argsort()[:1]].sort_values(by=['retention_time_secs'], ascending=[True], inplace=False).iloc[0].frame_id)
