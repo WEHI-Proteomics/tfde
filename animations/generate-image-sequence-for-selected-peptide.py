@@ -91,7 +91,7 @@ if not os.path.exists(EXPERIMENT_DIR):
 
 # get the run names for the experiment
 run_names = get_run_names(EXPERIMENT_DIR)
-print("found {} runs for this experiment: {}".format(len(run_names), run_names))
+print("found {} runs for this experiment".format(len(run_names)))
 
 # create the colour mapping
 colour_map = plt.get_cmap('rainbow')
@@ -99,6 +99,7 @@ norm = colors.LogNorm(vmin=1, vmax=5000, clip=True)  # aiming to get good colour
 
 # generate a sequence of images for the selected peptide in each run of the experiment
 for run_name in run_names:
+    print('processing {}'.format(run_name))
 
     CONVERTED_DB = '{}/converted-databases/exp-{}-run-{}-converted.sqlite'.format(EXPERIMENT_DIR, args.experiment_name, run_name)
     ENCODED_FEATURES_DIR = '{}/encoded-features/{}'.format(EXPERIMENT_DIR, run_name)
@@ -219,4 +220,3 @@ for run_name in run_names:
         # save the image as a file
         tile_file_name = '{}/feature-slice-{:03d}.png'.format(FEATURE_SLICES_DIR, feature_slice)
         tile.save(tile_file_name)
-        
