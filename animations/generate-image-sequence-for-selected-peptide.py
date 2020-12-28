@@ -97,6 +97,12 @@ print("found {} runs for this experiment".format(len(run_names)))
 colour_map = plt.get_cmap('rainbow')
 norm = colors.LogNorm(vmin=1, vmax=5000, clip=True)  # aiming to get good colour variation in the lower range, and clipping everything else
 
+# clear out any previous feature slices
+ENCODED_FEATURES_DIR = '{}/encoded-features'.format(EXPERIMENT_DIR)
+if os.path.exists(ENCODED_FEATURES_DIR):
+    shutil.rmtree(ENCODED_FEATURES_DIR)
+os.makedirs(ENCODED_FEATURES_DIR)
+
 # generate a sequence of images for the selected peptide in each run of the experiment
 for run_name in run_names:
     print('processing {}'.format(run_name))
@@ -106,18 +112,13 @@ for run_name in run_names:
         print("The converted database is required but doesn't exist: {}".format(CONVERTED_DB))
         sys.exit(1)
 
-    ENCODED_FEATURES_DIR = '{}/encoded-features/{}'.format(EXPERIMENT_DIR, run_name)
-    FEATURE_SLICES_DIR = '{}/slices'.format(ENCODED_FEATURES_DIR)
-
-    # clear out any previous feature slices
-    if os.path.exists(FEATURE_SLICES_DIR):
-        shutil.rmtree(FEATURE_SLICES_DIR)
-    os.makedirs(FEATURE_SLICES_DIR)
-
     EXTRACTED_FEATURE_PKL = '{}/target-decoy-models/library-sequences-in-run-{}.pkl'.format(EXPERIMENT_DIR, run_name)
     if not os.path.isfile(EXTRACTED_FEATURE_PKL):
         print("The extracted feature file is required but doesn't exist: {}".format(EXTRACTED_FEATURE_PKL))
         sys.exit(1)
+
+    FEATURE_SLICES_DIR = '{}/{}/slices'.format(ENCODED_FEATURES_DIR, run_name)
+    os.makedirs(ENCODED_FEATURES_DIR)
 
     estimated_coords_df = pd.read_pickle(EXTRACTED_FEATURE_PKL)
     estimated_coords = estimated_coords_df[(estimated_coords_df.sequence == args.sequence) & (estimated_coords_df.charge == args.sequence_charge)].iloc[0].target_coords
