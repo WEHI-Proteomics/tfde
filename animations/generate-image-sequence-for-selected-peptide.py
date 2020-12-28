@@ -118,7 +118,7 @@ for run_name in run_names:
         sys.exit(1)
 
     FEATURE_SLICES_DIR = '{}/{}/slices'.format(ENCODED_FEATURES_DIR, run_name)
-    os.makedirs(ENCODED_FEATURES_DIR)
+    os.makedirs(FEATURE_SLICES_DIR)
 
     estimated_coords_df = pd.read_pickle(EXTRACTED_FEATURE_PKL)
     estimated_coords = estimated_coords_df[(estimated_coords_df.sequence == args.sequence) & (estimated_coords_df.charge == args.sequence_charge)].iloc[0].target_coords
