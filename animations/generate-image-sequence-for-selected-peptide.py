@@ -184,20 +184,22 @@ for run_name in run_names:
 
             # create an image of the intensity array
             feature_slice += 1
-            tile = Image.fromarray(tile_im_array, 'RGB')
+            tile = Image.fromarray(tile_im_array, mode='RGB')
             draw = ImageDraw.Draw(tile)
             
             # if this is the estimated apex frame, highlight the estimated coordinates
             if group_name == apex_frame_id:
-                draw.line((estimated_x,0, estimated_x,PIXELS_Y), fill='green', width=1)
-                draw.line((0,estimated_y, PIXELS_X,estimated_y), fill='green', width=1)
+                line_colour = (100,255,100)
+                draw.line((estimated_x,0, estimated_x,PIXELS_Y), fill=line_colour, width=1)
+                draw.line((0,estimated_y, PIXELS_X,estimated_y), fill=line_colour, width=1)
             
             # if this is the extracted apex frame, highlight the extracted coordinates
             if group_name == extracted_apex_frame_id:
                 # draw the extracted apex
                 extracted_x, extracted_y = pixel_xy(extracted_coords['monoisotopic_mz_centroid'], extracted_coords['scan_apex'], mz_lower, mz_upper, scan_lower, scan_upper)
-                draw.line((extracted_x,0, extracted_x,PIXELS_Y), fill='blue', width=1)
-                draw.line((0,extracted_y, PIXELS_X,extracted_y), fill='blue', width=1)
+                line_colour = (100,100,255)
+                draw.line((extracted_x,0, extracted_x,PIXELS_Y), fill=line_colour, width=1)
+                draw.line((0,extracted_y, PIXELS_X,extracted_y), fill=line_colour, width=1)
 
             # draw the CCS markers
             ccs_marker_each = 10
@@ -220,7 +222,7 @@ for run_name in run_names:
             # draw the info box
             info_box_x_inset = 200
             space_per_line = 12
-            draw.rectangle(xy=[(PIXELS_X-info_box_x_inset, 0), (PIXELS_X, 4*space_per_line)], fill=TINT_COLOR+(OPACITY,), outline=None)
+            draw.rectangle(xy=[(PIXELS_X-info_box_x_inset, 0), (PIXELS_X, 4*space_per_line)], fill=(20,20,20), outline=None)
             draw.text((PIXELS_X-info_box_x_inset,0*space_per_line), args.sequence, font=feature_label_font, fill='lawngreen')
             draw.text((PIXELS_X-info_box_x_inset,1*space_per_line), 'charge {}'.format(args.sequence_charge), font=feature_label_font, fill='lawngreen')
             draw.text((PIXELS_X-info_box_x_inset,2*space_per_line), '{}, {}'.format(args.experiment_name, '_'.join(run_name.split('_Slot')[0].split('_')[1:])), font=feature_label_font, fill='lawngreen')
