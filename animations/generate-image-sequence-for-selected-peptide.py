@@ -189,7 +189,7 @@ for run_name in run_names:
             
             # if this is the estimated apex frame, highlight the estimated coordinates
             if group_name == apex_frame_id:
-                line_colour = (100,255,100)
+                line_colour = (100,200,100)
                 draw.line((estimated_x,0, estimated_x,PIXELS_Y), fill=line_colour, width=1)
                 draw.line((0,estimated_y, PIXELS_X,estimated_y), fill=line_colour, width=1)
             
@@ -197,7 +197,7 @@ for run_name in run_names:
             if group_name == extracted_apex_frame_id:
                 # draw the extracted apex
                 extracted_x, extracted_y = pixel_xy(extracted_coords['monoisotopic_mz_centroid'], extracted_coords['scan_apex'], mz_lower, mz_upper, scan_lower, scan_upper)
-                line_colour = (100,100,255)
+                line_colour = (100,100,200)
                 draw.line((extracted_x,0, extracted_x,PIXELS_Y), fill=line_colour, width=1)
                 draw.line((0,extracted_y, PIXELS_X,extracted_y), fill=line_colour, width=1)
 
