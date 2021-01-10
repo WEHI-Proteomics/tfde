@@ -26,8 +26,8 @@ def get_run_names(experiment_dir):
     return run_names
 
 def pixel_xy(mz, scan, mz_lower, mz_upper, scan_lower, scan_upper):
-    x_pixels_per_mz = (PIXELS_X-1) / (mz_upper - mz_lower)
-    y_pixels_per_scan = (PIXELS_Y-1) / (scan_upper - scan_lower)
+    x_pixels_per_mz = (args.pixels_x-1) / (mz_upper - mz_lower)
+    y_pixels_per_scan = (args.pixels_y-1) / (scan_upper - scan_lower)
     
     pixel_x = int((mz - mz_lower) * x_pixels_per_mz)
     pixel_y = int((scan - scan_lower) * y_pixels_per_scan)
@@ -62,10 +62,6 @@ OFFSET_CCS_UPPER = 150
 OFFSET_RT_LOWER = 5
 OFFSET_RT_UPPER = 5
 
-# image dimensions
-PIXELS_X = 600
-PIXELS_Y = 600
-
 
 ###########################
 parser = argparse.ArgumentParser(description='Visualise the raw data at a peptide\'s estimated coordinates and its extraction coordinates.')
@@ -73,6 +69,9 @@ parser.add_argument('-eb','--experiment_base_dir', type=str, default='./experime
 parser.add_argument('-en','--experiment_name', type=str, help='Name of the experiment.', required=True)
 parser.add_argument('-seq','--sequence', type=str, help='The selected sequence.', required=True)
 parser.add_argument('-seqchr','--sequence_charge', type=int, help='The charge for the selected sequence.', required=True)
+parser.add_argument('-px','--pixels_x', type=int, default=800, help='The dimension of the images on the x axis.', required=False)
+parser.add_argument('-py','--pixels_y', type=int, default=800, help='The dimension of the images on the y axis.', required=False)
+parser.add_argument('-minint','--minimum_intensity', type=int, default=100, help='The minimum intensity to be included in the image.', required=False)
 
 args = parser.parse_args()
 
@@ -136,12 +135,12 @@ for run_name in run_names:
         rt_lower = estimated_coords['rt_apex'] - OFFSET_RT_LOWER
         rt_upper = estimated_coords['rt_apex'] + OFFSET_RT_UPPER
 
-        x_pixels_per_mz = (PIXELS_X-1) / (mz_upper - mz_lower)
-        y_pixels_per_scan = (PIXELS_Y-1) / (scan_upper - scan_lower)
+        x_pixels_per_mz = (args.pixels_x-1) / (mz_upper - mz_lower)
+        y_pixels_per_scan = (args.pixels_y-1) / (scan_upper - scan_lower)
 
         # get the raw data for this feature
         db_conn = sqlite3.connect(CONVERTED_DB)
-        raw_df = pd.read_sql_query('select mz,scan,intensity,frame_id,retention_time_secs from frames where intensity > 100 and mz >= {} and mz <= {} and scan >= {} and scan <= {} and frame_type == {} and retention_time_secs >= {} and retention_time_secs <= {}'.format(mz_lower, mz_upper, scan_lower, scan_upper, FRAME_TYPE_MS1, rt_lower, rt_upper), db_conn)
+        raw_df = pd.read_sql_query('select mz,scan,intensity,frame_id,retention_time_secs from frames where intensity > {} and mz >= {} and mz <= {} and scan >= {} and scan <= {} and frame_type == {} and retention_time_secs >= {} and retention_time_secs <= {}'.format(args.minimum_intensity, mz_lower, mz_upper, scan_lower, scan_upper, FRAME_TYPE_MS1, rt_lower, rt_upper), db_conn)
         db_conn.close()
         if len(raw_df) == 0:
             print("found no raw points")
@@ -175,7 +174,7 @@ for run_name in run_names:
             frame_rt = raw_df[(raw_df.frame_id == group_name)].iloc[0].retention_time_secs
             
             # create an intensity array
-            tile_im_array = np.zeros([PIXELS_Y, PIXELS_X, 3], dtype=np.uint8)  # container for the image
+            tile_im_array = np.zeros([args.pixels_y, args.pixels_x, 3], dtype=np.uint8)  # container for the image
             for r in zip(group_df.pixel_x, group_df.pixel_y, group_df.colour):
                 x = r[0]
                 y = r[1]
@@ -190,16 +189,16 @@ for run_name in run_names:
             # if this is the estimated apex frame, highlight the estimated coordinates
             if group_name == apex_frame_id:
                 line_colour = (100,200,100)
-                draw.line((estimated_x,0, estimated_x,PIXELS_Y), fill=line_colour, width=1)
-                draw.line((0,estimated_y, PIXELS_X,estimated_y), fill=line_colour, width=1)
+                draw.line((estimated_x,0, estimated_x,args.pixels_y), fill=line_colour, width=1)
+                draw.line((0,estimated_y, args.pixels_x,estimated_y), fill=line_colour, width=1)
             
             # if this is the extracted apex frame, highlight the extracted coordinates
             if group_name == extracted_apex_frame_id:
                 # draw the extracted apex
                 extracted_x, extracted_y = pixel_xy(extracted_coords['monoisotopic_mz_centroid'], extracted_coords['scan_apex'], mz_lower, mz_upper, scan_lower, scan_upper)
                 line_colour = (100,100,200)
-                draw.line((extracted_x,0, extracted_x,PIXELS_Y), fill=line_colour, width=1)
-                draw.line((0,extracted_y, PIXELS_X,extracted_y), fill=line_colour, width=1)
+                draw.line((extracted_x,0, extracted_x,args.pixels_y), fill=line_colour, width=1)
+                draw.line((0,extracted_y, args.pixels_x,extracted_y), fill=line_colour, width=1)
 
             # draw the CCS markers
             ccs_marker_each = 10
@@ -222,11 +221,11 @@ for run_name in run_names:
             # draw the info box
             info_box_x_inset = 200
             space_per_line = 12
-            draw.rectangle(xy=[(PIXELS_X-info_box_x_inset, 0), (PIXELS_X, 4*space_per_line)], fill=(20,20,20), outline=None)
-            draw.text((PIXELS_X-info_box_x_inset,0*space_per_line), args.sequence, font=feature_label_font, fill='lawngreen')
-            draw.text((PIXELS_X-info_box_x_inset,1*space_per_line), 'charge {}'.format(args.sequence_charge), font=feature_label_font, fill='lawngreen')
-            draw.text((PIXELS_X-info_box_x_inset,2*space_per_line), '{}, {}'.format(args.experiment_name, '_'.join(run_name.split('_Slot')[0].split('_')[1:])), font=feature_label_font, fill='lawngreen')
-            draw.text((PIXELS_X-info_box_x_inset,3*space_per_line), round(frame_rt,1).astype('str'), font=feature_label_font, fill='lawngreen')
+            draw.rectangle(xy=[(args.pixels_x-info_box_x_inset, 0), (args.pixels_x, 4*space_per_line)], fill=(20,20,20), outline=None)
+            draw.text((args.pixels_x-info_box_x_inset,0*space_per_line), args.sequence, font=feature_label_font, fill='lawngreen')
+            draw.text((args.pixels_x-info_box_x_inset,1*space_per_line), 'charge {}'.format(args.sequence_charge), font=feature_label_font, fill='lawngreen')
+            draw.text((args.pixels_x-info_box_x_inset,2*space_per_line), '{}, {}'.format(args.experiment_name, '_'.join(run_name.split('_Slot')[0].split('_')[1:])), font=feature_label_font, fill='lawngreen')
+            draw.text((args.pixels_x-info_box_x_inset,3*space_per_line), round(frame_rt,1).astype('str'), font=feature_label_font, fill='lawngreen')
                 
             # save the image as a file
             tile_file_name = '{}/feature-slice-{:03d}.png'.format(FEATURE_SLICES_DIR, feature_slice)
