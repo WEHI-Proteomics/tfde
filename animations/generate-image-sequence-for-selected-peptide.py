@@ -127,15 +127,17 @@ for run_name in run_names:
     os.makedirs(FEATURE_SLICES_DIR)
 
     extracted_sequence_in_run = ext_df[(ext_df.sequence == args.sequence) & (ext_df.charge == args.sequence_charge) & (ext_df.run_name == run_name)]
+    if len(extracted_sequence_in_run) == 0:
+        print('could not find the sequence in {} - moving on'.format(run_name))
+        break
 
     # get the estimated coordinates
     estimated_coords = extracted_sequence_in_run.iloc[0].target_coords
 
     # get the extracted coordinates
-    extracted_coords = extracted_sequence_in_run.iloc[0].attributes
-    extracted_rt_apex = extracted_coords['rt_apex']
-    extracted_scan_apex = extracted_coords['scan_apex']
-    extracted_mz = extracted_coords['monoisotopic_mz_centroid']
+    extracted_rt_apex = extracted_sequence_in_run.iloc[0].rt_apex
+    extracted_scan_apex = extracted_sequence_in_run.iloc[0].scan_apex
+    extracted_mz = extracted_sequence_in_run.iloc[0].monoisotopic_mz_centroid
 
     # determine the cuboid dimensions
     mz_lower = estimated_coords['mono_mz'] - OFFSET_MZ_LOWER
