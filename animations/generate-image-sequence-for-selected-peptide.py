@@ -208,7 +208,7 @@ for run_name in run_names:
         # if this is the extracted apex frame, highlight the extracted coordinates
         if group_name == extracted_apex_frame_id:
             # draw the extracted apex
-            extracted_x, extracted_y = pixel_xy(extracted_coords['monoisotopic_mz_centroid'], extracted_coords['scan_apex'], mz_lower, mz_upper, scan_lower, scan_upper)
+            extracted_x, extracted_y = pixel_xy(extracted_mz, extracted_scan_apex, mz_lower, mz_upper, scan_lower, scan_upper)
             line_colour = (100,100,200)
             draw.line((extracted_x,0, extracted_x,args.pixels_y), fill=line_colour, width=1)
             draw.line((0,extracted_y, args.pixels_x,extracted_y), fill=line_colour, width=1)
