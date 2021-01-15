@@ -92,6 +92,17 @@ if not os.path.exists(EXPERIMENT_DIR):
 run_names = get_run_names(EXPERIMENT_DIR)
 print("found {} runs for this experiment".format(len(run_names)))
 
+# load the extractions
+EXTRACTED_FEATURES_DB_NAME = '{}/extracted-features/extracted-features.sqlite'.format(EXPERIMENT_DIR)
+if not os.path.isfile(EXTRACTED_FEATURES_DB_NAME):
+    print("The extractions file doesn't exist: {}".format(EXTRACTED_FEATURES_DB_NAME))
+    sys.exit(1)
+
+print('loading the extractions from {}'.format(EXTRACTED_FEATURES_DB_NAME))
+db_conn = sqlite3.connect(EXTRACTED_FEATURES_DB_NAME)
+ext_df = pd.read_sql_query("select * from features where classed_as == \'target\'", db_conn)
+db_conn.close()
+
 # create the colour mapping
 colour_map = plt.get_cmap('rainbow')
 norm = colors.LogNorm(vmin=1, vmax=5000, clip=True)  # aiming to get good colour variation in the lower range, and clipping everything else
@@ -111,122 +122,122 @@ for run_name in run_names:
         print("The converted database is required but doesn't exist: {}".format(CONVERTED_DB))
         sys.exit(1)
 
-    EXTRACTED_FEATURE_PKL = '{}/target-decoy-models/library-sequences-in-run-{}.pkl'.format(EXPERIMENT_DIR, run_name)
-    if not os.path.isfile(EXTRACTED_FEATURE_PKL):
-        print("The extracted feature file is required but doesn't exist - skipping: {}".format(EXTRACTED_FEATURE_PKL))
-    else:
-        FEATURE_SLICES_DIR = '{}/{}/slices'.format(ENCODED_FEATURES_DIR, run_name)
-        os.makedirs(FEATURE_SLICES_DIR)
+    # create the output directory
+    FEATURE_SLICES_DIR = '{}/{}/slices'.format(ENCODED_FEATURES_DIR, run_name)
+    os.makedirs(FEATURE_SLICES_DIR)
 
-        estimated_coords_df = pd.read_pickle(EXTRACTED_FEATURE_PKL)
-        estimated_coords = estimated_coords_df[(estimated_coords_df.sequence == args.sequence) & (estimated_coords_df.charge == args.sequence_charge)].iloc[0].target_coords
+    extracted_sequence_in_run = ext_df[(ext_df.sequence == args.sequence) & (ext_df.charge == args.sequence_charge) & (ext_df.run_name == run_name)]
 
-        extracted_coords = estimated_coords_df[(estimated_coords_df.sequence == args.sequence) & (estimated_coords_df.charge == args.sequence_charge)].iloc[0].attributes
-        extracted_rt_apex = extracted_coords['rt_apex']
-        extracted_scan_apex = extracted_coords['scan_apex']
-        extracted_mz = extracted_coords['monoisotopic_mz_centroid']
+    # get the estimated coordinates
+    estimated_coords = extracted_sequence_in_run.iloc[0].target_coords
 
-        # determine the cuboid dimensions
-        mz_lower = estimated_coords['mono_mz'] - OFFSET_MZ_LOWER
-        mz_upper = estimated_coords['mono_mz'] + OFFSET_MZ_UPPER
-        scan_lower = estimated_coords['scan_apex'] - OFFSET_CCS_LOWER
-        scan_upper = estimated_coords['scan_apex'] + OFFSET_CCS_UPPER
-        rt_apex = estimated_coords['rt_apex']
-        rt_lower = estimated_coords['rt_apex'] - OFFSET_RT_LOWER
-        rt_upper = estimated_coords['rt_apex'] + OFFSET_RT_UPPER
+    # get the extracted coordinates
+    extracted_coords = extracted_sequence_in_run.iloc[0].attributes
+    extracted_rt_apex = extracted_coords['rt_apex']
+    extracted_scan_apex = extracted_coords['scan_apex']
+    extracted_mz = extracted_coords['monoisotopic_mz_centroid']
 
-        x_pixels_per_mz = (args.pixels_x-1) / (mz_upper - mz_lower)
-        y_pixels_per_scan = (args.pixels_y-1) / (scan_upper - scan_lower)
+    # determine the cuboid dimensions
+    mz_lower = estimated_coords['mono_mz'] - OFFSET_MZ_LOWER
+    mz_upper = estimated_coords['mono_mz'] + OFFSET_MZ_UPPER
+    scan_lower = estimated_coords['scan_apex'] - OFFSET_CCS_LOWER
+    scan_upper = estimated_coords['scan_apex'] + OFFSET_CCS_UPPER
+    rt_apex = estimated_coords['rt_apex']
+    rt_lower = estimated_coords['rt_apex'] - OFFSET_RT_LOWER
+    rt_upper = estimated_coords['rt_apex'] + OFFSET_RT_UPPER
 
-        # get the raw data for this feature
-        db_conn = sqlite3.connect(CONVERTED_DB)
-        raw_df = pd.read_sql_query('select mz,scan,intensity,frame_id,retention_time_secs from frames where intensity > {} and mz >= {} and mz <= {} and scan >= {} and scan <= {} and frame_type == {} and retention_time_secs >= {} and retention_time_secs <= {}'.format(args.minimum_intensity, mz_lower, mz_upper, scan_lower, scan_upper, FRAME_TYPE_MS1, rt_lower, rt_upper), db_conn)
-        db_conn.close()
-        if len(raw_df) == 0:
-            print("found no raw points")
-            break
+    x_pixels_per_mz = (args.pixels_x-1) / (mz_upper - mz_lower)
+    y_pixels_per_scan = (args.pixels_y-1) / (scan_upper - scan_lower)
 
-        # get the frame ID closest to the estimated RT apex
-        apex_frame_id = int(raw_df.iloc[(raw_df['retention_time_secs'] - rt_apex).abs().argsort()[:1]].sort_values(by=['retention_time_secs'], ascending=[True], inplace=False).iloc[0].frame_id)
+    # get the raw data for this feature
+    db_conn = sqlite3.connect(CONVERTED_DB)
+    raw_df = pd.read_sql_query('select mz,scan,intensity,frame_id,retention_time_secs from frames where intensity > {} and mz >= {} and mz <= {} and scan >= {} and scan <= {} and frame_type == {} and retention_time_secs >= {} and retention_time_secs <= {}'.format(args.minimum_intensity, mz_lower, mz_upper, scan_lower, scan_upper, FRAME_TYPE_MS1, rt_lower, rt_upper), db_conn)
+    db_conn.close()
+    if len(raw_df) == 0:
+        print("found no raw points")
+        break
 
-        # get the frame ID closest to the extracted RT apex
-        extracted_apex_frame_id = int(raw_df.iloc[(raw_df['retention_time_secs'] - extracted_rt_apex).abs().argsort()[:1]].sort_values(by=['retention_time_secs'], ascending=[True], inplace=False).iloc[0].frame_id)
+    # get the frame ID closest to the estimated RT apex
+    apex_frame_id = int(raw_df.iloc[(raw_df['retention_time_secs'] - rt_apex).abs().argsort()[:1]].sort_values(by=['retention_time_secs'], ascending=[True], inplace=False).iloc[0].frame_id)
 
-        # calculate the raw point coordinates in scaled pixels
-        pixel_df = pd.DataFrame(raw_df.apply(lambda row: pixel_xy(row.mz, row.scan, mz_lower, mz_upper, scan_lower, scan_upper), axis=1).tolist(), columns=['pixel_x','pixel_y'])
-        raw_pixel_df = pd.concat([raw_df, pixel_df], axis=1)
+    # get the frame ID closest to the extracted RT apex
+    extracted_apex_frame_id = int(raw_df.iloc[(raw_df['retention_time_secs'] - extracted_rt_apex).abs().argsort()[:1]].sort_values(by=['retention_time_secs'], ascending=[True], inplace=False).iloc[0].frame_id)
 
-        # sum the intensity of raw points that have been assigned to each pixel
-        pixel_intensity_df = raw_pixel_df.groupby(by=['frame_id', 'pixel_x', 'pixel_y'], as_index=False).intensity.sum()
+    # calculate the raw point coordinates in scaled pixels
+    pixel_df = pd.DataFrame(raw_df.apply(lambda row: pixel_xy(row.mz, row.scan, mz_lower, mz_upper, scan_lower, scan_upper), axis=1).tolist(), columns=['pixel_x','pixel_y'])
+    raw_pixel_df = pd.concat([raw_df, pixel_df], axis=1)
 
-        # calculate the colour to represent the intensity
-        colours_l = []
-        for i in pixel_intensity_df.intensity.unique():
-            colours_l.append((i, colour_map(norm(i), bytes=True)[:3]))
-        colours_df = pd.DataFrame(colours_l, columns=['intensity','colour'])
-        pixel_intensity_df = pd.merge(pixel_intensity_df, colours_df, how='left', left_on=['intensity'], right_on=['intensity'])
+    # sum the intensity of raw points that have been assigned to each pixel
+    pixel_intensity_df = raw_pixel_df.groupby(by=['frame_id', 'pixel_x', 'pixel_y'], as_index=False).intensity.sum()
 
-        estimated_x, estimated_y = pixel_xy(estimated_coords['mono_mz'], estimated_coords['scan_apex'], mz_lower, mz_upper, scan_lower, scan_upper)
+    # calculate the colour to represent the intensity
+    colours_l = []
+    for i in pixel_intensity_df.intensity.unique():
+        colours_l.append((i, colour_map(norm(i), bytes=True)[:3]))
+    colours_df = pd.DataFrame(colours_l, columns=['intensity','colour'])
+    pixel_intensity_df = pd.merge(pixel_intensity_df, colours_df, how='left', left_on=['intensity'], right_on=['intensity'])
 
-        # write out the images to files
-        feature_slice = 0
-        for group_name,group_df in pixel_intensity_df.groupby(['frame_id'], as_index=False):
-            frame_rt = raw_df[(raw_df.frame_id == group_name)].iloc[0].retention_time_secs
+    estimated_x, estimated_y = pixel_xy(estimated_coords['mono_mz'], estimated_coords['scan_apex'], mz_lower, mz_upper, scan_lower, scan_upper)
+
+    # write out the images to files
+    feature_slice = 0
+    for group_name,group_df in pixel_intensity_df.groupby(['frame_id'], as_index=False):
+        frame_rt = raw_df[(raw_df.frame_id == group_name)].iloc[0].retention_time_secs
+        
+        # create an intensity array
+        tile_im_array = np.zeros([args.pixels_y, args.pixels_x, 3], dtype=np.uint8)  # container for the image
+        for r in zip(group_df.pixel_x, group_df.pixel_y, group_df.colour):
+            x = r[0]
+            y = r[1]
+            c = r[2]
+            tile_im_array[y:int(y+y_pixels_per_scan),x,:] = c
+
+        # create an image of the intensity array
+        feature_slice += 1
+        tile = Image.fromarray(tile_im_array, mode='RGB')
+        draw = ImageDraw.Draw(tile)
+        
+        # if this is the estimated apex frame, highlight the estimated coordinates
+        if group_name == apex_frame_id:
+            line_colour = (100,200,100)
+            draw.line((estimated_x,0, estimated_x,args.pixels_y), fill=line_colour, width=1)
+            draw.line((0,estimated_y, args.pixels_x,estimated_y), fill=line_colour, width=1)
+        
+        # if this is the extracted apex frame, highlight the extracted coordinates
+        if group_name == extracted_apex_frame_id:
+            # draw the extracted apex
+            extracted_x, extracted_y = pixel_xy(extracted_coords['monoisotopic_mz_centroid'], extracted_coords['scan_apex'], mz_lower, mz_upper, scan_lower, scan_upper)
+            line_colour = (100,100,200)
+            draw.line((extracted_x,0, extracted_x,args.pixels_y), fill=line_colour, width=1)
+            draw.line((0,extracted_y, args.pixels_x,extracted_y), fill=line_colour, width=1)
+
+        # draw the CCS markers
+        ccs_marker_each = 10
+        draw.line((0,estimated_y, 10,estimated_y), fill='yellow', width=3)
+        draw.text((15, estimated_y-6), round(estimated_coords['scan_apex'],1).astype('str'), font=feature_label_font, fill='yellow')
+        for i in range(1,10):
+            ccs_marker_y_pixels = y_pixels_per_scan * ccs_marker_each * i
+            draw.line((0,estimated_y-ccs_marker_y_pixels, 5,estimated_y-ccs_marker_y_pixels), fill='yellow', width=1)
+            draw.line((0,estimated_y+ccs_marker_y_pixels, 5,estimated_y+ccs_marker_y_pixels), fill='yellow', width=1)
+
+        # draw the m/z markers
+        mz_marker_each = 1
+        draw.line((estimated_x,0, estimated_x,10), fill='yellow', width=3)
+        draw.text((estimated_x-10,12), round(estimated_coords['mono_mz'],1).astype('str'), font=feature_label_font, fill='yellow')
+        for i in range(1,10):
+            mz_marker_x_pixels = x_pixels_per_mz * mz_marker_each * i
+            draw.line((estimated_x-mz_marker_x_pixels,0, estimated_x-mz_marker_x_pixels,5), fill='yellow', width=1)
+            draw.line((estimated_x+mz_marker_x_pixels,0, estimated_x+mz_marker_x_pixels,5), fill='yellow', width=1)
+
+        # draw the info box
+        info_box_x_inset = 200
+        space_per_line = 12
+        draw.rectangle(xy=[(args.pixels_x-info_box_x_inset, 0), (args.pixels_x, 4*space_per_line)], fill=(20,20,20), outline=None)
+        draw.text((args.pixels_x-info_box_x_inset,0*space_per_line), args.sequence, font=feature_label_font, fill='lawngreen')
+        draw.text((args.pixels_x-info_box_x_inset,1*space_per_line), 'charge {}'.format(args.sequence_charge), font=feature_label_font, fill='lawngreen')
+        draw.text((args.pixels_x-info_box_x_inset,2*space_per_line), '{}, {}'.format(args.experiment_name, '_'.join(run_name.split('_Slot')[0].split('_')[1:])), font=feature_label_font, fill='lawngreen')
+        draw.text((args.pixels_x-info_box_x_inset,3*space_per_line), round(frame_rt,1).astype('str'), font=feature_label_font, fill='lawngreen')
             
-            # create an intensity array
-            tile_im_array = np.zeros([args.pixels_y, args.pixels_x, 3], dtype=np.uint8)  # container for the image
-            for r in zip(group_df.pixel_x, group_df.pixel_y, group_df.colour):
-                x = r[0]
-                y = r[1]
-                c = r[2]
-                tile_im_array[y:int(y+y_pixels_per_scan),x,:] = c
-
-            # create an image of the intensity array
-            feature_slice += 1
-            tile = Image.fromarray(tile_im_array, mode='RGB')
-            draw = ImageDraw.Draw(tile)
-            
-            # if this is the estimated apex frame, highlight the estimated coordinates
-            if group_name == apex_frame_id:
-                line_colour = (100,200,100)
-                draw.line((estimated_x,0, estimated_x,args.pixels_y), fill=line_colour, width=1)
-                draw.line((0,estimated_y, args.pixels_x,estimated_y), fill=line_colour, width=1)
-            
-            # if this is the extracted apex frame, highlight the extracted coordinates
-            if group_name == extracted_apex_frame_id:
-                # draw the extracted apex
-                extracted_x, extracted_y = pixel_xy(extracted_coords['monoisotopic_mz_centroid'], extracted_coords['scan_apex'], mz_lower, mz_upper, scan_lower, scan_upper)
-                line_colour = (100,100,200)
-                draw.line((extracted_x,0, extracted_x,args.pixels_y), fill=line_colour, width=1)
-                draw.line((0,extracted_y, args.pixels_x,extracted_y), fill=line_colour, width=1)
-
-            # draw the CCS markers
-            ccs_marker_each = 10
-            draw.line((0,estimated_y, 10,estimated_y), fill='yellow', width=3)
-            draw.text((15, estimated_y-6), round(estimated_coords['scan_apex'],1).astype('str'), font=feature_label_font, fill='yellow')
-            for i in range(1,10):
-                ccs_marker_y_pixels = y_pixels_per_scan * ccs_marker_each * i
-                draw.line((0,estimated_y-ccs_marker_y_pixels, 5,estimated_y-ccs_marker_y_pixels), fill='yellow', width=1)
-                draw.line((0,estimated_y+ccs_marker_y_pixels, 5,estimated_y+ccs_marker_y_pixels), fill='yellow', width=1)
-
-            # draw the m/z markers
-            mz_marker_each = 1
-            draw.line((estimated_x,0, estimated_x,10), fill='yellow', width=3)
-            draw.text((estimated_x-10,12), round(estimated_coords['mono_mz'],1).astype('str'), font=feature_label_font, fill='yellow')
-            for i in range(1,10):
-                mz_marker_x_pixels = x_pixels_per_mz * mz_marker_each * i
-                draw.line((estimated_x-mz_marker_x_pixels,0, estimated_x-mz_marker_x_pixels,5), fill='yellow', width=1)
-                draw.line((estimated_x+mz_marker_x_pixels,0, estimated_x+mz_marker_x_pixels,5), fill='yellow', width=1)
-
-            # draw the info box
-            info_box_x_inset = 200
-            space_per_line = 12
-            draw.rectangle(xy=[(args.pixels_x-info_box_x_inset, 0), (args.pixels_x, 4*space_per_line)], fill=(20,20,20), outline=None)
-            draw.text((args.pixels_x-info_box_x_inset,0*space_per_line), args.sequence, font=feature_label_font, fill='lawngreen')
-            draw.text((args.pixels_x-info_box_x_inset,1*space_per_line), 'charge {}'.format(args.sequence_charge), font=feature_label_font, fill='lawngreen')
-            draw.text((args.pixels_x-info_box_x_inset,2*space_per_line), '{}, {}'.format(args.experiment_name, '_'.join(run_name.split('_Slot')[0].split('_')[1:])), font=feature_label_font, fill='lawngreen')
-            draw.text((args.pixels_x-info_box_x_inset,3*space_per_line), round(frame_rt,1).astype('str'), font=feature_label_font, fill='lawngreen')
-                
-            # save the image as a file
-            tile_file_name = '{}/feature-slice-{:03d}.png'.format(FEATURE_SLICES_DIR, feature_slice)
-            tile.save(tile_file_name)
+        # save the image as a file
+        tile_file_name = '{}/feature-slice-{:03d}.png'.format(FEATURE_SLICES_DIR, feature_slice)
+        tile.save(tile_file_name)
