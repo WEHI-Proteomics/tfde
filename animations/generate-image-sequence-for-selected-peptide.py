@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 import argparse
 from matplotlib import colors, cm, pyplot as plt
 from PIL import Image, ImageDraw, ImageFont
-
+import json
 
 def get_run_names(experiment_dir):
 
@@ -132,7 +132,7 @@ for run_name in run_names:
         break
 
     # get the estimated coordinates
-    estimated_coords = extracted_sequence_in_run.iloc[0].target_coords
+    estimated_coords = json.loads(extracted_sequence_in_run.iloc[0].target_coords)
 
     # get the extracted coordinates
     extracted_rt_apex = extracted_sequence_in_run.iloc[0].rt_apex
