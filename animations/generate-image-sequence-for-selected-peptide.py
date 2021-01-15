@@ -72,6 +72,7 @@ parser.add_argument('-seqchr','--sequence_charge', type=int, help='The charge fo
 parser.add_argument('-px','--pixels_x', type=int, default=800, help='The dimension of the images on the x axis.', required=False)
 parser.add_argument('-py','--pixels_y', type=int, default=800, help='The dimension of the images on the y axis.', required=False)
 parser.add_argument('-minint','--minimum_intensity', type=int, default=100, help='The minimum intensity to be included in the image.', required=False)
+parser.add_argument('-mic','--maximum_intensity_clipping', type=int, default=200, help='The maximum intensity to map before clipping.', required=False)
 
 args = parser.parse_args()
 
@@ -105,7 +106,7 @@ db_conn.close()
 
 # create the colour mapping
 colour_map = plt.get_cmap('rainbow')
-norm = colors.LogNorm(vmin=1, vmax=5000, clip=True)  # aiming to get good colour variation in the lower range, and clipping everything else
+norm = colors.LogNorm(vmin=1, vmax=args.maximum_intensity_clipping, clip=True)  # aiming to get good colour variation in the lower range, and clipping everything else
 
 # clear out any previous feature slices
 ENCODED_FEATURES_DIR = '{}/encoded-features'.format(EXPERIMENT_DIR)
