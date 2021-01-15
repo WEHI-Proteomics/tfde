@@ -100,7 +100,7 @@ if not os.path.isfile(EXTRACTED_FEATURES_DB_NAME):
 
 print('loading the extractions from {}'.format(EXTRACTED_FEATURES_DB_NAME))
 db_conn = sqlite3.connect(EXTRACTED_FEATURES_DB_NAME)
-ext_df = pd.read_sql_query("select * from features where classed_as == \'target\'", db_conn)
+ext_df = pd.read_sql_query("select * from features where sequence == \'{}\' and charge == \'{}\' and classed_as == \'target\'".format(args.sequence, args.sequence_charge), db_conn)
 db_conn.close()
 
 # create the colour mapping
@@ -126,7 +126,7 @@ for run_name in run_names:
     FEATURE_SLICES_DIR = '{}/{}/slices'.format(ENCODED_FEATURES_DIR, run_name)
     os.makedirs(FEATURE_SLICES_DIR)
 
-    extracted_sequence_in_run = ext_df[(ext_df.sequence == args.sequence) & (ext_df.charge == args.sequence_charge) & (ext_df.run_name == run_name)]
+    extracted_sequence_in_run = ext_df[(ext_df.run_name == run_name)]
     if len(extracted_sequence_in_run) == 0:
         print('could not find the sequence in {} - moving on'.format(run_name))
         break
@@ -216,7 +216,7 @@ for run_name in run_names:
         # draw the CCS markers
         ccs_marker_each = 10
         draw.line((0,estimated_y, 10,estimated_y), fill='yellow', width=3)
-        draw.text((15, estimated_y-6), round(estimated_coords['scan_apex'],1).astype('str'), font=feature_label_font, fill='yellow')
+        draw.text((15, estimated_y-6), str(round(estimated_coords['scan_apex'],1)), font=feature_label_font, fill='yellow')
         for i in range(1,10):
             ccs_marker_y_pixels = y_pixels_per_scan * ccs_marker_each * i
             draw.line((0,estimated_y-ccs_marker_y_pixels, 5,estimated_y-ccs_marker_y_pixels), fill='yellow', width=1)
@@ -225,7 +225,7 @@ for run_name in run_names:
         # draw the m/z markers
         mz_marker_each = 1
         draw.line((estimated_x,0, estimated_x,10), fill='yellow', width=3)
-        draw.text((estimated_x-10,12), round(estimated_coords['mono_mz'],1).astype('str'), font=feature_label_font, fill='yellow')
+        draw.text((estimated_x-10,12), str(round(estimated_coords['mono_mz'],1)), font=feature_label_font, fill='yellow')
         for i in range(1,10):
             mz_marker_x_pixels = x_pixels_per_mz * mz_marker_each * i
             draw.line((estimated_x-mz_marker_x_pixels,0, estimated_x-mz_marker_x_pixels,5), fill='yellow', width=1)
@@ -238,7 +238,7 @@ for run_name in run_names:
         draw.text((args.pixels_x-info_box_x_inset,0*space_per_line), args.sequence, font=feature_label_font, fill='lawngreen')
         draw.text((args.pixels_x-info_box_x_inset,1*space_per_line), 'charge {}'.format(args.sequence_charge), font=feature_label_font, fill='lawngreen')
         draw.text((args.pixels_x-info_box_x_inset,2*space_per_line), '{}, {}'.format(args.experiment_name, '_'.join(run_name.split('_Slot')[0].split('_')[1:])), font=feature_label_font, fill='lawngreen')
-        draw.text((args.pixels_x-info_box_x_inset,3*space_per_line), round(frame_rt,1).astype('str'), font=feature_label_font, fill='lawngreen')
+        draw.text((args.pixels_x-info_box_x_inset,3*space_per_line), str(round(frame_rt,1)), font=feature_label_font, fill='lawngreen')
             
         # save the image as a file
         tile_file_name = '{}/feature-slice-{:03d}.png'.format(FEATURE_SLICES_DIR, feature_slice)
