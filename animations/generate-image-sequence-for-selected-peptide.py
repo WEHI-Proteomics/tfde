@@ -140,7 +140,7 @@ for run_name in run_names:
     extracted_scan_apex = extracted_sequence_in_run.iloc[0].scan_apex
     extracted_mz = extracted_sequence_in_run.iloc[0].monoisotopic_mz_centroid
 
-    # determine the cuboid dimensions
+    # determine the cuboid dimensions of the selected peptide
     mz_lower = estimated_coords['mono_mz'] - OFFSET_MZ_LOWER
     mz_upper = estimated_coords['mono_mz'] + OFFSET_MZ_UPPER
     scan_lower = estimated_coords['scan_apex'] - OFFSET_CCS_LOWER
@@ -149,6 +149,10 @@ for run_name in run_names:
     rt_lower = estimated_coords['rt_apex'] - OFFSET_RT_LOWER
     rt_upper = estimated_coords['rt_apex'] + OFFSET_RT_UPPER
 
+    # find the other peptides that have an apex in this peptide's cuboid, so we can show them as well
+    intersecting_df = ext_df[(ext_df.run_name == run_name) & (ext_df.monoisotopic_mz_centroid > mz_lower) & (ext_df.monoisotopic_mz_centroid < mz_upper) & (ext_df.rt_apex > rt_lower) & (ext_df.rt_apex < rt_upper) & (ext_df.scan_apex > scan_lower) & (ext_df.scan_apex < scan_upper)]
+
+    # pixel scaling factors
     x_pixels_per_mz = (args.pixels_x-1) / (mz_upper - mz_lower)
     y_pixels_per_scan = (args.pixels_y-1) / (scan_upper - scan_lower)
 
@@ -240,6 +244,14 @@ for run_name in run_names:
         draw.text((args.pixels_x-info_box_x_inset,1*space_per_line), 'charge {}'.format(args.sequence_charge), font=feature_label_font, fill='lawngreen')
         draw.text((args.pixels_x-info_box_x_inset,2*space_per_line), '{}, {}'.format(args.experiment_name, '_'.join(run_name.split('_Slot')[0].split('_')[1:])), font=feature_label_font, fill='lawngreen')
         draw.text((args.pixels_x-info_box_x_inset,3*space_per_line), str(round(frame_rt,1)), font=feature_label_font, fill='lawngreen')
+
+        # draw the other extractions that have an apex in this frame
+        rt_wobble = 0.5
+        radius_px = 5
+        other_ext_df = intersecting_df[(intersecting_df.rt_apex >= frame_rt-rt_wobble) & (intersecting_df.rt_apex <= frame_rt+rt_wobble)]
+        for row in other_ext_df.itertuples():
+            px_x, px_y = pixel_xy(row.monoisotopic_mz_centroid, row.scan_apex, mz_lower, mz_upper, scan_lower, scan_upper)
+            draw.ellipse((px_x-radius_px, px_x+radius_px, px_y-radius_px, px_y+radius_px), fill = None, outline ='orange')
             
         # save the image as a file
         tile_file_name = '{}/feature-slice-{:03d}.png'.format(FEATURE_SLICES_DIR, feature_slice)
