@@ -155,7 +155,7 @@ for run_name in run_names:
     rt_upper = estimated_coords['rt_apex'] + OFFSET_RT_UPPER
 
     # find the other peptides that have an apex in this peptide's cuboid, so we can show them as well
-    intersecting_df = ext_df[(ext_df.run_name == run_name) & (ext_df.monoisotopic_mz_centroid > mz_lower) & (ext_df.monoisotopic_mz_centroid < mz_upper) & (ext_df.rt_apex > rt_lower) & (ext_df.rt_apex < rt_upper) & (ext_df.scan_apex > scan_lower) & (ext_df.scan_apex < scan_upper)]
+    intersecting_df = ext_df[(ext_df.run_name == run_name) & (ext_df.monoisotopic_mz_centroid >= mz_lower) & (ext_df.monoisotopic_mz_centroid <= mz_upper) & (ext_df.rt_apex >= rt_lower) & (ext_df.rt_apex <= rt_upper) & (ext_df.scan_apex >= scan_lower) & (ext_df.scan_apex <= scan_upper)]
     print('there are {} peptides that have an apex in this peptide\'s cuboid'.format(len(intersecting_df)))
 
     # pixel scaling factors
