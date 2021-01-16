@@ -257,7 +257,7 @@ for run_name in run_names:
         other_ext_df = intersecting_df[(intersecting_df.rt_apex >= frame_rt-rt_wobble) & (intersecting_df.rt_apex <= frame_rt+rt_wobble)]
         for row in other_ext_df.itertuples():
             px_x, px_y = pixel_xy(row.monoisotopic_mz_centroid, row.scan_apex, mz_lower, mz_upper, scan_lower, scan_upper)
-            draw.ellipse((px_x-radius_px, px_x+radius_px, px_y-radius_px, px_y+radius_px), fill = None, outline ='orange')
+            draw.ellipse((px_x-radius_px, px_y-radius_px, px_x+radius_px, px_y+radius_px), fill = None, outline ='orange')
             
         # save the image as a file
         tile_file_name = '{}/feature-slice-{:03d}.png'.format(FEATURE_SLICES_DIR, feature_slice)
