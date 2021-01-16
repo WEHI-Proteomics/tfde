@@ -11,6 +11,7 @@ import argparse
 from matplotlib import colors, cm, pyplot as plt
 from PIL import Image, ImageDraw, ImageFont
 import json
+import random
 
 def get_run_names(experiment_dir):
 
@@ -73,6 +74,7 @@ parser.add_argument('-px','--pixels_x', type=int, default=800, help='The dimensi
 parser.add_argument('-py','--pixels_y', type=int, default=800, help='The dimension of the images on the y axis.', required=False)
 parser.add_argument('-minint','--minimum_intensity', type=int, default=100, help='The minimum intensity to be included in the image.', required=False)
 parser.add_argument('-mic','--maximum_intensity_clipping', type=int, default=200, help='The maximum intensity to map before clipping.', required=False)
+parser.add_argument('-ssm','--small_set_mode', action='store_true', help='A small subset of the data for testing purposes.')
 
 args = parser.parse_args()
 
@@ -92,6 +94,9 @@ if not os.path.exists(EXPERIMENT_DIR):
 # get the run names for the experiment
 run_names = get_run_names(EXPERIMENT_DIR)
 print("found {} runs for this experiment".format(len(run_names)))
+if args.small_set_mode:
+    run_names = random.sample(run_names, 3)
+    print('selected {} for small set mode'.format(run_names))
 
 # load the extractions
 EXTRACTED_FEATURES_DB_NAME = '{}/extracted-features/extracted-features.sqlite'.format(EXPERIMENT_DIR)
@@ -151,6 +156,7 @@ for run_name in run_names:
 
     # find the other peptides that have an apex in this peptide's cuboid, so we can show them as well
     intersecting_df = ext_df[(ext_df.run_name == run_name) & (ext_df.monoisotopic_mz_centroid > mz_lower) & (ext_df.monoisotopic_mz_centroid < mz_upper) & (ext_df.rt_apex > rt_lower) & (ext_df.rt_apex < rt_upper) & (ext_df.scan_apex > scan_lower) & (ext_df.scan_apex < scan_upper)]
+    print('there are {} peptides that have an apex in this peptide\'s cuboid'.format(len(intersecting_df)))
 
     # pixel scaling factors
     x_pixels_per_mz = (args.pixels_x-1) / (mz_upper - mz_lower)
