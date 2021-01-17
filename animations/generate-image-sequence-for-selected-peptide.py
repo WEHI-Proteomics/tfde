@@ -163,7 +163,7 @@ for run_name in run_names:
 
     # find the other peptides that have an apex in this peptide's cuboid, so we can show them as well
     db_conn = sqlite3.connect(EXTRACTED_FEATURES_DB_NAME)
-    run_ext_df = pd.read_sql_query("select * from features where run_name == \'{}\' and classed_as == \'target\'".format(args.sequence, args.sequence_charge), db_conn)
+    run_ext_df = pd.read_sql_query("select * from features where run_name == \'{}\' and classed_as == \'target\'".format(run_name), db_conn)
     db_conn.close()
     intersecting_df = run_ext_df[(run_ext_df.monoisotopic_mz_centroid >= mz_lower) & (run_ext_df.monoisotopic_mz_centroid <= mz_upper) & (run_ext_df.rt_apex >= rt_lower) & (run_ext_df.rt_apex <= rt_upper) & (run_ext_df.scan_apex >= scan_lower) & (run_ext_df.scan_apex <= scan_upper)]
     print('there are {} peptides that have an apex in this peptide\'s cuboid'.format(len(intersecting_df)))
