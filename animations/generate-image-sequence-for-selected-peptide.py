@@ -262,7 +262,7 @@ for run_name in run_names:
         draw.text((args.pixels_x-info_box_x_inset,3*space_per_line), str(round(frame_rt,1)), font=feature_label_font, fill='lawngreen')
 
         # draw the other extractions that have an apex in this frame
-        rt_wobble = 0.5
+        rt_wobble = 1.0
         radius_px = 10
         other_ext_df = intersecting_df[(intersecting_df.rt_apex >= frame_rt-rt_wobble) & (intersecting_df.rt_apex <= frame_rt+rt_wobble)]
         for row in other_ext_df.itertuples():
