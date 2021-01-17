@@ -104,6 +104,13 @@ if not os.path.isfile(EXTRACTED_FEATURES_DB_NAME):
     print("The extractions file doesn't exist: {}".format(EXTRACTED_FEATURES_DB_NAME))
     sys.exit(1)
 
+print('creating indexes if not already existing on {}'.format(EXTRACTED_FEATURES_DB_NAME))
+db_conn = sqlite3.connect(EXTRACTED_FEATURES_DB_NAME)
+src_c = db_conn.cursor()
+src_c.execute("create index if not exists idx_extractions_1 on features (sequence, charge, classed_as)")
+src_c.execute("create index if not exists idx_extractions_2 on features (run_name, classed_as)")
+db_conn.close()
+
 print('loading the extractions from {}'.format(EXTRACTED_FEATURES_DB_NAME))
 db_conn = sqlite3.connect(EXTRACTED_FEATURES_DB_NAME)
 ext_df = pd.read_sql_query("select * from features where sequence == \'{}\' and charge == \'{}\' and classed_as == \'target\'".format(args.sequence, args.sequence_charge), db_conn)
