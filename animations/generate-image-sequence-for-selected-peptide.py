@@ -53,16 +53,6 @@ else:
 TINT_COLOR = (0, 0, 0)  # Black
 OPACITY = int(255 * 0.1)  # lower opacity means more transparent
 
-# how far either side of the feature coordinates should the images extend
-OFFSET_MZ_LOWER = 10.0
-OFFSET_MZ_UPPER = 20.0
-
-OFFSET_CCS_LOWER = 150
-OFFSET_CCS_UPPER = 150
-
-OFFSET_RT_LOWER = 5
-OFFSET_RT_UPPER = 5
-
 
 ###########################
 parser = argparse.ArgumentParser(description='Visualise the raw data at a peptide\'s estimated coordinates and its extraction coordinates.')
@@ -73,6 +63,12 @@ parser.add_argument('-seqchr','--sequence_charge', type=int, help='The charge fo
 parser.add_argument('-px','--pixels_x', type=int, default=800, help='The dimension of the images on the x axis.', required=False)
 parser.add_argument('-py','--pixels_y', type=int, default=800, help='The dimension of the images on the y axis.', required=False)
 parser.add_argument('-minint','--minimum_intensity', type=int, default=100, help='The minimum intensity to be included in the image.', required=False)
+parser.add_argument('-oml','--offset_mz_lower', type=float, default=10.0, help='How far to the left of the selected peptide to display, in m/z.', required=False)
+parser.add_argument('-omu','--offset_mz_upper', type=float, default=20.0, help='How far to the right of the selected peptide to display, in m/z.', required=False)
+parser.add_argument('-ocl','--offset_ccs_lower', type=int, default=150, help='How far on the lower side of the selected peptide to display, in scans.', required=False)
+parser.add_argument('-ocu','--offset_ccs_upper', type=int, default=150, help='How far on the upper side of the selected peptide to display, in scans.', required=False)
+parser.add_argument('-orl','--offset_rt_lower', type=int, default=5, help='How far on the lower side of the selected peptide to display, in retention time seconds.', required=False)
+parser.add_argument('-oru','--offset_rt_upper', type=int, default=5, help='How far on the upper side of the selected peptide to display, in retention time seconds.', required=False)
 parser.add_argument('-mic','--maximum_intensity_clipping', type=int, default=200, help='The maximum intensity to map before clipping.', required=False)
 parser.add_argument('-ssm','--small_set_mode', action='store_true', help='A small subset of the data for testing purposes.')
 
@@ -153,13 +149,13 @@ for run_name in run_names:
     extracted_mz = extracted_sequence_in_run.iloc[0].monoisotopic_mz_centroid
 
     # determine the cuboid dimensions of the selected peptide
-    mz_lower = estimated_coords['mono_mz'] - OFFSET_MZ_LOWER
-    mz_upper = estimated_coords['mono_mz'] + OFFSET_MZ_UPPER
-    scan_lower = estimated_coords['scan_apex'] - OFFSET_CCS_LOWER
-    scan_upper = estimated_coords['scan_apex'] + OFFSET_CCS_UPPER
+    mz_lower = estimated_coords['mono_mz'] - args.offset_mz_lower
+    mz_upper = estimated_coords['mono_mz'] + args.offset_mz_upper
+    scan_lower = estimated_coords['scan_apex'] - args.offset_scan_lower
+    scan_upper = estimated_coords['scan_apex'] + args.offset_scan_upper
     rt_apex = estimated_coords['rt_apex']
-    rt_lower = estimated_coords['rt_apex'] - OFFSET_RT_LOWER
-    rt_upper = estimated_coords['rt_apex'] + OFFSET_RT_UPPER
+    rt_lower = estimated_coords['rt_apex'] - args.offset_rt_lower
+    rt_upper = estimated_coords['rt_apex'] + args.offset_rt_upper
 
     # find the other peptides that have an apex in this peptide's cuboid, so we can show them as well
     db_conn = sqlite3.connect(EXTRACTED_FEATURES_DB_NAME)
