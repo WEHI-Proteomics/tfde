@@ -155,7 +155,10 @@ for run_name in run_names:
     rt_upper = estimated_coords['rt_apex'] + OFFSET_RT_UPPER
 
     # find the other peptides that have an apex in this peptide's cuboid, so we can show them as well
-    intersecting_df = ext_df[(ext_df.run_name == run_name) & (ext_df.monoisotopic_mz_centroid >= mz_lower) & (ext_df.monoisotopic_mz_centroid <= mz_upper) & (ext_df.rt_apex >= rt_lower) & (ext_df.rt_apex <= rt_upper) & (ext_df.scan_apex >= scan_lower) & (ext_df.scan_apex <= scan_upper)]
+    db_conn = sqlite3.connect(EXTRACTED_FEATURES_DB_NAME)
+    run_ext_df = pd.read_sql_query("select * from features where run_name == \'{}\' and classed_as == \'target\'".format(args.sequence, args.sequence_charge), db_conn)
+    db_conn.close()
+    intersecting_df = run_ext_df[(run_ext_df.monoisotopic_mz_centroid >= mz_lower) & (run_ext_df.monoisotopic_mz_centroid <= mz_upper) & (run_ext_df.rt_apex >= rt_lower) & (run_ext_df.rt_apex <= rt_upper) & (run_ext_df.scan_apex >= scan_lower) & (run_ext_df.scan_apex <= scan_upper)]
     print('there are {} peptides that have an apex in this peptide\'s cuboid'.format(len(intersecting_df)))
 
     # pixel scaling factors
