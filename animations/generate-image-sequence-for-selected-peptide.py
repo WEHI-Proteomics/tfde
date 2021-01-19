@@ -12,6 +12,7 @@ from matplotlib import colors, cm, pyplot as plt
 from PIL import Image, ImageDraw, ImageFont
 import json
 import random
+from cmcrameri import cm
 
 def get_run_names(experiment_dir):
 
@@ -113,8 +114,8 @@ ext_df = pd.read_sql_query("select * from features where sequence == \'{}\' and 
 db_conn.close()
 
 # create the colour mapping
-colour_map = plt.get_cmap('rainbow')
-norm = colors.LogNorm(vmin=1, vmax=args.maximum_intensity_clipping, clip=True)  # aiming to get good colour variation in the lower range, and clipping everything else
+colour_map = cm.batlow
+norm = colors.LogNorm(vmin=args.minimum_intensity, vmax=args.maximum_intensity_clipping, clip=True)  # aiming to get good colour variation in the lower range, and clipping everything else
 
 # clear out any previous feature slices
 ENCODED_FEATURES_DIR = '{}/encoded-features'.format(EXPERIMENT_DIR)

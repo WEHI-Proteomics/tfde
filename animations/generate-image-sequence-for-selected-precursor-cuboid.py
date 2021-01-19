@@ -13,6 +13,7 @@ from PIL import Image, ImageDraw, ImageFont
 import tempfile
 import zipfile
 import json
+from cmcrameri import cm
 
 
 def pixel_xy(mz, scan, mz_lower, mz_upper, scan_lower, scan_upper):
@@ -106,8 +107,8 @@ if os.path.exists(ENCODED_CUBOIDS_DIR):
 os.makedirs(ENCODED_CUBOIDS_DIR)
 
 # create the colour mapping
-colour_map = plt.get_cmap('rainbow')
-norm = colors.LogNorm(vmin=1, vmax=args.maximum_intensity_clipping, clip=True)  # aiming to get good colour variation in the lower range, and clipping everything else
+colour_map = cm.batlow
+norm = colors.LogNorm(vmin=args.minimum_intensity, vmax=args.maximum_intensity_clipping, clip=True)  # aiming to get good colour variation in the lower range, and clipping everything else
 
 # extract the components of the cuboid
 precursor_metadata, ms1_points_df, ms2_points_df = load_precursor_cuboid_zip(CUBOID_ZIP_FILE)
