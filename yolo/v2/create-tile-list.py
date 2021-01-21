@@ -124,7 +124,7 @@ else:
 print('collating metadata for each tile')
 tile_list_df['run_name'] = tile_list_df.apply(lambda row: row.base_name.split('run-')[1].split('-frame')[0], axis=1)
 tile_list_df['frame_id'] = tile_list_df.apply(lambda row: int(row.base_name.split('frame-')[1].split('-tile')[0]), axis=1)
-tile_list_df['tile_id'] = tile_list_df.apply(lambda row: int(row.base_name.split('tile-')[1]), axis=1)
+tile_list_df['tile_id'] = tile_list_df.apply(lambda row: int(row.base_name.split('tile-')[1].split('.')[0]), axis=1)
 tile_list_df['mz_lower'] = tile_list_df.apply(lambda row: mz_range_for_tile(row.tile_id)[0], axis=1)
 tile_list_df['mz_upper'] = tile_list_df.apply(lambda row: mz_range_for_tile(row.tile_id)[1], axis=1)
 tile_list_df['retention_time_secs'] = tile_list_df.apply(lambda row: round(tile_set_tiles_df[tile_set_tiles_df.base_name == row.base_name].iloc[0].retention_time_secs,1), axis=1)
