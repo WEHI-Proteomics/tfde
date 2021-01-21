@@ -44,8 +44,8 @@ def tile_pixel_x_from_mz(mz):
     return pixel_x
 
 def tile_pixel_y_from_scan(scan):
-    assert (scan >= args.scan_lower) and (scan <= args.scan_upper), "scan not in range"
-    pixel_y = int(((scan - args.scan_lower) / (args.scan_upper - args.scan_lower)) * PIXELS_Y)
+    assert (scan >= scan_lower) and (scan <= scan_upper), "scan not in range"
+    pixel_y = int(((scan - scan_lower) / (scan_upper - scan_lower)) * PIXELS_Y)
     return pixel_y
 
 # determine the mapping between the percolator index and the run file name
@@ -97,8 +97,6 @@ parser = argparse.ArgumentParser(description='Set up a training set from raw til
 parser.add_argument('-eb','--experiment_base_dir', type=str, default='./experiments', help='Path to the experiments directory.', required=False)
 parser.add_argument('-en','--experiment_name', type=str, help='Name of the experiment.', required=True)
 parser.add_argument('-tln','--tile_list_name', type=str, help='Name of the tile list.', required=True)
-parser.add_argument('-sl','--scan_lower', type=int, default=1, help='Lower bound of the scan range.', required=False)
-parser.add_argument('-su','--scan_upper', type=int, default=910, help='Upper bound of the scan range.', required=False)
 args = parser.parse_args()
 
 # store the command line arguments as metadata for later reference
@@ -146,6 +144,18 @@ if os.path.isfile(TILE_LIST_METADATA_FILE_NAME):
         tile_set_name = tile_list_metadata['arguments']['tile_set_name']
 else:
     print("Could not find the tile list's metadata file: {}".format(TILE_LIST_METADATA_FILE_NAME))
+    sys.exit(1)
+
+# load the tile set metadata
+TILE_SET_BASE_DIR = '{}/tiles'.format(EXPERIMENT_DIR)
+TILE_SET_METADATA_FILE_NAME = '{}/{}/metadata.json'.format(TILE_SET_BASE_DIR, tile_set_name)
+if os.path.isfile(TILE_SET_METADATA_FILE_NAME):
+    with open(TILE_SET_METADATA_FILE_NAME) as json_file:
+        tile_set_metadata = json.load(json_file)
+        scan_lower = tile_set_metadata['arguments']['scan_lower']
+        scan_upper = tile_set_metadata['arguments']['scan_upper']
+else:
+    print("Could not find the tile list's metadata file: {}".format(TILE_SET_METADATA_FILE_NAME))
     sys.exit(1)
 
 # check the annotations directory
