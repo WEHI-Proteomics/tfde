@@ -37,19 +37,16 @@ def run_process(process):
 def mz_from_tile_pixel(tile_id, pixel_x):
     assert (pixel_x >= 0) and (pixel_x <= PIXELS_X), "pixel_x not in range"
     assert (tile_id >= 0) and (tile_id <= TILES_PER_FRAME-1), "tile_id not in range"
-
     mz = (tile_id * MZ_PER_TILE) + ((pixel_x / PIXELS_X) * MZ_PER_TILE) + MZ_MIN
     return mz
 
 def tile_id_from_mz(mz):
     assert (mz >= MZ_MIN) and (mz <= MZ_MAX), "m/z not in range"
-
     tile_id = int((mz - MZ_MIN) / MZ_PER_TILE)
     return tile_id
 
 def tile_pixel_x_from_mz(mz):
     assert (mz >= MZ_MIN) and (mz <= MZ_MAX), "m/z not in range"
-
     pixel_x = int(((mz - MZ_MIN) % MZ_PER_TILE) / MZ_PER_TILE * PIXELS_X)
     return pixel_x
 
@@ -65,7 +62,6 @@ def scan_from_tile_pixel(pixel_y):
 
 def mz_range_for_tile(tile_id):
     assert (tile_id >= 0) and (tile_id <= TILES_PER_FRAME-1), "tile_id not in range"
-
     mz_lower = MZ_MIN + (tile_id * MZ_PER_TILE)
     mz_upper = mz_lower + MZ_PER_TILE
     return (mz_lower, mz_upper)
