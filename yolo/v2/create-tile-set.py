@@ -20,8 +20,6 @@ PIXELS_X = 910
 PIXELS_Y = 910
 MZ_MIN = 100.0
 MZ_MAX = 1700.0
-SCAN_MAX = 1008
-SCAN_MIN = 1
 MZ_PER_TILE = 18.0
 TILES_PER_FRAME = int((MZ_MAX - MZ_MIN) / MZ_PER_TILE) + 1
 MIN_TILE_IDX = 0
@@ -56,13 +54,13 @@ def tile_pixel_x_from_mz(mz):
     return pixel_x
 
 def tile_pixel_y_from_scan(scan):
-    assert (scan >= SCAN_MIN) and (scan <= SCAN_MAX), "scan not in range"
-    pixel_y = int(((scan - SCAN_MIN) / (SCAN_MAX - SCAN_MIN)) * PIXELS_Y)
+    assert (scan >= args.scan_lower) and (scan <= args.scan_upper), "scan not in range"
+    pixel_y = int(((scan - args.scan_lower) / (args.scan_upper - args.scan_lower)) * PIXELS_Y)
     return pixel_y
 
 def scan_from_tile_pixel(pixel_y):
     assert (pixel_y >= 0) and (pixel_y <= PIXELS_Y), "pixel_y not in range"
-    scan = int(pixel_y / PIXELS_Y * (SCAN_MAX - SCAN_MIN))
+    scan = int(pixel_y / PIXELS_Y * (args.scan_upper - args.scan_lower))
     return scan
 
 def mz_range_for_tile(tile_id):
@@ -150,6 +148,8 @@ parser.add_argument('-rn','--run_names', nargs='+', type=str, help='Space-separa
 parser.add_argument('-tsn','--tile_set_name', type=str, default='tile-set', help='Name of the tile set.', required=False)
 parser.add_argument('-rtl','--rt_lower', type=int, default=200, help='Lower bound of the RT range.', required=False)
 parser.add_argument('-rtu','--rt_upper', type=int, default=800, help='Upper bound of the RT range.', required=False)
+parser.add_argument('-sl','--scan_lower', type=int, default=1, help='Lower bound of the scan range.', required=False)
+parser.add_argument('-su','--scan_upper', type=int, default=910, help='Upper bound of the scan range.', required=False)
 parser.add_argument('-maxpi','--maximum_pixel_intensity', type=int, default=1000, help='Maximum pixel intensity for encoding, above which will be clipped.', required=False)
 parser.add_argument('-minpi','--minimum_pixel_intensity', type=int, default=1, help='Minimum pixel intensity for encoding, below which will be clipped.', required=False)
 parser.add_argument('-tidl','--tile_idx_lower', type=int, default=20, help='Lower range of the tile indexes to render. Must be between {} and {}'.format(MIN_TILE_IDX,MAX_TILE_IDX), required=False)
