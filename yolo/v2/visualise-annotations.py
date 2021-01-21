@@ -10,11 +10,9 @@ import pandas as pd
 # this application assumes the predictions.json is in the tile list directory
 
 PIXELS_X = 910
-PIXELS_Y = 910  # equal to the number of scan lines
+PIXELS_Y = 910
 MZ_MIN = 100.0
 MZ_MAX = 1700.0
-SCAN_MAX = PIXELS_Y
-SCAN_MIN = 1
 MZ_PER_TILE = 18.0
 TILES_PER_FRAME = int((MZ_MAX - MZ_MIN) / MZ_PER_TILE) + 1
 MIN_TILE_IDX = 0
