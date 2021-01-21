@@ -150,7 +150,7 @@ parser.add_argument('-rtl','--rt_lower', type=int, default=200, help='Lower boun
 parser.add_argument('-rtu','--rt_upper', type=int, default=800, help='Upper bound of the RT range.', required=False)
 parser.add_argument('-sl','--scan_lower', type=int, default=1, help='Lower bound of the scan range.', required=False)
 parser.add_argument('-su','--scan_upper', type=int, default=910, help='Upper bound of the scan range.', required=False)
-parser.add_argument('-maxpi','--maximum_pixel_intensity', type=int, default=1000, help='Maximum pixel intensity for encoding, above which will be clipped.', required=False)
+parser.add_argument('-maxpi','--maximum_pixel_intensity', type=int, default=500, help='Maximum pixel intensity for encoding, above which will be clipped.', required=False)
 parser.add_argument('-minpi','--minimum_pixel_intensity', type=int, default=1, help='Minimum pixel intensity for encoding, below which will be clipped.', required=False)
 parser.add_argument('-tidl','--tile_idx_lower', type=int, default=20, help='Lower range of the tile indexes to render. Must be between {} and {}'.format(MIN_TILE_IDX,MAX_TILE_IDX), required=False)
 parser.add_argument('-tidu','--tile_idx_upper', type=int, default=40, help='Upper range of the tile indexes to render. Must be between {} and {}'.format(MIN_TILE_IDX,MAX_TILE_IDX), required=False)
