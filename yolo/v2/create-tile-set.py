@@ -2,7 +2,7 @@ import sqlite3
 import pandas as pd
 import numpy as np
 import sys
-from matplotlib import colors, cm, pyplot as plt
+from matplotlib import colors, pyplot as plt
 import argparse
 import os, shutil
 from PIL import Image, ImageFont, ImageDraw, ImageEnhance
@@ -10,6 +10,7 @@ import time
 import ray
 import json
 import multiprocessing as mp
+from cmcrameri import cm
 
 
 # Create a set of tiles without labels for training purposes. This version uses Mk3 of the tile rendering algorithm.
@@ -97,7 +98,7 @@ def render_frame(run_name, converted_db_name, frame_id, retention_time_secs, min
         pixel_intensity_df = raw_points_df.groupby(by=['tile_id', 'pixel_x', 'pixel_y'], as_index=False).intensity.sum()
 
         # create the colour map to convert intensity to colour
-        colour_map = plt.get_cmap('rainbow')
+        colour_map = cm.batlow_r
         norm = colors.LogNorm(vmin=args.minimum_pixel_intensity, vmax=args.maximum_pixel_intensity, clip=True)  # aiming to get good colour variation in the lower range, and clipping everything else
 
         # calculate the colour to represent the intensity
