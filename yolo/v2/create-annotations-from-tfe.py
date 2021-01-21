@@ -256,9 +256,9 @@ for idx,row in enumerate(tile_list_df.itertuples()):
         if t > tile_id:
             x1_buffer = PIXELS_X
         y0 = feature.scan_lower
-        y0_buffer = tile_pixel_y_from_scan(max((y0 - SCAN_BUFFER), args.scan_lower))
+        y0_buffer = tile_pixel_y_from_scan(max((y0 - SCAN_BUFFER), scan_lower))
         y1 = feature.scan_upper
-        y1_buffer = tile_pixel_y_from_scan(min((y1 + SCAN_BUFFER), args.scan_upper))
+        y1_buffer = tile_pixel_y_from_scan(min((y1 + SCAN_BUFFER), scan_upper))
         w = x1_buffer - x0_buffer
         h = y1_buffer - y0_buffer
         charge = feature.charge
