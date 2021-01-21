@@ -43,12 +43,17 @@ def mz_from_tile_pixel(tile_id, pixel_x):
     mz = (tile_id * MZ_PER_TILE) + ((pixel_x / PIXELS_X) * MZ_PER_TILE) + MZ_MIN
     return mz
 
-def tile_pixel_x_from_mz(mz):
+def tile_id_from_mz(mz):
     assert (mz >= MZ_MIN) and (mz <= MZ_MAX), "m/z not in range"
 
     tile_id = int((mz - MZ_MIN) / MZ_PER_TILE)
+    return tile_id
+
+def tile_pixel_x_from_mz(mz):
+    assert (mz >= MZ_MIN) and (mz <= MZ_MAX), "m/z not in range"
+
     pixel_x = int(((mz - MZ_MIN) % MZ_PER_TILE) / MZ_PER_TILE * PIXELS_X)
-    return (tile_id, pixel_x)
+    return pixel_x
 
 def tile_pixel_y_from_scan(scan):
     assert (scan >= SCAN_MIN) and (scan <= SCAN_MAX), "scan not in range"
@@ -90,9 +95,9 @@ def render_frame(run_name, converted_db_name, frame_id, retention_time_secs, min
     tile_list = []
     if len(raw_points_df) > 0:
         # assign a tile_id and a pixel x value to each raw point
-        tile_pixels_df = pd.DataFrame(raw_points_df.apply(lambda row: tile_pixel_x_from_mz(row.mz), axis=1).tolist(), columns=['tile_id', 'pixel_x'])
-        tile_pixels_df['pixel_y'] = tile_pixels_df.apply(lambda row: tile_pixel_y_from_scan(row.scan), axis=1)
-        raw_points_df = pd.concat([raw_points_df, tile_pixels_df], axis=1)
+        raw_points_df['tile_id'] = raw_points_df.apply(lambda row: tile_id_from_mz(row.mz), axis=1)
+        raw_points_df['pixel_x'] = raw_points_df.apply(lambda row: tile_pixel_x_from_mz(row.mz), axis=1)
+        raw_points_df['pixel_y'] = raw_points_df.apply(lambda row: tile_pixel_y_from_scan(row.scan), axis=1)
 
         # sum the intensity of raw points that have been assigned to each pixel
         pixel_intensity_df = raw_points_df.groupby(by=['tile_id', 'pixel_x', 'pixel_y'], as_index=False).intensity.sum()
