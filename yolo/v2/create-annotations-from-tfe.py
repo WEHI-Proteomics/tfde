@@ -281,6 +281,7 @@ for idx,row in enumerate(tile_list_df.itertuples()):
 # write out a separate JSON file for the annotations for each run and tile
 print('writing annotation files to {}'.format(ANNOTATIONS_DIR))
 for key, value in tiles_d.items():
+    print(key)
     splits = key.split('-')
     run_name = splits[1]
     tile_id = int(splits[3])
