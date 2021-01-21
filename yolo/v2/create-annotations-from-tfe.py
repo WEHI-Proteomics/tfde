@@ -11,11 +11,9 @@ import time
 
 
 PIXELS_X = 910
-PIXELS_Y = 910  # equal to the number of scan lines
+PIXELS_Y = 910
 MZ_MIN = 100.0
 MZ_MAX = 1700.0
-SCAN_MAX = PIXELS_Y
-SCAN_MIN = 1
 MZ_PER_TILE = 18.0
 TILES_PER_FRAME = int((MZ_MAX - MZ_MIN) / MZ_PER_TILE) + 1
 MIN_TILE_IDX = 0
@@ -35,21 +33,20 @@ SCAN_BUFFER = 20
 
 SERVER_URL = "http://spectra-server-lb-1653892276.ap-southeast-2.elb.amazonaws.com"
 
-# get the m/z extent for the specified tile ID
-def mz_range_for_tile(tile_id):
-    assert (tile_id >= 0) and (tile_id <= TILES_PER_FRAME-1), "tile_id not in range"
+def tile_id_from_mz(mz):
+    assert (mz >= MZ_MIN) and (mz <= MZ_MAX), "m/z not in range"
+    tile_id = int((mz - MZ_MIN) / MZ_PER_TILE)
+    return tile_id
 
-    mz_lower = MZ_MIN + (tile_id * MZ_PER_TILE)
-    mz_upper = mz_lower + MZ_PER_TILE
-    return (mz_lower, mz_upper)
-
-# get the tile ID and the x pixel coordinate for the specified m/z
 def tile_pixel_x_from_mz(mz):
     assert (mz >= MZ_MIN) and (mz <= MZ_MAX), "m/z not in range"
-
-    tile_id = int((mz - MZ_MIN) / MZ_PER_TILE)
     pixel_x = int(((mz - MZ_MIN) % MZ_PER_TILE) / MZ_PER_TILE * PIXELS_X)
-    return (tile_id, pixel_x)
+    return pixel_x
+
+def tile_pixel_y_from_scan(scan):
+    assert (scan >= args.scan_lower) and (scan <= args.scan_upper), "scan not in range"
+    pixel_y = int(((scan - args.scan_lower) / (args.scan_upper - args.scan_lower)) * PIXELS_Y)
+    return pixel_y
 
 # determine the mapping between the percolator index and the run file name
 def get_percolator_run_mapping(mapping_file_name):
@@ -100,6 +97,8 @@ parser = argparse.ArgumentParser(description='Set up a training set from raw til
 parser.add_argument('-eb','--experiment_base_dir', type=str, default='./experiments', help='Path to the experiments directory.', required=False)
 parser.add_argument('-en','--experiment_name', type=str, help='Name of the experiment.', required=True)
 parser.add_argument('-tln','--tile_list_name', type=str, help='Name of the tile list.', required=True)
+parser.add_argument('-sl','--scan_lower', type=int, default=1, help='Lower bound of the scan range.', required=False)
+parser.add_argument('-su','--scan_upper', type=int, default=910, help='Upper bound of the scan range.', required=False)
 args = parser.parse_args()
 
 # store the command line arguments as metadata for later reference
@@ -238,16 +237,18 @@ for idx,row in enumerate(tile_list_df.itertuples()):
     # calculate the coordinates for the annotations file
     regions_l = []
     for idx,feature in intersecting_features_df.iterrows():
-        (t,x0_buffer) = tile_pixel_x_from_mz(feature.mz_lower - MZ_BUFFER)
+        t = tile_id_from_mz(feature.mz_lower - MZ_BUFFER)
+        x0_buffer = tile_pixel_x_from_mz(feature.mz_lower - MZ_BUFFER)
         if t < tile_id:
             x0_buffer = 1
-        (t,x1_buffer) = tile_pixel_x_from_mz(feature.mz_upper + MZ_BUFFER)
+        t = tile_id_from_mz(feature.mz_upper + MZ_BUFFER)
+        x1_buffer = tile_pixel_x_from_mz(feature.mz_upper + MZ_BUFFER)
         if t > tile_id:
             x1_buffer = PIXELS_X
         y0 = feature.scan_lower
-        y0_buffer = max((y0 - SCAN_BUFFER), SCAN_MIN)
+        y0_buffer = tile_pixel_y_from_scan(max((y0 - SCAN_BUFFER), args.scan_lower))
         y1 = feature.scan_upper
-        y1_buffer = min((y1 + SCAN_BUFFER), SCAN_MAX)
+        y1_buffer = tile_pixel_y_from_scan(min((y1 + SCAN_BUFFER), args.scan_upper))
         w = x1_buffer - x0_buffer
         h = y1_buffer - y0_buffer
         charge = feature.charge
