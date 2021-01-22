@@ -14,11 +14,9 @@ import time
 import glob
 
 PIXELS_X = 910
-PIXELS_Y = 910  # equal to the number of scan lines
+PIXELS_Y = 910
 MZ_MIN = 100.0
 MZ_MAX = 1700.0
-SCAN_MAX = PIXELS_Y
-SCAN_MIN = 1
 MZ_PER_TILE = 18.0
 TILES_PER_FRAME = int((MZ_MAX - MZ_MIN) / MZ_PER_TILE) + 1
 MIN_TILE_IDX = 0
@@ -59,6 +57,7 @@ def tile_pixel_x_from_mz(mz):
     pixel_x = int(((mz - MZ_MIN) % MZ_PER_TILE) / MZ_PER_TILE * PIXELS_X)
     return (tile_id, pixel_x)
 
+# draw a straight line to exclude the charge-1 cloud
 def scan_coords_for_single_charge_region(mz_lower, mz_upper):
     scan_for_mz_lower = -1 * ((1.2 * mz_lower) - 1252)
     scan_for_mz_upper = -1 * ((1.2 * mz_upper) - 1252)
