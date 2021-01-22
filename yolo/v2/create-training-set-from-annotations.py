@@ -298,10 +298,9 @@ for annotation_file_name in annotations_file_list:
         masked_tile.save("{}/{}".format(PRE_ASSIGNED_FILES_DIR, tile_base_name))
 
         # write the annotations text file for this tile
-        if len(feature_coordinates) > 0:
-            with open(annotations_path, 'w') as f:
-                for item in feature_coordinates:
-                    f.write("%s\n" % item)
+        with open(annotations_path, 'w') as f:
+            for item in feature_coordinates:
+                f.write("%s\n" % item)
 
         # keep stats of the objects on each tile
         objects_per_tile.append((tile_id, frame_id, number_of_objects_this_tile))
