@@ -271,7 +271,7 @@ for annotation_file_name in annotations_file_list:
                 if (charge >= MIN_CHARGE) and (charge <= MAX_CHARGE):
                     feature_class = calculate_feature_class(isotopes, charge)
                     # add it to the list if we're looking for more instances of this class
-                    if classes_d[feature_class] < args.class_count:
+                    if (feature_class not in classes_d.keys()) or (classes_d[feature_class] < args.class_count):
                         # keep record of how many instances of each class
                         if feature_class in classes_d.keys():
                             classes_d[feature_class] += 1
