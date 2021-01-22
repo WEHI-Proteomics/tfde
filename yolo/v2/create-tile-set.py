@@ -19,7 +19,7 @@ from cmcrameri import cm
 PIXELS_X = 910
 PIXELS_Y = 910
 MZ_MIN = 100.0
-MZ_MAX = 1700.0
+MZ_MAX = 1702.0
 MZ_PER_TILE = 18.0
 TILES_PER_FRAME = int((MZ_MAX - MZ_MIN) / MZ_PER_TILE) + 1
 MIN_TILE_IDX = 0
