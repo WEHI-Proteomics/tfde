@@ -97,6 +97,7 @@ parser.add_argument('-eb','--experiment_base_dir', type=str, default='./experime
 parser.add_argument('-en','--experiment_name', type=str, help='Name of the experiment.', required=True)
 parser.add_argument('-tln','--tile_list_name', type=str, help='Name of the tile list.', required=True)
 parser.add_argument('-as','--annotations_source', type=str, choices=['via','tfe','via-trained-predictions','tfe-trained-predictions'], help='Source of the annotations.', required=True)
+parser.add_argument('-cc','--class_count', type=int, default=100, help='Number of instances required for each class.', required=False)
 args = parser.parse_args()
 
 # store the command line arguments as metadata for later reference
@@ -269,21 +270,23 @@ for annotation_file_name in annotations_file_list:
                 # label the charge states we want to detect
                 if (charge >= MIN_CHARGE) and (charge <= MAX_CHARGE):
                     feature_class = calculate_feature_class(isotopes, charge)
-                    # keep record of how many instances of each class
-                    if feature_class in classes_d.keys():
-                        classes_d[feature_class] += 1
-                    else:
-                        classes_d[feature_class] = 1
-                    # add it to the list
-                    feature_coordinates.append(("{} {:.6f} {:.6f} {:.6f} {:.6f}".format(feature_class, yolo_x, yolo_y, yolo_w, yolo_h)))
-                    # draw the mask
-                    mask_draw.rectangle(xy=[(x, y), (x+width, y+height)], fill='white', outline='white')
-                    # keep record of the 'small' objects
-                    total_objects += 1
-                    if (yolo_w <= SMALL_OBJECT_W) or (yolo_h <= SMALL_OBJECT_H):
-                        small_objects += 1
-                    # keep track of the number of objects in this tile
-                    number_of_objects_this_tile += 1
+                    # add it to the list if we're looking for more instances of this class
+                    if classes_d[feature_class] < args.class_count:
+                        # keep record of how many instances of each class
+                        if feature_class in classes_d.keys():
+                            classes_d[feature_class] += 1
+                        else:
+                            classes_d[feature_class] = 1
+                        # add it to the list
+                        feature_coordinates.append(("{} {:.6f} {:.6f} {:.6f} {:.6f}".format(feature_class, yolo_x, yolo_y, yolo_w, yolo_h)))
+                        # draw the mask
+                        mask_draw.rectangle(xy=[(x, y), (x+width, y+height)], fill='white', outline='white')
+                        # keep record of the 'small' objects
+                        total_objects += 1
+                        if (yolo_w <= SMALL_OBJECT_W) or (yolo_h <= SMALL_OBJECT_H):
+                            small_objects += 1
+                        # keep track of the number of objects in this tile
+                        number_of_objects_this_tile += 1
                 else:
                     logger.info("found a charge-{} feature - not included in the training set".format(charge))
 
@@ -315,6 +318,10 @@ if total_objects > 0:
     logger.info("{} out of {} objects ({}%) are small.".format(small_objects, total_objects, round(small_objects/total_objects*100,1)))
 else:
     logger.info("note: there are no objects on these tiles")
+
+# check whether we reached the required number of instances for all classes
+if sum(1 for i in classes_d.values() if i >= args.class_count) < len(classes_d):
+    print('WARNING: we did not find the required number of class instances in the tile list.')
 
 # display the number of objects per tile
 objects_per_tile_df = pd.DataFrame(objects_per_tile, columns=['tile_id','frame_id','number_of_objects'])
