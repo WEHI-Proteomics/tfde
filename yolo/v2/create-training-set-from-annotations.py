@@ -245,12 +245,12 @@ for annotation_file_name in annotations_file_list:
 
         # process each annotation for the tile
         number_of_objects_this_tile = 0
+        feature_coordinates = []
         tile_regions = tile_d['regions']
         if len(tile_regions) > 0:
             # load the tile from the tile set
             print("processing {}".format(tile_base_name))
             # render the annotations
-            feature_coordinates = []
             for region in tile_regions:
                 shape_attributes = region['shape_attributes']
                 x = shape_attributes['x']
@@ -298,9 +298,10 @@ for annotation_file_name in annotations_file_list:
         masked_tile.save("{}/{}".format(PRE_ASSIGNED_FILES_DIR, tile_base_name))
 
         # write the annotations text file for this tile
-        with open(annotations_path, 'w') as f:
-            for item in feature_coordinates:
-                f.write("%s\n" % item)
+        if len(feature_coordinates) > 0:
+            with open(annotations_path, 'w') as f:
+                for item in feature_coordinates:
+                    f.write("%s\n" % item)
 
         # keep stats of the objects on each tile
         objects_per_tile.append((tile_id, frame_id, number_of_objects_this_tile))
