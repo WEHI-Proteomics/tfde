@@ -153,7 +153,7 @@ else:
 TILE_SET_BASE_DIR = '{}/tiles'.format(EXPERIMENT_DIR)
 TILE_SET_METADATA_FILE_NAME = '{}/{}/metadata.json'.format(TILE_SET_BASE_DIR, tile_set_name)
 if os.path.isfile(TILE_SET_METADATA_FILE_NAME):
-    print('loading the tile set metadata from {}'.format(TILE_LIST_METADATA_FILE_NAME))
+    print('loading the tile set metadata from {}'.format(TILE_SET_METADATA_FILE_NAME))
     with open(TILE_SET_METADATA_FILE_NAME) as json_file:
         tile_set_metadata = json.load(json_file)
         scan_lower = tile_set_metadata['arguments']['scan_lower']
