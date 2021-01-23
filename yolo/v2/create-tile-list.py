@@ -35,8 +35,15 @@ parser.add_argument('-tln','--tile_list_name', type=str, help='Name of the tile 
 parser.add_argument('-tid','--tile_id_list', type=str, help='IDs of the tiles to use for the list. Can specify several ranges (e.g. 10-20,21-30,31-40), a single range (e.g. 10-24), individual tiles (e.g. 34,56,32), or a single tile (e.g. 54). Tile IDs must be between 0 and 89 inclusive', required=True)
 parser.add_argument('-rn','--run_names', nargs='+', type=str, help='Space-separated names of runs to include.', required=True)
 parser.add_argument('-tsn','--tile_set_name', type=str, default='tile-set', help='Name of the tile set.', required=False)
-
 args = parser.parse_args()
+
+# Print the arguments for the log
+info = []
+for arg in vars(args):
+    info.append((arg, getattr(args, arg)))
+print(info)
+
+start_run = time.time()
 
 # store the arguments as metadata for later reference
 metadata = {'arguments':vars(args)}
@@ -130,8 +137,11 @@ tile_list_df['mz_upper'] = tile_list_df.apply(lambda row: mz_range_for_tile(row.
 tile_list_df['retention_time_secs'] = tile_list_df.apply(lambda row: round(tile_set_tiles_df[tile_set_tiles_df.base_name == row.base_name].iloc[0].retention_time_secs,1), axis=1)
 metadata['tile_info'] = tile_list_df.to_dict('records')
 
+stop_run = time.time()
+tile_set_metadata["run processing time (sec)"] = round(stop_run-start_run,1)
 metadata["processed"] = time.ctime()
 metadata["processor"] = parser.prog
+print("{} info: {}".format(parser.prog, metadata))
 
 # write out the metadata file
 metadata_filename = '{}/metadata.json'.format(TILE_LIST_DIR)
