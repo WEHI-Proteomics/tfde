@@ -406,4 +406,5 @@ with open('{}/test.txt'.format(TRAINING_SET_BASE_DIR), 'w') as f:
         f.write('data/peptides/sets/test/{}\n'.format(file_pair[0]))
 
 stop_run = time.time()
+print()
 print("total running time ({}): {} seconds".format(parser.prog, round(stop_run-start_run,1)))
