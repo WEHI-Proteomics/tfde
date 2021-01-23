@@ -233,6 +233,7 @@ for idx,row in enumerate(tile_list_df.itertuples()):
 
     # find the features intersecting with this tile
     intersecting_features_df = sequences_df[(sequences_df.file_idx == tile_file_idx) & (sequences_df.rt_lower <= tile_rt) & (sequences_df.rt_upper >= tile_rt) & (sequences_df.mz_lower >= tile_mz_lower) & (sequences_df.mz_upper <= tile_mz_upper)]
+    print('found {} features intersecting with tile {}'.format(len(intersecting_features_df), tile_id))
     # calculate the coordinates for the annotations file
     regions_l = []
     for idx,feature in intersecting_features_df.iterrows():
