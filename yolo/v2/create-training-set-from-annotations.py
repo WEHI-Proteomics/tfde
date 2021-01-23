@@ -50,14 +50,6 @@ def mz_range_for_tile(tile_id):
     mz_upper = mz_lower + MZ_PER_TILE
     return (mz_lower, mz_upper)
 
-# get the tile ID and the x pixel coordinate for the specified m/z
-def tile_pixel_x_from_mz(mz):
-    assert (mz >= MZ_MIN) and (mz <= MZ_MAX), "m/z not in range"
-
-    tile_id = int((mz - MZ_MIN) / MZ_PER_TILE)
-    pixel_x = int(((mz - MZ_MIN) % MZ_PER_TILE) / MZ_PER_TILE * PIXELS_X)
-    return (tile_id, pixel_x)
-
 # draw a straight line to exclude the charge-1 cloud
 def scan_coords_for_single_charge_region(mz_lower, mz_upper):
     scan_for_mz_lower = -1 * ((1.2 * mz_lower) - 1252)
@@ -214,9 +206,6 @@ for arg in vars(args):
     info.append((arg, getattr(args, arg)))
 print(info)
 
-# store the command line arguments as metadata for later reference
-tile_set_metadata = {'arguments':vars(args)}
-
 start_run = time.time()
 
 # check the experiment directory exists
@@ -321,7 +310,7 @@ for annotation_file_name in annotations_file_list:
     with open(annotation_file_name) as file:
         annotations = json.load(file)
     # for each tile in the annotations
-    objects_per_tile += ray.get([process_annotation_tile.remote(tile_d=annotations[tile_key]) for tile_key in list(annotations.keys())])
+    objects_per_tile += ray.get([process_annotation_tile.remote(tile_d=annotations[tile_key], tile_list_df=tile_list_df) for tile_key in list(annotations.keys())])
 
 # at this point we have all the referenced tiles in the pre-assigned directory, the charge-1 cloud and all labelled features are masked, and each tile has an annotations file
 
