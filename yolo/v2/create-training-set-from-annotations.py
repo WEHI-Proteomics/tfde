@@ -13,6 +13,7 @@ import time
 import glob
 import ray
 import multiprocessing as mp
+from collections import Counter
 
 PIXELS_X = 910
 PIXELS_Y = 910
@@ -76,11 +77,11 @@ def feature_names():
 
 @ray.remote
 def process_annotation_tile(tile_d, tile_list_df):
-    global classes_d
-    global feature_coordinates
-    global tile_list
-    global small_objects
-    global total_objects
+    tile_list = []
+    total_objects = 0
+    small_objects = 0
+    classes_d = {}
+    feature_coordinates = []
 
     # get the tile's metadata
     tile_base_name = tile_d['file_attributes']['source']['tile']['base_name']
@@ -110,8 +111,6 @@ def process_annotation_tile(tile_d, tile_list_df):
     tile_list.append((tile_base_name, annotations_filename))
 
     # process each annotation for the tile
-    number_of_objects_this_tile = 0
-    feature_coordinates = []
     tile_regions = tile_d['regions']
     if len(tile_regions) > 0:
         # load the tile from the tile set
@@ -150,8 +149,6 @@ def process_annotation_tile(tile_d, tile_list_df):
                     total_objects += 1
                     if (yolo_w <= SMALL_OBJECT_W) or (yolo_h <= SMALL_OBJECT_H):
                         small_objects += 1
-                    # keep track of the number of objects in this tile
-                    number_of_objects_this_tile += 1
             # else:
             #     print("found a charge-{} feature - not included in the training set".format(charge))
 
@@ -170,7 +167,7 @@ def process_annotation_tile(tile_d, tile_list_df):
         for item in feature_coordinates:
             f.write("%s\n" % item)
 
-    return (run_name, tile_id, frame_id, number_of_objects_this_tile)
+    return {'run_name':run_name, 'tile_id':tile_id, 'frame_id':frame_id, 'number_of_objects':total_objects, 'number_of_small_objects':small_objects, 'tile_list':tile_list, 'classes_d':classes_d}
 
 # determine the number of workers based on the number of available cores and the proportion of the machine to be used
 def number_of_workers():
@@ -296,23 +293,31 @@ if not ray.is_initialized():
         ray.init(local_mode=True)
 
 # process all the annotations files
-classes_d = {}
-small_objects = 0
-total_objects = 0
-tile_list = []
-objects_per_tile = []
 digits = '0123456789'
 
 annotations_file_list = sorted(glob.glob("{}/annotations-run-*-tile-*.json".format(ANNOTATIONS_DIR)))
+tile_objects_l = []
 for annotation_file_name in annotations_file_list:
     # load the annotations file
     print('processing {}'.format(annotation_file_name))
     with open(annotation_file_name) as file:
         annotations = json.load(file)
     # for each tile in the annotations
-    objects_per_tile += ray.get([process_annotation_tile.remote(tile_d=annotations[tile_key], tile_list_df=tile_list_df) for tile_key in list(annotations.keys())])
+    tile_objects_l += ray.get([process_annotation_tile.remote(tile_d=annotations[tile_key], tile_list_df=tile_list_df) for tile_key in list(annotations.keys())])
 
 # at this point we have all the referenced tiles in the pre-assigned directory, the charge-1 cloud and all labelled features are masked, and each tile has an annotations file
+classes_c = Counter()
+small_objects = 0
+total_objects = 0
+tile_list_l = []
+objects_per_tile_l = []
+for t in tile_objects_l:
+    classes_c += Counter(t['classes_d'])
+    total_objects += t['number_of_objects']
+    small_objects += t['number_of_small_objects']
+    tile_list_l += t['tile_list']
+    objects_per_tile_l.append((t['run_name'], t['tile_id'], t['frame_id'], t['number_of_objects']))
+classes_d = dict(classes_c)
 
 # display the object counts for each class
 names = feature_names()
@@ -328,17 +333,17 @@ if sum(1 for i in classes_d.values() if i >= args.class_count) < len(classes_d):
     print('WARNING: we did not find the required number of class instances in the tile list.')
 
 # display the number of objects per tile
-objects_per_tile_df = pd.DataFrame(objects_per_tile, columns=['run_name','tile_id','frame_id','number_of_objects'])
+objects_per_tile_df = pd.DataFrame(objects_per_tile_l, columns=['run_name','tile_id','frame_id','number_of_objects'])
 objects_per_tile_df.to_pickle('{}/objects_per_tile_df.pkl'.format(TRAINING_SET_BASE_DIR))
 print("There are {} tiles with no objects.".format(len(objects_per_tile_df[objects_per_tile_df.number_of_objects == 0])))
 print("On average there are {} objects per tile.".format(round(np.mean(objects_per_tile_df.number_of_objects),1)))
 
 # assign the tiles to the training sets
-train_n = round(len(tile_list) * train_proportion)
-val_n = round(len(tile_list) * val_proportion)
+train_n = round(len(tile_list_l) * train_proportion)
+val_n = round(len(tile_list_l) * val_proportion)
 
-train_set = random.sample(tile_list, train_n)
-val_test_set = list(set(tile_list) - set(train_set))
+train_set = random.sample(tile_list_l, train_n)
+val_test_set = list(set(tile_list_l) - set(train_set))
 val_set = random.sample(val_test_set, val_n)
 test_set = list(set(val_test_set) - set(val_set))
 
@@ -348,6 +353,7 @@ max_batches = max(6000, max(2000*number_of_classes, len(train_set)))  # recommen
 print("set max_batches={}, steps={},{},{},{}".format(max_batches, int(0.4*max_batches), int(0.6*max_batches), int(0.8*max_batches), int(0.9*max_batches)))
 
 # copy the training set tiles and their annotation files
+print()
 print("copying the training set to {}".format(TRAIN_SET_DIR))
 for file_pair in train_set:
     shutil.copyfile('{}/{}'.format(PRE_ASSIGNED_FILES_DIR, file_pair[0]), '{}/{}'.format(TRAIN_SET_DIR, file_pair[0]))
@@ -367,6 +373,7 @@ for file_pair in test_set:
 
 # create obj.names, for copying to ./darknet/data, with the object names, each one on a new line
 LOCAL_NAMES_FILENAME = "{}/peptides-obj.names".format(TRAINING_SET_BASE_DIR)
+print()
 print("writing {}".format(LOCAL_NAMES_FILENAME))
 
 # class labels
