@@ -82,7 +82,7 @@ def feature_names():
     return names
 
 @ray.remote
-def process_annotation_tile(tile_d, classes_d, feature_coordinates, tile_list_df):
+def process_annotation_tile(tile_d, tile_list_df):
     global classes_d
     global feature_coordinates
     global tile_list
