@@ -80,7 +80,6 @@ def render_frame(run_name, converted_db_name, frame_id, retention_time_secs, min
     # find the mz range for the tiles specified
     frame_mz_lower = mz_range_for_tile(min_tile_id)[0]  # the lower mz range for the lowest tile index specified
     frame_mz_upper = mz_range_for_tile(max_tile_id)[1]  # the upper mz range for the highest tile index specified
-    print('frame m/z range {},{} for tiles {},{}'.format(frame_mz_lower,frame_mz_upper,min_tile_id,max_tile_id))
 
     # read the raw points for the frame
     db_conn = sqlite3.connect(converted_db_name)
@@ -156,6 +155,14 @@ parser.add_argument('-pc','--proportion_of_cores_to_use', type=float, default=0.
 parser.add_argument('-shutdown','--shutdown', action='store_true', help='Shut down the machine when complete.')
 args = parser.parse_args()
 
+# Print the arguments for the log
+info = []
+for arg in vars(args):
+    info.append((arg, getattr(args, arg)))
+print(info)
+
+start_run = time.time()
+
 # store the arguments as metadata for later reference
 tile_set_metadata = {'arguments':vars(args)}
 
@@ -182,10 +189,7 @@ if os.path.exists(TILES_BASE_DIR):
     shutil.rmtree(TILES_BASE_DIR)
 os.makedirs(TILES_BASE_DIR)
 
-
-##############################
-start_run = time.time()
-
+# set up Ray
 print("setting up Ray")
 if not ray.is_initialized():
     if args.ray_mode == "cluster":
