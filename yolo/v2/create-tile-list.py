@@ -141,10 +141,11 @@ stop_run = time.time()
 tile_set_metadata["run processing time (sec)"] = round(stop_run-start_run,1)
 metadata["processed"] = time.ctime()
 metadata["processor"] = parser.prog
-print("{} info: {}".format(parser.prog, metadata))
 
 # write out the metadata file
 metadata_filename = '{}/metadata.json'.format(TILE_LIST_DIR)
 print('writing the metadata file to {}'.format(metadata_filename))
 with open(metadata_filename, 'w') as outfile:
     json.dump(metadata, outfile)
+
+print("total running time ({}): {} seconds".format(parser.prog, round(stop_run-start_run,1)))
