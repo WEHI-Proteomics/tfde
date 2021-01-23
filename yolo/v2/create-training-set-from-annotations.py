@@ -134,21 +134,19 @@ def process_annotation_tile(tile_d, tile_list_df):
             # label the charge states we want to detect
             if (charge >= MIN_CHARGE) and (charge <= MAX_CHARGE):
                 feature_class = calculate_feature_class(isotopes, charge)
-                # add it to the list if we're looking for more instances of this class
-                if (feature_class not in classes_d.keys()) or (classes_d[feature_class] < args.class_count):
-                    # keep record of how many instances of each class
-                    if feature_class in classes_d.keys():
-                        classes_d[feature_class] += 1
-                    else:
-                        classes_d[feature_class] = 1
-                    # add it to the list
-                    feature_coordinates.append(("{} {:.6f} {:.6f} {:.6f} {:.6f}".format(feature_class, yolo_x, yolo_y, yolo_w, yolo_h)))
-                    # draw the mask
-                    mask_draw.rectangle(xy=[(x, y), (x+width, y+height)], fill='white', outline='white')
-                    # keep record of the 'small' objects
-                    total_objects += 1
-                    if (yolo_w <= SMALL_OBJECT_W) or (yolo_h <= SMALL_OBJECT_H):
-                        small_objects += 1
+                # keep record of how many instances of each class
+                if feature_class in classes_d.keys():
+                    classes_d[feature_class] += 1
+                else:
+                    classes_d[feature_class] = 1
+                # add it to the list
+                feature_coordinates.append(("{} {:.6f} {:.6f} {:.6f} {:.6f}".format(feature_class, yolo_x, yolo_y, yolo_w, yolo_h)))
+                # draw the mask
+                mask_draw.rectangle(xy=[(x, y), (x+width, y+height)], fill='white', outline='white')
+                # keep record of the 'small' objects
+                total_objects += 1
+                if (yolo_w <= SMALL_OBJECT_W) or (yolo_h <= SMALL_OBJECT_H):
+                    small_objects += 1
             # else:
             #     print("found a charge-{} feature - not included in the training set".format(charge))
 
@@ -194,7 +192,6 @@ parser.add_argument('-tln','--tile_list_name', type=str, help='Name of the tile 
 parser.add_argument('-as','--annotations_source', type=str, choices=['via','tfe','via-trained-predictions','tfe-trained-predictions'], help='Source of the annotations.', required=True)
 parser.add_argument('-rm','--ray_mode', type=str, choices=['local','cluster'], default='cluster', help='The Ray mode to use.', required=False)
 parser.add_argument('-pc','--proportion_of_cores_to_use', type=float, default=0.6, help='Proportion of the machine\'s cores to use for this program.', required=False)
-parser.add_argument('-cc','--class_count', type=int, default=100, help='Number of instances required for each class.', required=False)
 args = parser.parse_args()
 
 # Print the arguments for the log
@@ -327,10 +324,6 @@ if total_objects > 0:
     print("{} out of {} objects ({}%) are small.".format(small_objects, total_objects, round(small_objects/total_objects*100,1)))
 else:
     print("note: there are no objects on these tiles")
-
-# check whether we reached the required number of instances for all classes
-if sum(1 for i in classes_d.values() if i >= args.class_count) < len(classes_d):
-    print('WARNING: we did not find the required number of class instances in the tile list.')
 
 # display the number of objects per tile
 objects_per_tile_df = pd.DataFrame(objects_per_tile_l, columns=['run_name','tile_id','frame_id','number_of_objects'])
