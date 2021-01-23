@@ -96,6 +96,7 @@ parser = argparse.ArgumentParser(description='Set up a training set from raw til
 parser.add_argument('-eb','--experiment_base_dir', type=str, default='./experiments', help='Path to the experiments directory.', required=False)
 parser.add_argument('-en','--experiment_name', type=str, help='Name of the experiment.', required=True)
 parser.add_argument('-tln','--tile_list_name', type=str, help='Name of the tile list.', required=True)
+parser.add_argument('-cc','--class_count', type=int, default=100, help='Number of instances required for each class.', required=False)
 args = parser.parse_args()
 
 # Print the arguments for the log
@@ -219,6 +220,7 @@ sequences_df['mz_upper'] = sequences_df.apply(lambda row: np.max([i[0] for i in 
 
 # for each tile in the list, find its intersecting features and create annotations for them
 tiles_d = {}
+classes_d = {}
 for idx,row in enumerate(tile_list_df.itertuples()):
     # attributes of this tile
     tile_id = row.tile_id
@@ -256,10 +258,16 @@ for idx,row in enumerate(tile_list_df.itertuples()):
         # label the charge states we want to detect
         if (charge >= MIN_CHARGE) and (charge <= MAX_CHARGE):
             feature_class = calculate_feature_class(isotopes, charge)
-            charge_str = '{}+'.format(charge)
-            isotopes_str = '{}'.format(isotopes)
-            region = {'shape_attributes':{'name':'rect','x':x0_buffer, 'y':y0_buffer, 'width':w, 'height':h}, 'region_attributes':{'charge':charge_str, 'isotopes':isotopes_str}}
-            regions_l.append(region)
+            # add it to the list if we're looking for more instances of this class
+            if (feature_class not in classes_d.keys()) or (classes_d[feature_class] < args.class_count):
+                if feature_class in classes_d.keys():
+                    classes_d[feature_class] += 1
+                else:
+                    classes_d[feature_class] = 1
+                charge_str = '{}+'.format(charge)
+                isotopes_str = '{}'.format(isotopes)
+                region = {'shape_attributes':{'name':'rect','x':x0_buffer, 'y':y0_buffer, 'width':w, 'height':h}, 'region_attributes':{'charge':charge_str, 'isotopes':isotopes_str}}
+                regions_l.append(region)
         else:
             print("found a charge-{} feature - not included in the annotations".format(charge))
 
@@ -277,6 +285,15 @@ for key, value in tiles_d.items():
     with open(annotations_file_name, 'w') as outfile:
         json.dump(value, outfile)
 print("wrote out {} annotations files to {}".format(len(tiles_d), ANNOTATIONS_DIR))
+
+# display the object counts for each class
+names = feature_names()
+for c in sorted(classes_d.keys()):
+    print("{} objects: {}".format(names[c], classes_d[c]))
+
+# check whether we reached the required number of instances for all classes
+if sum(1 for i in classes_d.values() if i >= args.class_count) < len(classes_d):
+    print('WARNING: we did not find the required number of class instances in the tile list.')
 
 stop_run = time.time()
 print("total running time ({}): {} seconds".format(parser.prog, round(stop_run-start_run,1)))
