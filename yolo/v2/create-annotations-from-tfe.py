@@ -6,7 +6,6 @@ import sqlite3
 import pandas as pd
 import sys
 import numpy as np
-import logging
 import time
 
 
@@ -99,8 +98,11 @@ parser.add_argument('-en','--experiment_name', type=str, help='Name of the exper
 parser.add_argument('-tln','--tile_list_name', type=str, help='Name of the tile list.', required=True)
 args = parser.parse_args()
 
-# store the command line arguments as metadata for later reference
-metadata = {'arguments':vars(args)}
+# Print the arguments for the log
+info = []
+for arg in vars(args):
+    info.append((arg, getattr(args, arg)))
+print(info)
 
 start_run = time.time()
 
@@ -138,6 +140,7 @@ if not os.path.exists(TILE_LIST_DIR):
 # load the tile list metadata
 TILE_LIST_METADATA_FILE_NAME = '{}/metadata.json'.format(TILE_LIST_DIR)
 if os.path.isfile(TILE_LIST_METADATA_FILE_NAME):
+    print('loading the tile list metadata from {}'.format(TILE_LIST_METADATA_FILE_NAME))
     with open(TILE_LIST_METADATA_FILE_NAME) as json_file:
         tile_list_metadata = json.load(json_file)
         tile_list_df = pd.DataFrame(tile_list_metadata['tile_info'])
@@ -150,6 +153,7 @@ else:
 TILE_SET_BASE_DIR = '{}/tiles'.format(EXPERIMENT_DIR)
 TILE_SET_METADATA_FILE_NAME = '{}/{}/metadata.json'.format(TILE_SET_BASE_DIR, tile_set_name)
 if os.path.isfile(TILE_SET_METADATA_FILE_NAME):
+    print('loading the tile set metadata from {}'.format(TILE_LIST_METADATA_FILE_NAME))
     with open(TILE_SET_METADATA_FILE_NAME) as json_file:
         tile_set_metadata = json.load(json_file)
         scan_lower = tile_set_metadata['arguments']['scan_lower']
@@ -164,21 +168,6 @@ if os.path.exists(ANNOTATIONS_DIR):
     shutil.rmtree(ANNOTATIONS_DIR)
 os.makedirs(ANNOTATIONS_DIR)
 os.makedirs('{}/predictions'.format(ANNOTATIONS_DIR))
-
-# set up logging
-logger = logging.getLogger(__name__)  
-logger.setLevel(logging.INFO)
-formatter = logging.Formatter('%(asctime)s : %(levelname)s : %(name)s : %(message)s')
-# set the file handler
-file_handler = logging.FileHandler('{}/{}.log'.format(TILE_LIST_DIR, parser.prog))
-file_handler.setFormatter(formatter)
-logger.addHandler(file_handler)
-# set the console handler
-console_handler = logging.StreamHandler()
-console_handler.setFormatter(formatter)
-logger.addHandler(console_handler)
-
-logger.info("{} info: {}".format(parser.prog, metadata))
 
 # find the extent of the tile list in m/z, RT, runs
 tile_list_mz_lower = tile_list_df.mz_lower.min()
@@ -196,14 +185,14 @@ else:
 run_names_l = list(tile_list_df.run_name.unique())
 
 # only load the extracted features that will appear in the tile list
-logger.info("reading the extracted features for runs {} from {}".format(run_names_l, EXTRACTED_FEATURES_DB_NAME))
+print("reading the extracted features for runs {} from {}".format(run_names_l, EXTRACTED_FEATURES_DB_NAME))
 db_conn = sqlite3.connect(EXTRACTED_FEATURES_DB_NAME)
 sequences_df = pd.read_sql_query('select sequence,charge,run_name,file_idx,monoisotopic_mz_centroid,number_of_isotopes,rt_apex,mono_rt_bounds,mono_scan_bounds,isotope_1_rt_bounds,isotope_1_scan_bounds,isotope_2_rt_bounds,isotope_2_scan_bounds,isotope_intensities_l from features where file_idx in {} and rt_apex >= {} and rt_apex <= {} and monoisotopic_mz_centroid >= {} and monoisotopic_mz_centroid <= {}'.format(file_idxs, rt_lower, rt_upper, tile_list_mz_lower, tile_list_mz_upper), db_conn)
 db_conn.close()
-logger.info("loaded {} extracted features from {}".format(len(sequences_df), EXTRACTED_FEATURES_DB_NAME))
+print("loaded {} extracted features from {}".format(len(sequences_df), EXTRACTED_FEATURES_DB_NAME))
 
 # unpack the feature extents
-logger.info("unpacking the feature extents")
+print("unpacking the feature extents")
 sequences_df.mono_rt_bounds = sequences_df.apply(lambda row: json.loads(row.mono_rt_bounds), axis=1)
 sequences_df.mono_scan_bounds = sequences_df.apply(lambda row: json.loads(row.mono_scan_bounds), axis=1)
 
@@ -271,7 +260,7 @@ for idx,row in enumerate(tile_list_df.itertuples()):
             region = {'shape_attributes':{'name':'rect','x':x0_buffer, 'y':y0_buffer, 'width':w, 'height':h}, 'region_attributes':{'charge':charge_str, 'isotopes':isotopes_str}}
             regions_l.append(region)
         else:
-            logger.info("found a charge-{} feature - not included in the annotations".format(charge))
+            print("found a charge-{} feature - not included in the annotations".format(charge))
 
     tiles_key = 'run-{}-tile-{}'.format(tile_run_name, tile_id)
     if not tiles_key in tiles_d:
@@ -286,9 +275,7 @@ for key, value in tiles_d.items():
     annotations_file_name = '{}/annotations-run-{}-tile-{}.json'.format(ANNOTATIONS_DIR, run_name, tile_id)
     with open(annotations_file_name, 'w') as outfile:
         json.dump(value, outfile)
-
 print("wrote out {} annotations files to {}".format(len(tiles_d), ANNOTATIONS_DIR))
 
-metadata["processed"] = time.ctime()
-metadata["processor"] = parser.prog
-print("{} metadata: {}".format(parser.prog, metadata))
+stop_run = time.time()
+print("total running time ({}): {} seconds".format(parser.prog, round(stop_run-start_run,1)))
