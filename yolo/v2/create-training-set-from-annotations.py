@@ -12,6 +12,7 @@ import numpy as np
 import time
 import glob
 import ray
+import multiprocessing as mp
 
 PIXELS_X = 910
 PIXELS_Y = 910
@@ -178,6 +179,12 @@ def process_annotation_tile(tile_d, tile_list_df):
             f.write("%s\n" % item)
 
     return (run_name, tile_id, frame_id, number_of_objects_this_tile)
+
+# determine the number of workers based on the number of available cores and the proportion of the machine to be used
+def number_of_workers():
+    number_of_cores = mp.cpu_count()
+    number_of_workers = int(args.proportion_of_cores_to_use * number_of_cores)
+    return number_of_workers
 
 
 ########################################
