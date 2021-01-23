@@ -9,9 +9,9 @@ import pandas as pd
 import sys
 import pickle
 import numpy as np
-import logging
 import time
 import glob
+import ray
 
 PIXELS_X = 910
 PIXELS_Y = 910
@@ -81,6 +81,105 @@ def feature_names():
             names.append('charge-{}-isotopes-{}'.format(ch, iso))
     return names
 
+@ray.remote
+def process_annotation_tile(tile_d, classes_d, feature_coordinates, tile_list_df):
+    global classes_d
+    global feature_coordinates
+    global tile_list
+    global small_objects
+    global total_objects
+
+    # get the tile's metadata
+    tile_base_name = tile_d['file_attributes']['source']['tile']['base_name']
+    tile_metadata = tile_list_df[tile_list_df.base_name == tile_base_name].iloc[0]
+    tile_full_path = tile_metadata.full_path
+    tile_id = tile_metadata.tile_id
+    frame_id = tile_metadata.frame_id
+    run_name = tile_metadata.run_name
+
+    # copy the tile to the pre-assigned directory
+    destination_name = '{}/{}'.format(PRE_ASSIGNED_FILES_DIR, tile_base_name)
+    shutil.copyfile(tile_full_path, destination_name)
+
+    # create a feature mask
+    mask_im_array = np.zeros([PIXELS_Y+1, PIXELS_X+1, 3], dtype=np.uint8)
+    mask = Image.fromarray(mask_im_array.astype('uint8'), 'RGB')
+    mask_draw = ImageDraw.Draw(mask)
+
+    # fill in the charge-1 area that we want to preserve
+    tile_mz_lower,tile_mz_upper = mz_range_for_tile(tile_id)
+    mask_region_y_left,mask_region_y_right = scan_coords_for_single_charge_region(tile_mz_lower, tile_mz_upper)
+    mask_draw.polygon(xy=[(0,0), (PIXELS_X,0), (PIXELS_X,mask_region_y_right), (0,mask_region_y_left)], fill='white', outline='white')
+
+    # set up the YOLO annotations text file
+    annotations_filename = '{}.txt'.format(os.path.splitext(tile_base_name)[0])
+    annotations_path = '{}/{}'.format(PRE_ASSIGNED_FILES_DIR, annotations_filename)
+    tile_list.append((tile_base_name, annotations_filename))
+
+    # process each annotation for the tile
+    number_of_objects_this_tile = 0
+    feature_coordinates = []
+    tile_regions = tile_d['regions']
+    if len(tile_regions) > 0:
+        # load the tile from the tile set
+        print("processing {}".format(tile_base_name))
+        # render the annotations
+        for region in tile_regions:
+            shape_attributes = region['shape_attributes']
+            x = shape_attributes['x']
+            y = shape_attributes['y']
+            width = shape_attributes['width']
+            height = shape_attributes['height']
+            # calculate the YOLO coordinates for the text file
+            yolo_x = (x + (width / 2)) / PIXELS_X
+            yolo_y = (y + (height / 2)) / PIXELS_Y
+            yolo_w = width / PIXELS_X
+            yolo_h = height / PIXELS_Y
+            # determine the attributes of this feature
+            region_attributes = region['region_attributes']
+            charge = int(''.join(c for c in region_attributes['charge'] if c in digits))
+            isotopes = int(region_attributes['isotopes'])
+            # label the charge states we want to detect
+            if (charge >= MIN_CHARGE) and (charge <= MAX_CHARGE):
+                feature_class = calculate_feature_class(isotopes, charge)
+                # add it to the list if we're looking for more instances of this class
+                if (feature_class not in classes_d.keys()) or (classes_d[feature_class] < args.class_count):
+                    # keep record of how many instances of each class
+                    if feature_class in classes_d.keys():
+                        classes_d[feature_class] += 1
+                    else:
+                        classes_d[feature_class] = 1
+                    # add it to the list
+                    feature_coordinates.append(("{} {:.6f} {:.6f} {:.6f} {:.6f}".format(feature_class, yolo_x, yolo_y, yolo_w, yolo_h)))
+                    # draw the mask
+                    mask_draw.rectangle(xy=[(x, y), (x+width, y+height)], fill='white', outline='white')
+                    # keep record of the 'small' objects
+                    total_objects += 1
+                    if (yolo_w <= SMALL_OBJECT_W) or (yolo_h <= SMALL_OBJECT_H):
+                        small_objects += 1
+                    # keep track of the number of objects in this tile
+                    number_of_objects_this_tile += 1
+            # else:
+            #     print("found a charge-{} feature - not included in the training set".format(charge))
+
+    # finish drawing the mask
+    del mask_draw
+    # ...and save the mask
+    mask.save('{}/{}'.format(MASK_FILES_DIR, tile_base_name))
+
+    # apply the mask to the tile
+    img = Image.open("{}/{}".format(PRE_ASSIGNED_FILES_DIR, tile_base_name))
+    masked_tile = ImageChops.multiply(img, mask)
+    masked_tile.save("{}/{}".format(PRE_ASSIGNED_FILES_DIR, tile_base_name))
+
+    # write the annotations text file for this tile
+    with open(annotations_path, 'w') as f:
+        for item in feature_coordinates:
+            f.write("%s\n" % item)
+
+    return (run_name, tile_id, frame_id, number_of_objects_this_tile)
+
+
 ########################################
 
 # python ./otf-peak-detect/yolo-feature-detection/training/create-training-set-from-tfd.py -eb ~/Downloads/experiments -en dwm-test -rn 190719_Hela_Ecoli_1to1_01 -tidx 34
@@ -97,8 +196,16 @@ parser.add_argument('-eb','--experiment_base_dir', type=str, default='./experime
 parser.add_argument('-en','--experiment_name', type=str, help='Name of the experiment.', required=True)
 parser.add_argument('-tln','--tile_list_name', type=str, help='Name of the tile list.', required=True)
 parser.add_argument('-as','--annotations_source', type=str, choices=['via','tfe','via-trained-predictions','tfe-trained-predictions'], help='Source of the annotations.', required=True)
+parser.add_argument('-rm','--ray_mode', type=str, choices=['local','cluster'], default='cluster', help='The Ray mode to use.', required=False)
+parser.add_argument('-pc','--proportion_of_cores_to_use', type=float, default=0.6, help='Proportion of the machine\'s cores to use for this program.', required=False)
 parser.add_argument('-cc','--class_count', type=int, default=100, help='Number of instances required for each class.', required=False)
 args = parser.parse_args()
+
+# Print the arguments for the log
+info = []
+for arg in vars(args):
+    info.append((arg, getattr(args, arg)))
+print(info)
 
 # store the command line arguments as metadata for later reference
 tile_set_metadata = {'arguments':vars(args)}
@@ -121,6 +228,7 @@ if not os.path.exists(TILE_LIST_DIR):
 # load the tile list metadata
 TILE_LIST_METADATA_FILE_NAME = '{}/metadata.json'.format(TILE_LIST_DIR)
 if os.path.isfile(TILE_LIST_METADATA_FILE_NAME):
+    print('loading the tile list metadata from {}'.format(TILE_LIST_METADATA_FILE_NAME))
     with open(TILE_LIST_METADATA_FILE_NAME) as json_file:
         tile_list_metadata = json.load(json_file)
         tile_list_df = pd.DataFrame(tile_list_metadata['tile_info'])
@@ -176,28 +284,22 @@ if os.path.exists(TEST_SET_DIR):
     shutil.rmtree(TEST_SET_DIR)
 os.makedirs(TEST_SET_DIR)
 
-# set up logging
-logger = logging.getLogger(__name__)  
-logger.setLevel(logging.INFO)
-formatter = logging.Formatter('%(asctime)s : %(levelname)s : %(name)s : %(message)s')
-# set the file handler
-file_handler = logging.FileHandler('{}/{}.log'.format(TRAINING_SET_BASE_DIR, parser.prog))
-file_handler.setFormatter(formatter)
-logger.addHandler(file_handler)
-# set the console handler
-console_handler = logging.StreamHandler()
-console_handler.setFormatter(formatter)
-logger.addHandler(console_handler)
-
-logger.info("{} info: {}".format(parser.prog, tile_set_metadata))
-
 # determine tile allocation proportions
 train_proportion = 0.9
 val_proportion = 0.1
 test_proportion = 0.0  # there's no need for a test set because mAP is measured on the validation set
-logger.info("set proportions: train {}, validation {}, test {}".format(train_proportion, val_proportion, test_proportion))
+print("set proportions: train {}, validation {}, test {}".format(train_proportion, val_proportion, test_proportion))
 
-# copy the tiles from the tile set to the pre-assigned directory, create its overlay and label text file
+print("setting up Ray")
+if not ray.is_initialized():
+    if args.ray_mode == "cluster":
+        ray.init(object_store_memory=20000000000,
+                    redis_max_memory=25000000000,
+                    num_cpus=number_of_workers())
+    else:
+        ray.init(local_mode=True)
+
+# process all the annotations files
 classes_d = {}
 small_objects = 0
 total_objects = 0
@@ -205,129 +307,35 @@ tile_list = []
 objects_per_tile = []
 digits = '0123456789'
 
-# process all the annotations files
 annotations_file_list = sorted(glob.glob("{}/annotations-run-*-tile-*.json".format(ANNOTATIONS_DIR)))
 for annotation_file_name in annotations_file_list:
     # load the annotations file
     print('processing {}'.format(annotation_file_name))
     with open(annotation_file_name) as file:
         annotations = json.load(file)
-
     # for each tile in the annotations
-    for tile_key in list(annotations.keys()):
-        tile_d = annotations[tile_key]
-
-        # get the tile's metadata
-        tile_base_name = tile_d['file_attributes']['source']['tile']['base_name']
-        tile_metadata = tile_list_df[tile_list_df.base_name == tile_base_name].iloc[0]
-        tile_full_path = tile_metadata.full_path
-        tile_id = tile_metadata.tile_id
-        frame_id = tile_metadata.frame_id
-        run_name = tile_metadata.run_name
-
-        # copy the tile to the pre-assigned directory
-        destination_name = '{}/{}'.format(PRE_ASSIGNED_FILES_DIR, tile_base_name)
-        shutil.copyfile(tile_full_path, destination_name)
-
-        # create a feature mask
-        mask_im_array = np.zeros([PIXELS_Y+1, PIXELS_X+1, 3], dtype=np.uint8)
-        mask = Image.fromarray(mask_im_array.astype('uint8'), 'RGB')
-        mask_draw = ImageDraw.Draw(mask)
-
-        # fill in the charge-1 area that we want to preserve
-        tile_mz_lower,tile_mz_upper = mz_range_for_tile(tile_id)
-        mask_region_y_left,mask_region_y_right = scan_coords_for_single_charge_region(tile_mz_lower, tile_mz_upper)
-        mask_draw.polygon(xy=[(0,0), (PIXELS_X,0), (PIXELS_X,mask_region_y_right), (0,mask_region_y_left)], fill='white', outline='white')
-
-        # set up the YOLO annotations text file
-        annotations_filename = '{}.txt'.format(os.path.splitext(tile_base_name)[0])
-        annotations_path = '{}/{}'.format(PRE_ASSIGNED_FILES_DIR, annotations_filename)
-        tile_list.append((tile_base_name, annotations_filename))
-
-        # process each annotation for the tile
-        number_of_objects_this_tile = 0
-        feature_coordinates = []
-        tile_regions = tile_d['regions']
-        if len(tile_regions) > 0:
-            # load the tile from the tile set
-            print("processing {}".format(tile_base_name))
-            # render the annotations
-            for region in tile_regions:
-                shape_attributes = region['shape_attributes']
-                x = shape_attributes['x']
-                y = shape_attributes['y']
-                width = shape_attributes['width']
-                height = shape_attributes['height']
-                # calculate the YOLO coordinates for the text file
-                yolo_x = (x + (width / 2)) / PIXELS_X
-                yolo_y = (y + (height / 2)) / PIXELS_Y
-                yolo_w = width / PIXELS_X
-                yolo_h = height / PIXELS_Y
-                # determine the attributes of this feature
-                region_attributes = region['region_attributes']
-                charge = int(''.join(c for c in region_attributes['charge'] if c in digits))
-                isotopes = int(region_attributes['isotopes'])
-                # label the charge states we want to detect
-                if (charge >= MIN_CHARGE) and (charge <= MAX_CHARGE):
-                    feature_class = calculate_feature_class(isotopes, charge)
-                    # add it to the list if we're looking for more instances of this class
-                    if (feature_class not in classes_d.keys()) or (classes_d[feature_class] < args.class_count):
-                        # keep record of how many instances of each class
-                        if feature_class in classes_d.keys():
-                            classes_d[feature_class] += 1
-                        else:
-                            classes_d[feature_class] = 1
-                        # add it to the list
-                        feature_coordinates.append(("{} {:.6f} {:.6f} {:.6f} {:.6f}".format(feature_class, yolo_x, yolo_y, yolo_w, yolo_h)))
-                        # draw the mask
-                        mask_draw.rectangle(xy=[(x, y), (x+width, y+height)], fill='white', outline='white')
-                        # keep record of the 'small' objects
-                        total_objects += 1
-                        if (yolo_w <= SMALL_OBJECT_W) or (yolo_h <= SMALL_OBJECT_H):
-                            small_objects += 1
-                        # keep track of the number of objects in this tile
-                        number_of_objects_this_tile += 1
-                else:
-                    logger.info("found a charge-{} feature - not included in the training set".format(charge))
-
-        # finish drawing the mask
-        del mask_draw
-        # ...and save the mask
-        mask.save('{}/{}'.format(MASK_FILES_DIR, tile_base_name))
-
-        # apply the mask to the tile
-        img = Image.open("{}/{}".format(PRE_ASSIGNED_FILES_DIR, tile_base_name))
-        masked_tile = ImageChops.multiply(img, mask)
-        masked_tile.save("{}/{}".format(PRE_ASSIGNED_FILES_DIR, tile_base_name))
-
-        # write the annotations text file for this tile
-        with open(annotations_path, 'w') as f:
-            for item in feature_coordinates:
-                f.write("%s\n" % item)
-
-        # keep stats of the objects on each tile
-        objects_per_tile.append((tile_id, frame_id, number_of_objects_this_tile))
+    objects_per_tile += ray.get([process_annotation_tile.remote(tile_d=annotations[tile_key]) for tile_key in list(annotations.keys())])
 
 # at this point we have all the referenced tiles in the pre-assigned directory, the charge-1 cloud and all labelled features are masked, and each tile has an annotations file
 
 # display the object counts for each class
 names = feature_names()
 for c in sorted(classes_d.keys()):
-    logger.info("{} objects: {}".format(names[c], classes_d[c]))
+    print("{} objects: {}".format(names[c], classes_d[c]))
 if total_objects > 0:
-    logger.info("{} out of {} objects ({}%) are small.".format(small_objects, total_objects, round(small_objects/total_objects*100,1)))
+    print("{} out of {} objects ({}%) are small.".format(small_objects, total_objects, round(small_objects/total_objects*100,1)))
 else:
-    logger.info("note: there are no objects on these tiles")
+    print("note: there are no objects on these tiles")
 
 # check whether we reached the required number of instances for all classes
 if sum(1 for i in classes_d.values() if i >= args.class_count) < len(classes_d):
     print('WARNING: we did not find the required number of class instances in the tile list.')
 
 # display the number of objects per tile
-objects_per_tile_df = pd.DataFrame(objects_per_tile, columns=['tile_id','frame_id','number_of_objects'])
+objects_per_tile_df = pd.DataFrame(objects_per_tile, columns=['run_name','tile_id','frame_id','number_of_objects'])
 objects_per_tile_df.to_pickle('{}/objects_per_tile_df.pkl'.format(TRAINING_SET_BASE_DIR))
-logger.info("There are {} tiles with no objects.".format(len(objects_per_tile_df[objects_per_tile_df.number_of_objects == 0])))
-logger.info("On average there are {} objects per tile.".format(round(np.mean(objects_per_tile_df.number_of_objects),1)))
+print("There are {} tiles with no objects.".format(len(objects_per_tile_df[objects_per_tile_df.number_of_objects == 0])))
+print("On average there are {} objects per tile.".format(round(np.mean(objects_per_tile_df.number_of_objects),1)))
 
 # assign the tiles to the training sets
 train_n = round(len(tile_list) * train_proportion)
@@ -338,10 +346,10 @@ val_test_set = list(set(tile_list) - set(train_set))
 val_set = random.sample(val_test_set, val_n)
 test_set = list(set(val_test_set) - set(val_set))
 
-logger.info("tile counts - train {}, validation {}, test {}".format(len(train_set), len(val_set), len(test_set)))
+print("tile counts - train {}, validation {}, test {}".format(len(train_set), len(val_set), len(test_set)))
 number_of_classes = MAX_CHARGE - MIN_CHARGE + 1
 max_batches = max(6000, max(2000*number_of_classes, len(train_set)))  # recommendation from AlexeyAB
-logger.info("set max_batches={}, steps={},{},{},{}".format(max_batches, int(0.4*max_batches), int(0.6*max_batches), int(0.8*max_batches), int(0.9*max_batches)))
+print("set max_batches={}, steps={},{},{},{}".format(max_batches, int(0.4*max_batches), int(0.6*max_batches), int(0.8*max_batches), int(0.9*max_batches)))
 
 # copy the training set tiles and their annotation files
 print("copying the training set to {}".format(TRAIN_SET_DIR))
