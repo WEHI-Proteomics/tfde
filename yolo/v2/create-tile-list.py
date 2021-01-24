@@ -97,6 +97,7 @@ if os.path.isfile(TILE_LIST_FILE_NAME):
     os.remove(TILE_LIST_FILE_NAME)
 
 # we will use all the tiles in retention time
+print('gathering the tiles')
 file_list = []
 for run_name in args.run_names:
     for idx in indexes_l:
@@ -119,6 +120,7 @@ tile_list_df['base_name'] = tile_list_df.apply(lambda row: os.path.basename(row.
 TILES_BASE_DIR = '{}/tiles/{}'.format(EXPERIMENT_DIR, args.tile_set_name)
 TILE_SET_METADATA_FILE_NAME = '{}/metadata.json'.format(TILES_BASE_DIR)
 if os.path.isfile(TILE_SET_METADATA_FILE_NAME):
+    print("Loading the tile list's metadata file: {}".format(TILE_SET_METADATA_FILE_NAME))
     with open(TILE_SET_METADATA_FILE_NAME) as json_file:
         tile_set_metadata = json.load(json_file)
         tile_set_tiles_df = pd.DataFrame(tile_set_metadata['tiles'])
