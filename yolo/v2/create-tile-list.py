@@ -130,7 +130,7 @@ else:
 
 # find the extent of the tile list in m/z, RT, runs
 print('collating metadata for {} tiles in the list'.format(len(tile_list_df)))
-tile_list_df = pd.merge(tile_list_df, tile_set_tiles_df, how='left', left_on=['tile_file_name'], right_on=['tile_file_name'])
+tile_list_df = pd.merge(tile_list_df, tile_set_tiles_df, how='left', left_on=['full_path'], right_on=['tile_file_name'])
 metadata['tile_info'] = tile_list_df.to_dict('records')
 
 stop_run = time.time()
