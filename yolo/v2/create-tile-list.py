@@ -124,19 +124,13 @@ if os.path.isfile(TILE_SET_METADATA_FILE_NAME):
     with open(TILE_SET_METADATA_FILE_NAME) as json_file:
         tile_set_metadata = json.load(json_file)
         tile_set_tiles_df = pd.DataFrame(tile_set_metadata['tiles'])
-        tile_set_tiles_df['base_name'] = tile_set_tiles_df.apply(lambda row: os.path.basename(row.tile_file_name), axis=1)
 else:
     print("Could not find the tile list's metadata file: {}".format(TILE_SET_METADATA_FILE_NAME))
     sys.exit(1)
 
 # find the extent of the tile list in m/z, RT, runs
-print('collating metadata for each tile')
-tile_list_df['run_name'] = tile_list_df.apply(lambda row: row.base_name.split('run-')[1].split('-frame')[0], axis=1)
-tile_list_df['frame_id'] = tile_list_df.apply(lambda row: int(row.base_name.split('frame-')[1].split('-tile')[0]), axis=1)
-tile_list_df['tile_id'] = tile_list_df.apply(lambda row: int(row.base_name.split('tile-')[1].split('.')[0]), axis=1)
-tile_list_df['mz_lower'] = tile_list_df.apply(lambda row: mz_range_for_tile(row.tile_id)[0], axis=1)
-tile_list_df['mz_upper'] = tile_list_df.apply(lambda row: mz_range_for_tile(row.tile_id)[1], axis=1)
-tile_list_df['retention_time_secs'] = tile_list_df.apply(lambda row: round(tile_set_tiles_df[tile_set_tiles_df.base_name == row.base_name].iloc[0].retention_time_secs,1), axis=1)
+print('collating metadata for {} tiles in the list'.format(len(tile_list_df)))
+tile_list_df = pd.merge(tile_list_df, tile_set_tiles_df, how='left', left_on=['tile_file_name'], right_on=['tile_file_name'])
 metadata['tile_info'] = tile_list_df.to_dict('records')
 
 stop_run = time.time()
