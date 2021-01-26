@@ -146,6 +146,7 @@ if os.path.isfile(TILE_LIST_METADATA_FILE_NAME):
         tile_list_metadata = json.load(json_file)
         tile_list_df = pd.DataFrame(tile_list_metadata['tile_info'])
         tile_set_name = tile_list_metadata['arguments']['tile_set_name']
+        tile_list_metadata.clear()  # no longer needed
 else:
     print("Could not find the tile list's metadata file: {}".format(TILE_LIST_METADATA_FILE_NAME))
     sys.exit(1)
@@ -159,6 +160,7 @@ if os.path.isfile(TILE_SET_METADATA_FILE_NAME):
         tile_set_metadata = json.load(json_file)
         scan_lower = tile_set_metadata['arguments']['scan_lower']
         scan_upper = tile_set_metadata['arguments']['scan_upper']
+        tile_set_metadata.clear()  # no longer needed
 else:
     print("Could not find the tile list's metadata file: {}".format(TILE_SET_METADATA_FILE_NAME))
     sys.exit(1)
