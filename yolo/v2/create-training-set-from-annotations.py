@@ -76,7 +76,7 @@ def feature_names():
     return names
 
 @ray.remote
-def process_annotation_tile(tile_d, tile_list_df):
+def process_annotation_tile(tile_annotations_d, tile_metadata):
     tile_list = []
     total_objects = 0
     small_objects = 0
@@ -84,8 +84,7 @@ def process_annotation_tile(tile_d, tile_list_df):
     feature_coordinates = []
 
     # get the tile's metadata
-    tile_base_name = tile_d['file_attributes']['source']['tile']['base_name']
-    tile_metadata = tile_list_df[tile_list_df.base_name == tile_base_name].iloc[0]
+    tile_base_name = tile_annotations_d['file_attributes']['source']['tile']['base_name']
     tile_full_path = tile_metadata.full_path
     tile_id = tile_metadata.tile_id
     frame_id = tile_metadata.frame_id
@@ -111,7 +110,7 @@ def process_annotation_tile(tile_d, tile_list_df):
     tile_list.append((tile_base_name, annotations_filename))
 
     # process each annotation for the tile
-    tile_regions = tile_d['regions']
+    tile_regions = tile_annotations_d['regions']
     if len(tile_regions) > 0:
         # load the tile from the tile set
         print("processing {}".format(tile_base_name))
@@ -222,6 +221,7 @@ if os.path.isfile(TILE_LIST_METADATA_FILE_NAME):
     with open(TILE_LIST_METADATA_FILE_NAME) as json_file:
         tile_list_metadata = json.load(json_file)
         tile_list_df = pd.DataFrame(tile_list_metadata['tile_info'])
+        print('there are {} tiles in the list'.format(len(tile_list_df)))
 else:
     print("Could not find the tile list's metadata file: {}".format(TILE_LIST_METADATA_FILE_NAME))
     sys.exit(1)
@@ -299,8 +299,8 @@ for annotation_file_name in annotations_file_list:
     print('processing {}'.format(annotation_file_name))
     with open(annotation_file_name) as file:
         annotations = json.load(file)
-    # for each tile in the annotations
-    tile_objects_l += ray.get([process_annotation_tile.remote(tile_d=annotations[tile_key], tile_list_df=tile_list_df) for tile_key in list(annotations.keys())])
+    # for each tile in the annotations (the annotation keys are the frames through RT)
+    tile_objects_l += ray.get([process_annotation_tile.remote(tile_annotations_d=annotations[tile_key], tile_metadata=tile_list_df[tile_list_df.base_name == annotations[tile_key]['file_attributes']['source']['tile']['base_name']].iloc[0]) for tile_key in list(annotations.keys())])
 
 # at this point we have all the referenced tiles in the pre-assigned directory, the charge-1 cloud and all labelled features are masked, and each tile has an annotations file
 classes_c = Counter()
