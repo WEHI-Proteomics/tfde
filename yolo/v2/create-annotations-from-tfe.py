@@ -43,8 +43,8 @@ def tile_pixel_x_from_mz(mz):
     return pixel_x
 
 def tile_pixel_y_from_scan(scan):
-    assert (scan >= scan_lower) and (scan <= scan_upper), "scan not in range"
-    pixel_y = int(((scan - scan_lower) / (scan_upper - scan_lower)) * PIXELS_Y)
+    assert (scan >= tile_set_scan_lower) and (scan <= tile_set_scan_upper), "scan not in range"
+    pixel_y = int(((scan - tile_set_scan_lower) / (tile_set_scan_upper - tile_set_scan_lower)) * PIXELS_Y)
     return pixel_y
 
 # determine the mapping between the percolator index and the run file name
@@ -97,6 +97,8 @@ parser.add_argument('-eb','--experiment_base_dir', type=str, default='./experime
 parser.add_argument('-en','--experiment_name', type=str, help='Name of the experiment.', required=True)
 parser.add_argument('-tln','--tile_list_name', type=str, help='Name of the tile list.', required=True)
 parser.add_argument('-cc','--class_count', type=int, default=100, help='Number of instances required for each class.', required=False)
+parser.add_argument('-sl','--scan_lower', type=int, default=1, help='Lower bound of the scan range.', required=False)
+parser.add_argument('-su','--scan_upper', type=int, default=920, help='Upper bound of the scan range.', required=False)
 args = parser.parse_args()
 
 # Print the arguments for the log
@@ -151,19 +153,22 @@ else:
     print("Could not find the tile list's metadata file: {}".format(TILE_LIST_METADATA_FILE_NAME))
     sys.exit(1)
 
-# load the tile set metadata
-TILE_SET_BASE_DIR = '{}/tiles'.format(EXPERIMENT_DIR)
-TILE_SET_METADATA_FILE_NAME = '{}/{}/metadata.json'.format(TILE_SET_BASE_DIR, tile_set_name)
-if os.path.isfile(TILE_SET_METADATA_FILE_NAME):
-    print('loading the tile set metadata from {}'.format(TILE_SET_METADATA_FILE_NAME))
-    with open(TILE_SET_METADATA_FILE_NAME) as json_file:
-        tile_set_metadata = json.load(json_file)
-        scan_lower = tile_set_metadata['arguments']['scan_lower']
-        scan_upper = tile_set_metadata['arguments']['scan_upper']
-        tile_set_metadata.clear()  # no longer needed
-else:
-    print("Could not find the tile list's metadata file: {}".format(TILE_SET_METADATA_FILE_NAME))
-    sys.exit(1)
+# # load the tile set metadata
+# TILE_SET_BASE_DIR = '{}/tiles'.format(EXPERIMENT_DIR)
+# TILE_SET_METADATA_FILE_NAME = '{}/{}/metadata.json'.format(TILE_SET_BASE_DIR, tile_set_name)
+# if os.path.isfile(TILE_SET_METADATA_FILE_NAME):
+#     print('loading the tile set metadata from {}'.format(TILE_SET_METADATA_FILE_NAME))
+#     with open(TILE_SET_METADATA_FILE_NAME) as json_file:
+#         tile_set_metadata = json.load(json_file)
+#         tile_set_scan_lower = tile_set_metadata['arguments']['scan_lower']
+#         tile_set_scan_upper = tile_set_metadata['arguments']['scan_upper']
+#         tile_set_metadata.clear()  # no longer needed
+# else:
+#     print("Could not find the tile list's metadata file: {}".format(TILE_SET_METADATA_FILE_NAME))
+#     sys.exit(1)
+
+tile_set_scan_lower = args.scan_lower
+tile_set_scan_upper = args.scan_upper
 
 # check the annotations directory
 ANNOTATIONS_DIR = '{}/annotations-from-tfe'.format(TILE_LIST_DIR)
@@ -180,11 +185,7 @@ rt_lower = tile_list_df.retention_time_secs.min()
 rt_upper = tile_list_df.retention_time_secs.max()
 
 tile_list_df['file_idx'] = tile_list_df.apply(lambda row: file_idx_for_run(row.run_name), axis=1)
-file_idxs = list(tile_list_df.file_idx.unique())
-if len(file_idxs) == 1:
-    file_idxs = '({})'.format(file_idxs[0])
-else:
-    file_idxs = '{}'.format(tuple(file_idxs))
+file_idxs_l = list(tile_list_df.file_idx.unique())
 run_names_l = list(tile_list_df.run_name.unique())
 
 print('creating indexes if not already existing on {}'.format(EXTRACTED_FEATURES_DB_NAME))
@@ -195,7 +196,8 @@ db_conn.close()
 
 print("reading the extracted features for runs {} from {}".format(run_names_l, EXTRACTED_FEATURES_DB_NAME))
 sequences_df_l = []
-for file_idx in file_idxs:
+for idx,file_idx in enumerate(file_idxs_l):
+    print('processing run {} of {}'.format(idx+1, len(file_idxs_l)))
     db_conn = sqlite3.connect(EXTRACTED_FEATURES_DB_NAME)
     sequences_df = pd.read_sql_query('select sequence,charge,run_name,file_idx,monoisotopic_mz_centroid,number_of_isotopes,rt_apex,mono_rt_bounds,mono_scan_bounds,isotope_1_rt_bounds,isotope_1_scan_bounds,isotope_2_rt_bounds,isotope_2_scan_bounds,isotope_intensities_l from features where file_idx == {} and rt_apex >= {} and rt_apex <= {} and monoisotopic_mz_centroid >= {} and monoisotopic_mz_centroid <= {}'.format(file_idx, rt_lower, rt_upper, tile_list_mz_lower, tile_list_mz_upper), db_conn)
     db_conn.close()
@@ -264,9 +266,9 @@ for idx,row in enumerate(tile_list_df.itertuples()):
         if t > tile_id:
             x1_buffer = PIXELS_X
         y0 = feature.scan_lower
-        y0_buffer = tile_pixel_y_from_scan(max((y0 - SCAN_BUFFER), scan_lower))
+        y0_buffer = tile_pixel_y_from_scan(max((y0 - SCAN_BUFFER), tile_set_scan_lower))
         y1 = feature.scan_upper
-        y1_buffer = tile_pixel_y_from_scan(min((y1 + SCAN_BUFFER), scan_upper))
+        y1_buffer = tile_pixel_y_from_scan(min((y1 + SCAN_BUFFER), tile_set_scan_upper))
         w = x1_buffer - x0_buffer
         h = y1_buffer - y0_buffer
         charge = feature.charge
