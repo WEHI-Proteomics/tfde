@@ -187,41 +187,53 @@ else:
     file_idxs = '{}'.format(tuple(file_idxs))
 run_names_l = list(tile_list_df.run_name.unique())
 
-# only load the extracted features that will appear in the tile list
-print("reading the extracted features for runs {} from {}".format(run_names_l, EXTRACTED_FEATURES_DB_NAME))
+print('creating indexes if not already existing on {}'.format(EXTRACTED_FEATURES_DB_NAME))
 db_conn = sqlite3.connect(EXTRACTED_FEATURES_DB_NAME)
-sequences_df = pd.read_sql_query('select sequence,charge,run_name,file_idx,monoisotopic_mz_centroid,number_of_isotopes,rt_apex,mono_rt_bounds,mono_scan_bounds,isotope_1_rt_bounds,isotope_1_scan_bounds,isotope_2_rt_bounds,isotope_2_scan_bounds,isotope_intensities_l from features where file_idx in {} and rt_apex >= {} and rt_apex <= {} and monoisotopic_mz_centroid >= {} and monoisotopic_mz_centroid <= {}'.format(file_idxs, rt_lower, rt_upper, tile_list_mz_lower, tile_list_mz_upper), db_conn)
+src_c = db_conn.cursor()
+src_c.execute("create index if not exists idx_create_annotations_1 on features (file_idx, rt_apex, monoisotopic_mz_centroid)")
 db_conn.close()
-print("loaded {} extracted features from {}".format(len(sequences_df), EXTRACTED_FEATURES_DB_NAME))
 
-# unpack the feature extents
-print("unpacking the feature extents")
-sequences_df.mono_rt_bounds = sequences_df.apply(lambda row: json.loads(row.mono_rt_bounds), axis=1)
-sequences_df.mono_scan_bounds = sequences_df.apply(lambda row: json.loads(row.mono_scan_bounds), axis=1)
+print("reading the extracted features for runs {} from {}".format(run_names_l, EXTRACTED_FEATURES_DB_NAME))
+sequences_df_l = []
+for file_idx in file_idxs:
+    db_conn = sqlite3.connect(EXTRACTED_FEATURES_DB_NAME)
+    sequences_df = pd.read_sql_query('select sequence,charge,run_name,file_idx,monoisotopic_mz_centroid,number_of_isotopes,rt_apex,mono_rt_bounds,mono_scan_bounds,isotope_1_rt_bounds,isotope_1_scan_bounds,isotope_2_rt_bounds,isotope_2_scan_bounds,isotope_intensities_l from features where file_idx == {} and rt_apex >= {} and rt_apex <= {} and monoisotopic_mz_centroid >= {} and monoisotopic_mz_centroid <= {}'.format(file_idx, rt_lower, rt_upper, tile_list_mz_lower, tile_list_mz_upper), db_conn)
+    db_conn.close()
+    print("loaded {} extracted features from {}".format(len(sequences_df), EXTRACTED_FEATURES_DB_NAME))
 
-sequences_df.isotope_1_rt_bounds = sequences_df.apply(lambda row: json.loads(row.isotope_1_rt_bounds), axis=1)
-sequences_df.isotope_1_scan_bounds = sequences_df.apply(lambda row: json.loads(row.isotope_1_scan_bounds), axis=1)
+    # unpack the feature extents
+    print("unpacking the feature extents")
+    sequences_df.mono_rt_bounds = sequences_df.apply(lambda row: json.loads(row.mono_rt_bounds), axis=1)
+    sequences_df.mono_scan_bounds = sequences_df.apply(lambda row: json.loads(row.mono_scan_bounds), axis=1)
 
-sequences_df.isotope_2_rt_bounds = sequences_df.apply(lambda row: json.loads(row.isotope_2_rt_bounds), axis=1)
-sequences_df.isotope_2_scan_bounds = sequences_df.apply(lambda row: json.loads(row.isotope_2_scan_bounds), axis=1)
+    sequences_df.isotope_1_rt_bounds = sequences_df.apply(lambda row: json.loads(row.isotope_1_rt_bounds), axis=1)
+    sequences_df.isotope_1_scan_bounds = sequences_df.apply(lambda row: json.loads(row.isotope_1_scan_bounds), axis=1)
 
-sequences_df['rt_lower'] = sequences_df.apply(lambda row: np.min([i[0] for i in [row.mono_rt_bounds,row.isotope_1_rt_bounds,row.isotope_2_rt_bounds]]), axis=1)
-sequences_df['rt_upper'] = sequences_df.apply(lambda row: np.max([i[1] for i in [row.mono_rt_bounds,row.isotope_1_rt_bounds,row.isotope_2_rt_bounds]]), axis=1)
+    sequences_df.isotope_2_rt_bounds = sequences_df.apply(lambda row: json.loads(row.isotope_2_rt_bounds), axis=1)
+    sequences_df.isotope_2_scan_bounds = sequences_df.apply(lambda row: json.loads(row.isotope_2_scan_bounds), axis=1)
 
-# aim to label the most intense part of the peak in RT
-sequences_df.rt_lower = sequences_df.rt_apex - 1.0
-sequences_df.rt_upper = sequences_df.rt_apex + 1.0
+    sequences_df['rt_lower'] = sequences_df.apply(lambda row: np.min([i[0] for i in [row.mono_rt_bounds,row.isotope_1_rt_bounds,row.isotope_2_rt_bounds]]), axis=1)
+    sequences_df['rt_upper'] = sequences_df.apply(lambda row: np.max([i[1] for i in [row.mono_rt_bounds,row.isotope_1_rt_bounds,row.isotope_2_rt_bounds]]), axis=1)
 
-sequences_df['scan_lower'] = sequences_df.apply(lambda row: np.min([i[0] for i in [row.mono_scan_bounds,row.isotope_1_scan_bounds,row.isotope_2_scan_bounds]]), axis=1)
-sequences_df['scan_upper'] = sequences_df.apply(lambda row: np.max([i[1] for i in [row.mono_scan_bounds,row.isotope_1_scan_bounds,row.isotope_2_scan_bounds]]), axis=1)
+    # aim to label the most intense part of the peak in RT
+    sequences_df.rt_lower = sequences_df.rt_apex - 1.0
+    sequences_df.rt_upper = sequences_df.rt_apex + 1.0
 
-# remove columns no longer required
-sequences_df.drop(columns=['mono_rt_bounds','mono_scan_bounds','isotope_1_rt_bounds','isotope_1_scan_bounds','isotope_2_rt_bounds','isotope_2_scan_bounds'], inplace=True)
+    sequences_df['scan_lower'] = sequences_df.apply(lambda row: np.min([i[0] for i in [row.mono_scan_bounds,row.isotope_1_scan_bounds,row.isotope_2_scan_bounds]]), axis=1)
+    sequences_df['scan_upper'] = sequences_df.apply(lambda row: np.max([i[1] for i in [row.mono_scan_bounds,row.isotope_1_scan_bounds,row.isotope_2_scan_bounds]]), axis=1)
 
-sequences_df.isotope_intensities_l = sequences_df.apply(lambda row: json.loads(row.isotope_intensities_l), axis=1)
-sequences_df['mz_lower'] = sequences_df.apply(lambda row: np.min([i[0] for i in row.isotope_intensities_l[0][4]]), axis=1)  # [0][4] refers to the isotope points of the monoisotope; i[0] refers to the m/z values
-sequences_df['mz_upper'] = sequences_df.apply(lambda row: np.max([i[0] for i in row.isotope_intensities_l[row.number_of_isotopes-1][4]]), axis=1)
-sequences_df.drop(columns=['isotope_intensities_l'], inplace=True)  # to save memory
+    # remove columns no longer required
+    sequences_df.drop(columns=['mono_rt_bounds','mono_scan_bounds','isotope_1_rt_bounds','isotope_1_scan_bounds','isotope_2_rt_bounds','isotope_2_scan_bounds'], inplace=True)
+
+    sequences_df.isotope_intensities_l = sequences_df.apply(lambda row: json.loads(row.isotope_intensities_l), axis=1)
+    sequences_df['mz_lower'] = sequences_df.apply(lambda row: np.min([i[0] for i in row.isotope_intensities_l[0][4]]), axis=1)  # [0][4] refers to the isotope points of the monoisotope; i[0] refers to the m/z values
+    sequences_df['mz_upper'] = sequences_df.apply(lambda row: np.max([i[0] for i in row.isotope_intensities_l[row.number_of_isotopes-1][4]]), axis=1)
+    sequences_df.drop(columns=['isotope_intensities_l'], inplace=True)  # to save memory
+
+    sequences_df_l.append(sequences_df)
+
+# concatenate the list into a single dataframe
+sequences_df = pd.concat(sequences_df_l)
 
 # for each tile in the list, find its intersecting features and create annotations for them
 tiles_d = {}
