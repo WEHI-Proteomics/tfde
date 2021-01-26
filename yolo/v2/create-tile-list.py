@@ -100,8 +100,10 @@ if os.path.isfile(TILE_LIST_FILE_NAME):
 print('gathering the tiles')
 file_list = []
 for run_name in args.run_names:
+    print('processing tiles for {}'.format(run_name))
     for idx in indexes_l:
         file_list += sorted(glob.glob("{}/run-{}-frame-*-tile-{}.png".format(TILES_BASE_DIR, run_name, idx)))
+    print('{} tiles gathered in total'.format(len(file_list)))
 
 # write out the list of tiles
 if len(file_list) > 0:
