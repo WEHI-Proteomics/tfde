@@ -190,7 +190,7 @@ parser.add_argument('-en','--experiment_name', type=str, help='Name of the exper
 parser.add_argument('-tln','--tile_list_name', type=str, help='Name of the tile list.', required=True)
 parser.add_argument('-as','--annotations_source', type=str, choices=['via','tfe','via-trained-predictions','tfe-trained-predictions'], help='Source of the annotations.', required=True)
 parser.add_argument('-rm','--ray_mode', type=str, choices=['local','cluster'], default='cluster', help='The Ray mode to use.', required=False)
-parser.add_argument('-pc','--proportion_of_cores_to_use', type=float, default=0.6, help='Proportion of the machine\'s cores to use for this program.', required=False)
+parser.add_argument('-pc','--proportion_of_cores_to_use', type=float, default=0.8, help='Proportion of the machine\'s cores to use for this program.', required=False)
 args = parser.parse_args()
 
 # Print the arguments for the log
