@@ -90,29 +90,29 @@ def process_annotation_tile(tile_annotations_d, tile_metadata):
     frame_id = tile_metadata.frame_id
     run_name = tile_metadata.run_name
 
-    # copy the tile to the pre-assigned directory
-    destination_name = '{}/{}'.format(PRE_ASSIGNED_FILES_DIR, tile_base_name)
-    shutil.copyfile(tile_full_path, destination_name)
-
-    # create a feature mask
-    mask_im_array = np.zeros([PIXELS_Y+1, PIXELS_X+1, 3], dtype=np.uint8)
-    mask = Image.fromarray(mask_im_array.astype('uint8'), 'RGB')
-    mask_draw = ImageDraw.Draw(mask)
-
-    # fill in the charge-1 area that we want to preserve
-    tile_mz_lower,tile_mz_upper = mz_range_for_tile(tile_id)
-    mask_region_y_left,mask_region_y_right = scan_coords_for_single_charge_region(tile_mz_lower, tile_mz_upper)
-    mask_draw.polygon(xy=[(0,0), (PIXELS_X,0), (PIXELS_X,mask_region_y_right), (0,mask_region_y_left)], fill='white', outline='white')
-
-    # set up the YOLO annotations text file
-    annotations_filename = '{}.txt'.format(os.path.splitext(tile_base_name)[0])
-    annotations_path = '{}/{}'.format(PRE_ASSIGNED_FILES_DIR, annotations_filename)
-    tile_list.append((tile_base_name, annotations_filename))
-
-    # process each annotation for the tile
+    # only process this tile if there are annotations for it i.e. we don't want blank tiles
     tile_regions = tile_annotations_d['regions']
     if len(tile_regions) > 0:
-        # render the annotations
+        # copy the tile to the pre-assigned directory
+        destination_name = '{}/{}'.format(PRE_ASSIGNED_FILES_DIR, tile_base_name)
+        shutil.copyfile(tile_full_path, destination_name)
+
+        # create a feature mask
+        mask_im_array = np.zeros([PIXELS_Y+1, PIXELS_X+1, 3], dtype=np.uint8)
+        mask = Image.fromarray(mask_im_array.astype('uint8'), 'RGB')
+        mask_draw = ImageDraw.Draw(mask)
+
+        # fill in the charge-1 area that we want to preserve
+        tile_mz_lower,tile_mz_upper = mz_range_for_tile(tile_id)
+        mask_region_y_left,mask_region_y_right = scan_coords_for_single_charge_region(tile_mz_lower, tile_mz_upper)
+        mask_draw.polygon(xy=[(0,0), (PIXELS_X,0), (PIXELS_X,mask_region_y_right), (0,mask_region_y_left)], fill='white', outline='white')
+
+        # set up the YOLO annotations text file
+        annotations_filename = '{}.txt'.format(os.path.splitext(tile_base_name)[0])
+        annotations_path = '{}/{}'.format(PRE_ASSIGNED_FILES_DIR, annotations_filename)
+        tile_list.append((tile_base_name, annotations_filename))
+
+        # render each annotation for the tile
         for region in tile_regions:
             shape_attributes = region['shape_attributes']
             x = shape_attributes['x']
@@ -147,20 +147,20 @@ def process_annotation_tile(tile_annotations_d, tile_metadata):
             # else:
             #     print("found a charge-{} feature - not included in the training set".format(charge))
 
-    # finish drawing the mask
-    del mask_draw
-    # ...and save the mask
-    mask.save('{}/{}'.format(MASK_FILES_DIR, tile_base_name))
+        # finish drawing the mask
+        del mask_draw
+        # ...and save the mask
+        mask.save('{}/{}'.format(MASK_FILES_DIR, tile_base_name))
 
-    # apply the mask to the tile
-    img = Image.open("{}/{}".format(PRE_ASSIGNED_FILES_DIR, tile_base_name))
-    masked_tile = ImageChops.multiply(img, mask)
-    masked_tile.save("{}/{}".format(PRE_ASSIGNED_FILES_DIR, tile_base_name))
+        # apply the mask to the tile
+        img = Image.open("{}/{}".format(PRE_ASSIGNED_FILES_DIR, tile_base_name))
+        masked_tile = ImageChops.multiply(img, mask)
+        masked_tile.save("{}/{}".format(PRE_ASSIGNED_FILES_DIR, tile_base_name))
 
-    # write the annotations text file for this tile
-    with open(annotations_path, 'w') as f:
-        for item in feature_coordinates:
-            f.write("%s\n" % item)
+        # write the annotations text file for this tile
+        with open(annotations_path, 'w') as f:
+            for item in feature_coordinates:
+                f.write("%s\n" % item)
 
     return {'run_name':run_name, 'tile_id':tile_id, 'frame_id':frame_id, 'number_of_objects':total_objects, 'number_of_small_objects':small_objects, 'tile_list':tile_list, 'classes_d':classes_d}
 
