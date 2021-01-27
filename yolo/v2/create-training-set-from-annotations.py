@@ -112,8 +112,6 @@ def process_annotation_tile(tile_annotations_d, tile_metadata):
     # process each annotation for the tile
     tile_regions = tile_annotations_d['regions']
     if len(tile_regions) > 0:
-        # load the tile from the tile set
-        print("processing {}".format(tile_base_name))
         # render the annotations
         for region in tile_regions:
             shape_attributes = region['shape_attributes']
@@ -297,7 +295,7 @@ annotations_file_list = sorted(glob.glob("{}/annotations-run-*-tile-*.json".form
 tile_objects_l = []
 for annotation_file_name in annotations_file_list:
     # load the annotations file
-    print('processing {}'.format(annotation_file_name))
+    print('processing annotation file {}'.format(annotation_file_name))
     with open(annotation_file_name) as file:
         annotations = json.load(file)
     # for each tile in the annotations (the annotation keys are the frames through RT)
