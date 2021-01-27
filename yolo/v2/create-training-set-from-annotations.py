@@ -221,6 +221,7 @@ if os.path.isfile(TILE_LIST_METADATA_FILE_NAME):
     with open(TILE_LIST_METADATA_FILE_NAME) as json_file:
         tile_list_metadata = json.load(json_file)
         tile_list_df = pd.DataFrame(tile_list_metadata['tile_info'])
+        tile_list_df.set_index(keys=['base_name'], drop=True, inplace=True, verify_integrity=True)
         print('there are {} tiles in the list'.format(len(tile_list_df)))
 else:
     print("Could not find the tile list's metadata file: {}".format(TILE_LIST_METADATA_FILE_NAME))
@@ -300,7 +301,7 @@ for annotation_file_name in annotations_file_list:
     with open(annotation_file_name) as file:
         annotations = json.load(file)
     # for each tile in the annotations (the annotation keys are the frames through RT)
-    tile_objects_l += ray.get([process_annotation_tile.remote(tile_annotations_d=annotations[tile_key], tile_metadata=tile_list_df[tile_list_df.base_name == annotations[tile_key]['file_attributes']['source']['tile']['base_name']].iloc[0]) for tile_key in list(annotations.keys())])
+    tile_objects_l += ray.get([process_annotation_tile.remote(tile_annotations_d=annotations[tile_key], tile_metadata=tile_list_df.loc[annotations[tile_key]['file_attributes']['source']['tile']['base_name']]) for tile_key in list(annotations.keys())])
 
 # at this point we have all the referenced tiles in the pre-assigned directory, the charge-1 cloud and all labelled features are masked, and each tile has an annotations file
 classes_c = Counter()
