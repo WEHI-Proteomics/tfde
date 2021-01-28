@@ -240,6 +240,7 @@ sequences_df = pd.concat(sequences_df_l)
 # for each tile in the list, find its intersecting features and create annotations for them
 tiles_d = {}
 classes_d = {}
+classes_overall_d = {}
 for idx,row in enumerate(tile_list_df.itertuples()):
     # attributes of this tile
     tile_id = row.tile_id
@@ -276,6 +277,11 @@ for idx,row in enumerate(tile_list_df.itertuples()):
         # label the charge states we want to detect
         if (charge >= MIN_CHARGE) and (charge <= MAX_CHARGE):
             feature_class = calculate_feature_class(isotopes, charge)
+            # count how many instances of each class we've seen overall
+            if feature_class in classes_overall_d.keys():
+                classes_overall_d[feature_class] += 1
+            else:
+                classes_overall_d[feature_class] = 1
             # add it to the list if we're looking for more instances of this class
             if (feature_class not in classes_d.keys()) or (classes_d[feature_class] < args.class_count):
                 if feature_class in classes_d.keys():
@@ -306,8 +312,13 @@ print("wrote out {} annotations files to {}".format(len(tiles_d), ANNOTATIONS_DI
 
 # display the object counts for each class
 names = feature_names()
+print('\ninstances annotated:')
 for c in sorted(classes_d.keys()):
     print("{} objects: {}".format(names[c], classes_d[c]))
+
+print('\ninstances overall:')
+for c in sorted(classes_overall_d.keys()):
+    print("{} objects: {}".format(names[c], classes_overall_d[c]))
 
 # check whether we reached the required number of instances for all classes
 if sum(1 for i in classes_d.values() if i >= args.class_count) < len(classes_d):
