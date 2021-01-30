@@ -98,7 +98,7 @@ def render_frame(run_name, converted_db_name, frame_id, retention_time_secs, min
 
         # create the colour map to convert intensity to colour
         colour_map = cm.lajolla_r
-        norm = colors.LogNorm(vmin=args.minimum_pixel_intensity, vmax=args.maximum_pixel_intensity, clip=True)  # aiming to get good colour variation in the lower range, and clipping everything else
+        norm = colors.Normalize(vmin=args.minimum_pixel_intensity, vmax=args.maximum_pixel_intensity, clip=True)  # aiming to get good colour variation in the lower range, and clipping everything else
 
         # calculate the colour to represent the intensity
         colours_l = []
