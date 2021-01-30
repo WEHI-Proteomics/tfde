@@ -92,7 +92,6 @@ parser = argparse.ArgumentParser(description='Set up a training set from raw til
 parser.add_argument('-eb','--experiment_base_dir', type=str, default='./experiments', help='Path to the experiments directory.', required=False)
 parser.add_argument('-en','--experiment_name', type=str, help='Name of the experiment.', required=True)
 parser.add_argument('-tln','--tile_list_name', type=str, help='Name of the tile list.', required=True)
-parser.add_argument('-cc','--class_count', type=int, default=100, help='Number of instances required for each class.', required=False)
 parser.add_argument('-sl','--scan_lower', type=int, default=1, help='Lower bound of the scan range.', required=False)
 parser.add_argument('-su','--scan_upper', type=int, default=920, help='Upper bound of the scan range.', required=False)
 args = parser.parse_args()
@@ -270,7 +269,6 @@ for idx,row in enumerate(tile_list_df.itertuples()):
         h = y1_buffer - y0_buffer
         charge = feature.charge
         isotopes = feature.number_of_isotopes
-        print('intersecting feature charge {}'.format(charge))
         # label the charge states we want to detect
         if (charge >= MIN_CHARGE) and (charge <= MAX_CHARGE):
             feature_class = calculate_feature_class(isotopes, charge)
@@ -279,20 +277,13 @@ for idx,row in enumerate(tile_list_df.itertuples()):
                 classes_overall_d[feature_class] += 1
             else:
                 classes_overall_d[feature_class] = 1
-            # add it to the list if we're looking for more instances of this class
-            if (feature_class not in classes_d.keys()) or (classes_d[feature_class] < args.class_count):
-                if feature_class in classes_d.keys():
-                    classes_d[feature_class] += 1
-                else:
-                    classes_d[feature_class] = 1
-                charge_str = '{}+'.format(charge)
-                isotopes_str = '{}'.format(isotopes)
-                region = {'shape_attributes':{'name':'rect','x':x0_buffer, 'y':y0_buffer, 'width':w, 'height':h}, 'region_attributes':{'charge':charge_str, 'isotopes':isotopes_str}}
-                regions_l.append(region)
+            # add it to the list of annotation regions
+            charge_str = '{}+'.format(charge)
+            isotopes_str = '{}'.format(isotopes)
+            region = {'shape_attributes':{'name':'rect','x':x0_buffer, 'y':y0_buffer, 'width':w, 'height':h}, 'region_attributes':{'charge':charge_str, 'isotopes':isotopes_str}}
+            regions_l.append(region)
         # else:
         #     print("found a charge-{} feature - not included in the annotations".format(charge))
-
-    print('tile {}, {} intersecting features, {} regions'.format(tile_base_name, len(intersecting_features_df), len(regions_l)))
 
     tiles_key = 'run-{}-tile-{}'.format(tile_run_name, tile_id)
     if not tiles_key in tiles_d:
@@ -311,17 +302,9 @@ print("wrote out {} annotations files to {}".format(len(tiles_d), ANNOTATIONS_DI
 
 # display the object counts for each class
 names = feature_names()
-print('\ninstances annotated:')
-for c in sorted(classes_d.keys()):
-    print("{} objects: {}".format(names[c], classes_d[c]))
-
-print('\ninstances overall:')
+print('\ninstances:')
 for c in sorted(classes_overall_d.keys()):
     print("{} objects: {}".format(names[c], classes_overall_d[c]))
-
-# check whether we reached the required number of instances for all classes
-if sum(1 for i in classes_d.values() if i >= args.class_count) < len(classes_d):
-    print('WARNING: we did not find the required number of class instances in the tile list.')
 
 stop_run = time.time()
 print("total running time ({}): {} seconds".format(parser.prog, round(stop_run-start_run,1)))
