@@ -56,18 +56,17 @@ MACOS_FONT_PATH = '/Library/Fonts/Arial.ttf'
 digits = '0123456789'
 
 def calculate_feature_class(isotopes, charge):
-    assert ((isotopes >= MIN_ISOTOPES) and (isotopes <= MAX_ISOTOPES)), "isotopes must be between {} and {}".format(MIN_ISOTOPES, MAX_ISOTOPES)
-    assert ((charge >= MIN_CHARGE) and (charge <= MAX_CHARGE)), "charge must be between {} and {}".format(MIN_CHARGE, MAX_CHARGE)
-    charge_idx = charge - MIN_CHARGE
-    isotope_idx = isotopes - MIN_ISOTOPES
-    feature_class = charge_idx * (MAX_ISOTOPES-MIN_ISOTOPES+1) + isotope_idx
-    return feature_class
+    # for just one class
+    return 0
+
+def number_of_feature_classes():
+    # for just one class
+    return 1
 
 def feature_names():
+    # for just one class
     names = []
-    for ch in range(MIN_CHARGE,MAX_CHARGE+1):
-        for iso in range(MIN_ISOTOPES,MAX_ISOTOPES+1):
-            names.append('charge-{}-isotopes-{}'.format(ch, iso))
+    names.append('peptide feature')
     return names
 
 
@@ -164,7 +163,6 @@ for annotation_file_name in annotations_file_list:
         tile_regions = tile_d['regions']
 
         # load the tile from the tile set
-        print("processing {}".format(tile_base_name))
         img = Image.open(tile_full_path)
 
         # get a drawing context for the tile
