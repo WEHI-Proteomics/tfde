@@ -288,8 +288,8 @@ for idx,row in enumerate(tile_list_df.itertuples()):
                 isotopes_str = '{}'.format(isotopes)
                 region = {'shape_attributes':{'name':'rect','x':x0_buffer, 'y':y0_buffer, 'width':w, 'height':h}, 'region_attributes':{'charge':charge_str, 'isotopes':isotopes_str}}
                 regions_l.append(region)
-        else:
-            print("found a charge-{} feature - not included in the annotations".format(charge))
+        # else:
+        #     print("found a charge-{} feature - not included in the annotations".format(charge))
 
     tiles_key = 'run-{}-tile-{}'.format(tile_run_name, tile_id)
     if not tiles_key in tiles_d:
