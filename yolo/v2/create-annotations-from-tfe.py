@@ -291,6 +291,8 @@ for idx,row in enumerate(tile_list_df.itertuples()):
         # else:
         #     print("found a charge-{} feature - not included in the annotations".format(charge))
 
+    print('tile {}, {} intersecting features, {} regions'.format(tile_base_name, len(intersecting_features_df), len(regions_l)))
+
     tiles_key = 'run-{}-tile-{}'.format(tile_run_name, tile_id)
     if not tiles_key in tiles_d:
         tiles_d[tiles_key] = {}
