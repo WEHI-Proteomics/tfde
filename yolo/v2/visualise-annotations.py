@@ -26,25 +26,6 @@ MAX_CHARGE = 4
 MIN_ISOTOPES = 3
 MAX_ISOTOPES = 7
 
-# define the feature class colours
-CLASS_COLOUR = [
-    '#132580',  # class 0
-    '#4b27ff',  # class 1
-    '#9427ff',  # class 2
-    '#ff27fb',  # class 3
-    '#ff2781',  # class 4
-    '#ff3527',  # class 5
-    '#ff6727',  # class 6
-    '#ff9a27',  # class 7
-    '#ffc127',  # class 8
-    '#ffe527',  # class 9
-    '#e0ff27',  # class 10
-    '#63da21',  # class 11
-    '#27ff45',  # class 12
-    '#21daa5',  # class 13
-    '#135e80'   # class 14
-]
-
 # for drawing on tiles
 TINT_COLOR = (0, 0, 0)  # Black
 OPACITY = int(255 * 0.1)  # lower opacity means more transparent
@@ -190,10 +171,10 @@ for annotation_file_name in annotations_file_list:
                 isotopes = int(region_attributes['isotopes'])
                 feature_class = calculate_feature_class(isotopes, charge)
                 # draw the bounding box
-                draw.rectangle(xy=[(x, y), (x+width, y+height)], fill=None, outline=CLASS_COLOUR[feature_class])
+                draw.rectangle(xy=[(x, y), (x+width, y+height)], fill=None, outline='limegreen')
                 # draw the feature class name
                 draw.rectangle(xy=[(x, y-14), (x+width, y-2)], fill=TINT_COLOR+(OPACITY,), outline=None)
-                draw.text((x, y-14), feature_names[feature_class], font=feature_label_font, fill=CLASS_COLOUR[feature_class])
+                draw.text((x, y-14), feature_names[feature_class], font=feature_label_font, fill='limegreen')
 
         # write the tile to the overlays directory
         TILE_DIR = '{}/run-{}/tile-{}'.format(OVERLAY_BASE_DIR, run_name, tile_id)
