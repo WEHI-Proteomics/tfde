@@ -270,7 +270,7 @@ for idx,row in enumerate(tile_list_df.itertuples()):
         h = y1_buffer - y0_buffer
         charge = feature.charge
         isotopes = feature.number_of_isotopes
-        print('intersecting feature charge {}')
+        print('intersecting feature charge {}'.format(charge))
         # label the charge states we want to detect
         if (charge >= MIN_CHARGE) and (charge <= MAX_CHARGE):
             feature_class = calculate_feature_class(isotopes, charge)
