@@ -165,11 +165,7 @@ for annotation_file_name in annotations_file_list:
                 y = shape_attributes['y']
                 width = shape_attributes['width']
                 height = shape_attributes['height']
-                # determine the attributes of this feature
-                region_attributes = region['region_attributes']
-                charge = int(''.join(c for c in region_attributes['charge'] if c in digits))
-                isotopes = int(region_attributes['isotopes'])
-                feature_class = calculate_feature_class(isotopes, charge)
+                feature_class = 0
                 # draw the bounding box
                 draw.rectangle(xy=[(x, y), (x+width, y+height)], fill=None, outline='limegreen')
                 # draw the feature class name

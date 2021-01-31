@@ -12,14 +12,6 @@ import shutil
 PIXELS_X = 910
 PIXELS_Y = 910  # equal to the number of scan lines
 
-# charge states of interest
-MIN_CHARGE = 2
-MAX_CHARGE = 4
-
-# number of isotopes of interest
-MIN_ISOTOPES = 3
-MAX_ISOTOPES = 7
-
 SERVER_URL = "http://spectra-server-lb-1653892276.ap-southeast-2.elb.amazonaws.com"
 
 
@@ -104,16 +96,13 @@ for prediction_idx in range(len(prediction_json)):
     regions_l = []
     for prediction in predictions:
         feature_class_name = prediction['name']
-        splits = feature_class_name.split('-')
-        charge = '{}+'.format(splits[1])  # must be a string
-        isotopes = splits[3]              # must be a string
         coordinates = prediction['relative_coordinates']
         x = int((coordinates['center_x'] - (coordinates['width'] / 2)) * PIXELS_X)
         y = int((coordinates['center_y'] - (coordinates['height'] / 2)) * PIXELS_Y)
         width = int(coordinates['width'] * PIXELS_X)
         height = int(coordinates['height'] * PIXELS_Y)
 
-        region = {'shape_attributes':{'name':'rect','x':x, 'y':y, 'width':width, 'height':height}, 'region_attributes':{'charge':charge, 'isotopes':isotopes}}
+        region = {'shape_attributes':{'name':'rect','x':x, 'y':y, 'width':width, 'height':height}}
         regions_l.append(region)
     tiles_key = 'run-{}-tile-{}'.format(run_name, tile_id)
     if not tiles_key in tiles_d:
