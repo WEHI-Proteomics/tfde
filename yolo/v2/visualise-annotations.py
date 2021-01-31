@@ -153,7 +153,7 @@ for annotation_file_name in annotations_file_list:
         draw.rectangle(xy=[(0, 0), (PIXELS_X, 36)], fill=TINT_COLOR+(OPACITY,), outline=None)
         draw.text((0, 0), 'annotations from {}'.format(args.annotations_source), font=feature_label_font, fill='lawngreen')
         draw.text((0, 12), '{} - {} m/z'.format(mz_lower, mz_upper), font=feature_label_font, fill='lawngreen')
-        draw.text((0, 24), '{} secs'.format(retention_time), font=feature_label_font, fill='lawngreen')
+        draw.text((0, 24), '{} secs'.format(round(retention_time,1)), font=feature_label_font, fill='lawngreen')
 
         # process this tile if there are annotations for it
         if len(tile_regions) > 0:
