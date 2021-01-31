@@ -112,9 +112,8 @@ for prediction_idx in range(len(prediction_json)):
 # write out a separate JSON file for the annotations for each run and tile
 print('writing annotation files to {}'.format(ANNOTATIONS_DIR))
 for key, value in tiles_d.items():
-    splits = key.split('-')
-    run_name = splits[1]
-    tile_id = int(splits[3])
+    run_name = key.split('run-')[1].split('-frame')[0]
+    tile_id = int(key.split('tile-')[1].split('.')[0])
     annotations_file_name = '{}/annotations-run-{}-tile-{}.json'.format(ANNOTATIONS_DIR, run_name, tile_id)
     with open(annotations_file_name, 'w') as outfile:
         json.dump(value, outfile)
