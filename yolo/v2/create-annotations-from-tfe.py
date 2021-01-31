@@ -213,8 +213,8 @@ for idx,file_idx in enumerate(file_idxs_l):
     sequences_df.isotope_2_scan_bounds = sequences_df.apply(lambda row: json.loads(row.isotope_2_scan_bounds), axis=1)
 
     # annotate the feature around the apex of the monoisotopic peak, up to a maximum extent
-    sequences_df['rt_lower'] = sequences_df.apply(lambda row: np.max(row.mono_rt_bounds[0], row.rt_apex-RT_EXTENT_MAX), axis=1)
-    sequences_df['rt_upper'] = sequences_df.apply(lambda row: np.min(row.mono_rt_bounds[1], row.rt_apex+RT_EXTENT_MAX), axis=1)
+    sequences_df['rt_lower'] = sequences_df.apply(lambda row: np.max([row.mono_rt_bounds[0], row.rt_apex-RT_EXTENT_MAX]), axis=1)
+    sequences_df['rt_upper'] = sequences_df.apply(lambda row: np.min([row.mono_rt_bounds[1], row.rt_apex+RT_EXTENT_MAX]), axis=1)
 
     sequences_df['scan_lower'] = sequences_df.apply(lambda row: np.min([i[0] for i in [row.mono_scan_bounds,row.isotope_1_scan_bounds,row.isotope_2_scan_bounds]]), axis=1)
     sequences_df['scan_upper'] = sequences_df.apply(lambda row: np.max([i[1] for i in [row.mono_scan_bounds,row.isotope_1_scan_bounds,row.isotope_2_scan_bounds]]), axis=1)
