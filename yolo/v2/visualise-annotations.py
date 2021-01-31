@@ -26,25 +26,6 @@ MAX_CHARGE = 4
 MIN_ISOTOPES = 3
 MAX_ISOTOPES = 7
 
-# define the feature class colours
-CLASS_COLOUR = [
-    '#132580',  # class 0
-    '#4b27ff',  # class 1
-    '#9427ff',  # class 2
-    '#ff27fb',  # class 3
-    '#ff2781',  # class 4
-    '#ff3527',  # class 5
-    '#ff6727',  # class 6
-    '#ff9a27',  # class 7
-    '#ffc127',  # class 8
-    '#ffe527',  # class 9
-    '#e0ff27',  # class 10
-    '#63da21',  # class 11
-    '#27ff45',  # class 12
-    '#21daa5',  # class 13
-    '#135e80'   # class 14
-]
-
 # for drawing on tiles
 TINT_COLOR = (0, 0, 0)  # Black
 OPACITY = int(255 * 0.1)  # lower opacity means more transparent
@@ -56,18 +37,17 @@ MACOS_FONT_PATH = '/Library/Fonts/Arial.ttf'
 digits = '0123456789'
 
 def calculate_feature_class(isotopes, charge):
-    assert ((isotopes >= MIN_ISOTOPES) and (isotopes <= MAX_ISOTOPES)), "isotopes must be between {} and {}".format(MIN_ISOTOPES, MAX_ISOTOPES)
-    assert ((charge >= MIN_CHARGE) and (charge <= MAX_CHARGE)), "charge must be between {} and {}".format(MIN_CHARGE, MAX_CHARGE)
-    charge_idx = charge - MIN_CHARGE
-    isotope_idx = isotopes - MIN_ISOTOPES
-    feature_class = charge_idx * (MAX_ISOTOPES-MIN_ISOTOPES+1) + isotope_idx
-    return feature_class
+    # for just one class
+    return 0
+
+def number_of_feature_classes():
+    # for just one class
+    return 1
 
 def feature_names():
+    # for just one class
     names = []
-    for ch in range(MIN_CHARGE,MAX_CHARGE+1):
-        for iso in range(MIN_ISOTOPES,MAX_ISOTOPES+1):
-            names.append('charge-{}-isotopes-{}'.format(ch, iso))
+    names.append('peptide feature')
     return names
 
 
@@ -164,7 +144,6 @@ for annotation_file_name in annotations_file_list:
         tile_regions = tile_d['regions']
 
         # load the tile from the tile set
-        print("processing {}".format(tile_base_name))
         img = Image.open(tile_full_path)
 
         # get a drawing context for the tile
@@ -192,10 +171,10 @@ for annotation_file_name in annotations_file_list:
                 isotopes = int(region_attributes['isotopes'])
                 feature_class = calculate_feature_class(isotopes, charge)
                 # draw the bounding box
-                draw.rectangle(xy=[(x, y), (x+width, y+height)], fill=None, outline=CLASS_COLOUR[feature_class])
+                draw.rectangle(xy=[(x, y), (x+width, y+height)], fill=None, outline='limegreen')
                 # draw the feature class name
                 draw.rectangle(xy=[(x, y-14), (x+width, y-2)], fill=TINT_COLOR+(OPACITY,), outline=None)
-                draw.text((x, y-14), feature_names[feature_class], font=feature_label_font, fill=CLASS_COLOUR[feature_class])
+                draw.text((x, y-14), feature_names[feature_class], font=feature_label_font, fill='limegreen')
 
         # write the tile to the overlays directory
         TILE_DIR = '{}/run-{}/tile-{}'.format(OVERLAY_BASE_DIR, run_name, tile_id)
