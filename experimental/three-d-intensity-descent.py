@@ -33,7 +33,7 @@ def isotope_metric(r1, r2):
     scan_1 = r1[1]
     mz_2 = r2[0]
     scan_2 = r2[1]
-    if (abs(mz_1 - mz_2) <= 0.8) and (abs(mz_1 - mz_2) > 0.1) and (abs(scan_1 - scan_2) <= 5):
+    if (abs(mz_1 - mz_2) <= 0.8) and (abs(mz_1 - mz_2) > 0.1) and (abs(scan_1 - scan_2) <= 10):
         result = 0.5
     else:
         result = 10
@@ -47,16 +47,19 @@ MZ_MAX = 766
 MS1_PEAK_DELTA = 0.1
 RT_BASE_PEAK_WIDTH = 10
 
-MIN_ANCHOR_POINT_INTENSITY = 100
+MIN_ANCHOR_POINT_INTENSITY = 200
 
-ANCHOR_POINT_MZ_LOWER_OFFSET = 1.0   # one isotope for charge-2 plus a little bit more
-ANCHOR_POINT_MZ_UPPER_OFFSET = 4.0   # seven isotopes for charge-2 plus a little bit more
+ANCHOR_POINT_MZ_LOWER_OFFSET = 0.6   # one isotope for charge-2 plus a little bit more
+ANCHOR_POINT_MZ_UPPER_OFFSET = 3.0   # six isotopes for charge-2 plus a little bit more
 
 ANCHOR_POINT_SCAN_LOWER_OFFSET = 100
 ANCHOR_POINT_SCAN_UPPER_OFFSET = 100
 
 INTENSITY_THRESHOLD = 50
 PROCESSED_INTENSITY_INDICATOR = -1
+
+MAX_ISOTOPE_CLUSTER_RETRIES = 10
+isotope_cluster_retries = 0
 
 # constrain the data to re-run the same feature for debugging
 MZ_MIN_DEBUG, MZ_MAX_DEBUG = (764.4201958278368, 765.9385489808168)
@@ -129,6 +132,9 @@ while anchor_point_s.intensity >= MIN_ANCHOR_POINT_INTENSITY:
     if math.isnan(lower_x):
         lower_x = scan_0_df.scan.min()
 
+    scan_lower = lower_x
+    scan_upper = upper_x
+
     # trim the candidate region to account for the selected peak in mobility
     candidate_region_df = candidate_region_df[(candidate_region_df.scan >= lower_x) & (candidate_region_df.scan <= upper_x)]
 
@@ -157,7 +163,7 @@ while anchor_point_s.intensity >= MIN_ANCHOR_POINT_INTENSITY:
         X = centroids_df[['mz','scan']].values
 
         # cluster the isotopes
-        dbscan = DBSCAN(eps=1, min_samples=1, metric=isotope_metric)
+        dbscan = DBSCAN(eps=1, min_samples=2, metric=isotope_metric)  # minimum isotopes to form a series
         clusters = dbscan.fit_predict(X)
         centroids_df['isotope_cluster'] = clusters
 
@@ -214,23 +220,62 @@ while anchor_point_s.intensity >= MIN_ANCHOR_POINT_INTENSITY:
             rt_lower = lower_x
             rt_upper = upper_x
 
+            # make sure the RT extent isn't too extreme
+            if (rt_upper - rt_lower) > RT_BASE_PEAK_WIDTH:
+                rt_lower = anchor_point_s.retention_time_secs - (RT_BASE_PEAK_WIDTH / 2)
+                rt_upper = anchor_point_s.retention_time_secs + (RT_BASE_PEAK_WIDTH / 2)
+
             # add this cuboid to the list
             precursor_cuboids_l.append((precursor_cuboid_id, mz_lower, mz_upper, scan_lower, scan_upper, rt_lower, rt_upper))
+            print('.', end='', flush=True)
+            isotope_cluster_retries = 0
+
+            # get the point ids
+            points_to_remove_l = raw_df[(raw_df.mz >= mz_lower) & (raw_df.mz <= mz_upper) & (raw_df.scan >= scan_lower) & (raw_df.scan <= scan_upper) & (raw_df.retention_time_secs >= rt_lower) & (raw_df.retention_time_secs <= rt_upper)].point_id.tolist()
+            # set the intensity so we don't process them again
+            raw_df.loc[raw_df.point_id.isin(points_to_remove_l), 'intensity'] = PROCESSED_INTENSITY_INDICATOR
+
+            # # remove the points in each isotope of the series, and the other points through time in the same isotope
+            # clusters_to_remove_l = centroids_df[(centroids_df.isotope_cluster == anchor_point_isotope_cluster)].cluster.tolist()
+            # for c in clusters_to_remove_l:
+            #     points_df = candidate_region_df[(candidate_region_df.cluster == c)]
+            #     # find the bounds of the points in this cluster; we need to search for them because the points in other frames haven't been clustered
+            #     p_mz_lower = points_df.mz.min()
+            #     p_mz_upper = points_df.mz.max()
+            #     p_scan_lower = points_df.scan.min()
+            #     p_scan_upper = points_df.scan.max()
+            #     p_rt_lower = rt_lower
+            #     p_rt_upper = rt_upper
+            #     # get the point ids
+            #     points_to_remove_l = raw_df[(raw_df.mz >= p_mz_lower) & (raw_df.mz <= p_mz_upper) & (raw_df.scan >= p_scan_lower) & (raw_df.scan <= p_scan_upper) & (raw_df.retention_time_secs >= p_rt_lower) & (raw_df.retention_time_secs <= p_rt_upper)].point_id.tolist()
+            #     # print('removing isotope cluster {}, cluster {}, {} points'.format(anchor_point_isotope_cluster, c, len(points_to_remove_l)))
+            #     # set the intensity so we don't process them again
+            #     raw_df.loc[raw_df.point_id.isin(points_to_remove_l), 'intensity'] = PROCESSED_INTENSITY_INDICATOR
         else:
-            print('number_of_isotope_clusters: {}, anchor_point_isotope_cluster: {}, anchor_point_cluster: {}'.format(number_of_isotope_clusters, anchor_point_isotope_cluster, anchor_point_cluster))
-            print(centroids_df)
-
-        # mark the points we just processed so we don't process them again
-        clusters_to_remove_l = centroids_df.cluster.tolist()
-        points_to_remove_l = candidate_region_df[candidate_region_df.cluster.isin(clusters_to_remove_l)].point_id.tolist()
-        raw_df.loc[raw_df.point_id.isin(points_to_remove_l), 'intensity'] = PROCESSED_INTENSITY_INDICATOR
-        # find the next anchor point
-        anchor_point_s = raw_df.loc[raw_df.intensity.idxmax()]
+            # just remove the anchor point's cluster because we could not form a series
+            # print('number_of_isotope_clusters: {}, anchor_point_isotope_cluster: {}, anchor_point_cluster: {}'.format(number_of_isotope_clusters, anchor_point_isotope_cluster, anchor_point_cluster))
+            # print(centroids_df)
+            # mark the points assigned to the anchor point's cluster so we don't process them again
+            clusters_to_remove_l = [anchor_point_cluster]
+            points_to_remove_l = candidate_region_df[candidate_region_df.cluster.isin(clusters_to_remove_l)].point_id.tolist()
+            # print('removing clusters {}, {} points'.format(clusters_to_remove_l, len(points_to_remove_l)))
+            raw_df.loc[raw_df.point_id.isin(points_to_remove_l), 'intensity'] = PROCESSED_INTENSITY_INDICATOR
+            print('_', end='', flush=True)
+            isotope_cluster_retries += 1
+            if isotope_cluster_retries >= MAX_ISOTOPE_CLUSTER_RETRIES:
+                print('max clustering retries reached')
+                break
     else:
-        print('could not find any point clusters')
-        break
+        points_to_remove_l = [anchor_point_s.point_id]
+        raw_df.loc[raw_df.point_id.isin(points_to_remove_l), 'intensity'] = PROCESSED_INTENSITY_INDICATOR
+        print('x', end='', flush=True)
+        isotope_cluster_retries += 1
+        if isotope_cluster_retries >= MAX_ISOTOPE_CLUSTER_RETRIES:
+            print('max clustering retries reached')
+            break
 
-    print('.', end='', flush=True)
+    # find the next anchor point
+    anchor_point_s = raw_df.loc[raw_df.intensity.idxmax()]
 
 # save the precursor cuboids
 precursor_cuboids_df = pd.DataFrame(precursor_cuboids_l, columns=['precursor_cuboid_id', 'mz_lower', 'mz_upper', 'scan_lower', 'scan_upper', 'rt_lower', 'rt_upper'])
