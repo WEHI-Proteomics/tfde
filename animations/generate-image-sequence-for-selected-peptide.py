@@ -114,7 +114,7 @@ ext_df = pd.read_sql_query("select * from features where sequence == \'{}\' and 
 db_conn.close()
 
 # create the colour mapping
-colour_map = cm.batlow
+colour_map = plt.get_cmap('rainbow')
 norm = colors.LogNorm(vmin=args.minimum_intensity, vmax=args.maximum_intensity_clipping, clip=True)  # aiming to get good colour variation in the lower range, and clipping everything else
 
 # clear out any previous feature slices
