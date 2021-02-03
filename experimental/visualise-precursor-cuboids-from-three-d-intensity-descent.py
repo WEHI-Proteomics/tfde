@@ -21,7 +21,7 @@ PIXELS_Y = 1000
 PIXELS_PER_MZ = PIXELS_X / (MZ_MAX - MZ_MIN)
 PIXELS_PER_SCAN = PIXELS_Y / (SCAN_MAX - SCAN_MIN)
 
-minimum_pixel_intensity = 50
+minimum_pixel_intensity = 1
 maximum_pixel_intensity = 200
 
 TILES_BASE_DIR = '/Users/darylwilding-mcbride/Downloads/three-d-intensity-descent-tiles'
@@ -44,7 +44,7 @@ raw_df['pixel_y'] = raw_df.apply(lambda row: pixel_y_from_scan(row.scan), axis=1
 pixel_intensity_df = raw_df.groupby(by=['retention_time_secs', 'pixel_x', 'pixel_y'], as_index=False).intensity.sum()
 
 # create the colour map to convert intensity to colour
-colour_map = plt.get_cmap('rainbow')
+colour_map = plt.get_cmap('plasma')
 norm = colors.LogNorm(vmin=minimum_pixel_intensity, vmax=maximum_pixel_intensity, clip=True)  # aiming to get good colour variation in the lower range, and clipping everything else
 
 # calculate the colour to represent the intensity
