@@ -21,7 +21,7 @@ def point_metric(r1, r2):
     scan_1 = r1[1]
     mz_2 = r2[0]
     scan_2 = r2[1]
-    if (abs(mz_1 - mz_2) <= 0.1) and (abs(scan_1 - scan_2) <= 2):
+    if (abs(mz_1 - mz_2) <= 0.1) and (abs(scan_1 - scan_2) <= 5):
         result = 0.5
     else:
         result = 10
