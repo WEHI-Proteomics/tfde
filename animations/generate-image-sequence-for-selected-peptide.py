@@ -71,7 +71,7 @@ parser.add_argument('-osu','--offset_scan_upper', type=int, default=150, help='H
 parser.add_argument('-orl','--offset_rt_lower', type=int, default=5, help='How far on the lower side of the selected peptide to display, in retention time seconds.', required=False)
 parser.add_argument('-oru','--offset_rt_upper', type=int, default=5, help='How far on the upper side of the selected peptide to display, in retention time seconds.', required=False)
 parser.add_argument('-mic','--maximum_intensity_clipping', type=int, default=200, help='The maximum intensity to map before clipping.', required=False)
-parser.add_argument('-ssm','--small_set_mode', action='store_true', help='A small subset of the data for testing purposes.')
+parser.add_argument('-rn','--run_names_to_process', nargs='+', type=str, help='Space-separated names of runs to include.', required=True)
 
 args = parser.parse_args()
 
@@ -90,10 +90,10 @@ if not os.path.exists(EXPERIMENT_DIR):
 
 # get the run names for the experiment
 run_names = get_run_names(EXPERIMENT_DIR)
-print("found {} runs for this experiment".format(len(run_names)))
-if args.small_set_mode:
-    run_names = random.sample(run_names, 3)
-    print('selected {} for small set mode'.format(run_names))
+print("found {} runs for this experiment; processing {}".format(len(run_names), len(args.run_names_to_process)))
+if not set(args.run_names_to_process).issubset(set(run_names)):
+    print("Not all the runs specified are part of this experiment: {}".format(args.run_names_to_process))
+    sys.exit(1)
 
 # load the extractions
 EXTRACTED_FEATURES_DB_NAME = '{}/extracted-features/extracted-features.sqlite'.format(EXPERIMENT_DIR)
@@ -124,7 +124,7 @@ if os.path.exists(ENCODED_FEATURES_DIR):
 os.makedirs(ENCODED_FEATURES_DIR)
 
 # generate a sequence of images for the selected peptide in each run of the experiment
-for run_name in run_names:
+for run_name in args.run_names_to_process:
     print('processing {}'.format(run_name))
 
     CONVERTED_DB = '{}/converted-databases/exp-{}-run-{}-converted.sqlite'.format(EXPERIMENT_DIR, args.experiment_name, run_name)
