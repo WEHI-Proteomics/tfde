@@ -17,19 +17,17 @@ import shutil
 # generate a tile for each frame, annotating intersecting precursor cuboids
 
 
-# loads the metadata, ms1 points, and ms2 points from the specified zip file
-def load_precursor_cuboid_zip(filename):
+# loads the metadata from the specified zip file
+def load_precursor_cuboid_metadata(filename):
     temp_dir = tempfile.TemporaryDirectory().name
     with zipfile.ZipFile(filename, "r") as zf:
         zf.extractall(path=temp_dir)
         names = zf.namelist()
         with open('{}/{}'.format(temp_dir, names[0])) as json_file:
             metadata = json.load(json_file)
-        ms1_df = pd.read_pickle('{}/{}'.format(temp_dir, names[1]))
-        ms2_df = pd.read_pickle('{}/{}'.format(temp_dir, names[2]))
     # clean up the temp directory
     shutil.rmtree(temp_dir)
-    return (metadata, ms1_df, ms2_df)
+    return metadata
 
 
 MZ_MIN = 748        # default is 748
@@ -98,7 +96,7 @@ CUBOIDS_DIR = '/data2/experiments/P3856/precursor-cuboids/{}'.format(RUN_NAME)
 zip_files_l = glob.glob("{}/exp-{}-run-{}-precursor-*.zip".format(CUBOIDS_DIR, EXPERIMENT_NAME, RUN_NAME))
 cuboid_metadata_l = []
 for zip_file in zip_files_l:
-    cuboid_metadata_l.append(load_precursor_cuboid_zip(zip_file)[0])  # [0] refers to the metadata in the returned tuple
+    cuboid_metadata_l.append(load_precursor_cuboid_zip(zip_file))
 precursor_cuboids_df = pd.DataFrame(cuboid_metadata_l)
 print('loaded the metadata for {} precursor cuboids'.format(len(precursor_cuboids_df)))
 
