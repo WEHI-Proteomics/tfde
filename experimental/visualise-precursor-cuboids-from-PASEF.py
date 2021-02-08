@@ -63,6 +63,7 @@ def pixel_y_from_scan(scan):
     return pixel_y
 
 # load the raw data for the region of interest
+print('loading the raw data from {}'.format(CONVERTED_DATABASE_NAME))
 db_conn = sqlite3.connect(CONVERTED_DATABASE_NAME)
 raw_df = pd.read_sql_query("select * from frames where frame_type == 0 and mz >= {} and mz <= {} and scan >= {} and scan <= {} and retention_time_secs >= {} and retention_time_secs <= {};".format(MZ_MIN, MZ_MAX, SCAN_MIN, SCAN_MAX, RT_MIN, RT_MAX), db_conn)
 db_conn.close()
@@ -92,12 +93,14 @@ if os.path.exists(TILES_BASE_DIR):
 os.makedirs(TILES_BASE_DIR)
 
 # load the precursor cuboids
+print('loading the precursor cuboid metadata')
 CUBOIDS_DIR = '/data2/experiments/P3856/precursor-cuboids/{}'.format(RUN_NAME)
 zip_files_l = glob.glob("{}/exp-{}-run-{}-precursor-*.zip".format(CUBOIDS_DIR, EXPERIMENT_NAME, RUN_NAME))
 cuboid_metadata_l = []
 for zip_file in zip_files_l:
     cuboid_metadata_l.append(load_precursor_cuboid_zip(zip_file)[0])  # [0] refers to the metadata in the returned tuple
 precursor_cuboids_df = pd.DataFrame(cuboid_metadata_l)
+print('loaded the metadata for {} precursor cuboids'.format(len(precursor_cuboids_df)))
 
 # add a buffer around the edges
 x_buffer = 5
@@ -125,19 +128,19 @@ for group_name,group_df in pixel_intensity_df.groupby(['frame_id'], as_index=Fal
 
     # find the intersecting precursor cuboids for this tile; can be partial overlap in the m/z and scan dimensions
     intersecting_cuboids_df = precursor_cuboids_df[
-                (precursor_cuboids_df.wide_rt_lower <= tile_rt) & (precursor_cuboids_df.wide_rt_upper >= tile_rt) & 
-                ((precursor_cuboids_df.wide_mz_lower >= MZ_MIN) & (precursor_cuboids_df.wide_mz_lower <= MZ_MAX) | 
-                (precursor_cuboids_df.wide_mz_upper >= MZ_MIN) & (precursor_cuboids_df.wide_mz_upper <= MZ_MAX)) & 
-                ((precursor_cuboids_df.wide_scan_lower >= SCAN_MIN) & (precursor_cuboids_df.wide_scan_lower <= SCAN_MAX) |
-                (precursor_cuboids_df.wide_scan_upper >= SCAN_MIN) & (precursor_cuboids_df.wide_scan_upper <= SCAN_MAX))
+                (precursor_cuboids_df.fe_ms1_frame_lower <= group_name) & (precursor_cuboids_df.fe_ms1_frame_upper >= group_name) & 
+                ((precursor_cuboids_df.window_mz_lower >= MZ_MIN) & (precursor_cuboids_df.window_mz_lower <= MZ_MAX) | 
+                (precursor_cuboids_df.window_mz_upper >= MZ_MIN) & (precursor_cuboids_df.window_mz_upper <= MZ_MAX)) & 
+                ((precursor_cuboids_df.fe_scan_lower >= SCAN_MIN) & (precursor_cuboids_df.fe_scan_lower <= SCAN_MAX) |
+                (precursor_cuboids_df.fe_scan_upper >= SCAN_MIN) & (precursor_cuboids_df.fe_scan_upper <= SCAN_MAX))
                 ]
 
     for idx,cuboid in intersecting_cuboids_df.iterrows():
         # get the coordinates for the bounding box
-        x0 = pixel_x_from_mz(cuboid.mz_lower)
-        x1 = pixel_x_from_mz(cuboid.mz_upper)
-        y0 = pixel_y_from_scan(cuboid.scan_lower)
-        y1 = pixel_y_from_scan(cuboid.scan_upper)
+        x0 = pixel_x_from_mz(cuboid.wide_mz_lower)
+        x1 = pixel_x_from_mz(cuboid.wide_mz_upper)
+        y0 = pixel_y_from_scan(cuboid.wide_scan_lower)
+        y1 = pixel_y_from_scan(cuboid.wide_scan_upper)
         # draw the bounding box
         draw.rectangle(xy=[(x0-x_buffer, y0-y_buffer), (x1+x_buffer, y1+y_buffer)], fill=None, outline='limegreen')
 
