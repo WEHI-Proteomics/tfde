@@ -96,7 +96,7 @@ CUBOIDS_DIR = '/data2/experiments/P3856/precursor-cuboids/{}'.format(RUN_NAME)
 zip_files_l = glob.glob("{}/exp-{}-run-{}-precursor-*.zip".format(CUBOIDS_DIR, EXPERIMENT_NAME, RUN_NAME))
 cuboid_metadata_l = []
 for zip_file in zip_files_l:
-    cuboid_metadata_l.append(load_precursor_cuboid_zip(zip_file))
+    cuboid_metadata_l.append(load_precursor_cuboid_metadata(zip_file))
 precursor_cuboids_df = pd.DataFrame(cuboid_metadata_l)
 print('loaded the metadata for {} precursor cuboids'.format(len(precursor_cuboids_df)))
 
