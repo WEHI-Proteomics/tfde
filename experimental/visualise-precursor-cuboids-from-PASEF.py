@@ -150,3 +150,4 @@ for group_name,group_df in pixel_intensity_df.groupby(['frame_id'], as_index=Fal
     print('.', end='', flush=True)
 
 print()
+print('saved {} tiles to {}'.format(tile_id, TILES_BASE_DIR))
