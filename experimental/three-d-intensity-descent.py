@@ -1,13 +1,17 @@
 import pandas as pd
 import numpy as np
-from matplotlib import colors, cm, text, pyplot as plt
-import matplotlib.patches as patches
 from sklearn.cluster import DBSCAN
 import peakutils
 from scipy import signal
 import math
 import os
 import time
+import argparse
+import ray
+import multiprocessing as mp
+import sqlite3
+import shutil
+import sys
 
 # define a straight line to exclude the charge-1 cloud
 def scan_coords_for_single_charge_region(mz_lower, mz_upper):
@@ -40,9 +44,19 @@ def isotope_metric(r1, r2):
     # print('r1={}, r2={}, result={}'.format(r1,r2,result))
     return result
 
+# determine the number of workers based on the number of available cores and the proportion of the machine to be used
+def number_of_workers():
+    number_of_cores = mp.cpu_count()
+    number_of_workers = int(args.proportion_of_cores_to_use * number_of_cores)
+    return number_of_workers
 
-MZ_MIN = 748
-MZ_MAX = 766
+# set up the indexes we need for queries
+def create_indexes(db_file_name):
+    db_conn = sqlite3.connect(db_file_name)
+    src_c = db_conn.cursor()
+    src_c.execute("create index if not exists idx_three_d_1 on frames (frame_type, mz)")
+    db_conn.close()
+
 
 MS1_PEAK_DELTA = 0.1
 RT_BASE_PEAK_WIDTH = 10
@@ -66,27 +80,73 @@ MZ_MIN_DEBUG, MZ_MAX_DEBUG = (764.4201958278368, 765.9385489808168)
 SCAN_MIN_DEBUG, SCAN_MAX_DEBUG = (400, 460)
 RT_LOWER_DEBUG, RT_UPPER_DEBUG = (2103.4829066671086, 2110.362298691853)
 
+
+#######################
+parser = argparse.ArgumentParser(description='Find all the features in a run with 3D intensity descent.')
+parser.add_argument('-eb','--experiment_base_dir', type=str, default='./experiments', help='Path to the experiments directory.', required=False)
+parser.add_argument('-en','--experiment_name', type=str, help='Name of the experiment.', required=True)
+parser.add_argument('-rn','--run_name', type=str, help='Name of the run.', required=True)
+parser.add_argument('-ml','--mz_lower', type=int, default='100', help='Lower limit for m/z.', required=False)
+parser.add_argument('-mu','--mz_upper', type=int, default='1700', help='Upper limit for m/z.', required=False)
+# parser.add_argument('-rm','--ray_mode', type=str, choices=['local','cluster'], help='The Ray mode to use.', required=True)
+# parser.add_argument('-pc','--proportion_of_cores_to_use', type=float, default=0.9, help='Proportion of the machine\'s cores to use for this program.', required=False)
+args = parser.parse_args()
+
+# Print the arguments for the log
+info = []
+for arg in vars(args):
+    info.append((arg, getattr(args, arg)))
+print(info)
+
 start_run = time.time()
 
-# determine the maximum scan for charge-1 features in this m/z range
-charge_one_scan_max = max(scan_coords_for_single_charge_region(mz_lower=MZ_MIN, mz_upper=MZ_MAX))
+# check the experiment directory exists
+EXPERIMENT_DIR = "{}/{}".format(args.experiment_base_dir, args.experiment_name)
+if not os.path.exists(EXPERIMENT_DIR):
+    print("The experiment directory is required but doesn't exist: {}".format(EXPERIMENT_DIR))
+    sys.exit(1)
 
-raw_df = pd.read_pickle('/Users/darylwilding-mcbride/Downloads/YHE211_1-mz-748-766-rt-2000-2200.pkl')
-raw_df = raw_df[(raw_df.frame_type == 0) & (raw_df.intensity >= INTENSITY_THRESHOLD) & (raw_df.scan >= charge_one_scan_max)]
-# raw_df = raw_df[(raw_df.mz >= MZ_MIN_DEBUG) & (raw_df.mz <= MZ_MAX_DEBUG) & (raw_df.scan >= SCAN_MIN_DEBUG) & (raw_df.scan <= SCAN_MAX_DEBUG) & (raw_df.retention_time_secs >= RT_LOWER_DEBUG) & (raw_df.retention_time_secs <= RT_UPPER_DEBUG)]
+# check the converted databases directory exists
+CONVERTED_DATABASE_NAME = "{}/converted-databases/exp-{}-run-{}-converted.sqlite".format(EXPERIMENT_DIR, args.experiment_name, args.run_name)
+if not os.path.isfile(CONVERTED_DATABASE_NAME):
+    print("The converted database is required but doesn't exist: {}".format(CONVERTED_DATABASE_NAME))
+    sys.exit(1)
+
+# set up the output directory
+CUBOIDS_DIR = "{}/precursor-cuboids-3did".format(EXPERIMENT_DIR)
+if os.path.exists(CUBOIDS_DIR):
+    shutil.rmtree(CUBOIDS_DIR)
+os.makedirs(CUBOIDS_DIR)
+
+# set up the output file
+CUBOIDS_FILE = '{}/exp-{}-run-{}-mz-{}-{}-precursor-cuboids.pkl'.format(args.experiment_name, args.run_name, args.mz_lower, args.mz_upper)
+if os.path.isfile(CUBOIDS_FILE):
+    os.remove(CUBOIDS_FILE)
+
+# # set up Ray
+# print("setting up Ray")
+# if not ray.is_initialized():
+#     if args.ray_mode == "cluster":
+#         ray.init(num_cpus=number_of_workers())
+#     else:
+#         ray.init(local_mode=True)
+
+
+print('setting up indexes on {}'.format(CONVERTED_DATABASE_NAME))
+create_indexes(CONVERTED_DATABASE_NAME)
+
+print('loading the raw data')
+db_conn = sqlite3.connect(CONVERTED_DATABASE_NAME)
+raw_df = pd.read_sql_query("select frame_id,mz,scan,intensity,retention_time_secs from frames where frame_type == {} and mz >= {} and mz <= {}".format(FRAME_TYPE_MS1, args.mz_lower, args.mz_upper), db_conn)
+db_conn.close()
+
 raw_df.reset_index(drop=True, inplace=True)
 
 # assign each point a unique identifier
 raw_df['point_id'] = raw_df.index
 
-CUBOIDS_FILE = '/Users/darylwilding-mcbride/Downloads/precursor-cuboids.pkl'
 precursor_cuboids_l = []
-# remove the cuboids file
-if os.path.isfile(CUBOIDS_FILE):
-    os.remove(CUBOIDS_FILE)
-# a unique id for each precursor cuboid
-precursor_cuboid_id = 1
-
+precursor_cuboid_id = 1  # a unique id for each precursor cuboid
 
 anchor_point_s = raw_df.loc[raw_df.intensity.idxmax()]
 while anchor_point_s.intensity >= MIN_ANCHOR_POINT_INTENSITY:
