@@ -54,7 +54,7 @@ def number_of_workers():
 def create_indexes(db_file_name):
     db_conn = sqlite3.connect(db_file_name)
     src_c = db_conn.cursor()
-    src_c.execute("create index if not exists idx_three_d_1 on frames (frame_type, mz)")
+    src_c.execute("create index if not exists idx_three_d_1 on frames (frame_type, mz, retention_time_secs)")
     db_conn.close()
 
 # frame types for PASEF mode
@@ -91,6 +91,8 @@ parser.add_argument('-en','--experiment_name', type=str, help='Name of the exper
 parser.add_argument('-rn','--run_name', type=str, help='Name of the run.', required=True)
 parser.add_argument('-ml','--mz_lower', type=int, default='100', help='Lower limit for m/z.', required=False)
 parser.add_argument('-mu','--mz_upper', type=int, default='1700', help='Upper limit for m/z.', required=False)
+parser.add_argument('-rl','--rt_lower', type=int, default='1650', help='Lower limit for retention time.', required=False)
+parser.add_argument('-ru','--rt_upper', type=int, default='2200', help='Upper limit for retention time.', required=False)
 # parser.add_argument('-rm','--ray_mode', type=str, choices=['local','cluster'], help='The Ray mode to use.', required=True)
 # parser.add_argument('-pc','--proportion_of_cores_to_use', type=float, default=0.9, help='Proportion of the machine\'s cores to use for this program.', required=False)
 args = parser.parse_args()
@@ -140,7 +142,7 @@ create_indexes(CONVERTED_DATABASE_NAME)
 
 print('loading the raw data')
 db_conn = sqlite3.connect(CONVERTED_DATABASE_NAME)
-raw_df = pd.read_sql_query("select frame_id,mz,scan,intensity,retention_time_secs from frames where frame_type == {} and mz >= {} and mz <= {}".format(FRAME_TYPE_MS1, args.mz_lower, args.mz_upper), db_conn)
+raw_df = pd.read_sql_query("select frame_id,mz,scan,intensity,retention_time_secs from frames where frame_type == {} and mz >= {} and mz <= {} and retention_time_secs >= {} and retention_time_secs <= {}".format(FRAME_TYPE_MS1, args.mz_lower, args.mz_upper, args.rt_lower, args.rt_upper), db_conn)
 db_conn.close()
 
 raw_df.reset_index(drop=True, inplace=True)
@@ -151,6 +153,7 @@ raw_df['point_id'] = raw_df.index
 precursor_cuboids_l = []
 precursor_cuboid_id = 1  # a unique id for each precursor cuboid
 
+print('finding precursor cuboids')
 anchor_point_s = raw_df.loc[raw_df.intensity.idxmax()]
 while anchor_point_s.intensity >= MIN_ANCHOR_POINT_INTENSITY:
     mz_lower = anchor_point_s.mz - ANCHOR_POINT_MZ_LOWER_OFFSET
@@ -339,6 +342,7 @@ while anchor_point_s.intensity >= MIN_ANCHOR_POINT_INTENSITY:
 
     # find the next anchor point
     anchor_point_s = raw_df.loc[raw_df.intensity.idxmax()]
+    print('.', end='', flush=True)
 
 # save the precursor cuboids
 precursor_cuboids_df = pd.DataFrame(precursor_cuboids_l, columns=['precursor_cuboid_id', 'mz_lower', 'mz_upper', 'scan_lower', 'scan_upper', 'rt_lower', 'rt_upper'])
