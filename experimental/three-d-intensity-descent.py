@@ -75,8 +75,11 @@ ANCHOR_POINT_SCAN_UPPER_OFFSET = 100
 INTENSITY_THRESHOLD = 50
 PROCESSED_INTENSITY_INDICATOR = -1
 
-MAX_ISOTOPE_CLUSTER_RETRIES = 10
+MAX_ISOTOPE_CLUSTER_RETRIES = 1000
 isotope_cluster_retries = 0
+
+MAX_POINT_CLUSTER_RETRIES = 10
+point_cluster_retries = 0
 
 # constrain the data to re-run the same feature for debugging
 MZ_MIN_DEBUG, MZ_MAX_DEBUG = (764.4201958278368, 765.9385489808168)
@@ -329,20 +332,19 @@ while anchor_point_s.intensity >= MIN_ANCHOR_POINT_INTENSITY:
             print('_', end='', flush=True)
             isotope_cluster_retries += 1
             if isotope_cluster_retries >= MAX_ISOTOPE_CLUSTER_RETRIES:
-                print('max clustering retries reached')
+                print('max isotope cluster retries reached')
                 break
     else:
         points_to_remove_l = [anchor_point_s.point_id]
         raw_df.loc[raw_df.point_id.isin(points_to_remove_l), 'intensity'] = PROCESSED_INTENSITY_INDICATOR
         print('x', end='', flush=True)
-        isotope_cluster_retries += 1
-        if isotope_cluster_retries >= MAX_ISOTOPE_CLUSTER_RETRIES:
-            print('max clustering retries reached')
+        point_cluster_retries += 1
+        if point_cluster_retries >= MAX_POINT_CLUSTER_RETRIES:
+            print('max point cluster retries reached')
             break
 
     # find the next anchor point
     anchor_point_s = raw_df.loc[raw_df.intensity.idxmax()]
-    print('.', end='', flush=True)
 
 # save the precursor cuboids
 precursor_cuboids_df = pd.DataFrame(precursor_cuboids_l, columns=['precursor_cuboid_id', 'mz_lower', 'mz_upper', 'scan_lower', 'scan_upper', 'rt_lower', 'rt_upper'])
@@ -351,5 +353,4 @@ print('saving {} precursor cuboids to {}'.format(len(precursor_cuboids_df), CUBO
 precursor_cuboids_df.to_pickle(CUBOIDS_FILE)
 
 stop_run = time.time()
-# print("total running time ({}): {} seconds".format(parser.prog, round(stop_run-start_run,1)))
-print("total running time: {} seconds".format(round(stop_run-start_run,1)))
+print("total running time ({}): {} seconds".format(parser.prog, round(stop_run-start_run,1)))
