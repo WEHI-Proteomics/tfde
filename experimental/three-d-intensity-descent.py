@@ -119,7 +119,7 @@ if os.path.exists(CUBOIDS_DIR):
 os.makedirs(CUBOIDS_DIR)
 
 # set up the output file
-CUBOIDS_FILE = '{}/exp-{}-run-{}-mz-{}-{}-precursor-cuboids.pkl'.format(args.experiment_name, args.run_name, args.mz_lower, args.mz_upper)
+CUBOIDS_FILE = '{}/exp-{}-run-{}-mz-{}-{}-precursor-cuboids.pkl'.format(CUBOIDS_DIR, args.experiment_name, args.run_name, args.mz_lower, args.mz_upper)
 if os.path.isfile(CUBOIDS_FILE):
     os.remove(CUBOIDS_FILE)
 
