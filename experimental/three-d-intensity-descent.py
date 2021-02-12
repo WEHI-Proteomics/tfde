@@ -142,7 +142,7 @@ create_indexes(CONVERTED_DATABASE_NAME)
 
 print('loading the raw data')
 db_conn = sqlite3.connect(CONVERTED_DATABASE_NAME)
-raw_df = pd.read_sql_query("select frame_id,mz,scan,intensity,retention_time_secs from frames where frame_type == {} and mz >= {} and mz <= {} and retention_time_secs >= {} and retention_time_secs <= {}".format(FRAME_TYPE_MS1, args.mz_lower, args.mz_upper, args.rt_lower, args.rt_upper), db_conn)
+raw_df = pd.read_sql_query("select frame_id,mz,scan,intensity,retention_time_secs from frames where frame_type == {} and mz >= {} and mz <= {} and retention_time_secs >= {} and retention_time_secs <= {} and intensity >= {}".format(FRAME_TYPE_MS1, args.mz_lower, args.mz_upper, args.rt_lower, args.rt_upper, INTENSITY_THRESHOLD), db_conn)
 db_conn.close()
 
 raw_df.reset_index(drop=True, inplace=True)
