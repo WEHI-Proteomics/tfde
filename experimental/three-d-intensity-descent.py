@@ -57,6 +57,9 @@ def create_indexes(db_file_name):
     src_c.execute("create index if not exists idx_three_d_1 on frames (frame_type, mz)")
     db_conn.close()
 
+# frame types for PASEF mode
+FRAME_TYPE_MS1 = 0
+FRAME_TYPE_MS2 = 8
 
 MS1_PEAK_DELTA = 0.1
 RT_BASE_PEAK_WIDTH = 10
