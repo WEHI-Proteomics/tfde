@@ -249,7 +249,7 @@ def find_precursor_cuboids(segment_mz_lower, segment_mz_upper):
                 # print('_', end='', flush=True)
                 isotope_cluster_retries += 1
                 if isotope_cluster_retries >= MAX_ISOTOPE_CLUSTER_RETRIES:
-                    print('max isotope cluster retries reached for mz={} to {}'.format(segment_mz_lower, segment_mz_upper))
+                    # print('max isotope cluster retries reached for mz={} to {}'.format(segment_mz_lower, segment_mz_upper))
                     break
         else:
             points_to_remove_l = [anchor_point_s.point_id]
@@ -257,7 +257,7 @@ def find_precursor_cuboids(segment_mz_lower, segment_mz_upper):
             # print('x', end='', flush=True)
             point_cluster_retries += 1
             if point_cluster_retries >= MAX_POINT_CLUSTER_RETRIES:
-                print('max point cluster retries reached for mz={} to {}'.format(segment_mz_lower, segment_mz_upper))
+                # print('max point cluster retries reached for mz={} to {}'.format(segment_mz_lower, segment_mz_upper))
                 break
 
         # find the next anchor point
