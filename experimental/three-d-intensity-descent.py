@@ -302,10 +302,10 @@ parser.add_argument('-en','--experiment_name', type=str, help='Name of the exper
 parser.add_argument('-rn','--run_name', type=str, help='Name of the run.', required=True)
 parser.add_argument('-ml','--mz_lower', type=int, default='100', help='Lower limit for m/z.', required=False)
 parser.add_argument('-mu','--mz_upper', type=int, default='1700', help='Upper limit for m/z.', required=False)
+parser.add_argument('-mw','--mz_width_per_worker', type=int, default=20, help='Width in Da of the m/z processing window per worker.', required=False)
 parser.add_argument('-rl','--rt_lower', type=int, default='1650', help='Lower limit for retention time.', required=False)
 parser.add_argument('-ru','--rt_upper', type=int, default='2200', help='Upper limit for retention time.', required=False)
 parser.add_argument('-rm','--ray_mode', type=str, choices=['local','cluster'], help='The Ray mode to use.', required=True)
-parser.add_argument('-nc','--number_of_cores_to_use', type=int, default=48, help='How many cores to use for this program.', required=False)
 args = parser.parse_args()
 
 # Print the arguments for the log
@@ -350,7 +350,7 @@ if not ray.is_initialized():
 print('setting up indexes on {}'.format(CONVERTED_DATABASE_NAME))
 create_indexes(CONVERTED_DATABASE_NAME)
 
-RANGE_PER_WORKER = (args.mz_upper - args.mz_lower) / args.number_of_cores_to_use
+RANGE_PER_WORKER = (args.mz_upper - args.mz_lower) / args.mz_width_per_worker
 
 print('finding precursor cuboids')
 cuboids_l = ray.get([find_precursor_cuboids.remote(mz_lower=args.mz_lower+(i*RANGE_PER_WORKER), mz_upper=args.mz_lower+(i*RANGE_PER_WORKER)+RANGE_PER_WORKER) for i in range(RANGE_PER_WORKER)])
