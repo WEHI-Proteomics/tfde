@@ -57,7 +57,7 @@ def create_indexes(db_file_name):
     db_conn.close()
 
 # process a segment of this run's data, and return a list of precursor cuboids
-@remote
+@ray.remote
 def find_precursor_cuboids(mz_lower, mz_upper):
     print('loading the raw data for mz={} to {}'.format(mz_lower, mz_upper))
     db_conn = sqlite3.connect(CONVERTED_DATABASE_NAME)
