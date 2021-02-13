@@ -361,7 +361,7 @@ cuboids_l = [item for sublist in cuboids_l for item in sublist]  # cuboids_l is 
 
 # assign each cuboid a unique identifier
 precursor_cuboids_df = pd.DataFrame(cuboids_l, columns=['mz_lower', 'mz_upper', 'scan_lower', 'scan_upper', 'rt_lower', 'rt_upper'])
-raw_precursor_cuboids_df['precursor_cuboid_id'] = precursor_cuboids_df.index
+precursor_cuboids_df['precursor_cuboid_id'] = precursor_cuboids_df.index
 
 # ... and save them in a file
 print()
