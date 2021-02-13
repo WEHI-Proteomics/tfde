@@ -60,6 +60,9 @@ def create_indexes(db_file_name):
 # process a segment of this run's data, and return a list of precursor cuboids
 @ray.remote
 def find_precursor_cuboids(mz_lower, mz_upper):
+    isotope_cluster_retries = 0
+    point_cluster_retries = 0
+
     print('loading the raw data for mz={} to {}'.format(mz_lower, mz_upper))
     db_conn = sqlite3.connect(CONVERTED_DATABASE_NAME)
     raw_df = pd.read_sql_query("select frame_id,mz,scan,intensity,retention_time_secs from frames where frame_type == {} and mz >= {} and mz <= {} and retention_time_secs >= {} and retention_time_secs <= {} and intensity >= {}".format(FRAME_TYPE_MS1, mz_lower, mz_upper, args.rt_lower, args.rt_upper, INTENSITY_THRESHOLD), db_conn)
@@ -285,10 +288,7 @@ INTENSITY_THRESHOLD = 50
 PROCESSED_INTENSITY_INDICATOR = -1
 
 MAX_ISOTOPE_CLUSTER_RETRIES = 1000
-isotope_cluster_retries = 0
-
 MAX_POINT_CLUSTER_RETRIES = 10
-point_cluster_retries = 0
 
 # constrain the data to re-run the same feature for debugging
 MZ_MIN_DEBUG, MZ_MAX_DEBUG = (764.4201958278368, 765.9385489808168)
