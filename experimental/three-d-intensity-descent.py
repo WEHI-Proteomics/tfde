@@ -11,6 +11,7 @@ import ray
 import sqlite3
 import shutil
 import sys
+import multiprocessing as mp
 
 # define a straight line to exclude the charge-1 cloud
 def scan_coords_for_single_charge_region(mz_lower, mz_upper):
