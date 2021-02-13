@@ -352,7 +352,8 @@ if not ray.is_initialized():
 print('setting up indexes on {}'.format(CONVERTED_DATABASE_NAME))
 create_indexes(CONVERTED_DATABASE_NAME)
 
-NUMBER_OF_MZ_SEGMENTS = (args.mz_upper - args.mz_lower) / args.mz_width_per_segment
+mz_range = args.mz_upper - args.mz_lower
+NUMBER_OF_MZ_SEGMENTS = (mz_range // args.mz_width_per_segment) + (mz_range % args.mz_width_per_segment > 0)  # thanks to https://stackoverflow.com/a/23590097/1184799
 
 print('finding precursor cuboids')
 cuboids_l = ray.get([find_precursor_cuboids.remote(mz_lower=args.mz_lower+(i*args.mz_width_per_segment), mz_upper=args.mz_lower+(i*args.mz_width_per_segment)+args.mz_width_per_segment) for i in range(NUMBER_OF_MZ_SEGMENTS)])
