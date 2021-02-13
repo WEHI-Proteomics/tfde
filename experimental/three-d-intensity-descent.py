@@ -59,13 +59,12 @@ def create_indexes(db_file_name):
 
 # process a segment of this run's data, and return a list of precursor cuboids
 @ray.remote
-def find_precursor_cuboids(mz_lower, mz_upper):
+def find_precursor_cuboids(segment_mz_lower, segment_mz_upper):
     isotope_cluster_retries = 0
     point_cluster_retries = 0
 
-    print('loading the raw data for mz={} to {}'.format(mz_lower, mz_upper))
     db_conn = sqlite3.connect(CONVERTED_DATABASE_NAME)
-    raw_df = pd.read_sql_query("select frame_id,mz,scan,intensity,retention_time_secs from frames where frame_type == {} and mz >= {} and mz <= {} and retention_time_secs >= {} and retention_time_secs <= {} and intensity >= {}".format(FRAME_TYPE_MS1, mz_lower, mz_upper, args.rt_lower, args.rt_upper, INTENSITY_THRESHOLD), db_conn)
+    raw_df = pd.read_sql_query("select frame_id,mz,scan,intensity,retention_time_secs from frames where frame_type == {} and mz >= {} and mz <= {} and retention_time_secs >= {} and retention_time_secs <= {} and intensity >= {}".format(FRAME_TYPE_MS1, segment_mz_lower, segment_mz_upper, args.rt_lower, args.rt_upper, INTENSITY_THRESHOLD), db_conn)
     db_conn.close()
 
     raw_df.reset_index(drop=True, inplace=True)
@@ -73,7 +72,7 @@ def find_precursor_cuboids(mz_lower, mz_upper):
     # assign each point a unique identifier
     raw_df['point_id'] = raw_df.index
 
-    print('finding precursor cuboids in mz={} to {}'.format(mz_lower, mz_upper))
+    print('finding precursor cuboids in mz={} to {}'.format(segment_mz_lower, segment_mz_upper))
     precursor_cuboids_l = []
     anchor_point_s = raw_df.loc[raw_df.intensity.idxmax()]
     while anchor_point_s.intensity >= MIN_ANCHOR_POINT_INTENSITY:
@@ -250,7 +249,7 @@ def find_precursor_cuboids(mz_lower, mz_upper):
                 # print('_', end='', flush=True)
                 isotope_cluster_retries += 1
                 if isotope_cluster_retries >= MAX_ISOTOPE_CLUSTER_RETRIES:
-                    print('max isotope cluster retries reached for mz={} to {}'.format(mz_lower, mz_upper))
+                    print('max isotope cluster retries reached for mz={} to {}'.format(segment_mz_lower, segment_mz_upper))
                     break
         else:
             points_to_remove_l = [anchor_point_s.point_id]
@@ -258,13 +257,14 @@ def find_precursor_cuboids(mz_lower, mz_upper):
             # print('x', end='', flush=True)
             point_cluster_retries += 1
             if point_cluster_retries >= MAX_POINT_CLUSTER_RETRIES:
-                print('max point cluster retries reached for mz={} to {}'.format(mz_lower, mz_upper))
+                print('max point cluster retries reached for mz={} to {}'.format(segment_mz_lower, segment_mz_upper))
                 break
 
         # find the next anchor point
         anchor_point_s = raw_df.loc[raw_df.intensity.idxmax()]
 
     # return what we found in this segment
+    print('found {} cuboids for mz={} to {}'.format(len(precursor_cuboids_l), segment_mz_lower, segment_mz_upper))
     return precursor_cuboids_l
 
 
@@ -356,7 +356,7 @@ mz_range = args.mz_upper - args.mz_lower
 NUMBER_OF_MZ_SEGMENTS = (mz_range // args.mz_width_per_segment) + (mz_range % args.mz_width_per_segment > 0)  # thanks to https://stackoverflow.com/a/23590097/1184799
 
 print('finding precursor cuboids')
-cuboids_l = ray.get([find_precursor_cuboids.remote(mz_lower=args.mz_lower+(i*args.mz_width_per_segment), mz_upper=args.mz_lower+(i*args.mz_width_per_segment)+args.mz_width_per_segment) for i in range(NUMBER_OF_MZ_SEGMENTS)])
+cuboids_l = ray.get([find_precursor_cuboids.remote(segment_mz_lower=args.mz_lower+(i*args.mz_width_per_segment), segment_mz_upper=args.mz_lower+(i*args.mz_width_per_segment)+args.mz_width_per_segment) for i in range(NUMBER_OF_MZ_SEGMENTS)])
 cuboids_l = [item for sublist in cuboids_l for item in sublist]  # cuboids_l is a list of lists, so we need to flatten it
 
 # assign each cuboid a unique identifier
