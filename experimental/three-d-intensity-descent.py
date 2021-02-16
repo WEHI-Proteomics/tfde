@@ -347,6 +347,7 @@ parser.add_argument('-rl','--rt_lower', type=int, default='1650', help='Lower li
 parser.add_argument('-ru','--rt_upper', type=int, default='2200', help='Upper limit for retention time.', required=False)
 parser.add_argument('-rm','--ray_mode', type=str, choices=['local','cluster'], help='The Ray mode to use.', required=True)
 parser.add_argument('-pc','--proportion_of_cores_to_use', type=float, default=0.9, help='Proportion of the machine\'s cores to use for this program.', required=False)
+parser.add_argument('-ini','--ini_file', type=str, default='./open-path/pda/pasef-process-short-gradient.ini', help='Path to the config file.', required=False)
 args = parser.parse_args()
 
 # Print the arguments for the log
@@ -421,7 +422,7 @@ ms1_args['MAX_MS1_PEAK_HEIGHT_RATIO_ERROR'] = config.getfloat('ms1', 'MAX_MS1_PE
 ms1_args['PROTON_MASS'] = config.getfloat('common', 'PROTON_MASS')
 ms1_args['INSTRUMENT_RESOLUTION'] = config.getfloat('common', 'INSTRUMENT_RESOLUTION')
 ms1_args['NUMBER_OF_STD_DEV_MZ'] = config.getfloat('ms1', 'NUMBER_OF_STD_DEV_MZ')
-ms1_args['FEATURES_DIR'] = '{}/3did-features/{}'.format(ms1_args.EXPERIMENT_DIR, args.run_name)
+ms1_args['FEATURES_DIR'] = '{}/features-3did/{}'.format(ms1_args.EXPERIMENT_DIR, args.run_name)
 
 # set up the output directory
 if os.path.exists(ms1_args.FEATURES_DIR):
