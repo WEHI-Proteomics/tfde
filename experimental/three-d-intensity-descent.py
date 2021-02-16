@@ -371,43 +371,55 @@ if not os.path.isfile(CONVERTED_DATABASE_NAME):
     print("The converted database is required but doesn't exist: {}".format(CONVERTED_DATABASE_NAME))
     sys.exit(1)
 
-# set up the output directory
 CUBOIDS_DIR = "{}/precursor-cuboids-3did".format(EXPERIMENT_DIR)
-if os.path.exists(CUBOIDS_DIR):
-    shutil.rmtree(CUBOIDS_DIR)
-os.makedirs(CUBOIDS_DIR)
-
-# set up the output file
 CUBOIDS_FILE = '{}/exp-{}-run-{}-mz-{}-{}-precursor-cuboids.pkl'.format(CUBOIDS_DIR, args.experiment_name, args.run_name, args.mz_lower, args.mz_upper)
-if os.path.isfile(CUBOIDS_FILE):
-    os.remove(CUBOIDS_FILE)
 
-# set up Ray
-print("setting up Ray")
-if not ray.is_initialized():
-    if args.ray_mode == "cluster":
-        ray.init(num_cpus=number_of_workers())
-    else:
-        ray.init(local_mode=True)
+if args.feature_detect_only:
+    # make sure we have what we need
+    if not os.path.exists(CUBOIDS_DIR):
+        print("The cuboids directory is required but doesn't exist: {}".format(CUBOIDS_DIR))
+        sys.exit(1)
+    if not os.path.isfile(CUBOIDS_FILE):
+        print("The cuboids file is required but doesn't exist: {}".format(CUBOIDS_FILE))
+        sys.exit(1)
+    precursor_cuboids_df = pd.read_pickle(CUBOIDS_FILE)
+    print('loaded {} precursor cuboids from {}'.format(len(precursor_cuboids_df), CUBOIDS_FILE))
+else:
+    # set up the output directory
+    if os.path.exists(CUBOIDS_DIR):
+        shutil.rmtree(CUBOIDS_DIR)
+    os.makedirs(CUBOIDS_DIR)
 
-print('setting up indexes on {}'.format(CONVERTED_DATABASE_NAME))
-create_indexes(CONVERTED_DATABASE_NAME)
+    # set up the output file
+    if os.path.isfile(CUBOIDS_FILE):
+        os.remove(CUBOIDS_FILE)
 
-mz_range = args.mz_upper - args.mz_lower
-NUMBER_OF_MZ_SEGMENTS = (mz_range // args.mz_width_per_segment) + (mz_range % args.mz_width_per_segment > 0)  # thanks to https://stackoverflow.com/a/23590097/1184799
+    # set up Ray
+    print("setting up Ray")
+    if not ray.is_initialized():
+        if args.ray_mode == "cluster":
+            ray.init(num_cpus=number_of_workers())
+        else:
+            ray.init(local_mode=True)
 
-print('finding precursor cuboids')
-cuboids_l = ray.get([find_precursor_cuboids.remote(segment_mz_lower=args.mz_lower+(i*args.mz_width_per_segment), segment_mz_upper=args.mz_lower+(i*args.mz_width_per_segment)+args.mz_width_per_segment) for i in range(NUMBER_OF_MZ_SEGMENTS)])
-cuboids_l = [item for sublist in cuboids_l for item in sublist]  # cuboids_l is a list of lists, so we need to flatten it
+    print('setting up indexes on {}'.format(CONVERTED_DATABASE_NAME))
+    create_indexes(CONVERTED_DATABASE_NAME)
 
-# assign each cuboid a unique identifier
-precursor_cuboids_df = pd.DataFrame(cuboids_l, columns=['mz_lower', 'mz_upper', 'scan_lower', 'scan_upper', 'rt_lower', 'rt_upper', 'candidate_region_d'])
-precursor_cuboids_df['precursor_cuboid_id'] = precursor_cuboids_df.index
+    mz_range = args.mz_upper - args.mz_lower
+    NUMBER_OF_MZ_SEGMENTS = (mz_range // args.mz_width_per_segment) + (mz_range % args.mz_width_per_segment > 0)  # thanks to https://stackoverflow.com/a/23590097/1184799
 
-# ... and save them in a file
-print()
-print('saving {} precursor cuboids to {}'.format(len(precursor_cuboids_df), CUBOIDS_FILE))
-precursor_cuboids_df.to_pickle(CUBOIDS_FILE)
+    print('finding precursor cuboids')
+    cuboids_l = ray.get([find_precursor_cuboids.remote(segment_mz_lower=args.mz_lower+(i*args.mz_width_per_segment), segment_mz_upper=args.mz_lower+(i*args.mz_width_per_segment)+args.mz_width_per_segment) for i in range(NUMBER_OF_MZ_SEGMENTS)])
+    cuboids_l = [item for sublist in cuboids_l for item in sublist]  # cuboids_l is a list of lists, so we need to flatten it
+
+    # assign each cuboid a unique identifier
+    precursor_cuboids_df = pd.DataFrame(cuboids_l, columns=['mz_lower', 'mz_upper', 'scan_lower', 'scan_upper', 'rt_lower', 'rt_upper', 'candidate_region_d'])
+    precursor_cuboids_df['precursor_cuboid_id'] = precursor_cuboids_df.index
+
+    # ... and save them in a file
+    print()
+    print('saving {} precursor cuboids to {}'.format(len(precursor_cuboids_df), CUBOIDS_FILE))
+    precursor_cuboids_df.to_pickle(CUBOIDS_FILE)
 
 # parse the config file
 config = configparser.ConfigParser(interpolation=ExtendedInterpolation())
@@ -423,7 +435,7 @@ ms1_args['MAX_MS1_PEAK_HEIGHT_RATIO_ERROR'] = config.getfloat('ms1', 'MAX_MS1_PE
 ms1_args['PROTON_MASS'] = config.getfloat('common', 'PROTON_MASS')
 ms1_args['INSTRUMENT_RESOLUTION'] = config.getfloat('common', 'INSTRUMENT_RESOLUTION')
 ms1_args['NUMBER_OF_STD_DEV_MZ'] = config.getfloat('ms1', 'NUMBER_OF_STD_DEV_MZ')
-ms1_args['FEATURES_DIR'] = '{}/features-3did/{}'.format(ms1_args.EXPERIMENT_DIR, args.run_name)
+ms1_args['FEATURES_DIR'] = '{}/features-3did/{}'.format(args.EXPERIMENT_DIR, args.run_name)
 
 # set up the output directory
 if os.path.exists(ms1_args.FEATURES_DIR):
