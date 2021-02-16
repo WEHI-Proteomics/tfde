@@ -435,7 +435,7 @@ ms1_args['MAX_MS1_PEAK_HEIGHT_RATIO_ERROR'] = config.getfloat('ms1', 'MAX_MS1_PE
 ms1_args['PROTON_MASS'] = config.getfloat('common', 'PROTON_MASS')
 ms1_args['INSTRUMENT_RESOLUTION'] = config.getfloat('common', 'INSTRUMENT_RESOLUTION')
 ms1_args['NUMBER_OF_STD_DEV_MZ'] = config.getfloat('ms1', 'NUMBER_OF_STD_DEV_MZ')
-ms1_args['FEATURES_DIR'] = '{}/features-3did/{}'.format(args.EXPERIMENT_DIR, args.run_name)
+ms1_args['FEATURES_DIR'] = '{}/features-3did/{}'.format(args.experiment_base_dir, args.run_name)
 
 # set up the output directory
 if os.path.exists(ms1_args.FEATURES_DIR):
