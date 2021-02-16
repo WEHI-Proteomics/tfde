@@ -12,6 +12,10 @@ import sqlite3
 import shutil
 import sys
 import multiprocessing as mp
+sys.path.append('/home/ubuntu/open-path/pda/packaged/')
+from process_precursor_cuboid_ms1 import ms1
+import configparser
+from configparser import ExtendedInterpolation
 
 # define a straight line to exclude the charge-1 cloud
 def scan_coords_for_single_charge_region(mz_lower, mz_upper):
@@ -57,6 +61,36 @@ def create_indexes(db_file_name):
     src_c.execute("create index if not exists idx_three_d_1 on frames (frame_type, mz, retention_time_secs)")
     db_conn.close()
 
+# returns a dataframe with the frame properties
+def load_frame_properties(converted_db_name):
+    # get all the isolation windows
+    db_conn = sqlite3.connect(converted_db_name)
+    frames_properties_df = pd.read_sql_query("select * from frame_properties order by Id ASC;", db_conn)
+    db_conn.close()
+
+    print("loaded {} frame_properties from {}".format(len(frames_properties_df), converted_db_name))
+    return frames_properties_df
+
+# find the closest lower ms1 frame_id, and the closest upper ms1 frame_id
+def find_closest_ms1_frame_to_rt(retention_time_secs):
+    # find the frame ids within this range of RT
+    df = frames_properties_df[(frames_properties_df.Time > retention_time_secs) & (frames_properties_df.MsMsType == FRAME_TYPE_MS1)]
+    if len(df) > 0:
+        closest_ms1_frame_above_rt = df.Id.min()
+    else:
+        # couldn't find an ms1 frame above this RT, so just use the last one
+        closest_ms1_frame_above_rt = frames_properties_df[(frames_properties_df.MsMsType == FRAME_TYPE_MS1)].Id.max()
+    df = frames_properties_df[(frames_properties_df.Time < retention_time_secs) & (frames_properties_df.MsMsType == FRAME_TYPE_MS1)]
+    if len(df) > 0:
+        closest_ms1_frame_below_rt = df.Id.max()
+    else:
+        # couldn't find an ms1 frame below this RT, so just use the first one
+        closest_ms1_frame_below_rt = frames_properties_df[(frames_properties_df.MsMsType == FRAME_TYPE_MS1)].Id.min()
+    result = {}
+    result['below'] = closest_ms1_frame_below_rt
+    result['above'] = closest_ms1_frame_above_rt
+    return result
+
 # process a segment of this run's data, and return a list of precursor cuboids
 @ray.remote
 def find_precursor_cuboids(segment_mz_lower, segment_mz_upper):
@@ -71,6 +105,9 @@ def find_precursor_cuboids(segment_mz_lower, segment_mz_upper):
 
     # assign each point a unique identifier
     raw_df['point_id'] = raw_df.index
+
+    # load the frame properties
+    frame_properties_df = load_frame_properties(CONVERTED_DATABASE_NAME)
 
     precursor_cuboids_l = []
     anchor_point_s = raw_df.loc[raw_df.intensity.idxmax()]
@@ -210,8 +247,11 @@ def find_precursor_cuboids(segment_mz_lower, segment_mz_upper):
                     rt_lower = anchor_point_s.retention_time_secs - (RT_BASE_PEAK_WIDTH / 2)
                     rt_upper = anchor_point_s.retention_time_secs + (RT_BASE_PEAK_WIDTH / 2)
 
+                # hold on to the region for the next step
+                candidate_region_d = candidate_region_df.to_dict('records')
+
                 # add this cuboid to the list
-                precursor_cuboids_l.append((mz_lower, mz_upper, scan_lower, scan_upper, rt_lower, rt_upper))
+                precursor_cuboids_l.append((mz_lower, mz_upper, scan_lower, scan_upper, rt_lower, rt_upper, candidate_region_d))
                 # print('.', end='', flush=True)
                 isotope_cluster_retries = 0
 
@@ -359,13 +399,69 @@ cuboids_l = ray.get([find_precursor_cuboids.remote(segment_mz_lower=args.mz_lowe
 cuboids_l = [item for sublist in cuboids_l for item in sublist]  # cuboids_l is a list of lists, so we need to flatten it
 
 # assign each cuboid a unique identifier
-precursor_cuboids_df = pd.DataFrame(cuboids_l, columns=['mz_lower', 'mz_upper', 'scan_lower', 'scan_upper', 'rt_lower', 'rt_upper'])
+precursor_cuboids_df = pd.DataFrame(cuboids_l, columns=['mz_lower', 'mz_upper', 'scan_lower', 'scan_upper', 'rt_lower', 'rt_upper', 'candidate_region_d'])
 precursor_cuboids_df['precursor_cuboid_id'] = precursor_cuboids_df.index
 
 # ... and save them in a file
 print()
 print('saving {} precursor cuboids to {}'.format(len(precursor_cuboids_df), CUBOIDS_FILE))
 precursor_cuboids_df.to_pickle(CUBOIDS_FILE)
+
+# parse the config file
+config = configparser.ConfigParser(interpolation=ExtendedInterpolation())
+config.read(args.ini_file)
+
+# use the ms1 function to perform the feature detection step
+ms1_args = {}
+ms1_args['experiment_name'] = 'P3856T'
+ms1_args['run_name'] = args.run_name
+ms1_args['MS1_PEAK_DELTA'] = config.getfloat('ms1', 'MS1_PEAK_DELTA')
+ms1_args['SATURATION_INTENSITY'] = config.getfloat('common', 'SATURATION_INTENSITY')
+ms1_args['MAX_MS1_PEAK_HEIGHT_RATIO_ERROR'] = config.getfloat('ms1', 'MAX_MS1_PEAK_HEIGHT_RATIO_ERROR')
+ms1_args['PROTON_MASS'] = config.getfloat('common', 'PROTON_MASS')
+ms1_args['INSTRUMENT_RESOLUTION'] = config.getfloat('common', 'INSTRUMENT_RESOLUTION')
+ms1_args['NUMBER_OF_STD_DEV_MZ'] = config.getfloat('ms1', 'NUMBER_OF_STD_DEV_MZ')
+ms1_args['FEATURES_DIR'] = '{}/3did-features/{}'.format(ms1_args.EXPERIMENT_DIR, args.run_name)
+
+# set up the output directory
+if os.path.exists(ms1_args.FEATURES_DIR):
+    shutil.rmtree(ms1_args.FEATURES_DIR)
+os.makedirs(ms1_args.FEATURES_DIR)
+
+# for each cuboid, find the features
+for row in precursor_cuboids_df.itertuples():
+    # create the metadata record
+    cuboid_metadata = {}
+    cuboid_metadata['precursor_id'] = row.precursor_cuboid_id
+    cuboid_metadata['window_mz_lower'] = row.mz_lower
+    cuboid_metadata['window_mz_upper'] = row.mz_upper
+    cuboid_metadata['wide_mz_lower'] = row.mz_lower
+    cuboid_metadata['wide_mz_upper'] = row.mz_upper
+    cuboid_metadata['window_scan_width'] = row.scan_upper - row.scan_lower
+    cuboid_metadata['fe_scan_lower'] = row.scan_lower
+    cuboid_metadata['fe_scan_upper'] = row.scan_upper
+    cuboid_metadata['wide_scan_lower'] = row.scan_lower
+    cuboid_metadata['wide_scan_upper'] = row.scan_upper
+    cuboid_metadata['wide_rt_lower'] = row.rt_lower
+    cuboid_metadata['wide_rt_upper'] = row.rt_upper
+    cuboid_metadata['fe_ms1_frame_lower'] = find_closest_ms1_frame_to_rt(row.rt_lower)['below']
+    cuboid_metadata['fe_ms1_frame_upper'] = find_closest_ms1_frame_to_rt(row.rt_upper)['above']
+    cuboid_metadata['fe_ms2_frame_lower'] = None
+    cuboid_metadata['fe_ms2_frame_upper'] = None
+    cuboid_metadata['wide_frame_lower'] = find_closest_ms1_frame_to_rt(row.rt_lower)['below']
+    cuboid_metadata['wide_frame_upper'] = find_closest_ms1_frame_to_rt(row.rt_upper)['above']
+    cuboid_metadata['number_of_windows'] = 1
+
+    # load the raw points
+    ms1_points_df = pd.DataFrame.from_dict(row.candidate_region_d)
+
+    # adjust the args
+    ms1_args['precursor_id'] = row.precursor_cuboid_id
+    ms1_args['FEATURES_FILE'] = "{}/exp-{}-run-{}-features-precursor-{}.pkl".format(ms1_args.FEATURES_DIR, ms1_args.experiment_name, ms1_args.run_name, ms1_args.precursor_id)
+
+    # find the features in this precursor cuboid
+    _ = ms1(precursor_metadata=cuboid_metadata, ms1_points_df=ms1_points_df, args=ms1_args)
+
 
 stop_run = time.time()
 print("total running time ({}): {} seconds".format(parser.prog, round(stop_run-start_run,1)))
