@@ -442,9 +442,9 @@ ms1_args.NUMBER_OF_STD_DEV_MZ = config.getfloat('ms1', 'NUMBER_OF_STD_DEV_MZ')
 ms1_args.FEATURES_DIR = '{}/features-3did/{}'.format(args.experiment_base_dir, args.run_name)
 
 # set up the output directory
-if os.path.exists(ms1_args['FEATURES_DIR']):
-    shutil.rmtree(ms1_args['FEATURES_DIR'])
-os.makedirs(ms1_args['FEATURES_DIR'])
+if os.path.exists(ms1_args.FEATURES_DIR):
+    shutil.rmtree(ms1_args.FEATURES_DIR)
+os.makedirs(ms1_args.FEATURES_DIR)
 
 # for each cuboid, find the features
 for row in precursor_cuboids_df.itertuples():
