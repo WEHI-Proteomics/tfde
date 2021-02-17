@@ -475,7 +475,7 @@ for row in precursor_cuboids_df.itertuples():
 
     # adjust the args
     ms1_args.precursor_id = row.precursor_cuboid_id
-    ms1_args.FEATURES_FILE = "{}/exp-{}-run-{}-features-precursor-{}.pkl".format(ms1_args['FEATURES_DIR'], ms1_args['experiment_name'], ms1_args['run_name'], ms1_args['precursor_id'])
+    ms1_args.FEATURES_FILE = "{}/exp-{}-run-{}-features-precursor-{}.pkl".format(ms1_args.FEATURES_DIR, ms1_args.experiment_name, ms1_args.run_name, ms1_args.precursor_id)
 
     # find the features in this precursor cuboid
     _ = ms1(precursor_metadata=cuboid_metadata, ms1_points_df=ms1_points_df, args=ms1_args)
