@@ -492,7 +492,7 @@ for sd in subdirs_l:
     features_dir = '{}/features-3did/{}'.format(EXPERIMENT_DIR, run_name)
 
     # consolidate the features found in this run
-    run_feature_files = glob.glob("{}/exp-{}-run-{}-features-precursor-*.pkl".format(features_dir, args.experiment_name, run_name))
+    run_feature_files = glob("{}/exp-{}-run-{}-features-precursor-*.pkl".format(features_dir, args.experiment_name, run_name))
     run_features_l = []
     print("found {} feature files for the run {}".format(len(run_feature_files), run_name))
     for file in run_feature_files:
