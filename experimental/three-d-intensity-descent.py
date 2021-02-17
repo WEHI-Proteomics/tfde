@@ -16,6 +16,7 @@ sys.path.append('/home/ubuntu/open-path/pda/packaged/')
 from process_precursor_cuboid_ms1 import ms1
 import configparser
 from configparser import ExtendedInterpolation
+from argparse import Namespace
 
 # define a straight line to exclude the charge-1 cloud
 def scan_coords_for_single_charge_region(mz_lower, mz_upper):
@@ -429,16 +430,16 @@ config.read(args.ini_file)
 frames_properties_df = load_frame_properties(CONVERTED_DATABASE_NAME)
 
 # use the ms1 function to perform the feature detection step
-ms1_args = {}
-ms1_args['experiment_name'] = 'P3856T'
-ms1_args['run_name'] = args.run_name
-ms1_args['MS1_PEAK_DELTA'] = config.getfloat('ms1', 'MS1_PEAK_DELTA')
-ms1_args['SATURATION_INTENSITY'] = config.getfloat('common', 'SATURATION_INTENSITY')
-ms1_args['MAX_MS1_PEAK_HEIGHT_RATIO_ERROR'] = config.getfloat('ms1', 'MAX_MS1_PEAK_HEIGHT_RATIO_ERROR')
-ms1_args['PROTON_MASS'] = config.getfloat('common', 'PROTON_MASS')
-ms1_args['INSTRUMENT_RESOLUTION'] = config.getfloat('common', 'INSTRUMENT_RESOLUTION')
-ms1_args['NUMBER_OF_STD_DEV_MZ'] = config.getfloat('ms1', 'NUMBER_OF_STD_DEV_MZ')
-ms1_args['FEATURES_DIR'] = '{}/features-3did/{}'.format(args.experiment_base_dir, args.run_name)
+ms1_args = Namespace()
+ms1_args.experiment_name = 'P3856T'
+ms1_args.run_name = args.run_name
+ms1_args.MS1_PEAK_DELTA = config.getfloat('ms1', 'MS1_PEAK_DELTA')
+ms1_args.SATURATION_INTENSITY = config.getfloat('common', 'SATURATION_INTENSITY')
+ms1_args.MAX_MS1_PEAK_HEIGHT_RATIO_ERROR = config.getfloat('ms1', 'MAX_MS1_PEAK_HEIGHT_RATIO_ERROR')
+ms1_args.PROTON_MASS = config.getfloat('common', 'PROTON_MASS')
+ms1_args.INSTRUMENT_RESOLUTION = config.getfloat('common', 'INSTRUMENT_RESOLUTION')
+ms1_args.NUMBER_OF_STD_DEV_MZ = config.getfloat('ms1', 'NUMBER_OF_STD_DEV_MZ')
+ms1_args.FEATURES_DIR = '{}/features-3did/{}'.format(args.experiment_base_dir, args.run_name)
 
 # set up the output directory
 if os.path.exists(ms1_args['FEATURES_DIR']):
@@ -473,8 +474,8 @@ for row in precursor_cuboids_df.itertuples():
     ms1_points_df = pd.DataFrame.from_dict(row.candidate_region_d)
 
     # adjust the args
-    ms1_args['precursor_id'] = row.precursor_cuboid_id
-    ms1_args['FEATURES_FILE'] = "{}/exp-{}-run-{}-features-precursor-{}.pkl".format(ms1_args['FEATURES_DIR'], ms1_args['experiment_name'], ms1_args['run_name'], ms1_args['precursor_id'])
+    ms1_args.precursor_id = row.precursor_cuboid_id
+    ms1_args.FEATURES_FILE = "{}/exp-{}-run-{}-features-precursor-{}.pkl".format(ms1_args['FEATURES_DIR'], ms1_args['experiment_name'], ms1_args['run_name'], ms1_args['precursor_id'])
 
     # find the features in this precursor cuboid
     _ = ms1(precursor_metadata=cuboid_metadata, ms1_points_df=ms1_points_df, args=ms1_args)
