@@ -506,7 +506,7 @@ for sd in subdirs_l:
     experiment_features_l.append(run_features_df)
 
 # consolidate the features found across the experiment
-EXPERIMENT_FEATURES_NAME = '{}/{}'.format(FEATURES_DIR, 'experiment-features.pkl')
+EXPERIMENT_FEATURES_NAME = '{}/{}'.format(ms1_args.FEATURES_DIR, 'experiment-features.pkl')
 experiment_features_df = pd.concat(experiment_features_l, axis=0, sort=False)
 print("saving {} experiment features to {}".format(len(experiment_features_df), EXPERIMENT_FEATURES_NAME))
 experiment_features_df.to_pickle(EXPERIMENT_FEATURES_NAME)
