@@ -17,6 +17,7 @@ from process_precursor_cuboid_ms1 import ms1
 import configparser
 from configparser import ExtendedInterpolation
 from argparse import Namespace
+from glob import glob
 
 # define a straight line to exclude the charge-1 cloud
 def scan_coords_for_single_charge_region(mz_lower, mz_upper):
@@ -442,44 +443,44 @@ ms1_args.NUMBER_OF_STD_DEV_MZ = config.getfloat('ms1', 'NUMBER_OF_STD_DEV_MZ')
 ms1_args.FEATURES_DIR = '{}/features-3did/{}'.format(EXPERIMENT_DIR, args.run_name)
 ms1_args.CARBON_MASS_DIFFERENCE = config.getfloat('common', 'CARBON_MASS_DIFFERENCE')
 
-# set up the output directory
-if os.path.exists(ms1_args.FEATURES_DIR):
-    shutil.rmtree(ms1_args.FEATURES_DIR)
-os.makedirs(ms1_args.FEATURES_DIR)
+# # set up the output directory
+# if os.path.exists(ms1_args.FEATURES_DIR):
+#     shutil.rmtree(ms1_args.FEATURES_DIR)
+# os.makedirs(ms1_args.FEATURES_DIR)
 
-# for each cuboid, find the features
-for row in precursor_cuboids_df.itertuples():
-    # create the metadata record
-    cuboid_metadata = {}
-    cuboid_metadata['precursor_id'] = row.precursor_cuboid_id
-    cuboid_metadata['window_mz_lower'] = row.mz_lower
-    cuboid_metadata['window_mz_upper'] = row.mz_upper
-    cuboid_metadata['wide_mz_lower'] = row.mz_lower
-    cuboid_metadata['wide_mz_upper'] = row.mz_upper
-    cuboid_metadata['window_scan_width'] = row.scan_upper - row.scan_lower
-    cuboid_metadata['fe_scan_lower'] = row.scan_lower
-    cuboid_metadata['fe_scan_upper'] = row.scan_upper
-    cuboid_metadata['wide_scan_lower'] = row.scan_lower
-    cuboid_metadata['wide_scan_upper'] = row.scan_upper
-    cuboid_metadata['wide_rt_lower'] = row.rt_lower
-    cuboid_metadata['wide_rt_upper'] = row.rt_upper
-    cuboid_metadata['fe_ms1_frame_lower'] = find_closest_ms1_frame_to_rt(frames_properties_df=frames_properties_df, retention_time_secs=row.rt_lower)['below']
-    cuboid_metadata['fe_ms1_frame_upper'] = find_closest_ms1_frame_to_rt(frames_properties_df=frames_properties_df, retention_time_secs=row.rt_upper)['above']
-    cuboid_metadata['fe_ms2_frame_lower'] = None
-    cuboid_metadata['fe_ms2_frame_upper'] = None
-    cuboid_metadata['wide_frame_lower'] = find_closest_ms1_frame_to_rt(frames_properties_df=frames_properties_df, retention_time_secs=row.rt_lower)['below']
-    cuboid_metadata['wide_frame_upper'] = find_closest_ms1_frame_to_rt(frames_properties_df=frames_properties_df, retention_time_secs=row.rt_upper)['above']
-    cuboid_metadata['number_of_windows'] = 1
+# # for each cuboid, find the features
+# for row in precursor_cuboids_df.itertuples():
+#     # create the metadata record
+#     cuboid_metadata = {}
+#     cuboid_metadata['precursor_id'] = row.precursor_cuboid_id
+#     cuboid_metadata['window_mz_lower'] = row.mz_lower
+#     cuboid_metadata['window_mz_upper'] = row.mz_upper
+#     cuboid_metadata['wide_mz_lower'] = row.mz_lower
+#     cuboid_metadata['wide_mz_upper'] = row.mz_upper
+#     cuboid_metadata['window_scan_width'] = row.scan_upper - row.scan_lower
+#     cuboid_metadata['fe_scan_lower'] = row.scan_lower
+#     cuboid_metadata['fe_scan_upper'] = row.scan_upper
+#     cuboid_metadata['wide_scan_lower'] = row.scan_lower
+#     cuboid_metadata['wide_scan_upper'] = row.scan_upper
+#     cuboid_metadata['wide_rt_lower'] = row.rt_lower
+#     cuboid_metadata['wide_rt_upper'] = row.rt_upper
+#     cuboid_metadata['fe_ms1_frame_lower'] = find_closest_ms1_frame_to_rt(frames_properties_df=frames_properties_df, retention_time_secs=row.rt_lower)['below']
+#     cuboid_metadata['fe_ms1_frame_upper'] = find_closest_ms1_frame_to_rt(frames_properties_df=frames_properties_df, retention_time_secs=row.rt_upper)['above']
+#     cuboid_metadata['fe_ms2_frame_lower'] = None
+#     cuboid_metadata['fe_ms2_frame_upper'] = None
+#     cuboid_metadata['wide_frame_lower'] = find_closest_ms1_frame_to_rt(frames_properties_df=frames_properties_df, retention_time_secs=row.rt_lower)['below']
+#     cuboid_metadata['wide_frame_upper'] = find_closest_ms1_frame_to_rt(frames_properties_df=frames_properties_df, retention_time_secs=row.rt_upper)['above']
+#     cuboid_metadata['number_of_windows'] = 1
 
-    # load the raw points
-    ms1_points_df = pd.DataFrame.from_dict(row.candidate_region_d)
+#     # load the raw points
+#     ms1_points_df = pd.DataFrame.from_dict(row.candidate_region_d)
 
-    # adjust the args
-    ms1_args.precursor_id = row.precursor_cuboid_id
-    ms1_args.FEATURES_FILE = "{}/exp-{}-run-{}-features-precursor-{}.pkl".format(ms1_args.FEATURES_DIR, ms1_args.experiment_name, ms1_args.run_name, ms1_args.precursor_id)
+#     # adjust the args
+#     ms1_args.precursor_id = row.precursor_cuboid_id
+#     ms1_args.FEATURES_FILE = "{}/exp-{}-run-{}-features-precursor-{}.pkl".format(ms1_args.FEATURES_DIR, ms1_args.experiment_name, ms1_args.run_name, ms1_args.precursor_id)
 
-    # find the features in this precursor cuboid
-    _ = ms1(precursor_metadata=cuboid_metadata, ms1_points_df=ms1_points_df, args=ms1_args)
+#     # find the features in this precursor cuboid
+#     _ = ms1(precursor_metadata=cuboid_metadata, ms1_points_df=ms1_points_df, args=ms1_args)
 
 
 # consolidate the individual feature files into a single file of features
