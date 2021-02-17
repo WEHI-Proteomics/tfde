@@ -431,7 +431,7 @@ frames_properties_df = load_frame_properties(CONVERTED_DATABASE_NAME)
 
 # use the ms1 function to perform the feature detection step
 ms1_args = Namespace()
-ms1_args.experiment_name = 'P3856T'
+ms1_args.experiment_name = args.experiment_name
 ms1_args.run_name = args.run_name
 ms1_args.MS1_PEAK_DELTA = config.getfloat('ms1', 'MS1_PEAK_DELTA')
 ms1_args.SATURATION_INTENSITY = config.getfloat('common', 'SATURATION_INTENSITY')
@@ -439,7 +439,7 @@ ms1_args.MAX_MS1_PEAK_HEIGHT_RATIO_ERROR = config.getfloat('ms1', 'MAX_MS1_PEAK_
 ms1_args.PROTON_MASS = config.getfloat('common', 'PROTON_MASS')
 ms1_args.INSTRUMENT_RESOLUTION = config.getfloat('common', 'INSTRUMENT_RESOLUTION')
 ms1_args.NUMBER_OF_STD_DEV_MZ = config.getfloat('ms1', 'NUMBER_OF_STD_DEV_MZ')
-ms1_args.FEATURES_DIR = '{}/features-3did/{}'.format(args.experiment_base_dir, args.run_name)
+ms1_args.FEATURES_DIR = '{}/features-3did/{}'.format(EXPERIMENT_DIR, args.run_name)
 ms1_args.CARBON_MASS_DIFFERENCE = config.getfloat('common', 'CARBON_MASS_DIFFERENCE')
 
 # set up the output directory
@@ -481,6 +481,34 @@ for row in precursor_cuboids_df.itertuples():
     # find the features in this precursor cuboid
     _ = ms1(precursor_metadata=cuboid_metadata, ms1_points_df=ms1_points_df, args=ms1_args)
 
+
+# consolidate the individual feature files into a single file of features
+experiment_features_l = []
+subdirs_l = glob('{}/features-3did/*/'.format(EXPERIMENT_DIR))  # get the runs that were processed above
+for sd in subdirs_l:
+    run_name = sd.split('/')[-2]
+    print("consolidating the features found in run {}".format(run_name))
+    features_dir = '{}/features-3did/{}'.format(EXPERIMENT_DIR, run_name)
+
+    # consolidate the features found in this run
+    run_feature_files = glob.glob("{}/exp-{}-run-{}-features-precursor-*.pkl".format(features_dir, args.experiment_name, run_name))
+    run_features_l = []
+    print("found {} feature files for the run {}".format(len(run_feature_files), run_name))
+    for file in run_feature_files:
+        df = pd.read_pickle(file)
+        run_features_l.append(df)
+    # make a single df from the list of dfs
+    run_features_df = pd.concat(run_features_l, axis=0, sort=False)
+    run_features_df['run_name'] = run_name
+    del run_features_l[:]
+
+    experiment_features_l.append(run_features_df)
+
+# consolidate the features found across the experiment
+EXPERIMENT_FEATURES_NAME = '{}/{}'.format(FEATURES_DIR, 'experiment-features.pkl')
+experiment_features_df = pd.concat(experiment_features_l, axis=0, sort=False)
+print("saving {} experiment features to {}".format(len(experiment_features_df), EXPERIMENT_FEATURES_NAME))
+experiment_features_df.to_pickle(EXPERIMENT_FEATURES_NAME)
 
 stop_run = time.time()
 print("total running time ({}): {} seconds".format(parser.prog, round(stop_run-start_run,1)))
