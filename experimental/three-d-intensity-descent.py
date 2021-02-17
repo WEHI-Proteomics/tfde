@@ -72,7 +72,7 @@ def load_frame_properties(converted_db_name):
     return frames_properties_df
 
 # find the closest lower ms1 frame_id, and the closest upper ms1 frame_id
-def find_closest_ms1_frame_to_rt(retention_time_secs):
+def find_closest_ms1_frame_to_rt(frames_properties_df, retention_time_secs):
     # find the frame ids within this range of RT
     df = frames_properties_df[(frames_properties_df.Time > retention_time_secs) & (frames_properties_df.MsMsType == FRAME_TYPE_MS1)]
     if len(df) > 0:
@@ -425,6 +425,9 @@ else:
 config = configparser.ConfigParser(interpolation=ExtendedInterpolation())
 config.read(args.ini_file)
 
+# load the frame properties
+frames_properties_df = load_frame_properties(CONVERTED_DATABASE_NAME)
+
 # use the ms1 function to perform the feature detection step
 ms1_args = {}
 ms1_args['experiment_name'] = 'P3856T'
@@ -458,12 +461,12 @@ for row in precursor_cuboids_df.itertuples():
     cuboid_metadata['wide_scan_upper'] = row.scan_upper
     cuboid_metadata['wide_rt_lower'] = row.rt_lower
     cuboid_metadata['wide_rt_upper'] = row.rt_upper
-    cuboid_metadata['fe_ms1_frame_lower'] = find_closest_ms1_frame_to_rt(row.rt_lower)['below']
-    cuboid_metadata['fe_ms1_frame_upper'] = find_closest_ms1_frame_to_rt(row.rt_upper)['above']
+    cuboid_metadata['fe_ms1_frame_lower'] = find_closest_ms1_frame_to_rt(frames_properties_df=frames_properties_df, retention_time_secs=row.rt_lower)['below']
+    cuboid_metadata['fe_ms1_frame_upper'] = find_closest_ms1_frame_to_rt(frames_properties_df=frames_properties_df, retention_time_secs=row.rt_upper)['above']
     cuboid_metadata['fe_ms2_frame_lower'] = None
     cuboid_metadata['fe_ms2_frame_upper'] = None
-    cuboid_metadata['wide_frame_lower'] = find_closest_ms1_frame_to_rt(row.rt_lower)['below']
-    cuboid_metadata['wide_frame_upper'] = find_closest_ms1_frame_to_rt(row.rt_upper)['above']
+    cuboid_metadata['wide_frame_lower'] = find_closest_ms1_frame_to_rt(frames_properties_df=frames_properties_df, retention_time_secs=row.rt_lower)['below']
+    cuboid_metadata['wide_frame_upper'] = find_closest_ms1_frame_to_rt(frames_properties_df=frames_properties_df, retention_time_secs=row.rt_upper)['above']
     cuboid_metadata['number_of_windows'] = 1
 
     # load the raw points
