@@ -331,52 +331,41 @@ if not os.path.isfile(CONVERTED_DATABASE_NAME):
 CUBOIDS_DIR = "{}/precursor-cuboids-3did".format(EXPERIMENT_DIR)
 CUBOIDS_FILE = '{}/exp-{}-run-{}-mz-{}-{}-precursor-cuboids.pkl'.format(CUBOIDS_DIR, args.experiment_name, args.run_name, args.mz_lower, args.mz_upper)
 
-if args.feature_detect_only:
-    # make sure we have what we need
-    if not os.path.exists(CUBOIDS_DIR):
-        print("The cuboids directory is required but doesn't exist: {}".format(CUBOIDS_DIR))
-        sys.exit(1)
-    if not os.path.isfile(CUBOIDS_FILE):
-        print("The cuboids file is required but doesn't exist: {}".format(CUBOIDS_FILE))
-        sys.exit(1)
-    precursor_cuboids_df = pd.read_pickle(CUBOIDS_FILE)
-    print('loaded {} precursor cuboids from {}'.format(len(precursor_cuboids_df), CUBOIDS_FILE))
-else:
-    # set up the output directory
-    if os.path.exists(CUBOIDS_DIR):
-        shutil.rmtree(CUBOIDS_DIR)
-    os.makedirs(CUBOIDS_DIR)
+# set up the output directory
+if os.path.exists(CUBOIDS_DIR):
+    shutil.rmtree(CUBOIDS_DIR)
+os.makedirs(CUBOIDS_DIR)
 
-    # set up the output file
-    if os.path.isfile(CUBOIDS_FILE):
-        os.remove(CUBOIDS_FILE)
+# set up the output file
+if os.path.isfile(CUBOIDS_FILE):
+    os.remove(CUBOIDS_FILE)
 
-    # set up Ray
-    print("setting up Ray")
-    if not ray.is_initialized():
-        if args.ray_mode == "cluster":
-            ray.init(num_cpus=number_of_workers())
-        else:
-            ray.init(local_mode=True)
+# set up Ray
+print("setting up Ray")
+if not ray.is_initialized():
+    if args.ray_mode == "cluster":
+        ray.init(num_cpus=number_of_workers())
+    else:
+        ray.init(local_mode=True)
 
-    print('setting up indexes on {}'.format(CONVERTED_DATABASE_NAME))
-    create_indexes(CONVERTED_DATABASE_NAME)
+print('setting up indexes on {}'.format(CONVERTED_DATABASE_NAME))
+create_indexes(CONVERTED_DATABASE_NAME)
 
-    mz_range = args.mz_upper - args.mz_lower
-    NUMBER_OF_MZ_SEGMENTS = (mz_range // args.mz_width_per_segment) + (mz_range % args.mz_width_per_segment > 0)  # thanks to https://stackoverflow.com/a/23590097/1184799
+mz_range = args.mz_upper - args.mz_lower
+NUMBER_OF_MZ_SEGMENTS = (mz_range // args.mz_width_per_segment) + (mz_range % args.mz_width_per_segment > 0)  # thanks to https://stackoverflow.com/a/23590097/1184799
 
-    print('finding precursor cuboids')
-    cuboids_l = ray.get([find_precursor_cuboids.remote(segment_mz_lower=args.mz_lower+(i*args.mz_width_per_segment), segment_mz_upper=args.mz_lower+(i*args.mz_width_per_segment)+args.mz_width_per_segment) for i in range(NUMBER_OF_MZ_SEGMENTS)])
-    cuboids_l = [item for sublist in cuboids_l for item in sublist]  # cuboids_l is a list of lists, so we need to flatten it
+print('finding precursor cuboids')
+cuboids_l = ray.get([find_precursor_cuboids.remote(segment_mz_lower=args.mz_lower+(i*args.mz_width_per_segment), segment_mz_upper=args.mz_lower+(i*args.mz_width_per_segment)+args.mz_width_per_segment) for i in range(NUMBER_OF_MZ_SEGMENTS)])
+cuboids_l = [item for sublist in cuboids_l for item in sublist]  # cuboids_l is a list of lists, so we need to flatten it
 
-    # assign each cuboid a unique identifier
-    precursor_cuboids_df = pd.DataFrame(cuboids_l, columns=['mz_lower', 'mz_upper', 'scan_lower', 'scan_upper', 'rt_lower', 'rt_upper', 'candidate_region_d'])
-    precursor_cuboids_df['precursor_cuboid_id'] = precursor_cuboids_df.index
+# assign each cuboid a unique identifier
+precursor_cuboids_df = pd.DataFrame(cuboids_l, columns=['mz_lower', 'mz_upper', 'scan_lower', 'scan_upper', 'rt_lower', 'rt_upper', 'candidate_region_d'])
+precursor_cuboids_df['precursor_cuboid_id'] = precursor_cuboids_df.index
 
-    # ... and save them in a file
-    print()
-    print('saving {} precursor cuboids to {}'.format(len(precursor_cuboids_df), CUBOIDS_FILE))
-    precursor_cuboids_df.to_pickle(CUBOIDS_FILE)
+# ... and save them in a file
+print()
+print('saving {} precursor cuboids to {}'.format(len(precursor_cuboids_df), CUBOIDS_FILE))
+precursor_cuboids_df.to_pickle(CUBOIDS_FILE)
 
 
 stop_run = time.time()
