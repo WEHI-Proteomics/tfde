@@ -78,9 +78,6 @@ def find_precursor_cuboids(segment_mz_lower, segment_mz_upper):
     # assign each point a unique identifier
     raw_df['point_id'] = raw_df.index
 
-    # load the frame properties
-    frame_properties_df = load_frame_properties(CONVERTED_DATABASE_NAME)
-
     precursor_cuboids_l = []
     anchor_point_s = raw_df.loc[raw_df.intensity.idxmax()]
     while anchor_point_s.intensity >= MIN_ANCHOR_POINT_INTENSITY:
