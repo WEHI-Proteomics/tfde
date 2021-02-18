@@ -220,7 +220,7 @@ def find_precursor_cuboids(segment_mz_lower, segment_mz_upper):
                 points_to_remove_l = raw_df[(raw_df.mz >= mz_lower) & (raw_df.mz <= mz_upper) & (raw_df.scan >= scan_lower) & (raw_df.scan <= scan_upper) & (raw_df.retention_time_secs >= rt_lower) & (raw_df.retention_time_secs <= rt_upper)].point_id.tolist()
 
                 # add this cuboid to the list
-                precursor_cuboids_l.append((mz_lower, mz_upper, scan_lower, scan_upper, rt_lower, rt_upper))
+                precursor_cuboids_l.append((mz_lower, mz_upper, scan_lower, scan_upper, rt_lower, rt_upper, anchor_point_s.intensity, number_of_isotope_clusters))
 
                 # print('.', end='', flush=True)
                 isotope_cluster_retries = 0
@@ -353,7 +353,7 @@ cuboids_l = ray.get([find_precursor_cuboids.remote(segment_mz_lower=args.mz_lowe
 cuboids_l = [item for sublist in cuboids_l for item in sublist]  # cuboids_l is a list of lists, so we need to flatten it
 
 # assign each cuboid a unique identifier
-precursor_cuboids_df = pd.DataFrame(cuboids_l, columns=['mz_lower', 'mz_upper', 'scan_lower', 'scan_upper', 'rt_lower', 'rt_upper'])
+precursor_cuboids_df = pd.DataFrame(cuboids_l, columns=['mz_lower', 'mz_upper', 'scan_lower', 'scan_upper', 'rt_lower', 'rt_upper', 'anchor_point_intensity', 'number_of_isotope_clusters'])
 precursor_cuboids_df['precursor_cuboid_id'] = precursor_cuboids_df.index
 
 # ... and save them in a file
