@@ -63,36 +63,6 @@ def create_indexes(db_file_name):
     src_c.execute("create index if not exists idx_three_d_1 on frames (frame_type, mz, retention_time_secs)")
     db_conn.close()
 
-# returns a dataframe with the frame properties
-def load_frame_properties(converted_db_name):
-    # get all the isolation windows
-    db_conn = sqlite3.connect(converted_db_name)
-    frames_properties_df = pd.read_sql_query("select * from frame_properties order by Id ASC;", db_conn)
-    db_conn.close()
-
-    print("loaded {} frame_properties from {}".format(len(frames_properties_df), converted_db_name))
-    return frames_properties_df
-
-# find the closest lower ms1 frame_id, and the closest upper ms1 frame_id
-def find_closest_ms1_frame_to_rt(frames_properties_df, retention_time_secs):
-    # find the frame ids within this range of RT
-    df = frames_properties_df[(frames_properties_df.Time > retention_time_secs) & (frames_properties_df.MsMsType == FRAME_TYPE_MS1)]
-    if len(df) > 0:
-        closest_ms1_frame_above_rt = df.Id.min()
-    else:
-        # couldn't find an ms1 frame above this RT, so just use the last one
-        closest_ms1_frame_above_rt = frames_properties_df[(frames_properties_df.MsMsType == FRAME_TYPE_MS1)].Id.max()
-    df = frames_properties_df[(frames_properties_df.Time < retention_time_secs) & (frames_properties_df.MsMsType == FRAME_TYPE_MS1)]
-    if len(df) > 0:
-        closest_ms1_frame_below_rt = df.Id.max()
-    else:
-        # couldn't find an ms1 frame below this RT, so just use the first one
-        closest_ms1_frame_below_rt = frames_properties_df[(frames_properties_df.MsMsType == FRAME_TYPE_MS1)].Id.min()
-    result = {}
-    result['below'] = closest_ms1_frame_below_rt
-    result['above'] = closest_ms1_frame_above_rt
-    return result
-
 # process a segment of this run's data, and return a list of precursor cuboids
 @ray.remote
 def find_precursor_cuboids(segment_mz_lower, segment_mz_upper):
@@ -249,39 +219,26 @@ def find_precursor_cuboids(segment_mz_lower, segment_mz_upper):
                     rt_lower = anchor_point_s.retention_time_secs - (RT_BASE_PEAK_WIDTH / 2)
                     rt_upper = anchor_point_s.retention_time_secs + (RT_BASE_PEAK_WIDTH / 2)
 
-                # hold on to the region for the next step
-                candidate_region_d = candidate_region_df.to_dict('records')
+                # get the point ids
+                points_to_remove_l = raw_df[(raw_df.mz >= mz_lower) & (raw_df.mz <= mz_upper) & (raw_df.scan >= scan_lower) & (raw_df.scan <= scan_upper) & (raw_df.retention_time_secs >= rt_lower) & (raw_df.retention_time_secs <= rt_upper)].point_id.tolist()
+
+                # hold on to the points for the next step
+                cuboid_points_d = raw_df.loc[raw_df.point_id.isin(points_to_remove_l)].to_dict('records')
 
                 # add this cuboid to the list
-                precursor_cuboids_l.append((mz_lower, mz_upper, scan_lower, scan_upper, rt_lower, rt_upper, candidate_region_d))
+                precursor_cuboids_l.append((mz_lower, mz_upper, scan_lower, scan_upper, rt_lower, rt_upper, cuboid_points_d))
+
                 # print('.', end='', flush=True)
                 isotope_cluster_retries = 0
 
-                # get the point ids
-                points_to_remove_l = raw_df[(raw_df.mz >= mz_lower) & (raw_df.mz <= mz_upper) & (raw_df.scan >= scan_lower) & (raw_df.scan <= scan_upper) & (raw_df.retention_time_secs >= rt_lower) & (raw_df.retention_time_secs <= rt_upper)].point_id.tolist()
                 # set the intensity so we don't process them again
                 raw_df.loc[raw_df.point_id.isin(points_to_remove_l), 'intensity'] = PROCESSED_INTENSITY_INDICATOR
-
-                # # remove the points in each isotope of the series, and the other points through time in the same isotope
-                # clusters_to_remove_l = centroids_df[(centroids_df.isotope_cluster == anchor_point_isotope_cluster)].cluster.tolist()
-                # for c in clusters_to_remove_l:
-                #     points_df = candidate_region_df[(candidate_region_df.cluster == c)]
-                #     # find the bounds of the points in this cluster; we need to search for them because the points in other frames haven't been clustered
-                #     p_mz_lower = points_df.mz.min()
-                #     p_mz_upper = points_df.mz.max()
-                #     p_scan_lower = points_df.scan.min()
-                #     p_scan_upper = points_df.scan.max()
-                #     p_rt_lower = rt_lower
-                #     p_rt_upper = rt_upper
-                #     # get the point ids
-                #     points_to_remove_l = raw_df[(raw_df.mz >= p_mz_lower) & (raw_df.mz <= p_mz_upper) & (raw_df.scan >= p_scan_lower) & (raw_df.scan <= p_scan_upper) & (raw_df.retention_time_secs >= p_rt_lower) & (raw_df.retention_time_secs <= p_rt_upper)].point_id.tolist()
-                #     # print('removing isotope cluster {}, cluster {}, {} points'.format(anchor_point_isotope_cluster, c, len(points_to_remove_l)))
-                #     # set the intensity so we don't process them again
-                #     raw_df.loc[raw_df.point_id.isin(points_to_remove_l), 'intensity'] = PROCESSED_INTENSITY_INDICATOR
             else:
                 # just remove the anchor point's cluster because we could not form a series
+
                 # print('number_of_isotope_clusters: {}, anchor_point_isotope_cluster: {}, anchor_point_cluster: {}'.format(number_of_isotope_clusters, anchor_point_isotope_cluster, anchor_point_cluster))
                 # print(centroids_df)
+
                 # mark the points assigned to the anchor point's cluster so we don't process them again
                 clusters_to_remove_l = [anchor_point_cluster]
                 points_to_remove_l = candidate_region_df[candidate_region_df.cluster.isin(clusters_to_remove_l)].point_id.tolist()
@@ -289,17 +246,17 @@ def find_precursor_cuboids(segment_mz_lower, segment_mz_upper):
                 raw_df.loc[raw_df.point_id.isin(points_to_remove_l), 'intensity'] = PROCESSED_INTENSITY_INDICATOR
                 # print('_', end='', flush=True)
                 isotope_cluster_retries += 1
-                if isotope_cluster_retries >= MAX_ISOTOPE_CLUSTER_RETRIES:
-                    # print('max isotope cluster retries reached for mz={} to {}'.format(segment_mz_lower, segment_mz_upper))
-                    break
+                # if isotope_cluster_retries >= MAX_ISOTOPE_CLUSTER_RETRIES:
+                #     # print('max isotope cluster retries reached for mz={} to {}'.format(segment_mz_lower, segment_mz_upper))
+                #     break
         else:
             points_to_remove_l = [anchor_point_s.point_id]
             raw_df.loc[raw_df.point_id.isin(points_to_remove_l), 'intensity'] = PROCESSED_INTENSITY_INDICATOR
             # print('x', end='', flush=True)
             point_cluster_retries += 1
-            if point_cluster_retries >= MAX_POINT_CLUSTER_RETRIES:
-                # print('max point cluster retries reached for mz={} to {}'.format(segment_mz_lower, segment_mz_upper))
-                break
+            # if point_cluster_retries >= MAX_POINT_CLUSTER_RETRIES:
+            #     # print('max point cluster retries reached for mz={} to {}'.format(segment_mz_lower, segment_mz_upper))
+            #     break
 
         # find the next anchor point
         anchor_point_s = raw_df.loc[raw_df.intensity.idxmax()]
@@ -349,8 +306,6 @@ parser.add_argument('-rl','--rt_lower', type=int, default='1650', help='Lower li
 parser.add_argument('-ru','--rt_upper', type=int, default='2200', help='Upper limit for retention time.', required=False)
 parser.add_argument('-rm','--ray_mode', type=str, choices=['local','cluster'], help='The Ray mode to use.', required=True)
 parser.add_argument('-pc','--proportion_of_cores_to_use', type=float, default=0.9, help='Proportion of the machine\'s cores to use for this program.', required=False)
-parser.add_argument('-ini','--ini_file', type=str, default='./open-path/pda/pasef-process-short-gradient.ini', help='Path to the config file.', required=False)
-parser.add_argument('-fdo', '--feature_detect_only', action='store_true', help='Use an existing cuboids file.')
 args = parser.parse_args()
 
 # Print the arguments for the log
@@ -423,93 +378,6 @@ else:
     print('saving {} precursor cuboids to {}'.format(len(precursor_cuboids_df), CUBOIDS_FILE))
     precursor_cuboids_df.to_pickle(CUBOIDS_FILE)
 
-# parse the config file
-config = configparser.ConfigParser(interpolation=ExtendedInterpolation())
-config.read(args.ini_file)
-
-# load the frame properties
-frames_properties_df = load_frame_properties(CONVERTED_DATABASE_NAME)
-
-# use the ms1 function to perform the feature detection step
-ms1_args = Namespace()
-ms1_args.experiment_name = args.experiment_name
-ms1_args.run_name = args.run_name
-ms1_args.MS1_PEAK_DELTA = config.getfloat('ms1', 'MS1_PEAK_DELTA')
-ms1_args.SATURATION_INTENSITY = config.getfloat('common', 'SATURATION_INTENSITY')
-ms1_args.MAX_MS1_PEAK_HEIGHT_RATIO_ERROR = config.getfloat('ms1', 'MAX_MS1_PEAK_HEIGHT_RATIO_ERROR')
-ms1_args.PROTON_MASS = config.getfloat('common', 'PROTON_MASS')
-ms1_args.INSTRUMENT_RESOLUTION = config.getfloat('common', 'INSTRUMENT_RESOLUTION')
-ms1_args.NUMBER_OF_STD_DEV_MZ = config.getfloat('ms1', 'NUMBER_OF_STD_DEV_MZ')
-ms1_args.FEATURES_DIR = '{}/features-3did/{}'.format(EXPERIMENT_DIR, args.run_name)
-ms1_args.CARBON_MASS_DIFFERENCE = config.getfloat('common', 'CARBON_MASS_DIFFERENCE')
-
-# # set up the output directory
-# if os.path.exists(ms1_args.FEATURES_DIR):
-#     shutil.rmtree(ms1_args.FEATURES_DIR)
-# os.makedirs(ms1_args.FEATURES_DIR)
-
-# # for each cuboid, find the features
-# for row in precursor_cuboids_df.itertuples():
-#     # create the metadata record
-#     cuboid_metadata = {}
-#     cuboid_metadata['precursor_id'] = row.precursor_cuboid_id
-#     cuboid_metadata['window_mz_lower'] = row.mz_lower
-#     cuboid_metadata['window_mz_upper'] = row.mz_upper
-#     cuboid_metadata['wide_mz_lower'] = row.mz_lower
-#     cuboid_metadata['wide_mz_upper'] = row.mz_upper
-#     cuboid_metadata['window_scan_width'] = row.scan_upper - row.scan_lower
-#     cuboid_metadata['fe_scan_lower'] = row.scan_lower
-#     cuboid_metadata['fe_scan_upper'] = row.scan_upper
-#     cuboid_metadata['wide_scan_lower'] = row.scan_lower
-#     cuboid_metadata['wide_scan_upper'] = row.scan_upper
-#     cuboid_metadata['wide_rt_lower'] = row.rt_lower
-#     cuboid_metadata['wide_rt_upper'] = row.rt_upper
-#     cuboid_metadata['fe_ms1_frame_lower'] = find_closest_ms1_frame_to_rt(frames_properties_df=frames_properties_df, retention_time_secs=row.rt_lower)['below']
-#     cuboid_metadata['fe_ms1_frame_upper'] = find_closest_ms1_frame_to_rt(frames_properties_df=frames_properties_df, retention_time_secs=row.rt_upper)['above']
-#     cuboid_metadata['fe_ms2_frame_lower'] = None
-#     cuboid_metadata['fe_ms2_frame_upper'] = None
-#     cuboid_metadata['wide_frame_lower'] = find_closest_ms1_frame_to_rt(frames_properties_df=frames_properties_df, retention_time_secs=row.rt_lower)['below']
-#     cuboid_metadata['wide_frame_upper'] = find_closest_ms1_frame_to_rt(frames_properties_df=frames_properties_df, retention_time_secs=row.rt_upper)['above']
-#     cuboid_metadata['number_of_windows'] = 1
-
-#     # load the raw points
-#     ms1_points_df = pd.DataFrame.from_dict(row.candidate_region_d)
-
-#     # adjust the args
-#     ms1_args.precursor_id = row.precursor_cuboid_id
-#     ms1_args.FEATURES_FILE = "{}/exp-{}-run-{}-features-precursor-{}.pkl".format(ms1_args.FEATURES_DIR, ms1_args.experiment_name, ms1_args.run_name, ms1_args.precursor_id)
-
-#     # find the features in this precursor cuboid
-#     _ = ms1(precursor_metadata=cuboid_metadata, ms1_points_df=ms1_points_df, args=ms1_args)
-
-
-# consolidate the individual feature files into a single file of features
-experiment_features_l = []
-subdirs_l = glob('{}/features-3did/*/'.format(EXPERIMENT_DIR))  # get the runs that were processed above
-for sd in subdirs_l:
-    run_name = sd.split('/')[-2]
-    print("consolidating the features found in run {}".format(run_name))
-    features_dir = '{}/features-3did/{}'.format(EXPERIMENT_DIR, run_name)
-
-    # consolidate the features found in this run
-    run_feature_files = glob("{}/exp-{}-run-{}-features-precursor-*.pkl".format(features_dir, args.experiment_name, run_name))
-    run_features_l = []
-    print("found {} feature files for the run {}".format(len(run_feature_files), run_name))
-    for file in run_feature_files:
-        df = pd.read_pickle(file)
-        run_features_l.append(df)
-    # make a single df from the list of dfs
-    run_features_df = pd.concat(run_features_l, axis=0, sort=False)
-    run_features_df['run_name'] = run_name
-    del run_features_l[:]
-
-    experiment_features_l.append(run_features_df)
-
-# consolidate the features found across the experiment
-EXPERIMENT_FEATURES_NAME = '{}/{}'.format(ms1_args.FEATURES_DIR, 'experiment-features.pkl')
-experiment_features_df = pd.concat(experiment_features_l, axis=0, sort=False)
-print("saving {} experiment features to {}".format(len(experiment_features_df), EXPERIMENT_FEATURES_NAME))
-experiment_features_df.to_pickle(EXPERIMENT_FEATURES_NAME)
 
 stop_run = time.time()
 print("total running time ({}): {} seconds".format(parser.prog, round(stop_run-start_run,1)))
