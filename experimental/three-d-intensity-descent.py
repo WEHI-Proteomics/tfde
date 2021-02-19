@@ -86,13 +86,16 @@ def find_precursor_cuboids(segment_mz_lower, segment_mz_upper):
         scan_lower = anchor_point_s.scan - ANCHOR_POINT_SCAN_LOWER_OFFSET
         scan_upper = anchor_point_s.scan + ANCHOR_POINT_SCAN_UPPER_OFFSET
 
+        # constrain the raw points to the search area for this anchor point
         candidate_region_df = raw_df[(raw_df.intensity >= INTENSITY_THRESHOLD) & (raw_df.frame_id == anchor_point_s.frame_id) & (raw_df.mz >= mz_lower) & (raw_df.mz <= mz_upper) & (raw_df.scan >= scan_lower) & (raw_df.scan <= scan_upper)].copy()
 
         peak_mz_lower = anchor_point_s.mz-MS1_PEAK_DELTA
         peak_mz_upper = anchor_point_s.mz+MS1_PEAK_DELTA
 
+        # constrain the points to the mono m/z
         peak_df = candidate_region_df[(candidate_region_df.mz >= peak_mz_lower) & (candidate_region_df.mz <= peak_mz_upper)]
 
+        # find the extent of the peak in the CCS dimension
         scan_0_df = peak_df.groupby(['scan'], as_index=False).intensity.sum()
         scan_0_df.sort_values(by=['scan'], ascending=True, inplace=True)
 
@@ -108,11 +111,11 @@ def find_precursor_cuboids(segment_mz_lower, segment_mz_upper):
         else:
             filtered = False
 
-        peak_idxs = peakutils.indexes(scan_0_df.filtered_intensity.values, thres=0.05, min_dist=10/2, thres_abs=False)
+        peak_idxs = peakutils.indexes(scan_0_df.filtered_intensity.values, thres=0.20, min_dist=10, thres_abs=False)
         peak_x_l = scan_0_df.iloc[peak_idxs].scan.to_list()
         peaks_df = scan_0_df[scan_0_df.scan.isin(peak_x_l)]
 
-        valley_idxs = peakutils.indexes(-scan_0_df.filtered_intensity.values, thres=0.05, min_dist=10/2, thres_abs=False)
+        valley_idxs = peakutils.indexes(-scan_0_df.filtered_intensity.values, thres=0.20, min_dist=10, thres_abs=False)
         valley_x_l = scan_0_df.iloc[valley_idxs].scan.to_list()
         valleys_df = scan_0_df[scan_0_df.scan.isin(valley_x_l)]
 
@@ -196,11 +199,11 @@ def find_precursor_cuboids(segment_mz_lower, segment_mz_upper):
                 else:
                     filtered = False
 
-                peak_idxs = peakutils.indexes(rt_0_df.filtered_intensity.values, thres=0.05, min_dist=10/2, thres_abs=False)
+                peak_idxs = peakutils.indexes(rt_0_df.filtered_intensity.values, thres=0.20, min_dist=5, thres_abs=False)
                 peak_x_l = rt_0_df.iloc[peak_idxs].retention_time_secs.to_list()
                 peaks_df = rt_0_df[rt_0_df.retention_time_secs.isin(peak_x_l)]
 
-                valley_idxs = peakutils.indexes(-rt_0_df.filtered_intensity.values, thres=0.05, min_dist=10/8, thres_abs=False)
+                valley_idxs = peakutils.indexes(-rt_0_df.filtered_intensity.values, thres=0.20, min_dist=5, thres_abs=False)
                 valley_x_l = rt_0_df.iloc[valley_idxs].retention_time_secs.to_list()
                 valleys_df = rt_0_df[rt_0_df.retention_time_secs.isin(valley_x_l)]
 
