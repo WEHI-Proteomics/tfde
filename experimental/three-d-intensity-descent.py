@@ -111,11 +111,11 @@ def find_precursor_cuboids(segment_mz_lower, segment_mz_upper):
         else:
             filtered = False
 
-        peak_idxs = peakutils.indexes(scan_0_df.filtered_intensity.values, thres=0.20, min_dist=10, thres_abs=False)
+        peak_idxs = peakutils.indexes(scan_0_df.filtered_intensity.values, thres=PEAKS_THRESHOLD_SCAN, min_dist=PEAKS_MIN_DIST_SCAN, thres_abs=False)
         peak_x_l = scan_0_df.iloc[peak_idxs].scan.to_list()
         peaks_df = scan_0_df[scan_0_df.scan.isin(peak_x_l)]
 
-        valley_idxs = peakutils.indexes(-scan_0_df.filtered_intensity.values, thres=0.20, min_dist=10, thres_abs=False)
+        valley_idxs = peakutils.indexes(-scan_0_df.filtered_intensity.values, thres=VALLEYS_THRESHOLD_SCAN, min_dist=VALLEYS_MIN_DIST_SCAN, thres_abs=False)
         valley_x_l = scan_0_df.iloc[valley_idxs].scan.to_list()
         valleys_df = scan_0_df[scan_0_df.scan.isin(valley_x_l)]
 
@@ -199,11 +199,11 @@ def find_precursor_cuboids(segment_mz_lower, segment_mz_upper):
                 else:
                     filtered = False
 
-                peak_idxs = peakutils.indexes(rt_0_df.filtered_intensity.values, thres=0.20, min_dist=5, thres_abs=False)
+                peak_idxs = peakutils.indexes(rt_0_df.filtered_intensity.values, thres=PEAKS_THRESHOLD_RT, min_dist=PEAKS_MIN_DIST_RT, thres_abs=False)
                 peak_x_l = rt_0_df.iloc[peak_idxs].retention_time_secs.to_list()
                 peaks_df = rt_0_df[rt_0_df.retention_time_secs.isin(peak_x_l)]
 
-                valley_idxs = peakutils.indexes(-rt_0_df.filtered_intensity.values, thres=0.20, min_dist=5, thres_abs=False)
+                valley_idxs = peakutils.indexes(-rt_0_df.filtered_intensity.values, thres=VALLEYS_THRESHOLD_RT, min_dist=VALLEYS_MIN_DIST_RT, thres_abs=False)
                 valley_x_l = rt_0_df.iloc[valley_idxs].retention_time_secs.to_list()
                 valleys_df = rt_0_df[rt_0_df.retention_time_secs.isin(valley_x_l)]
 
@@ -287,6 +287,16 @@ PROCESSED_INTENSITY_INDICATOR = -1
 
 MAX_ISOTOPE_CLUSTER_RETRIES = 1000
 MAX_POINT_CLUSTER_RETRIES = 10
+
+PEAKS_MIN_DIST_RT = 2.0
+VALLEYS_MIN_DIST_RT = 2.0
+PEAKS_THRESHOLD_RT = 0.2
+VALLEYS_THRESHOLD_RT = 0.2
+
+PEAKS_MIN_DIST_SCAN = 10.0
+VALLEYS_MIN_DIST_SCAN = 10.0
+PEAKS_THRESHOLD_SCAN = 0.2
+VALLEYS_THRESHOLD_SCAN = 0.2
 
 # constrain the data to re-run the same feature for debugging
 MZ_MIN_DEBUG, MZ_MAX_DEBUG = (764.4201958278368, 765.9385489808168)
