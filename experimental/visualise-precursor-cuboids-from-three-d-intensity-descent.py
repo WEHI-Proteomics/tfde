@@ -54,6 +54,11 @@ CUBOIDS_FILE = '{}/exp-{}-run-{}-mz-100-1700-precursor-cuboids.pkl'.format(CUBOI
 FRAME_TYPE_MS1 = 0
 FRAME_TYPE_MS2 = 8
 
+# for drawing on tiles
+TINT_COLOR = (0, 0, 0)  # Black
+OPACITY = int(255 * 0.1)  # lower opacity means more transparent
+
+
 def pixel_x_from_mz(mz):
     pixel_x = int((mz - MZ_MIN) * PIXELS_PER_MZ)
     return pixel_x
@@ -100,6 +105,12 @@ precursor_cuboids_df = pd.read_pickle(CUBOIDS_FILE)
 x_buffer = 5
 y_buffer = 5
 
+# load the font to use for labelling the overlays
+if os.path.isfile(UBUNTU_FONT_PATH):
+    feature_label_font = ImageFont.truetype(UBUNTU_FONT_PATH, 10)
+else:
+    feature_label_font = ImageFont.truetype(MACOS_FONT_PATH, 10)
+
 tile_id=1
 print('generating the tiles')
 for group_name,group_df in pixel_intensity_df.groupby(['frame_id'], as_index=False):
@@ -120,6 +131,21 @@ for group_name,group_df in pixel_intensity_df.groupby(['frame_id'], as_index=Fal
 
     # get a drawing context for the bounding boxes
     draw = ImageDraw.Draw(tile)
+
+    # draw the tile info
+    draw.rectangle(xy=[(0, 0), (PIXELS_X, 36)], fill=TINT_COLOR+(OPACITY,), outline=None)
+    draw.text((0, 0), '3D intensity descent', font=feature_label_font, fill='lawngreen')
+    draw.text((0, 12), '{}'.format(run_name), font=feature_label_font, fill='lawngreen')
+    draw.text((0, 24), '{} secs'.format(round(tile_rt,1)), font=feature_label_font, fill='lawngreen')
+
+    # draw the CCS markers
+    ccs_marker_each = 10
+    range_l = round(SCAN_MIN / ccs_marker_each) * ccs_marker_each
+    range_u = round(SCAN_MAX / ccs_marker_each) * ccs_marker_each
+    for marker_scan in np.arange(range_l,range_u+ccs_marker_each,ccs_marker_each):
+        marker_y = pixel_y_from_scan(marker_scan)
+        draw.text((15, marker_y-6), str(round(marker_scan)), font=feature_label_font, fill='lawngreen')
+        draw.line((0,marker_y, 5,marker_y), fill='lawngreen', width=1)
 
     # find the intersecting precursor cuboids for this tile; can be partial overlap in the m/z and scan dimensions
     intersecting_cuboids_df = precursor_cuboids_df[
