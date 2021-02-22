@@ -156,11 +156,12 @@ for group_name,group_df in pixel_intensity_df.groupby(['frame_id'], as_index=Fal
 
     # draw the tile info
     info_box_x_inset = 200
+    info_box_y_inset = 24
     space_per_line = 12
-    draw.rectangle(xy=[(PIXELS_X-info_box_x_inset, 0), (PIXELS_X, 4*space_per_line)], fill=(20,20,20), outline=None)
-    draw.text((PIXELS_X-info_box_x_inset, 0), '3D intensity descent', font=feature_label_font, fill='lawngreen')
-    draw.text((PIXELS_X-info_box_x_inset, 12), '{}'.format(run_name), font=feature_label_font, fill='lawngreen')
-    draw.text((PIXELS_X-info_box_x_inset, 24), '{} secs'.format(round(tile_rt,1)), font=feature_label_font, fill='lawngreen')
+    draw.rectangle(xy=[(PIXELS_X-info_box_x_inset, info_box_y_inset), (PIXELS_X, 3*space_per_line)], fill=(20,20,20), outline=None)
+    draw.text((PIXELS_X-info_box_x_inset, (0*space_per_line)+info_box_y_inset), '3D intensity descent', font=feature_label_font, fill='lawngreen')
+    draw.text((PIXELS_X-info_box_x_inset, (1*space_per_line)+info_box_y_inset), '{}'.format(run_name), font=feature_label_font, fill='lawngreen')
+    draw.text((PIXELS_X-info_box_x_inset, (2*space_per_line)+info_box_y_inset), '{} secs'.format(round(tile_rt,1)), font=feature_label_font, fill='lawngreen')
 
     # find the intersecting precursor cuboids for this tile; can be partial overlap in the m/z and scan dimensions
     intersecting_cuboids_df = precursor_cuboids_df[
