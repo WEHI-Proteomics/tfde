@@ -85,7 +85,7 @@ def find_precursor_cuboids(segment_mz_lower, segment_mz_upper):
 
     precursor_cuboids_l = []
     anchor_point_s = raw_df.loc[raw_df.intensity.idxmax()]
-    while anchor_point_s.intensity >= MIN_ANCHOR_POINT_INTENSITY:
+    while anchor_point_s.intensity >= args.minimum_anchor_point_intensity:
         # define the search area in the m/z and scan dimensions
         mz_lower = anchor_point_s.mz - ANCHOR_POINT_MZ_LOWER_OFFSET
         mz_upper = anchor_point_s.mz + ANCHOR_POINT_MZ_UPPER_OFFSET
@@ -270,8 +270,6 @@ FRAME_TYPE_MS2 = 8
 MS1_PEAK_DELTA = 0.1
 RT_BASE_PEAK_WIDTH = 10
 
-MIN_ANCHOR_POINT_INTENSITY = 500
-
 ANCHOR_POINT_MZ_LOWER_OFFSET = 0.6   # one isotope for charge-2 plus a little bit more
 ANCHOR_POINT_MZ_UPPER_OFFSET = 3.0   # six isotopes for charge-2 plus a little bit more
 
@@ -312,6 +310,7 @@ parser.add_argument('-mu','--mz_upper', type=int, default='1700', help='Upper li
 parser.add_argument('-mw','--mz_width_per_segment', type=int, default=20, help='Width in Da of the m/z processing window per segment.', required=False)
 parser.add_argument('-rl','--rt_lower', type=int, default='1650', help='Lower limit for retention time.', required=False)
 parser.add_argument('-ru','--rt_upper', type=int, default='2200', help='Upper limit for retention time.', required=False)
+parser.add_argument('-mapi','--minimum_anchor_point_intensity', type=int, default='500', help='Stop looking for anchor points below this intensity.', required=False)
 parser.add_argument('-rm','--ray_mode', type=str, choices=['local','cluster'], help='The Ray mode to use.', required=True)
 parser.add_argument('-pc','--proportion_of_cores_to_use', type=float, default=0.9, help='Proportion of the machine\'s cores to use for this program.', required=False)
 args = parser.parse_args()
