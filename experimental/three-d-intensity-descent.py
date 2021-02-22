@@ -63,6 +63,11 @@ def create_indexes(db_file_name):
     src_c.execute("create index if not exists idx_three_d_1 on frames (frame_type, mz, retention_time_secs)")
     db_conn.close()
 
+# determine the maximum filter length for the number of points
+def find_filter_length(number_of_points):
+    filter_lengths = [51,41,31,21,11,7,3]  # must be a positive odd number, greater than the polynomial order, and less than the number of points to be filtered
+    return filter_lengths[next(x[0] for x in enumerate(filter_lengths) if x[1] < number_of_points)]
+
 # process a segment of this run's data, and return a list of precursor cuboids
 @ray.remote
 def find_precursor_cuboids(segment_mz_lower, segment_mz_upper):
@@ -101,20 +106,13 @@ def find_precursor_cuboids(segment_mz_lower, segment_mz_upper):
 
         # filter the points
         scan_0_df['filtered_intensity'] = scan_0_df.intensity  # set the default
-        window_length = 21
-        if len(scan_0_df) > window_length:
-            try:
-                scan_0_df['filtered_intensity'] = signal.savgol_filter(scan_0_df.intensity, window_length=window_length, polyorder=2)
-                filtered = True
-            except:
-                filtered = False
-        else:
+        try:
+            scan_0_df['filtered_intensity'] = signal.savgol_filter(scan_0_df.intensity, window_length=find_filter_length(number_of_points=len(scan_0_df)), polyorder=SCAN_FILTER_POLY_ORDER)
+            filtered = True
+        except:
             filtered = False
 
-        peak_idxs = peakutils.indexes(scan_0_df.filtered_intensity.values, thres=PEAKS_THRESHOLD_SCAN, min_dist=PEAKS_MIN_DIST_SCAN, thres_abs=False)
-        peak_x_l = scan_0_df.iloc[peak_idxs].scan.to_list()
-        peaks_df = scan_0_df[scan_0_df.scan.isin(peak_x_l)]
-
+        # find the valleys nearest the anchor point
         valley_idxs = peakutils.indexes(-scan_0_df.filtered_intensity.values, thres=VALLEYS_THRESHOLD_SCAN, min_dist=VALLEYS_MIN_DIST_SCAN, thres_abs=False)
         valley_x_l = scan_0_df.iloc[valley_idxs].scan.to_list()
         valleys_df = scan_0_df[scan_0_df.scan.isin(valley_x_l)]
@@ -189,20 +187,13 @@ def find_precursor_cuboids(segment_mz_lower, segment_mz_upper):
 
                 # filter the points
                 rt_0_df['filtered_intensity'] = rt_0_df.intensity  # set the default
-                window_length = 11
-                if len(rt_0_df) > window_length:
-                    try:
-                        rt_0_df['filtered_intensity'] = signal.savgol_filter(rt_0_df.intensity, window_length=window_length, polyorder=3)
-                        filtered = True
-                    except:
-                        filtered = False
-                else:
+                try:
+                    rt_0_df['filtered_intensity'] = signal.savgol_filter(rt_0_df.intensity, window_length=find_filter_length(number_of_points=len(rt_0_df)), polyorder=RT_FILTER_POLY_ORDER)
+                    filtered = True
+                except:
                     filtered = False
 
-                peak_idxs = peakutils.indexes(rt_0_df.filtered_intensity.values, thres=PEAKS_THRESHOLD_RT, min_dist=PEAKS_MIN_DIST_RT, thres_abs=False)
-                peak_x_l = rt_0_df.iloc[peak_idxs].retention_time_secs.to_list()
-                peaks_df = rt_0_df[rt_0_df.retention_time_secs.isin(peak_x_l)]
-
+                # find the valleys nearest the anchor point
                 valley_idxs = peakutils.indexes(-rt_0_df.filtered_intensity.values, thres=VALLEYS_THRESHOLD_RT, min_dist=VALLEYS_MIN_DIST_RT, thres_abs=False)
                 valley_x_l = rt_0_df.iloc[valley_idxs].retention_time_secs.to_list()
                 valleys_df = rt_0_df[rt_0_df.retention_time_secs.isin(valley_x_l)]
@@ -288,15 +279,17 @@ PROCESSED_INTENSITY_INDICATOR = -1
 MAX_ISOTOPE_CLUSTER_RETRIES = 1000
 MAX_POINT_CLUSTER_RETRIES = 10
 
-PEAKS_MIN_DIST_RT = 2.0
-VALLEYS_MIN_DIST_RT = 2.0
-PEAKS_THRESHOLD_RT = 0.2
-VALLEYS_THRESHOLD_RT = 0.2
+# filter and peak detection parameters
+VALLEYS_THRESHOLD_RT = 0.5    # only consider valleys that drop more than this proportion of the normalised maximum
+VALLEYS_THRESHOLD_SCAN = 0.5
 
-PEAKS_MIN_DIST_SCAN = 10.0
-VALLEYS_MIN_DIST_SCAN = 10.0
-PEAKS_THRESHOLD_SCAN = 0.2
-VALLEYS_THRESHOLD_SCAN = 0.2
+VALLEYS_MIN_DIST_RT = 2.0     # seconds
+VALLEYS_MIN_DIST_SCAN = 10.0  # scans
+
+SCAN_FILTER_POLY_ORDER = 3
+RT_FILTER_POLY_ORDER = 3
+
+
 
 # constrain the data to re-run the same feature for debugging
 MZ_MIN_DEBUG, MZ_MAX_DEBUG = (764.4201958278368, 765.9385489808168)
