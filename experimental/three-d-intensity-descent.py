@@ -65,7 +65,7 @@ def create_indexes(db_file_name):
 
 # determine the maximum filter length for the number of points
 def find_filter_length(number_of_points):
-    filter_lengths = [51,41,31,21,11,7,3]  # must be a positive odd number, greater than the polynomial order, and less than the number of points to be filtered
+    filter_lengths = [51,11,5]  # must be a positive odd number, greater than the polynomial order, and less than the number of points to be filtered
     return filter_lengths[next(x[0] for x in enumerate(filter_lengths) if x[1] < number_of_points)]
 
 # process a segment of this run's data, and return a list of precursor cuboids
