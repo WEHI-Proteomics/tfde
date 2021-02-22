@@ -8,6 +8,7 @@ from cmcrameri import cm
 from PIL import Image, ImageFont, ImageDraw, ImageEnhance
 import shutil
 from cmcrameri import cm
+import sqlite3
 
 # generate a tile for each frame, annotating intersecting precursor cuboids
 
