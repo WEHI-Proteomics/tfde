@@ -58,6 +58,10 @@ FRAME_TYPE_MS2 = 8
 TINT_COLOR = (0, 0, 0)  # Black
 OPACITY = int(255 * 0.1)  # lower opacity means more transparent
 
+# font paths for overlay labels
+UBUNTU_FONT_PATH = '/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf'
+MACOS_FONT_PATH = '/Library/Fonts/Arial.ttf'
+
 
 def pixel_x_from_mz(mz):
     pixel_x = int((mz - MZ_MIN) * PIXELS_PER_MZ)
