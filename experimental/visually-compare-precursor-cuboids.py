@@ -8,6 +8,10 @@ import sys
 import shutil
 import glob
 
+# Note this script uses the convert command from ImageMagick, installed with:
+# sudo apt install imagemagick
+
+
 BASE_DIR = '/home/ubuntu'
 OVERLAY_A_BASE_DIR = '{}/precursor-cuboid-tiles'.format(BASE_DIR)
 OVERLAY_B_BASE_DIR = '{}/precursor-cuboid-3did-tiles'.format(BASE_DIR)
