@@ -63,7 +63,7 @@ def pixel_y_from_scan(scan):
     return pixel_y
 
 
-
+print('loading raw data from {}'.format(CONVERTED_DATABASE_NAME))
 db_conn = sqlite3.connect(CONVERTED_DATABASE_NAME)
 raw_df = pd.read_sql_query("select frame_id,mz,scan,intensity,retention_time_secs from frames where frame_type == {} and mz >= {} and mz <= {} and scan >= {} and scan <= {} and retention_time_secs >= {} and retention_time_secs <= {}".format(FRAME_TYPE_MS1, MZ_MIN, MZ_MAX, SCAN_MIN, SCAN_MAX, RT_MIN, RT_MAX), db_conn)
 db_conn.close()
@@ -93,7 +93,7 @@ if os.path.exists(TILES_BASE_DIR):
 os.makedirs(TILES_BASE_DIR)
 
 # load the precursor cuboids
-CUBOIDS_FILE = '/Users/darylwilding-mcbride/Downloads/precursor-cuboids.pkl'
+print('loading the precursor cuboids from {}'.format(CUBOIDS_FILE))
 precursor_cuboids_df = pd.read_pickle(CUBOIDS_FILE)
 
 # add a buffer around the edges
@@ -101,6 +101,7 @@ x_buffer = 5
 y_buffer = 5
 
 tile_id=1
+print('generating the tiles')
 for group_name,group_df in pixel_intensity_df.groupby(['frame_id'], as_index=False):
     tile_rt = raw_df[(raw_df.frame_id == group_name)].iloc[0].retention_time_secs
 
