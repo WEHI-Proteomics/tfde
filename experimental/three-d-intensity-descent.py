@@ -217,7 +217,7 @@ def find_precursor_cuboids(segment_mz_lower, segment_mz_upper):
                 points_to_remove_l = raw_df[(raw_df.mz >= mz_lower) & (raw_df.mz <= mz_upper) & (raw_df.scan >= scan_lower) & (raw_df.scan <= scan_upper) & (raw_df.retention_time_secs >= rt_lower) & (raw_df.retention_time_secs <= rt_upper)].point_id.tolist()
 
                 # add this cuboid to the list
-                precursor_cuboids_l.append((mz_lower, mz_upper, scan_lower, scan_upper, rt_lower, rt_upper, anchor_point_s.intensity, anchor_point_s.mz, anchor_point_s.scan, anchor_point_s.retention_time_secs, anchor_point_s.frame_id, number_of_isotope_clusters, number_of_point_clusters_in_anchor_isotope_cluster))
+                precursor_cuboids_l.append((mz_lower, mz_upper, scan_lower, scan_upper, rt_lower, rt_upper, anchor_point_s.intensity, anchor_point_s.mz, anchor_point_s.scan, anchor_point_s.retention_time_secs, anchor_point_s.frame_id, monoisotopic_cluster_s.mz, monoisotopic_cluster_s.scan, number_of_isotope_clusters, number_of_point_clusters_in_anchor_isotope_cluster))
 
                 # print('.', end='', flush=True)
                 isotope_cluster_retries = 0
@@ -362,7 +362,7 @@ cuboids_l = ray.get([find_precursor_cuboids.remote(segment_mz_lower=args.mz_lowe
 cuboids_l = [item for sublist in cuboids_l for item in sublist]  # cuboids_l is a list of lists, so we need to flatten it
 
 # assign each cuboid a unique identifier
-precursor_cuboids_df = pd.DataFrame(cuboids_l, columns=['mz_lower', 'mz_upper', 'scan_lower', 'scan_upper', 'rt_lower', 'rt_upper', 'anchor_point_intensity', 'anchor_point_mz', 'anchor_point_scan', 'anchor_point_retention_time_secs', 'anchor_point_frame_id', 'number_of_isotope_clusters', 'number_of_isotopes'])
+precursor_cuboids_df = pd.DataFrame(cuboids_l, columns=['mz_lower', 'mz_upper', 'scan_lower', 'scan_upper', 'rt_lower', 'rt_upper', 'anchor_point_intensity', 'anchor_point_mz', 'anchor_point_scan', 'anchor_point_retention_time_secs', 'anchor_point_frame_id', 'monoisotopic_cluster_mz', 'monoisotopic_cluster_scan', 'number_of_isotope_clusters', 'number_of_isotopes'])
 precursor_cuboids_df['precursor_cuboid_id'] = precursor_cuboids_df.index
 
 # ... and save them in a file
