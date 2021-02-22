@@ -16,6 +16,9 @@ MZ_MIN = 748        # default is 748
 MZ_MAX = 766        # default is 766
 SCAN_MIN = 350      # default is 1
 SCAN_MAX = 850      # default is 920
+RT_MIN = 2000
+RT_MAX = 2200
+
 PIXELS_X = 800
 PIXELS_Y = 800
 
@@ -25,7 +28,30 @@ PIXELS_PER_SCAN = PIXELS_Y / (SCAN_MAX - SCAN_MIN)
 minimum_pixel_intensity = 1
 maximum_pixel_intensity = 250
 
-TILES_BASE_DIR = '/Users/darylwilding-mcbride/Downloads/three-d-intensity-descent-tiles'
+TILES_BASE_DIR = '/home/ubuntu/precursor-cuboid-3did-tiles'
+
+# check the experiment directory exists
+experiment_base_dir = '/data2/experiments'
+experiment_name = 'P3856'
+run_name = 'P3856_YHE211_1_Slot1-1_1_5104'
+
+EXPERIMENT_DIR = "{}/{}".format(experiment_base_dir, experiment_name)
+if not os.path.exists(EXPERIMENT_DIR):
+    print("The experiment directory is required but doesn't exist: {}".format(EXPERIMENT_DIR))
+    sys.exit(1)
+
+# check the converted databases directory exists
+CONVERTED_DATABASE_NAME = "{}/converted-databases/exp-{}-run-{}-converted.sqlite".format(EXPERIMENT_DIR, experiment_name, run_name)
+if not os.path.isfile(CONVERTED_DATABASE_NAME):
+    print("The converted database is required but doesn't exist: {}".format(CONVERTED_DATABASE_NAME))
+    sys.exit(1)
+
+CUBOIDS_DIR = "{}/precursor-cuboids-3did".format(EXPERIMENT_DIR)
+CUBOIDS_FILE = '{}/exp-{}-run-{}-mz-100-1700-precursor-cuboids.pkl'.format(CUBOIDS_DIR, experiment_name, run_name)
+
+# frame types for PASEF mode
+FRAME_TYPE_MS1 = 0
+FRAME_TYPE_MS2 = 8
 
 def pixel_x_from_mz(mz):
     pixel_x = int((mz - MZ_MIN) * PIXELS_PER_MZ)
@@ -35,8 +61,11 @@ def pixel_y_from_scan(scan):
     pixel_y = int((scan - SCAN_MIN) * PIXELS_PER_SCAN)
     return pixel_y
 
-raw_df = pd.read_pickle('/Users/darylwilding-mcbride/Downloads/YHE211_1-mz-748-766-rt-2000-2200.pkl')
-raw_df = raw_df[(raw_df.frame_type == 0) & (raw_df.mz >= MZ_MIN) & (raw_df.mz <= MZ_MAX) & (raw_df.scan >= SCAN_MIN) & (raw_df.scan <= SCAN_MAX)]
+
+
+db_conn = sqlite3.connect(CONVERTED_DATABASE_NAME)
+raw_df = pd.read_sql_query("select frame_id,mz,scan,intensity,retention_time_secs from frames where frame_type == {} and mz >= {} and mz <= {} and scan >= {} and scan <= {} and retention_time_secs >= {} and retention_time_secs <= {}".format(FRAME_TYPE_MS1, MZ_MIN, MZ_MAX, SCAN_MIN, SCAN_MAX, RT_MIN, RT_MAX), db_conn)
+db_conn.close()
 
 raw_df['pixel_x'] = raw_df.apply(lambda row: pixel_x_from_mz(row.mz), axis=1)
 raw_df['pixel_y'] = raw_df.apply(lambda row: pixel_y_from_scan(row.scan), axis=1)
