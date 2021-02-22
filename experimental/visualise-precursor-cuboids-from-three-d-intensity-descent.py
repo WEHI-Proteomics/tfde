@@ -136,21 +136,13 @@ for group_name,group_df in pixel_intensity_df.groupby(['frame_id'], as_index=Fal
     # get a drawing context for the bounding boxes
     draw = ImageDraw.Draw(tile)
 
-    # draw the tile info
-    info_box_x_inset = 200
-    space_per_line = 12
-    draw.rectangle(xy=[(PIXELS_X-info_box_x_inset, 0), (PIXELS_X, 4*space_per_line)], fill=(20,20,20), outline=None)
-    draw.text((0, 0), '3D intensity descent', font=feature_label_font, fill='lawngreen')
-    draw.text((0, 12), '{}'.format(run_name), font=feature_label_font, fill='lawngreen')
-    draw.text((0, 24), '{} secs'.format(round(tile_rt,1)), font=feature_label_font, fill='lawngreen')
-
     # draw the CCS markers
     ccs_marker_each = 50
     range_l = round(SCAN_MIN / ccs_marker_each) * ccs_marker_each
     range_u = round(SCAN_MAX / ccs_marker_each) * ccs_marker_each
     for marker_scan in np.arange(range_l,range_u+ccs_marker_each,ccs_marker_each):
         marker_y = pixel_y_from_scan(marker_scan)
-        draw.text((15, marker_y-6), str(round(marker_scan)), font=feature_label_font, fill='lawngreen')
+        draw.text((10, marker_y-6), str(round(marker_scan)), font=feature_label_font, fill='lawngreen')
         draw.line((0,marker_y, 5,marker_y), fill='lawngreen', width=1)
 
     # draw the m/z markers
@@ -159,8 +151,16 @@ for group_name,group_df in pixel_intensity_df.groupby(['frame_id'], as_index=Fal
     range_u = round(MZ_MAX / mz_marker_each) * mz_marker_each
     for marker_mz in np.arange(range_l,range_u+mz_marker_each,mz_marker_each):
         marker_x = pixel_x_from_mz(marker_mz)
-        draw.text((marker_x-10, 12), str(round(marker_mz)), font=feature_label_font, fill='lawngreen')
+        draw.text((marker_x-10, 8), str(round(marker_mz)), font=feature_label_font, fill='lawngreen')
         draw.line((marker_x,0, marker_x,5), fill='lawngreen', width=1)
+
+    # draw the tile info
+    info_box_x_inset = 200
+    space_per_line = 12
+    draw.rectangle(xy=[(PIXELS_X-info_box_x_inset, 0), (PIXELS_X, 4*space_per_line)], fill=(20,20,20), outline=None)
+    draw.text((PIXELS_X-info_box_x_inset, 0), '3D intensity descent', font=feature_label_font, fill='lawngreen')
+    draw.text((PIXELS_X-info_box_x_inset, 12), '{}'.format(run_name), font=feature_label_font, fill='lawngreen')
+    draw.text((PIXELS_X-info_box_x_inset, 24), '{} secs'.format(round(tile_rt,1)), font=feature_label_font, fill='lawngreen')
 
     # find the intersecting precursor cuboids for this tile; can be partial overlap in the m/z and scan dimensions
     intersecting_cuboids_df = precursor_cuboids_df[
