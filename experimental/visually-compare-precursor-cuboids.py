@@ -8,9 +8,9 @@ import sys
 import shutil
 import glob
 
-BASE_DIR = '/Users/darylwilding-mcbride/Downloads'
-OVERLAY_A_BASE_DIR = '{}/precursor-cuboid-tiles-PASEF'.format(BASE_DIR)
-OVERLAY_B_BASE_DIR = '{}/three-d-intensity-descent-tiles'.format(BASE_DIR)
+BASE_DIR = '/home/ubuntu'
+OVERLAY_A_BASE_DIR = '{}/precursor-cuboid-tiles'.format(BASE_DIR)
+OVERLAY_B_BASE_DIR = '{}/precursor-cuboid-3did-tiles'.format(BASE_DIR)
 
 overlay_A_files_l = sorted(glob.glob('{}/*.png'.format(OVERLAY_A_BASE_DIR)), key=lambda x: ( int(x.split('tile-')[1].split('.png')[0]) ))
 overlay_B_files_l = sorted(glob.glob('{}/*.png'.format(OVERLAY_B_BASE_DIR)), key=lambda x: ( int(x.split('tile-')[1].split('.png')[0]) ))
