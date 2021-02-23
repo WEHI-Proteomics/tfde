@@ -108,6 +108,7 @@ x_buffer = 5
 y_buffer = 5
 
 tile_id=1
+print('generating the tiles')
 for group_name,group_df in pixel_intensity_df.groupby(['frame_id'], as_index=False):
     tile_rt = raw_df[(raw_df.frame_id == group_name)].iloc[0].retention_time_secs
 
