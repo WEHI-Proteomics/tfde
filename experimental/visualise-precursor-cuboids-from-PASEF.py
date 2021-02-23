@@ -93,19 +93,31 @@ if os.path.exists(TILES_BASE_DIR):
     shutil.rmtree(TILES_BASE_DIR)
 os.makedirs(TILES_BASE_DIR)
 
+CUBOIDS_DIR = '/data2/experiments/P3856/precursor-cuboids/{}'.format(RUN_NAME)
+CUBOIDS_FILE = '{}/exp-{}-run-{}-mz-100-1700-precursor-cuboids.pkl'.format(CUBOIDS_DIR, EXPERIMENT_NAME, RUN_NAME)
+
 # load the precursor cuboids
 print('loading the precursor cuboid metadata')
-CUBOIDS_DIR = '/data2/experiments/P3856/precursor-cuboids/{}'.format(RUN_NAME)
-zip_files_l = glob.glob("{}/exp-{}-run-{}-precursor-*.zip".format(CUBOIDS_DIR, EXPERIMENT_NAME, RUN_NAME))
-cuboid_metadata_l = []
-for zip_file in zip_files_l:
-    cuboid_metadata_l.append(load_precursor_cuboid_metadata(zip_file))
-precursor_cuboids_df = pd.DataFrame(cuboid_metadata_l)
+if os.path.isfile(CUBOIDS_FILE):
+    precursor_cuboids_df = pd.read_pickle(CUBOIDS_FILE)
+else:
+    zip_files_l = glob.glob("{}/exp-{}-run-{}-precursor-*.zip".format(CUBOIDS_DIR, EXPERIMENT_NAME, RUN_NAME))
+    cuboid_metadata_l = []
+    for zip_file in zip_files_l:
+        cuboid_metadata_l.append(load_precursor_cuboid_metadata(zip_file))
+    precursor_cuboids_df = pd.DataFrame(cuboid_metadata_l)
+    precursor_cuboids_df.to_pickle(CUBOIDS_FILE)
 print('loaded the metadata for {} precursor cuboids'.format(len(precursor_cuboids_df)))
 
 # add a buffer around the edges
 x_buffer = 5
 y_buffer = 5
+
+# load the font to use for labelling the overlays
+if os.path.isfile(UBUNTU_FONT_PATH):
+    feature_label_font = ImageFont.truetype(UBUNTU_FONT_PATH, 10)
+else:
+    feature_label_font = ImageFont.truetype(MACOS_FONT_PATH, 10)
 
 tile_id=1
 print('generating the tiles')
