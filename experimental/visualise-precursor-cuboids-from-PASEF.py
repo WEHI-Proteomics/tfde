@@ -183,7 +183,7 @@ for group_name,group_df in pixel_intensity_df.groupby(['frame_id'], as_index=Fal
         y0 = pixel_y_from_scan(cuboid.wide_scan_lower)
         y1 = pixel_y_from_scan(cuboid.wide_scan_upper)
         # draw the bounding box
-        draw.rectangle(xy=[(x0-x_buffer, y0-y_buffer), (x1+x_buffer, y1+y_buffer)], fill=None, outline='crimson')
+        draw.rectangle(xy=[(x0-x_buffer, y0-y_buffer), (x1+x_buffer, y1+y_buffer)], fill=None, outline='deepskyblue')
 
     # save the tile
     tile_file_name = '{}/tile-{}.png'.format(TILES_BASE_DIR, tile_id)
