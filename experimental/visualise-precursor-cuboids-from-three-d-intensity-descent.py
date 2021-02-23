@@ -54,10 +54,6 @@ CUBOIDS_FILE = '{}/exp-{}-run-{}-mz-100-1700-precursor-cuboids.pkl'.format(CUBOI
 FRAME_TYPE_MS1 = 0
 FRAME_TYPE_MS2 = 8
 
-# for drawing on tiles
-TINT_COLOR = (0, 0, 0)  # Black
-OPACITY = int(255 * 0.1)  # lower opacity means more transparent
-
 # font paths for overlay labels
 UBUNTU_FONT_PATH = '/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf'
 MACOS_FONT_PATH = '/Library/Fonts/Arial.ttf'
