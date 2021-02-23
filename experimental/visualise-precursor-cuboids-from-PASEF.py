@@ -51,6 +51,9 @@ TILES_BASE_DIR = '/home/ubuntu/precursor-cuboid-tiles'
 RUN_NAME = 'P3856_YHE211_1_Slot1-1_1_5104'
 CONVERTED_DATABASE_NAME = '/data2/experiments/P3856/converted-databases/exp-P3856-run-{}-converted.sqlite'.format(RUN_NAME)
 
+# font paths for overlay labels
+UBUNTU_FONT_PATH = '/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf'
+MACOS_FONT_PATH = '/Library/Fonts/Arial.ttf'
 
 def pixel_x_from_mz(mz):
     pixel_x = int((mz - MZ_MIN) * PIXELS_PER_MZ)
@@ -124,6 +127,33 @@ for group_name,group_df in pixel_intensity_df.groupby(['frame_id'], as_index=Fal
     # get a drawing context for the bounding boxes
     draw = ImageDraw.Draw(tile)
 
+    # draw the CCS markers
+    ccs_marker_each = 50
+    range_l = round(SCAN_MIN / ccs_marker_each) * ccs_marker_each
+    range_u = round(SCAN_MAX / ccs_marker_each) * ccs_marker_each
+    for marker_scan in np.arange(range_l,range_u+ccs_marker_each,ccs_marker_each):
+        marker_y = pixel_y_from_scan(marker_scan)
+        draw.text((10, marker_y-6), str(round(marker_scan)), font=feature_label_font, fill='lawngreen')
+        draw.line((0,marker_y, 5,marker_y), fill='lawngreen', width=1)
+
+    # draw the m/z markers
+    mz_marker_each = 1
+    range_l = round(MZ_MIN / mz_marker_each) * mz_marker_each
+    range_u = round(MZ_MAX / mz_marker_each) * mz_marker_each
+    for marker_mz in np.arange(range_l,range_u+mz_marker_each,mz_marker_each):
+        marker_x = pixel_x_from_mz(marker_mz)
+        draw.text((marker_x-10, 8), str(round(marker_mz)), font=feature_label_font, fill='lawngreen')
+        draw.line((marker_x,0, marker_x,5), fill='lawngreen', width=1)
+
+    # draw the tile info
+    info_box_x_inset = 200
+    info_box_y_inset = 24
+    space_per_line = 12
+    draw.rectangle(xy=[(PIXELS_X-info_box_x_inset, info_box_y_inset), (PIXELS_X, 3*space_per_line)], fill=(20,20,20), outline=None)
+    draw.text((PIXELS_X-info_box_x_inset, (0*space_per_line)+info_box_y_inset), 'PASEF-seeded', font=feature_label_font, fill='lawngreen')
+    draw.text((PIXELS_X-info_box_x_inset, (1*space_per_line)+info_box_y_inset), '{}'.format(RUN_NAME), font=feature_label_font, fill='lawngreen')
+    draw.text((PIXELS_X-info_box_x_inset, (2*space_per_line)+info_box_y_inset), '{} secs'.format(round(tile_rt,1)), font=feature_label_font, fill='lawngreen')
+
     # find the intersecting precursor cuboids for this tile; can be partial overlap in the m/z and scan dimensions
     intersecting_cuboids_df = precursor_cuboids_df[
                 (precursor_cuboids_df.fe_ms1_frame_lower <= group_name) & (precursor_cuboids_df.fe_ms1_frame_upper >= group_name) & 
@@ -140,7 +170,7 @@ for group_name,group_df in pixel_intensity_df.groupby(['frame_id'], as_index=Fal
         y0 = pixel_y_from_scan(cuboid.wide_scan_lower)
         y1 = pixel_y_from_scan(cuboid.wide_scan_upper)
         # draw the bounding box
-        draw.rectangle(xy=[(x0-x_buffer, y0-y_buffer), (x1+x_buffer, y1+y_buffer)], fill=None, outline='limegreen')
+        draw.rectangle(xy=[(x0-x_buffer, y0-y_buffer), (x1+x_buffer, y1+y_buffer)], fill=None, outline='crimson')
 
     # save the tile
     tile_file_name = '{}/tile-{}.png'.format(TILES_BASE_DIR, tile_id)
