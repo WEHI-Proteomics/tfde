@@ -20,6 +20,7 @@ sys.path.append('/home/ubuntu/open-path/pda/packaged/')
 from process_precursor_cuboid_ms1 import find_features, check_monoisotopic_peak
 from argparse import Namespace
 import ray
+import sqlite3
 
 
 # returns a dataframe with the frame properties
