@@ -52,7 +52,6 @@ def find_closest_ms1_frame_to_rt(frames_properties_df, retention_time_secs):
 # process a precursor cuboid to detect ms1 features
 def ms1(precursor_metadata, ms1_points_df, args):
     # find features in the cuboid
-    print("finding features for precursor {}".format(precursor_metadata['precursor_id']))
     checked_features_l = []
     features_df = find_features(precursor_metadata, ms1_points_df, args)
     if features_df is not None:
@@ -131,7 +130,7 @@ parser.add_argument('-rn','--run_name', type=str, help='Name of the run.', requi
 parser.add_argument('-ml','--mz_lower', type=int, default='100', help='Lower limit for m/z.', required=False)
 parser.add_argument('-mu','--mz_upper', type=int, default='1700', help='Upper limit for m/z.', required=False)
 parser.add_argument('-ini','--ini_file', type=str, default='./open-path/pda/pasef-process-short-gradient.ini', help='Path to the config file.', required=False)
-parser.add_argument('-ssm', '--small_set_mode', action='store_true', help='Use a small subset of the data for debugging.')
+parser.add_argument('-pid', '--precursor_id', type=int, help='Only process this precursor ID.', required=False)
 parser.add_argument('-rm','--ray_mode', type=str, choices=['local','cluster'], help='The Ray mode to use.', required=True)
 parser.add_argument('-pc','--proportion_of_cores_to_use', type=float, default=0.9, help='Proportion of the machine\'s cores to use for this program.', required=False)
 args = parser.parse_args()
@@ -167,6 +166,10 @@ if not os.path.isfile(CUBOIDS_FILE):
 # load the precursor cuboids
 precursor_cuboids_df = pd.read_pickle(CUBOIDS_FILE)
 print('loaded {} precursor cuboids from {}'.format(len(precursor_cuboids_df), CUBOIDS_FILE))
+
+# limit the cuboids to just the selected one
+if args.precursor_id is not None:
+    precursor_cuboids_df = precursor_cuboids_df[(precursor_cuboids_df.precursor_id == args.precursor_id)]
 
 # parse the config file
 config = configparser.ConfigParser(interpolation=ExtendedInterpolation())
