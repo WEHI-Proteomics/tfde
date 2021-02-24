@@ -15,6 +15,9 @@ import ray
 import sqlite3
 import shutil
 
+# frame types for PASEF mode
+FRAME_TYPE_MS1 = 0
+FRAME_TYPE_MS2 = 8
 
 # returns a dataframe with the frame properties
 def load_frame_properties(converted_db_name):
