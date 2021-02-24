@@ -15,8 +15,11 @@ from configparser import ExtendedInterpolation
 import warnings
 from scipy.optimize import OptimizeWarning
 import json
-
-
+import multiprocessing as mp
+sys.path.append('/home/ubuntu/open-path/pda/packaged/')
+from process_precursor_cuboid_ms1 import find_features, check_monoisotopic_peak
+from argparse import Namespace
+import ray
 
 
 # returns a dataframe with the frame properties
@@ -69,7 +72,7 @@ def ms1(precursor_metadata, ms1_points_df, args):
 
 # prepare the metadata and raw points for the feature detection
 @ray.remote
-def detect_ms1_features(precursor_cuboid_row):
+def detect_ms1_features(precursor_cuboid_row, converted_db_name):
 
     # use the ms1 function to perform the feature detection step
     ms1_args = Namespace()
@@ -106,8 +109,10 @@ def detect_ms1_features(precursor_cuboid_row):
     cuboid_metadata['wide_frame_upper'] = find_closest_ms1_frame_to_rt(frames_properties_df=frames_properties_df, retention_time_secs=row.rt_upper)['above']
     cuboid_metadata['number_of_windows'] = 1
 
-    # load the raw points
-    ms1_points_df = pd.DataFrame.from_dict(row.candidate_region_d)
+    # load the raw points for this cuboid
+    db_conn = sqlite3.connect(converted_db_name)
+    ms1_points_df = pd.read_sql_query("select frame_id,mz,scan,intensity,retention_time_secs from frames where frame_type == {} and mz >= {} and mz <= {} and scan >= {} and scan <= {} and retention_time_secs >= {} and retention_time_secs <= {}".format(FRAME_TYPE_MS1, row.mz_lower, row.mz_upper, row.scan_lower, row.scan_upper, row.rt_lower, row.rt_upper), db_conn)
+    db_conn.close()
 
     # adjust the args
     ms1_args.precursor_id = row.precursor_cuboid_id
@@ -115,6 +120,12 @@ def detect_ms1_features(precursor_cuboid_row):
     # detect the features
     df = ms1(precursor_metadata=cuboid_metadata, ms1_points_df=ms1_points_df, args=ms1_args)
     return df
+
+# determine the number of workers based on the number of available cores and the proportion of the machine to be used
+def number_of_workers():
+    number_of_cores = mp.cpu_count()
+    number_of_workers = int(args.proportion_of_cores_to_use * number_of_cores)
+    return number_of_workers
 
 ###################################
 parser = argparse.ArgumentParser(description='Detect the features precursor cuboids found in a run with 3D intensity descent.')
@@ -127,6 +138,8 @@ parser.add_argument('-mu','--mz_upper', type=int, default='1700', help='Upper li
 parser.add_argument('-rl','--rt_lower', type=int, default='1650', help='Lower limit for retention time.', required=False)
 parser.add_argument('-ru','--rt_upper', type=int, default='2200', help='Upper limit for retention time.', required=False)
 parser.add_argument('-ssm', '--small_set_mode', action='store_true', help='Use a small subset of the data for debugging.')
+parser.add_argument('-rm','--ray_mode', type=str, choices=['local','cluster'], help='The Ray mode to use.', required=True)
+parser.add_argument('-pc','--proportion_of_cores_to_use', type=float, default=0.9, help='Proportion of the machine\'s cores to use for this program.', required=False)
 args = parser.parse_args()
 
 # Print the arguments for the log
@@ -168,43 +181,26 @@ config.read(args.ini_file)
 # load the frame properties
 frames_properties_df = load_frame_properties(CONVERTED_DATABASE_NAME)
 
+FEATURES_DIR = "{}/features-3did".format(EXPERIMENT_DIR)
+FEATURES_FILE = '{}/exp-{}-run-{}-features-3did.pkl'.format(CUBOIDS_DIR, args.experiment_name, args.run_name)
+
 # set up the output directory
-if os.path.exists(ms1_args.FEATURES_DIR):
-    shutil.rmtree(ms1_args.FEATURES_DIR)
-os.makedirs(ms1_args.FEATURES_DIR)
+if os.path.exists(FEATURES_DIR):
+    shutil.rmtree(FEATURES_DIR)
+os.makedirs(FEATURES_DIR)
+
+# set up Ray
+print("setting up Ray")
+if not ray.is_initialized():
+    if args.ray_mode == "cluster":
+        ray.init(num_cpus=number_of_workers())
+    else:
+        ray.init(local_mode=True)
 
 # find the features in each precursor cuboid
-features_l = ray.get([detect_ms1_features.remote(precursor_cuboid_row=row) for row in precursor_cuboids_df.itertuples()])
+features_l = ray.get([detect_ms1_features.remote(precursor_cuboid_row=row, converted_db_name=CONVERTED_DATABASE_NAME) for row in precursor_cuboids_df.itertuples()])
 # join the list of dataframes into a single dataframe
 features_df = pd.concat(features_l, axis=0, sort=False)
 
-
-
-
-# consolidate the individual feature files into a single file of features
-experiment_features_l = []
-subdirs_l = glob('{}/features-3did/*/'.format(EXPERIMENT_DIR))  # get the runs that were processed above
-for sd in subdirs_l:
-    run_name = sd.split('/')[-2]
-    print("consolidating the features found in run {}".format(run_name))
-    features_dir = '{}/features-3did/{}'.format(EXPERIMENT_DIR, run_name)
-
-    # consolidate the features found in this run
-    run_feature_files = glob("{}/exp-{}-run-{}-features-precursor-*.pkl".format(features_dir, args.experiment_name, run_name))
-    run_features_l = []
-    print("found {} feature files for the run {}".format(len(run_feature_files), run_name))
-    for file in run_feature_files:
-        df = pd.read_pickle(file)
-        run_features_l.append(df)
-    # make a single df from the list of dfs
-    run_features_df = pd.concat(run_features_l, axis=0, sort=False)
-    run_features_df['run_name'] = run_name
-    del run_features_l[:]
-
-    experiment_features_l.append(run_features_df)
-
-# consolidate the features found across the experiment
-EXPERIMENT_FEATURES_NAME = '{}/{}'.format(ms1_args.FEATURES_DIR, 'experiment-features.pkl')
-experiment_features_df = pd.concat(experiment_features_l, axis=0, sort=False)
-print("saving {} experiment features to {}".format(len(experiment_features_df), EXPERIMENT_FEATURES_NAME))
-experiment_features_df.to_pickle(EXPERIMENT_FEATURES_NAME)
+print("writing {} features to {}".format(len(features_df), FEATURES_FILE))
+features_df.to_pickle(FEATURES_FILE)
