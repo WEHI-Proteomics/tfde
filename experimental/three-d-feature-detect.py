@@ -70,46 +70,45 @@ def detect_ms1_features(precursor_cuboid_row, converted_db_name):
 
     # use the ms1 function to perform the feature detection step
     ms1_args = Namespace()
-    ms1_args.experiment_name = args.experiment_name
-    ms1_args.run_name = args.run_name
+    # ms1_args.experiment_name = args.experiment_name
+    # ms1_args.run_name = args.run_name
     ms1_args.MS1_PEAK_DELTA = config.getfloat('ms1', 'MS1_PEAK_DELTA')
     ms1_args.SATURATION_INTENSITY = config.getfloat('common', 'SATURATION_INTENSITY')
     ms1_args.MAX_MS1_PEAK_HEIGHT_RATIO_ERROR = config.getfloat('ms1', 'MAX_MS1_PEAK_HEIGHT_RATIO_ERROR')
     ms1_args.PROTON_MASS = config.getfloat('common', 'PROTON_MASS')
     ms1_args.INSTRUMENT_RESOLUTION = config.getfloat('common', 'INSTRUMENT_RESOLUTION')
     ms1_args.NUMBER_OF_STD_DEV_MZ = config.getfloat('ms1', 'NUMBER_OF_STD_DEV_MZ')
-    ms1_args.FEATURES_DIR = '{}/features-3did/{}'.format(EXPERIMENT_DIR, args.run_name)
     ms1_args.CARBON_MASS_DIFFERENCE = config.getfloat('common', 'CARBON_MASS_DIFFERENCE')
 
     # create the metadata record
     cuboid_metadata = {}
-    cuboid_metadata['precursor_id'] = row.precursor_cuboid_id
-    cuboid_metadata['window_mz_lower'] = row.mz_lower
-    cuboid_metadata['window_mz_upper'] = row.mz_upper
-    cuboid_metadata['wide_mz_lower'] = row.mz_lower
-    cuboid_metadata['wide_mz_upper'] = row.mz_upper
-    cuboid_metadata['window_scan_width'] = row.scan_upper - row.scan_lower
-    cuboid_metadata['fe_scan_lower'] = row.scan_lower
-    cuboid_metadata['fe_scan_upper'] = row.scan_upper
-    cuboid_metadata['wide_scan_lower'] = row.scan_lower
-    cuboid_metadata['wide_scan_upper'] = row.scan_upper
-    cuboid_metadata['wide_rt_lower'] = row.rt_lower
-    cuboid_metadata['wide_rt_upper'] = row.rt_upper
-    cuboid_metadata['fe_ms1_frame_lower'] = find_closest_ms1_frame_to_rt(frames_properties_df=frames_properties_df, retention_time_secs=row.rt_lower)['below']
-    cuboid_metadata['fe_ms1_frame_upper'] = find_closest_ms1_frame_to_rt(frames_properties_df=frames_properties_df, retention_time_secs=row.rt_upper)['above']
+    cuboid_metadata['precursor_id'] = precursor_cuboid_row.precursor_cuboid_id
+    cuboid_metadata['window_mz_lower'] = precursor_cuboid_row.mz_lower
+    cuboid_metadata['window_mz_upper'] = precursor_cuboid_row.mz_upper
+    cuboid_metadata['wide_mz_lower'] = precursor_cuboid_row.mz_lower
+    cuboid_metadata['wide_mz_upper'] = precursor_cuboid_row.mz_upper
+    cuboid_metadata['window_scan_width'] = precursor_cuboid_row.scan_upper - precursor_cuboid_row.scan_lower
+    cuboid_metadata['fe_scan_lower'] = precursor_cuboid_row.scan_lower
+    cuboid_metadata['fe_scan_upper'] = precursor_cuboid_row.scan_upper
+    cuboid_metadata['wide_scan_lower'] = precursor_cuboid_row.scan_lower
+    cuboid_metadata['wide_scan_upper'] = precursor_cuboid_row.scan_upper
+    cuboid_metadata['wide_rt_lower'] = precursor_cuboid_row.rt_lower
+    cuboid_metadata['wide_rt_upper'] = precursor_cuboid_row.rt_upper
+    cuboid_metadata['fe_ms1_frame_lower'] = find_closest_ms1_frame_to_rt(frames_properties_df=frames_properties_df, retention_time_secs=precursor_cuboid_row.rt_lower)['below']
+    cuboid_metadata['fe_ms1_frame_upper'] = find_closest_ms1_frame_to_rt(frames_properties_df=frames_properties_df, retention_time_secs=precursor_cuboid_row.rt_upper)['above']
     cuboid_metadata['fe_ms2_frame_lower'] = None
     cuboid_metadata['fe_ms2_frame_upper'] = None
-    cuboid_metadata['wide_frame_lower'] = find_closest_ms1_frame_to_rt(frames_properties_df=frames_properties_df, retention_time_secs=row.rt_lower)['below']
-    cuboid_metadata['wide_frame_upper'] = find_closest_ms1_frame_to_rt(frames_properties_df=frames_properties_df, retention_time_secs=row.rt_upper)['above']
+    cuboid_metadata['wide_frame_lower'] = find_closest_ms1_frame_to_rt(frames_properties_df=frames_properties_df, retention_time_secs=precursor_cuboid_row.rt_lower)['below']
+    cuboid_metadata['wide_frame_upper'] = find_closest_ms1_frame_to_rt(frames_properties_df=frames_properties_df, retention_time_secs=precursor_cuboid_row.rt_upper)['above']
     cuboid_metadata['number_of_windows'] = 1
 
     # load the raw points for this cuboid
     db_conn = sqlite3.connect(converted_db_name)
-    ms1_points_df = pd.read_sql_query("select frame_id,mz,scan,intensity,retention_time_secs from frames where frame_type == {} and mz >= {} and mz <= {} and scan >= {} and scan <= {} and retention_time_secs >= {} and retention_time_secs <= {}".format(FRAME_TYPE_MS1, row.mz_lower, row.mz_upper, row.scan_lower, row.scan_upper, row.rt_lower, row.rt_upper), db_conn)
+    ms1_points_df = pd.read_sql_query("select frame_id,mz,scan,intensity,retention_time_secs from frames where frame_type == {} and mz >= {} and mz <= {} and scan >= {} and scan <= {} and retention_time_secs >= {} and retention_time_secs <= {}".format(FRAME_TYPE_MS1, precursor_cuboid_row.mz_lower, precursor_cuboid_row.mz_upper, precursor_cuboid_row.scan_lower, precursor_cuboid_row.scan_upper, precursor_cuboid_row.rt_lower, precursor_cuboid_row.rt_upper), db_conn)
     db_conn.close()
 
     # adjust the args
-    ms1_args.precursor_id = row.precursor_cuboid_id
+    ms1_args.precursor_id = precursor_cuboid_row.precursor_cuboid_id
 
     # detect the features
     df = ms1(precursor_metadata=cuboid_metadata, ms1_points_df=ms1_points_df, args=ms1_args)
