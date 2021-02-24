@@ -12,12 +12,6 @@ import sqlite3
 import shutil
 import sys
 import multiprocessing as mp
-sys.path.append('/home/ubuntu/open-path/pda/packaged/')
-from process_precursor_cuboid_ms1 import ms1
-import configparser
-from configparser import ExtendedInterpolation
-from argparse import Namespace
-from glob import glob
 
 # define a straight line to exclude the charge-1 cloud
 def scan_coords_for_single_charge_region(mz_lower, mz_upper):
