@@ -64,7 +64,7 @@ def ms1(precursor_metadata, ms1_points_df, args):
     checked_features_df = pd.DataFrame(checked_features_l)
     if len(checked_features_df) > 0:
         checked_features_df['monoisotopic_mass'] = (checked_features_df.monoisotopic_mz * checked_features_df.charge) - (args.PROTON_MASS * checked_features_df.charge)
-    print("found {} features for precursor {}".format(len(features_df), precursor_metadata['precursor_id']))
+    print("found {} features for precursor {}".format(len(checked_features_df), precursor_metadata['precursor_id']))
     return checked_features_df
 
 # prepare the metadata and raw points for the feature detection
