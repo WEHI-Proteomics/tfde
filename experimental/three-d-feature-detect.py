@@ -179,7 +179,7 @@ config.read(args.ini_file)
 frames_properties_df = load_frame_properties(CONVERTED_DATABASE_NAME)
 
 FEATURES_DIR = "{}/features-3did".format(EXPERIMENT_DIR)
-FEATURES_FILE = '{}/exp-{}-run-{}-features-3did.pkl'.format(CUBOIDS_DIR, args.experiment_name, args.run_name)
+FEATURES_FILE = '{}/exp-{}-run-{}-features-3did.pkl'.format(FEATURES_DIR, args.experiment_name, args.run_name)
 
 # set up the output directory
 if os.path.exists(FEATURES_DIR):
