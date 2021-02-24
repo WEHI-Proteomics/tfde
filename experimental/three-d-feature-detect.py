@@ -169,7 +169,7 @@ print('loaded {} precursor cuboids from {}'.format(len(precursor_cuboids_df), CU
 
 # limit the cuboids to just the selected one
 if args.precursor_id is not None:
-    precursor_cuboids_df = precursor_cuboids_df[(precursor_cuboids_df.precursor_id == args.precursor_id)]
+    precursor_cuboids_df = precursor_cuboids_df[(precursor_cuboids_df.precursor_cuboid_id == args.precursor_id)]
 
 # parse the config file
 config = configparser.ConfigParser(interpolation=ExtendedInterpolation())
