@@ -67,17 +67,6 @@ def pixel_y_from_scan(scan):
     pixel_y = int((scan - SCAN_MIN) * PIXELS_PER_SCAN)
     return pixel_y
 
-# set a zero pixel's colour to be the channel-wise mean of its neighbours
-def interpolate_pixels(tile_im_array):
-    for x in range(4, PIXELS_X-4):
-        for y in range(4, PIXELS_Y-4):
-            c = tile_im_array[y,x]
-            n = tile_im_array[y-4:y+5,x-1:x+2]
-            if (not c.any()) and n.any():  # this is a zero pixel and there is at least one non-zero pixel in this region
-                n = n.reshape((n.shape[0] * n.shape[1], n.shape[2]))
-                tile_im_array[y,x] = np.mean(n, axis=0)
-    return tile_im_array
-
 
 print('loading raw data from {}'.format(CONVERTED_DATABASE_NAME))
 db_conn = sqlite3.connect(CONVERTED_DATABASE_NAME)
@@ -134,9 +123,6 @@ for group_name,group_df in pixel_intensity_df.groupby(['frame_id'], as_index=Fal
         y = r[1]
         c = r[2]
         tile_im_array[y,x,:] = c
-
-    # fill in zero pixels with interpolated values
-    tile_im_array = interpolate_pixels(tile_im_array)
 
     # create an image of the intensity array
     tile = Image.fromarray(tile_im_array, 'RGB')
