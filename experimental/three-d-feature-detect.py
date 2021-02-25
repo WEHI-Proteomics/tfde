@@ -85,7 +85,7 @@ def detect_ms1_features(precursor_cuboid_row, converted_db_name):
     # create the metadata record
     cuboid_metadata = {}
     cuboid_metadata['precursor_id'] = precursor_cuboid_row.precursor_cuboid_id
-    cuboid_metadata['window_mz_lower'] = precursor_cuboid_row.mz_lower
+    cuboid_metadata['window_mz_lower'] = precursor_cuboid_row.mz_lower - (ms1_args.CARBON_MASS_DIFFERENCE / 1) # get more points in case we need to look for a missed monoisotopic peak - assume charge 1+ to allow for maximum distance to the left
     cuboid_metadata['window_mz_upper'] = precursor_cuboid_row.mz_upper
     cuboid_metadata['wide_mz_lower'] = precursor_cuboid_row.mz_lower - (ms1_args.CARBON_MASS_DIFFERENCE / 1) # get more points in case we need to look for a missed monoisotopic peak - assume charge 1+ to allow for maximum distance to the left
     cuboid_metadata['wide_mz_upper'] = precursor_cuboid_row.mz_upper
