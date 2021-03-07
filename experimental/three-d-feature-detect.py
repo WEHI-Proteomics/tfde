@@ -88,7 +88,7 @@ def detect_ms1_features(precursor_cuboid_row, converted_db_name):
     cuboid_metadata['window_mz_lower'] = precursor_cuboid_row.mz_lower
     cuboid_metadata['window_mz_upper'] = precursor_cuboid_row.mz_upper
     cuboid_metadata['wide_mz_lower'] = precursor_cuboid_row.mz_lower - (ms1_args.CARBON_MASS_DIFFERENCE / 1) # get more points in case we need to look for a missed monoisotopic peak - assume charge 1+ to allow for maximum distance to the left
-    cuboid_metadata['wide_mz_upper'] = precursor_cuboid_row.mz_upper
+    cuboid_metadata['wide_mz_upper'] = precursor_cuboid_row.mz_upper + (ms1_args.CARBON_MASS_DIFFERENCE / 1)
     cuboid_metadata['window_scan_width'] = precursor_cuboid_row.scan_upper - precursor_cuboid_row.scan_lower
     cuboid_metadata['fe_scan_lower'] = precursor_cuboid_row.scan_lower
     cuboid_metadata['fe_scan_upper'] = precursor_cuboid_row.scan_upper
@@ -106,7 +106,7 @@ def detect_ms1_features(precursor_cuboid_row, converted_db_name):
 
     # load the raw points for this cuboid
     db_conn = sqlite3.connect(converted_db_name)
-    ms1_points_df = pd.read_sql_query("select frame_id,mz,scan,intensity,retention_time_secs from frames where frame_type == {} and mz >= {} and mz <= {} and scan >= {} and scan <= {} and retention_time_secs >= {} and retention_time_secs <= {}".format(FRAME_TYPE_MS1, cuboid_metadata['wide_mz_lower'], precursor_cuboid_row.mz_upper, precursor_cuboid_row.scan_lower, precursor_cuboid_row.scan_upper, precursor_cuboid_row.rt_lower, precursor_cuboid_row.rt_upper), db_conn)
+    ms1_points_df = pd.read_sql_query("select frame_id,mz,scan,intensity,retention_time_secs from frames where frame_type == {} and mz >= {} and mz <= {} and scan >= {} and scan <= {} and retention_time_secs >= {} and retention_time_secs <= {}".format(FRAME_TYPE_MS1, cuboid_metadata['wide_mz_lower'], cuboid_metadata['wide_mz_upper'], precursor_cuboid_row.scan_lower, precursor_cuboid_row.scan_upper, precursor_cuboid_row.rt_lower, precursor_cuboid_row.rt_upper), db_conn)
     db_conn.close()
 
     # adjust the args
