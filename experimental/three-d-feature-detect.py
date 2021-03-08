@@ -181,10 +181,11 @@ frames_properties_df = load_frame_properties(CONVERTED_DATABASE_NAME)
 FEATURES_DIR = "{}/features-3did".format(EXPERIMENT_DIR)
 FEATURES_FILE = '{}/exp-{}-run-{}-features-3did.pkl'.format(FEATURES_DIR, args.experiment_name, args.run_name)
 
-# set up the output directory
-if os.path.exists(FEATURES_DIR):
-    shutil.rmtree(FEATURES_DIR)
-os.makedirs(FEATURES_DIR)
+if args.precursor_id is None:
+    # set up the output directory
+    if os.path.exists(FEATURES_DIR):
+        shutil.rmtree(FEATURES_DIR)
+    os.makedirs(FEATURES_DIR)
 
 # set up Ray
 print("setting up Ray")
