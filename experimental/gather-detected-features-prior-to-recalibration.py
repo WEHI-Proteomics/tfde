@@ -7,6 +7,7 @@ import argparse
 parser = argparse.ArgumentParser(description='Gather the detected features for analysis.')
 parser.add_argument('-eb','--experiment_base_dir', type=str, default='./experiments', help='Path to the experiments directory.', required=False)
 parser.add_argument('-en','--experiment_name', type=str, help='Name of the experiment.', required=True)
+args = parser.parse_args()
 
 
 # check the experiment directory exists
