@@ -25,16 +25,19 @@ if os.path.isfile(FEATURES_DB_NAME):
 
 run_names = glob.glob('{}/{}_*'.format(FEATURES_BASE_DIR, args.experiment_name))
 print('found {} runs in {}'.format(len(run_names), FEATURES_BASE_DIR))
-df_l = []
 db_conn = sqlite3.connect(FEATURES_DB_NAME)
 for r in run_names:
     run_name = r.split('/')[-1]
     features_dir = '{}/{}'.format(FEATURES_BASE_DIR, run_name)
     run_feature_files = glob.glob("{}/exp-{}-run-{}-features-precursor-*.pkl".format(features_dir, args.experiment_name, run_name))
     print("found {} feature files for the run {}".format(len(run_feature_files), run_name))
+    df_l = []
     for file in run_feature_files:
         df = pd.read_pickle(file)
-        df['run_name'] = run_name
+        df.drop(['candidate_phr_error','mono_adjusted','original_phr','original_phr_error','rt_curve_fit','scan_curve_fit'], axis=1, inplace=True)
         df['envelope'] = df.apply(lambda row: json.dumps([tuple(e) for e in row.envelope]), axis=1)
-        df.to_sql(name='features', con=db_conn, if_exists='append', index=False)
+        df['run_name'] = run_name
+        df_l.append(df)
+    run_features_df = pd.concat(df_l, axis=0, sort=False)
+    run_features_df.to_sql(name='features', con=db_conn, if_exists='append', index=False)
 db_conn.close()
