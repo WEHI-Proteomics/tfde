@@ -17,19 +17,19 @@ if not os.path.exists(EXPERIMENT_DIR):
     print("The experiment directory is required but doesn't exist: {}".format(EXPERIMENT_DIR))
     sys.exit(1)
 
-FEATURES_DIR = "{}/features".format(EXPERIMENT_DIR)
-FEATURES_DB_NAME = "{}/detected-features-no-recal.sqlite".format(FEATURES_DIR)
+FEATURES_BASE_DIR = "{}/features".format(EXPERIMENT_DIR)
+FEATURES_DB_NAME = "{}/detected-features-no-recal.sqlite".format(FEATURES_BASE_DIR)
 if os.path.isfile(FEATURES_DB_NAME):
     os.remove(FEATURES_DB_NAME)
 
-run_names = glob.glob('{}/{}_*'.format(FEATURES_DIR, args.experiment_name))
-print('found {} runs in {}'.format(len(run_names), FEATURES_DIR))
+run_names = glob.glob('{}/{}_*'.format(FEATURES_BASE_DIR, args.experiment_name))
+print('found {} runs in {}'.format(len(run_names), FEATURES_BASE_DIR))
 df_l = []
 db_conn = sqlite3.connect(FEATURES_DB_NAME)
 for r in run_names:
     run_name = r.split('/')[-1]
-    features_dir = '{}/{}'.format(FEATURES_DIR, run_name)
-    run_feature_files = glob.glob("{}/exp-{}-run-{}-features-precursor-*.pkl".format(features_dir, experiment_name, run_name))
+    features_dir = '{}/{}'.format(FEATURES_BASE_DIR, run_name)
+    run_feature_files = glob.glob("{}/exp-{}-run-{}-features-precursor-*.pkl".format(features_dir, args.experiment_name, run_name))
     print("found {} feature files for the run {}".format(len(run_feature_files), run_name))
     for file in run_feature_files:
         df = pd.read_pickle(file)
