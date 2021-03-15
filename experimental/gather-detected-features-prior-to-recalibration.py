@@ -22,7 +22,7 @@ FEATURES_DB_NAME = "{}/detected-features-no-recal.sqlite".format(FEATURES_DIR)
 if os.path.isfile(FEATURES_DB_NAME):
     os.remove(FEATURES_DB_NAME)
 
-run_names = glob.glob('{}/exp-*'.format(FEATURES_DIR))
+run_names = glob.glob('{}/{}_*'.format(FEATURES_DIR, args.experiment_name))
 print('found {} runs in {}'.format(len(run_names), FEATURES_DIR))
 df_l = []
 db_conn = sqlite3.connect(FEATURES_DB_NAME)
