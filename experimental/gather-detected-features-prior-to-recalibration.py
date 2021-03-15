@@ -2,6 +2,7 @@ import pandas as pd
 import glob
 import sqlite3
 import argparse
+import os
 
 
 parser = argparse.ArgumentParser(description='Gather the detected features for analysis.')
