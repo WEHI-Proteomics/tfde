@@ -34,10 +34,10 @@ for r in run_names:
     df_l = []
     for file in run_feature_files:
         df = pd.read_pickle(file)
-        df.drop(['candidate_phr_error','mono_adjusted','original_phr','original_phr_error','rt_curve_fit','scan_curve_fit'], axis=1, inplace=True)
-        df['envelope'] = df.apply(lambda row: json.dumps([tuple(e) for e in row.envelope]), axis=1)
-        df['run_name'] = run_name
         df_l.append(df)
     run_features_df = pd.concat(df_l, axis=0, sort=False)
+    run_features_df.drop(['candidate_phr_error','mono_adjusted','original_phr','original_phr_error','rt_curve_fit','scan_curve_fit'], axis=1, inplace=True)
+    run_features_df['envelope'] = df.apply(lambda row: json.dumps([tuple(e) for e in row.envelope]), axis=1)
+    run_features_df['run_name'] = run_name
     run_features_df.to_sql(name='features', con=db_conn, if_exists='append', index=False)
 db_conn.close()
