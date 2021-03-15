@@ -34,5 +34,6 @@ for r in run_names:
     for file in run_feature_files:
         df = pd.read_pickle(file)
         df['run_name'] = run_name
+        df['envelope'] = df.apply(lambda row: [tuple(e) for e in row.envelope], axis=1)
         df.to_sql(name='features', con=db_conn, if_exists='append', index=False)
 db_conn.close()
