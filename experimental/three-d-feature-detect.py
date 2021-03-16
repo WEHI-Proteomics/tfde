@@ -47,13 +47,24 @@ def ms1_intensity_descent(ms1_peaks_a, ms1_peak_delta):
             ms1_peaks_a = np.delete(ms1_peaks_a, peak_indexes, axis=0)
     return np.array(ms1_peaks_l)
 
-# process a precursor cuboid to detect ms1 features
-def ms1(precursor_metadata, ms1_points_df, args):
-    # find features in the cuboid
-    features_df = find_features(precursor_metadata, ms1_points_df, args)
-    features_df['monoisotopic_mass'] = (features_df.monoisotopic_mz * features_df.charge) - (args.PROTON_MASS * features_df.charge)
-    print("found {} features for precursor {}".format(len(features_df), precursor_metadata['precursor_id']))
-    return checked_features_df
+# find 3sigma for a specified m/z
+def calculate_ms1_peak_delta(mz):
+    instrument_resolution = 40000
+    delta_m = mz / instrument_resolution  # FWHM of the peak
+    sigma = delta_m / 2.35482  # std dev is FWHM / 2.35482. See https://en.wikipedia.org/wiki/Full_width_at_half_maximum
+    ms1_peak_delta = 3 * sigma  # 99.7% of values fall within +/- 3 sigma
+    return ms1_peak_delta
+    
+# calculate the sum of the raw points in the mono m/z
+def calculate_cuboid_intensity_at_mz(centre_mz, raw_points):
+    mz_delta = calculate_ms1_peak_delta(centre_mz)
+    mz_lower = centre_mz - mz_delta
+    mz_upper = centre_mz + mz_delta
+
+    # extract the raw points for this peak
+    mono_points_df = raw_points[(raw_points.mz >= mz_lower) & (raw_points.mz <= mz_upper)]
+    mono_intensity = mono_points_df.intensity.sum()
+    return mono_intensity
 
 # prepare the metadata and raw points for the feature detection
 @ray.remote
@@ -90,12 +101,13 @@ def detect_ms1_features(precursor_cuboid_row, converted_db_name):
         feature_d['monoisotopic_mz'] = row.mono_mz
         feature_d['charge'] = row.charge
         feature_d['monoisotopic_mass'] = (feature_d['monoisotopic_mz'] * feature_d['charge']) - (PROTON_MASS * feature_d['charge'])
-        feature_d['intensity'] = row.intensity
+        feature_d['intensity_from_deconvolution'] = row.intensity
         feature_d['envelope'] = json.dumps([tuple(e) for e in row.envelope])
         feature_d['isotope_count'] = len(row.envelope)
         feature_d['deconvolution_score'] = row.score
         # from the precursor cuboid
         feature_d['precursor_id'] = precursor_cuboid_row.precursor_cuboid_id
+        feature_d['intensity_three_sigma'] = calculate_cuboid_intensity_at_mz(centre_mz=row.mono_mz, raw_points=ms1_points_df)
         feature_d['scan_apex'] = precursor_cuboid_row.anchor_point_scan
         feature_d['scan_lower'] = precursor_cuboid_row.scan_lower
         feature_d['scan_upper'] = precursor_cuboid_row.scan_upper
