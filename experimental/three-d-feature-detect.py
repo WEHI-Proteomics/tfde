@@ -92,6 +92,7 @@ def detect_ms1_features(precursor_cuboid_row, converted_db_name):
         feature_d['monoisotopic_mass'] = (feature_d['monoisotopic_mz'] * feature_d['charge']) - (PROTON_MASS * feature_d['charge'])
         feature_d['intensity'] = row.intensity
         feature_d['envelope'] = json.dumps([tuple(e) for e in row.envelope])
+        feature_d['isotope_count'] = len(row.envelope)
         feature_d['deconvolution_score'] = row.score
         # from the precursor cuboid
         feature_d['precursor_id'] = precursor_cuboid_row.precursor_cuboid_id
