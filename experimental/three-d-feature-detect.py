@@ -105,7 +105,7 @@ def detect_ms1_features(precursor_cuboid_row, converted_db_name):
         feature_l.append(feature_d)
     features_df = pd.DataFrame(feature_l)
 
-    print("found {} features for precursor {}".format(len(features_df), row.precursor_cuboid_id))
+    print("found {} features for precursor {}".format(len(features_df), precursor_cuboid_row.precursor_cuboid_id))
     return features_df
 
 # determine the number of workers based on the number of available cores and the proportion of the machine to be used
