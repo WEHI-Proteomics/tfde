@@ -9,6 +9,8 @@ import multiprocessing as mp
 import ray
 import sqlite3
 import shutil
+from ms_deisotope import deconvolute_peaks, averagine, scoring
+from ms_deisotope.deconvolution import peak_retention_strategy
 
 # frame types for PASEF mode
 FRAME_TYPE_MS1 = 0
