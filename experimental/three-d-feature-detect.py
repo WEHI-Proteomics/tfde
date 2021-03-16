@@ -52,18 +52,9 @@ def find_closest_ms1_frame_to_rt(frames_properties_df, retention_time_secs):
 # process a precursor cuboid to detect ms1 features
 def ms1(precursor_metadata, ms1_points_df, args):
     # find features in the cuboid
-    checked_features_l = []
     features_df = find_features(precursor_metadata, ms1_points_df, args)
-    if features_df is not None:
-        features_df.reset_index(drop=True, inplace=True)
-        for idx,feature in features_df.iterrows():
-            feature_d = check_monoisotopic_peak(feature=feature, raw_points=ms1_points_df, idx=idx, total=len(features_df), args=args)
-            checked_features_l.append(feature_d)
-
-    checked_features_df = pd.DataFrame(checked_features_l)
-    if len(checked_features_df) > 0:
-        checked_features_df['monoisotopic_mass'] = (checked_features_df.monoisotopic_mz * checked_features_df.charge) - (args.PROTON_MASS * checked_features_df.charge)
-    print("found {} features for precursor {}".format(len(checked_features_df), precursor_metadata['precursor_id']))
+    features_df['monoisotopic_mass'] = (features_df.monoisotopic_mz * features_df.charge) - (args.PROTON_MASS * features_df.charge)
+    print("found {} features for precursor {}".format(len(features_df), precursor_metadata['precursor_id']))
     return checked_features_df
 
 # prepare the metadata and raw points for the feature detection
