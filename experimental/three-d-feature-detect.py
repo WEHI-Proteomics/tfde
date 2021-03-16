@@ -86,19 +86,22 @@ def detect_ms1_features(precursor_cuboid_row, converted_db_name):
     feature_l = []
     for row in deconvolution_features_df.itertuples():
         feature_d = {}
+        # from deconvolution for this feature
         feature_d['monoisotopic_mz'] = row.mono_mz
         feature_d['charge'] = row.charge
         feature_d['monoisotopic_mass'] = (feature_d['monoisotopic_mz'] * feature_d['charge']) - (PROTON_MASS * feature_d['charge'])
         feature_d['intensity'] = row.intensity
-        feature_d['scan_apex'] = row.anchor_point_scan
-        feature_d['scan_lower'] = row.scan_lower
-        feature_d['scan_upper'] = row.scan_upper
-        feature_d['rt_apex'] = row.anchor_point_retention_time_secs
-        feature_d['rt_lower'] = row.rt_lower
-        feature_d['rt_upper'] = row.rt_upper
         feature_d['envelope'] = json.dumps([tuple(e) for e in row.envelope])
-        feature_d['precursor_id'] = row.precursor_cuboid_id
         feature_d['deconvolution_score'] = row.score
+        # from the precursor cuboid
+        feature_d['precursor_id'] = precursor_cuboid_row.precursor_cuboid_id
+        feature_d['scan_apex'] = precursor_cuboid_row.anchor_point_scan
+        feature_d['scan_lower'] = precursor_cuboid_row.scan_lower
+        feature_d['scan_upper'] = precursor_cuboid_row.scan_upper
+        feature_d['rt_apex'] = precursor_cuboid_row.anchor_point_retention_time_secs
+        feature_d['rt_lower'] = precursor_cuboid_row.rt_lower
+        feature_d['rt_upper'] = precursor_cuboid_row.rt_upper
+        # add it to the list
         feature_l.append(feature_d)
     features_df = pd.DataFrame(feature_l)
 
@@ -110,6 +113,11 @@ def number_of_workers():
     number_of_cores = mp.cpu_count()
     number_of_workers = int(args.proportion_of_cores_to_use * number_of_cores)
     return number_of_workers
+
+# generate a unique feature_id from the precursor id and the feature sequence number found for that precursor
+def generate_feature_id(precursor_id, feature_sequence_number):
+    feature_id = (precursor_id * 100) + feature_sequence_number  # assumes there will not be more than 99 features found for a precursor
+    return feature_id
 
 ###################################
 parser = argparse.ArgumentParser(description='Detect the features precursor cuboids found in a run with 3D intensity descent.')
@@ -179,8 +187,14 @@ if not ray.is_initialized():
 
 # find the features in each precursor cuboid
 features_l = ray.get([detect_ms1_features.remote(precursor_cuboid_row=row, converted_db_name=CONVERTED_DATABASE_NAME) for row in precursor_cuboids_df.itertuples()])
+
 # join the list of dataframes into a single dataframe
 features_df = pd.concat(features_l, axis=0, sort=False)
 
+# assign each feature an identifier based on the precursor it was found in
+features_df['feature_id'] = np.arange(start=1, stop=len(features_df)+1)
+features_df['feature_id'] = features_df['feature_id'].apply(lambda x: generate_feature_id(precursor_id, x))
+
+# write out all the features
 print("writing {} features to {}".format(len(features_df), FEATURES_FILE))
 features_df.to_pickle(FEATURES_FILE)
