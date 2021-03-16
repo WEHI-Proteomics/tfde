@@ -64,6 +64,8 @@ def calculate_cuboid_intensity_at_mz(centre_mz, raw_points):
     # extract the raw points for this peak
     mono_points_df = raw_points[(raw_points.mz >= mz_lower) & (raw_points.mz <= mz_upper)]
     mono_intensity = mono_points_df.intensity.sum()
+    print('mz_lower {}, mz_upper {}, {} points, intensity {}'.format(round(mz_lower,4), round(mz_upper,4), len(mono_points_df), mono_intensity))
+
     return mono_intensity
 
 # prepare the metadata and raw points for the feature detection
