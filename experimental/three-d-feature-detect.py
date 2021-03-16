@@ -84,7 +84,7 @@ def detect_ms1_features(precursor_cuboid_row, converted_db_name):
 
     # determine the feature attributes
     feature_l = []
-    for row in deconvolution_features_df.itertuples():
+    for idx,row in enumerate(deconvolution_features_df.itertuples()):
         feature_d = {}
         # from deconvolution for this feature
         feature_d['monoisotopic_mz'] = row.mono_mz
@@ -101,9 +101,14 @@ def detect_ms1_features(precursor_cuboid_row, converted_db_name):
         feature_d['rt_apex'] = precursor_cuboid_row.anchor_point_retention_time_secs
         feature_d['rt_lower'] = precursor_cuboid_row.rt_lower
         feature_d['rt_upper'] = precursor_cuboid_row.rt_upper
+        feature_d['feature_id'] = generate_feature_id(precursor_cuboid_row.precursor_cuboid_id, idx+1)
         # add it to the list
         feature_l.append(feature_d)
     features_df = pd.DataFrame(feature_l)
+
+    # assign each feature an identifier based on the precursor it was found in
+    features_df['feature_id'] = np.arange(start=1, stop=len(features_df)+1)
+    features_df['feature_id'] = features_df['feature_id'].apply(lambda x: generate_feature_id(precursor_cuboid_row.precursor_cuboid_id, x))
 
     print("found {} features for precursor {}".format(len(features_df), precursor_cuboid_row.precursor_cuboid_id))
     return features_df
@@ -190,10 +195,6 @@ features_l = ray.get([detect_ms1_features.remote(precursor_cuboid_row=row, conve
 
 # join the list of dataframes into a single dataframe
 features_df = pd.concat(features_l, axis=0, sort=False)
-
-# assign each feature an identifier based on the precursor it was found in
-features_df['feature_id'] = np.arange(start=1, stop=len(features_df)+1)
-features_df['feature_id'] = features_df['feature_id'].apply(lambda x: generate_feature_id(precursor_id, x))
 
 # write out all the features
 print("writing {} features to {}".format(len(features_df), FEATURES_FILE))
