@@ -4,13 +4,8 @@ import sys
 import os.path
 import argparse
 import time
-import configparser
-from configparser import ExtendedInterpolation
 import json
 import multiprocessing as mp
-sys.path.append('/home/ubuntu/open-path/pda/packaged/')
-from process_precursor_cuboid_ms1 import find_features, check_monoisotopic_peak
-from argparse import Namespace
 import ray
 import sqlite3
 import shutil
@@ -19,35 +14,36 @@ import shutil
 FRAME_TYPE_MS1 = 0
 FRAME_TYPE_MS2 = 8
 
-# returns a dataframe with the frame properties
-def load_frame_properties(converted_db_name):
-    # get all the isolation windows
-    db_conn = sqlite3.connect(converted_db_name)
-    frames_properties_df = pd.read_sql_query("select * from frame_properties order by Id ASC;", db_conn)
-    db_conn.close()
+# include points from either side of the intense point, in Da
+MS1_PEAK_DELTA = 0.1
 
-    print("loaded {} frame_properties from {}".format(len(frames_properties_df), converted_db_name))
-    return frames_properties_df
+PROTON_MASS = 1.007276
 
-# find the closest lower ms1 frame_id, and the closest upper ms1 frame_id
-def find_closest_ms1_frame_to_rt(frames_properties_df, retention_time_secs):
-    # find the frame ids within this range of RT
-    df = frames_properties_df[(frames_properties_df.Time > retention_time_secs) & (frames_properties_df.MsMsType == FRAME_TYPE_MS1)]
-    if len(df) > 0:
-        closest_ms1_frame_above_rt = df.Id.min()
-    else:
-        # couldn't find an ms1 frame above this RT, so just use the last one
-        closest_ms1_frame_above_rt = frames_properties_df[(frames_properties_df.MsMsType == FRAME_TYPE_MS1)].Id.max()
-    df = frames_properties_df[(frames_properties_df.Time < retention_time_secs) & (frames_properties_df.MsMsType == FRAME_TYPE_MS1)]
-    if len(df) > 0:
-        closest_ms1_frame_below_rt = df.Id.max()
-    else:
-        # couldn't find an ms1 frame below this RT, so just use the first one
-        closest_ms1_frame_below_rt = frames_properties_df[(frames_properties_df.MsMsType == FRAME_TYPE_MS1)].Id.min()
-    result = {}
-    result['below'] = closest_ms1_frame_below_rt
-    result['above'] = closest_ms1_frame_above_rt
-    return result
+# takes a numpy array of intensity, and another of mz
+def mz_centroid(_int_f, _mz_f):
+    return ((_int_f/_int_f.sum()) * _mz_f).sum()
+
+# ms1_peaks_a is a numpy array of [mz,intensity]
+# returns a numpy array of [mz_centroid,summed_intensity]
+def ms1_intensity_descent(ms1_peaks_a, ms1_peak_delta):
+    # intensity descent
+    ms1_peaks_l = []
+    while len(ms1_peaks_a) > 0:
+        # find the most intense point
+        max_intensity_index = np.argmax(ms1_peaks_a[:,1])
+        peak_mz = ms1_peaks_a[max_intensity_index,0]
+        peak_mz_lower = peak_mz - ms1_peak_delta
+        peak_mz_upper = peak_mz + ms1_peak_delta
+
+        # get all the raw points within this m/z region
+        peak_indexes = np.where((ms1_peaks_a[:,0] >= peak_mz_lower) & (ms1_peaks_a[:,0] <= peak_mz_upper))[0]
+        if len(peak_indexes) > 0:
+            mz_cent = mz_centroid(ms1_peaks_a[peak_indexes,1], ms1_peaks_a[peak_indexes,0])
+            summed_intensity = ms1_peaks_a[peak_indexes,1].sum()
+            ms1_peaks_l.append((mz_cent, summed_intensity))
+            # remove the raw points assigned to this peak
+            ms1_peaks_a = np.delete(ms1_peaks_a, peak_indexes, axis=0)
+    return np.array(ms1_peaks_l)
 
 # process a precursor cuboid to detect ms1 features
 def ms1(precursor_metadata, ms1_points_df, args):
@@ -60,52 +56,52 @@ def ms1(precursor_metadata, ms1_points_df, args):
 # prepare the metadata and raw points for the feature detection
 @ray.remote
 def detect_ms1_features(precursor_cuboid_row, converted_db_name):
-
-    # use the ms1 function to perform the feature detection step
-    ms1_args = Namespace()
-    # ms1_args.experiment_name = args.experiment_name
-    # ms1_args.run_name = args.run_name
-    ms1_args.MS1_PEAK_DELTA = config.getfloat('ms1', 'MS1_PEAK_DELTA')
-    ms1_args.SATURATION_INTENSITY = config.getfloat('common', 'SATURATION_INTENSITY')
-    ms1_args.MAX_MS1_PEAK_HEIGHT_RATIO_ERROR = config.getfloat('ms1', 'MAX_MS1_PEAK_HEIGHT_RATIO_ERROR')
-    ms1_args.PROTON_MASS = config.getfloat('common', 'PROTON_MASS')
-    ms1_args.INSTRUMENT_RESOLUTION = config.getfloat('common', 'INSTRUMENT_RESOLUTION')
-    ms1_args.NUMBER_OF_STD_DEV_MZ = config.getfloat('ms1', 'NUMBER_OF_STD_DEV_MZ')
-    ms1_args.CARBON_MASS_DIFFERENCE = config.getfloat('common', 'CARBON_MASS_DIFFERENCE')
-
-    # create the metadata record
-    cuboid_metadata = {}
-    cuboid_metadata['precursor_id'] = precursor_cuboid_row.precursor_cuboid_id
-    cuboid_metadata['window_mz_lower'] = precursor_cuboid_row.mz_lower
-    cuboid_metadata['window_mz_upper'] = precursor_cuboid_row.mz_upper
-    cuboid_metadata['wide_mz_lower'] = precursor_cuboid_row.mz_lower - (ms1_args.CARBON_MASS_DIFFERENCE / 1) # get more points in case we need to look for a missed monoisotopic peak - assume charge 1+ to allow for maximum distance to the left
-    cuboid_metadata['wide_mz_upper'] = precursor_cuboid_row.mz_upper + (ms1_args.CARBON_MASS_DIFFERENCE / 1)
-    cuboid_metadata['window_scan_width'] = precursor_cuboid_row.scan_upper - precursor_cuboid_row.scan_lower
-    cuboid_metadata['fe_scan_lower'] = precursor_cuboid_row.scan_lower
-    cuboid_metadata['fe_scan_upper'] = precursor_cuboid_row.scan_upper
-    cuboid_metadata['wide_scan_lower'] = precursor_cuboid_row.scan_lower
-    cuboid_metadata['wide_scan_upper'] = precursor_cuboid_row.scan_upper
-    cuboid_metadata['wide_rt_lower'] = precursor_cuboid_row.rt_lower
-    cuboid_metadata['wide_rt_upper'] = precursor_cuboid_row.rt_upper
-    cuboid_metadata['fe_ms1_frame_lower'] = find_closest_ms1_frame_to_rt(frames_properties_df=frames_properties_df, retention_time_secs=precursor_cuboid_row.rt_lower)['below']
-    cuboid_metadata['fe_ms1_frame_upper'] = find_closest_ms1_frame_to_rt(frames_properties_df=frames_properties_df, retention_time_secs=precursor_cuboid_row.rt_upper)['above']
-    cuboid_metadata['fe_ms2_frame_lower'] = None
-    cuboid_metadata['fe_ms2_frame_upper'] = None
-    cuboid_metadata['wide_frame_lower'] = find_closest_ms1_frame_to_rt(frames_properties_df=frames_properties_df, retention_time_secs=precursor_cuboid_row.rt_lower)['below']
-    cuboid_metadata['wide_frame_upper'] = find_closest_ms1_frame_to_rt(frames_properties_df=frames_properties_df, retention_time_secs=precursor_cuboid_row.rt_upper)['above']
-    cuboid_metadata['number_of_windows'] = 1
-
     # load the raw points for this cuboid
     db_conn = sqlite3.connect(converted_db_name)
-    ms1_points_df = pd.read_sql_query("select frame_id,mz,scan,intensity,retention_time_secs from frames where frame_type == {} and mz >= {} and mz <= {} and scan >= {} and scan <= {} and retention_time_secs >= {} and retention_time_secs <= {}".format(FRAME_TYPE_MS1, cuboid_metadata['wide_mz_lower'], cuboid_metadata['wide_mz_upper'], precursor_cuboid_row.scan_lower, precursor_cuboid_row.scan_upper, precursor_cuboid_row.rt_lower, precursor_cuboid_row.rt_upper), db_conn)
+    ms1_points_df = pd.read_sql_query("select frame_id,mz,scan,intensity,retention_time_secs from frames where frame_type == {} and mz >= {} and mz <= {} and scan >= {} and scan <= {} and retention_time_secs >= {} and retention_time_secs <= {}".format(FRAME_TYPE_MS1, precursor_cuboid_row.mz_lower, precursor_cuboid_row.mz_upper, precursor_cuboid_row.scan_lower, precursor_cuboid_row.scan_upper, precursor_cuboid_row.rt_lower, precursor_cuboid_row.rt_upper), db_conn)
     db_conn.close()
 
-    # adjust the args
-    ms1_args.precursor_id = precursor_cuboid_row.precursor_cuboid_id
+    # intensity descent
+    raw_points_a = ms1_points_df[['mz','intensity']].to_numpy()
+    peaks_a = ms1_intensity_descent(raw_points_a, MS1_PEAK_DELTA)
 
-    # detect the features
-    df = ms1(precursor_metadata=cuboid_metadata, ms1_points_df=ms1_points_df, args=ms1_args)
-    return df
+    # deconvolution
+    ms1_peaks_l = list(map(tuple, peaks_a))
+    deconvoluted_peaks, _priority_targets = deconvolute_peaks(ms1_peaks_l, use_quick_charge=True, averagine=averagine.peptide, charge_range=(1,5), error_tolerance=5.0, scorer=scoring.MSDeconVFitter(100.0), truncate_after=0.95)
+
+    # collect features from deconvolution
+    ms1_deconvoluted_peaks_l = []
+    for peak_idx,peak in enumerate(deconvoluted_peaks):
+        # discard a monoisotopic peak that has either of the first two peaks as placeholders (indicated by intensity of 1)
+        if ((len(peak.envelope) >= 3) and (peak.envelope[0][1] > 1) and (peak.envelope[1][1] > 1)):
+            mono_peak_mz = peak.mz
+            mono_intensity = peak.intensity
+            second_peak_mz = peak.envelope[1][0]
+            ms1_deconvoluted_peaks_l.append((mono_peak_mz, second_peak_mz, mono_intensity, peak.score, peak.signal_to_noise, peak.charge, peak.envelope, peak.neutral_mass))
+    deconvolution_features_df = pd.DataFrame(ms1_deconvoluted_peaks_l, columns=['mono_mz','second_peak_mz','intensity','score','SN','charge','envelope','neutral_mass'])
+
+    # determine the feature attributes
+    feature_l = []
+    for row in deconvolution_features_df.itertuples():
+        feature_d = {}
+        feature_d['monoisotopic_mz'] = row.mono_mz
+        feature_d['charge'] = row.charge
+        feature_d['monoisotopic_mass'] = (feature_d['monoisotopic_mz'] * feature_d['charge']) - (PROTON_MASS * feature_d['charge'])
+        feature_d['intensity'] = row.intensity
+        feature_d['scan_apex'] = row.anchor_point_scan
+        feature_d['scan_lower'] = row.scan_lower
+        feature_d['scan_upper'] = row.scan_upper
+        feature_d['rt_apex'] = row.anchor_point_retention_time_secs
+        feature_d['rt_lower'] = row.rt_lower
+        feature_d['rt_upper'] = row.rt_upper
+        feature_d['envelope'] = json.dumps([tuple(e) for e in row.envelope])
+        feature_d['precursor_id'] = row.precursor_cuboid_id
+        feature_d['deconvolution_score'] = row.score
+        feature_l.append(feature_d)
+    features_df = pd.DataFrame(feature_l)
+
+    print("found {} features for precursor {}".format(len(features_df), row.precursor_cuboid_id))
+    return features_df
 
 # determine the number of workers based on the number of available cores and the proportion of the machine to be used
 def number_of_workers():
@@ -161,13 +157,6 @@ print('loaded {} precursor cuboids from {}'.format(len(precursor_cuboids_df), CU
 # limit the cuboids to just the selected one
 if args.precursor_id is not None:
     precursor_cuboids_df = precursor_cuboids_df[(precursor_cuboids_df.precursor_cuboid_id == args.precursor_id)]
-
-# parse the config file
-config = configparser.ConfigParser(interpolation=ExtendedInterpolation())
-config.read(args.ini_file)
-
-# load the frame properties
-frames_properties_df = load_frame_properties(CONVERTED_DATABASE_NAME)
 
 FEATURES_DIR = "{}/features-3did".format(EXPERIMENT_DIR)
 FEATURES_FILE = '{}/exp-{}-run-{}-features-3did.pkl'.format(FEATURES_DIR, args.experiment_name, args.run_name)
