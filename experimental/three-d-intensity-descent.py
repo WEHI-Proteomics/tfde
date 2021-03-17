@@ -133,7 +133,7 @@ def find_precursor_cuboids(segment_mz_lower, segment_mz_upper):
         visualise_d['scan_lower'] = scan_lower
 
         # trim the candidate region to account for the selected peak in mobility
-        candidate_region_df = candidate_region_df[(candidate_region_df.scan >= scan_lower) & (candidate_region_df.scan <= scan_upper)]
+        candidate_region_df = candidate_region_df[(candidate_region_df.scan >= scan_lower) & (candidate_region_df.scan <= scan_upper)].copy()
 
         # segment the raw data to reveal the isotopes in the feature
         X = candidate_region_df[['mz','scan']].values
