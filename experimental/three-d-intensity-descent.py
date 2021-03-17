@@ -240,9 +240,10 @@ def find_precursor_cuboids(segment_mz_lower, segment_mz_upper):
                 # set the intensity so we don't process them again
                 raw_df.loc[raw_df.point_id.isin(points_to_remove_l), 'intensity'] = PROCESSED_INTENSITY_INDICATOR
 
-                # save the visualisation info
-                with open('visualise-three-d-{}.pkl'.format(int(anchor_point_s.intensity)), 'wb') as f:
-                    pickle.dump(visualise_d, f)
+                if args.visualise:
+                    # save the visualisation info
+                    with open('visualise-three-d-{}.pkl'.format(int(anchor_point_s.intensity)), 'wb') as f:
+                        pickle.dump(visualise_d, f)
             else:
                 # just remove the anchor point's cluster because we could not form a series
 
@@ -327,6 +328,7 @@ parser.add_argument('-ru','--rt_upper', type=int, default='2200', help='Upper li
 parser.add_argument('-mapi','--minimum_anchor_point_intensity', type=int, default='500', help='Stop looking for anchor points below this intensity.', required=False)
 parser.add_argument('-rm','--ray_mode', type=str, choices=['local','cluster'], help='The Ray mode to use.', required=True)
 parser.add_argument('-pc','--proportion_of_cores_to_use', type=float, default=0.9, help='Proportion of the machine\'s cores to use for this program.', required=False)
+parser.add_argument('-v','--visualise', action='store_true', help='Generate data for visualisation of the segmentation.')
 args = parser.parse_args()
 
 # Print the arguments for the log
