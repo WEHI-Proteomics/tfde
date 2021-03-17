@@ -24,9 +24,9 @@ FEATURES_DB_NAME = "{}/detected-features-no-recal.sqlite".format(FEATURES_BASE_D
 if os.path.isfile(FEATURES_DB_NAME):
     os.remove(FEATURES_DB_NAME)
 
+run_names = []
 if args.run_name is None:
     r_l = glob.glob('{}/{}_*'.format(FEATURES_BASE_DIR, args.experiment_name))
-    run_names = []
     for r in r_l:
         run_names.append(r.split('/')[-1])
 else:
