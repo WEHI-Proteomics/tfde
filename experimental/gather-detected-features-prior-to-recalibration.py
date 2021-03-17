@@ -34,7 +34,7 @@ else:
 
 print('found {} runs in {}'.format(len(run_names), FEATURES_BASE_DIR))
 db_conn = sqlite3.connect(FEATURES_DB_NAME)
-for r in run_names:
+for run_name in run_names:
     features_dir = '{}/{}'.format(FEATURES_BASE_DIR, run_name)
     run_feature_files = glob.glob("{}/exp-{}-run-{}-features-precursor-*.pkl".format(features_dir, args.experiment_name, run_name))
     print("found {} feature files for the run {}".format(len(run_feature_files), run_name))
