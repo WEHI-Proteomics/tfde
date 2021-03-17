@@ -103,13 +103,14 @@ def detect_ms1_features(precursor_cuboid_row, converted_db_name):
         feature_d['monoisotopic_mz'] = row.mono_mz
         feature_d['charge'] = row.charge
         feature_d['monoisotopic_mass'] = (feature_d['monoisotopic_mz'] * feature_d['charge']) - (PROTON_MASS * feature_d['charge'])
-        feature_d['intensity_from_deconvolution'] = row.intensity
+        feature_d['feature_intensity'] = row.intensity
+        feature_d['envelope_mono_peak_intensity'] = row.envelope[0][1]
         feature_d['envelope'] = json.dumps([tuple(e) for e in row.envelope])
         feature_d['isotope_count'] = len(row.envelope)
         feature_d['deconvolution_score'] = row.score
         # from the precursor cuboid
         feature_d['precursor_id'] = precursor_cuboid_row.precursor_cuboid_id
-        feature_d['intensity_three_sigma'] = calculate_cuboid_intensity_at_mz(centre_mz=row.mono_mz, raw_points=ms1_points_df)
+        feature_d['envelope_mono_peak_three_sigma_intensity'] = calculate_cuboid_intensity_at_mz(centre_mz=row.envelope[0][0], raw_points=ms1_points_df)
         feature_d['scan_apex'] = precursor_cuboid_row.anchor_point_scan
         feature_d['scan_lower'] = precursor_cuboid_row.scan_lower
         feature_d['scan_upper'] = precursor_cuboid_row.scan_upper
