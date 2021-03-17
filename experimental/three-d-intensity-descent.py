@@ -168,6 +168,7 @@ def find_precursor_cuboids(segment_mz_lower, segment_mz_upper):
             dbscan = DBSCAN(eps=1, min_samples=2, metric=isotope_metric)  # minimum isotopes to form a series
             clusters = dbscan.fit_predict(X)
             centroids_df['isotope_cluster'] = clusters
+            visualise_d['centroids_df'] = centroids_df
 
             number_of_isotope_clusters = len(centroids_df[centroids_df.isotope_cluster >= 0].isotope_cluster.unique())
             anchor_point_isotope_cluster = centroids_df[(centroids_df.cluster == anchor_point_cluster)].iloc[0].isotope_cluster
