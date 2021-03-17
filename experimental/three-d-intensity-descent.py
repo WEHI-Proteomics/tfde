@@ -130,7 +130,7 @@ def find_precursor_cuboids(segment_mz_lower, segment_mz_upper):
         scan_lower = lower_x
         scan_upper = upper_x
         visualise_d['scan_lower'] = scan_lower
-        visualise_d['scan_lower'] = scan_lower
+        visualise_d['scan_upper'] = scan_upper
 
         # trim the candidate region to account for the selected peak in mobility
         candidate_region_df = candidate_region_df[(candidate_region_df.scan >= scan_lower) & (candidate_region_df.scan <= scan_upper)].copy()
