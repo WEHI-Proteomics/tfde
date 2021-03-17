@@ -12,6 +12,7 @@ import sqlite3
 import shutil
 import sys
 import multiprocessing as mp
+import pickle
 
 # define a straight line to exclude the charge-1 cloud
 def scan_coords_for_single_charge_region(mz_lower, mz_upper):
@@ -88,9 +89,14 @@ def find_precursor_cuboids(segment_mz_lower, segment_mz_upper):
 
         # constrain the raw points to the search area for this anchor point
         candidate_region_df = raw_df[(raw_df.intensity >= INTENSITY_THRESHOLD) & (raw_df.frame_id == anchor_point_s.frame_id) & (raw_df.mz >= mz_lower) & (raw_df.mz <= mz_upper) & (raw_df.scan >= scan_lower) & (raw_df.scan <= scan_upper)].copy()
+        visualise_d = {}
+        visualise_d['anchor_point_s'] = anchor_point_s
+        visualise_d['initial_candidate_region_df'] = candidate_region_df
 
         peak_mz_lower = anchor_point_s.mz-MS1_PEAK_DELTA
         peak_mz_upper = anchor_point_s.mz+MS1_PEAK_DELTA
+        visualise_d['peak_mz_lower'] = peak_mz_lower
+        visualise_d['peak_mz_upper'] = peak_mz_upper
 
         # constrain the points to the anchor point's m/z
         peak_df = candidate_region_df[(candidate_region_df.mz >= peak_mz_lower) & (candidate_region_df.mz <= peak_mz_upper)]
@@ -106,11 +112,13 @@ def find_precursor_cuboids(segment_mz_lower, segment_mz_upper):
             filtered = True
         except:
             filtered = False
+        visualise_d['scan_df'] = scan_df
 
         # find the valleys nearest the anchor point
         valley_idxs = peakutils.indexes(-scan_df.filtered_intensity.values, thres=VALLEYS_THRESHOLD_SCAN, min_dist=VALLEYS_MIN_DIST_SCAN, thres_abs=False)
         valley_x_l = scan_df.iloc[valley_idxs].scan.to_list()
         valleys_df = scan_df[scan_df.scan.isin(valley_x_l)]
+        visualise_d['scan_valleys_df'] = valleys_df
 
         upper_x = valleys_df[valleys_df.scan > anchor_point_s.scan].scan.min()
         if math.isnan(upper_x):
@@ -121,6 +129,8 @@ def find_precursor_cuboids(segment_mz_lower, segment_mz_upper):
 
         scan_lower = lower_x
         scan_upper = upper_x
+        visualise_d['scan_lower'] = scan_lower
+        visualise_d['scan_lower'] = scan_lower
 
         # trim the candidate region to account for the selected peak in mobility
         candidate_region_df = candidate_region_df[(candidate_region_df.scan >= scan_lower) & (candidate_region_df.scan <= scan_upper)]
@@ -132,6 +142,7 @@ def find_precursor_cuboids(segment_mz_lower, segment_mz_upper):
         dbscan = DBSCAN(eps=1, min_samples=3, metric=point_metric)
         clusters = dbscan.fit_predict(X)
         candidate_region_df['cluster'] = clusters
+        visualise_d['candidate_region_with_isotope_clusters_df'] = candidate_region_df
         anchor_point_cluster = candidate_region_df[candidate_region_df.point_id == anchor_point_s.point_id].iloc[0].cluster
 
         number_of_point_clusters = len(candidate_region_df[candidate_region_df.cluster >= 0].cluster.unique())
@@ -166,6 +177,7 @@ def find_precursor_cuboids(segment_mz_lower, segment_mz_upper):
                 candidate_region_df = pd.merge(candidate_region_df, centroids_df[['cluster','isotope_cluster']], how='left', left_on=['cluster'], right_on=['cluster'])
                 candidate_region_df.fillna(value=-1, inplace=True)
                 candidate_region_df.isotope_cluster = candidate_region_df.isotope_cluster.astype(int)
+                visualise_d['candidate_region_with_isotope_series_clusters_df'] = candidate_region_df
 
                 # estimate the number of isotopes in the feature
                 number_of_point_clusters_in_anchor_isotope_cluster = len(centroids_df[(centroids_df.isotope_cluster == anchor_point_isotope_cluster)])
@@ -191,11 +203,13 @@ def find_precursor_cuboids(segment_mz_lower, segment_mz_upper):
                     filtered = True
                 except:
                     filtered = False
+                visualise_d['rt_df'] = rt_df
 
                 # find the valleys nearest the anchor point
                 valley_idxs = peakutils.indexes(-rt_df.filtered_intensity.values, thres=VALLEYS_THRESHOLD_RT, min_dist=VALLEYS_MIN_DIST_RT, thres_abs=False)
                 valley_x_l = rt_df.iloc[valley_idxs].retention_time_secs.to_list()
                 valleys_df = rt_df[rt_df.retention_time_secs.isin(valley_x_l)]
+                visualise_d['rt_valleys_df'] = valleys_df
 
                 upper_x = valleys_df[valleys_df.retention_time_secs > anchor_point_s.retention_time_secs].retention_time_secs.min()
                 if math.isnan(upper_x):
@@ -206,6 +220,8 @@ def find_precursor_cuboids(segment_mz_lower, segment_mz_upper):
 
                 rt_lower = lower_x
                 rt_upper = upper_x
+                visualise_d['rt_lower'] = rt_lower
+                visualise_d['rt_upper'] = rt_upper
 
                 # make sure the RT extent isn't too extreme
                 if (rt_upper - rt_lower) > RT_BASE_PEAK_WIDTH:
@@ -223,6 +239,10 @@ def find_precursor_cuboids(segment_mz_lower, segment_mz_upper):
 
                 # set the intensity so we don't process them again
                 raw_df.loc[raw_df.point_id.isin(points_to_remove_l), 'intensity'] = PROCESSED_INTENSITY_INDICATOR
+
+                # save the visualisation info
+                with open('visualise-three-d-{}.pkl'.format(int(anchor_point_s.intensity)), 'wb') as f:
+                    pickle.dump(visualise_d, f)
             else:
                 # just remove the anchor point's cluster because we could not form a series
 
