@@ -72,8 +72,6 @@ columns_to_drop_l.append('dup_rt_lower')
 columns_to_drop_l.append('dup_rt_upper')
 columns_to_drop_l.append('dup_composite_key')
 
-features_df.sort_values(by=['intensity'], ascending=False, inplace=True)
-
 # see if any detections have a duplicate - if so, find the dup with the highest intensity and keep it
 keep_l = []
 for row in features_df.itertuples():
