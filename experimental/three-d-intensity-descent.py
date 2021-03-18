@@ -191,6 +191,10 @@ def find_precursor_cuboids(segment_mz_lower, segment_mz_upper):
                 mz_upper = points_in_cluster_df.mz.max()
                 scan_lower = points_in_cluster_df.scan.min()
                 scan_upper = points_in_cluster_df.scan.max()
+                visualise_d['isotope_cluster_mz_lower'] = mz_lower
+                visualise_d['isotope_cluster_mz_upper'] = mz_upper
+                visualise_d['isotope_cluster_scan_lower'] = scan_lower
+                visualise_d['isotope_cluster_scan_upper'] = scan_upper
 
                 # determine the feature's extent in RT by looking at the anchor point's peak
                 ap_raw_points_in_rt_df = raw_df[(raw_df.mz >= anchor_point_cluster_points_df.mz.min()) & (raw_df.mz <= anchor_point_cluster_points_df.mz.max()) & (raw_df.scan >= anchor_point_cluster_points_df.scan.min()) & (raw_df.scan <= anchor_point_cluster_points_df.scan.max()) & (raw_df.retention_time_secs >= anchor_point_s.retention_time_secs-RT_BASE_PEAK_WIDTH) & (raw_df.retention_time_secs <= anchor_point_s.retention_time_secs+RT_BASE_PEAK_WIDTH)]
@@ -221,8 +225,8 @@ def find_precursor_cuboids(segment_mz_lower, segment_mz_upper):
 
                 rt_lower = lower_x
                 rt_upper = upper_x
-                visualise_d['rt_lower'] = rt_lower
-                visualise_d['rt_upper'] = rt_upper
+                visualise_d['isotope_cluster_rt_lower'] = rt_lower
+                visualise_d['isotope_cluster_rt_upper'] = rt_upper
 
                 # make sure the RT extent isn't too extreme
                 if (rt_upper - rt_lower) > RT_BASE_PEAK_WIDTH:
