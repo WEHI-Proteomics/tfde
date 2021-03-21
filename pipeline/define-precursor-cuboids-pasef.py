@@ -170,7 +170,7 @@ frame_properties_df = load_frame_properties()
 
 # load the isolation windows table
 print("loading the isolation windows")
-isolation_window_df = load_isolation_windows(config)
+isolation_window_df = load_isolation_windows()
 
 print("Setting up Ray")
 if not ray.is_initialized():
