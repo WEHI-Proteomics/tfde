@@ -18,7 +18,7 @@ def number_of_workers():
     return number_of_workers
 
 # returns a dataframe with the prepared isolation windows
-def load_isolation_windows():
+def load_isolation_windows(cfg):
     # get all the isolation windows
     db_conn = sqlite3.connect(CONVERTED_DATABASE_NAME)
     isolation_window_df = pd.read_sql_query("select * from isolation_windows order by Precursor", db_conn)
@@ -159,11 +159,10 @@ CUBOIDS_COORDS_FILE = '{}/exp-{}-run-{}-precursor-cuboid-coords-pasef.pkl'.forma
 # get the frame metadata
 print("loading the frames information")
 frames_properties_df = load_frame_properties()
-frames_properties_a = frames_properties_df[['Id','Time','MsMsType']].to_numpy()
 
 # load the isolation windows table
 print("loading the isolation windows")
-isolation_window_df = load_isolation_windows()
+isolation_window_df = load_isolation_windows(config)
 
 print("Setting up Ray")
 if not ray.is_initialized():
@@ -176,7 +175,7 @@ if not ray.is_initialized():
 
 # determine the coordinates of each precursor's cuboid
 print("extracting the raw points for each precursor cuboid for {} precursors".format(len(isolation_window_df.Precursor.unique())))
-coords_l = ray.get([process_precursor.remote(precursor_id=group_name, precursor_group_df=group_df) for group_name,group_df in isolation_window_df.groupby('Precursor')])
+coords_l = ray.get([process_precursor.remote(cfg=config, frame_properties_df=frame_properties_df, precursor_id=group_name, precursor_group_df=group_df) for group_name,group_df in isolation_window_df.groupby('Precursor')])
 coords_df = pd.DataFrame(coords_l)
 coords_df.to_pickle(CUBOIDS_COORDS_FILE)
 
