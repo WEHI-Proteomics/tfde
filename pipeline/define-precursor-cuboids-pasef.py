@@ -147,8 +147,8 @@ if not os.path.isfile(args.ini_file):
     print("The configuration file doesn't exist: {}".format(args.ini_file))
     sys.exit(1)
 
-config = configparser.ConfigParser(interpolation=ExtendedInterpolation())
-config.read(args.ini_file)
+cfg = configparser.ConfigParser(interpolation=ExtendedInterpolation())
+cfg.read(args.ini_file)
 
 # set up constants
 FRAME_TYPE_MS1 = cfg.getint('common','FRAME_TYPE_MS1')
