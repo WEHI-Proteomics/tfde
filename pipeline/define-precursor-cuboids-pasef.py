@@ -95,12 +95,12 @@ def process_precursor(cfg, frame_properties_df, precursor_id, precursor_group_df
     wide_scan_upper = int(window.ScanNumEnd + scan_width)
     fe_ms2_frame_lower = precursor_group_df.Frame.astype(int).min()               # only the ms2 frames associated with the precursor
     fe_ms2_frame_upper = precursor_group_df.Frame.astype(int).max()
-    fe_ms1_frame_lower,_ = find_closest_ms1_frame_to_ms2_frame(cfg, frames_properties_df,fe_ms2_frame_lower)
-    _,fe_ms1_frame_upper = find_closest_ms1_frame_to_ms2_frame(cfg, frames_properties_df,fe_ms2_frame_upper)
+    fe_ms1_frame_lower,_ = find_closest_ms1_frame_to_ms2_frame(cfg, frame_properties_df,fe_ms2_frame_lower)
+    _,fe_ms1_frame_upper = find_closest_ms1_frame_to_ms2_frame(cfg, frame_properties_df,fe_ms2_frame_upper)
     wide_rt_lower = metadata_for_frame(frame_properties_df, precursor_group_df.Frame.astype(int).min())['retention_time_secs'] - cfg.getfloat('ms1','RT_BASE_PEAK_WIDTH_SECS')  # get more points to make sure we get the apex of the peak in retention time
     wide_rt_upper = metadata_for_frame(frame_properties_df, precursor_group_df.Frame.astype(int).max())['retention_time_secs'] + cfg.getfloat('ms1','RT_BASE_PEAK_WIDTH_SECS')
-    wide_frame_lower,_ = find_closest_ms1_frame_to_rt(cfg, frames_properties_df, wide_rt_lower)
-    _,wide_frame_upper = find_closest_ms1_frame_to_rt(cfg, frames_properties_df, wide_rt_upper)
+    wide_frame_lower,_ = find_closest_ms1_frame_to_rt(cfg, frame_properties_df, wide_rt_lower)
+    _,wide_frame_upper = find_closest_ms1_frame_to_rt(cfg, frame_properties_df, wide_rt_upper)
 
     # collect the coordinates for the precursor cuboid
     precursor_coordinates_columns = ['precursor_id', 'window_mz_lower', 'window_mz_upper', 'wide_mz_lower', 'wide_mz_upper', 'window_scan_width', 'fe_scan_lower', 'fe_scan_upper', 'wide_scan_lower', 'wide_scan_upper', 'wide_rt_lower', 'wide_rt_upper', 'fe_ms1_frame_lower', 'fe_ms1_frame_upper', 'fe_ms2_frame_lower', 'fe_ms2_frame_upper', 'wide_frame_lower', 'wide_frame_upper', 'number_of_windows']
