@@ -24,10 +24,10 @@ def load_isolation_windows(cfg):
     isolation_window_df = pd.read_sql_query("select * from isolation_windows order by Precursor", db_conn)
     db_conn.close()
 
-    isolation_window_df['mz_lower'] = isolation_window_df.IsolationMz - (isolation_window_df.IsolationWidth / 2) - cfg.MS2_MZ_ISOLATION_WINDOW_EXTENSION
-    isolation_window_df['mz_upper'] = isolation_window_df.IsolationMz + (isolation_window_df.IsolationWidth / 2) + cfg.MS2_MZ_ISOLATION_WINDOW_EXTENSION
+    isolation_window_df['mz_lower'] = isolation_window_df.IsolationMz - (isolation_window_df.IsolationWidth / 2) - cfg.getfloat('ms2', 'MS2_MZ_ISOLATION_WINDOW_EXTENSION')
+    isolation_window_df['mz_upper'] = isolation_window_df.IsolationMz + (isolation_window_df.IsolationWidth / 2) + cfg.getfloat('ms2', 'MS2_MZ_ISOLATION_WINDOW_EXTENSION')
 
-    if cfg.small_set_mode:
+    if args.small_set_mode:
         # select a subset around the middle
         start_idx = int(len(isolation_window_df) / 2)
         stop_idx = start_idx + 20
@@ -56,20 +56,21 @@ def metadata_for_frame(frame_properties_df, frame_id):
 # find the closest lower ms1 frame_id, and the closest upper ms1 frame_id
 # number_of_ms1_frames_padding is the number of ms1 frames to extend
 def find_closest_ms1_frame_to_rt(cfg, frames_properties_df, retention_time_secs, number_of_ms1_frames_padding=0):
+    ms1_frame_props_df = frames_properties_df[(frames_properties_df.MsMsType == cfg.getint('common','FRAME_TYPE_MS1'))]
     # find the closest ms1 frame above
-    df = frames_properties_df[(frames_properties_df.Time > retention_time_secs) & (frames_properties_df.MsMsType == cfg.FRAME_TYPE_MS1)]
+    df = ms1_frame_props_df[(ms1_frame_props_df.Time > retention_time_secs)]
     if len(df) > (number_of_ms1_frames_padding+1):
         closest_ms1_frame_above_rt = df.iloc[number_of_ms1_frames_padding].Id
     else:
         # couldn't find an ms1 frame above this RT, so just use the last one
-        closest_ms1_frame_above_rt = frames_properties_df[(frames_properties_df.MsMsType == cfg.FRAME_TYPE_MS1)].Id.max()
+        closest_ms1_frame_above_rt = ms1_frame_props_df.Id.max()
     # find the closest ms1 frame below
-    df = frames_properties_df[(frames_properties_df.Time < retention_time_secs) & (frames_properties_df.MsMsType == cfg.FRAME_TYPE_MS1)]
+    df = ms1_frame_props_df[(ms1_frame_props_df.Time < retention_time_secs)]
     if len(df) > (number_of_ms1_frames_padding+1):
         closest_ms1_frame_below_rt = df.iloc[-(number_of_ms1_frames_padding+1)].Id
     else:
         # couldn't find an ms1 frame below this RT, so just use the first one
-        closest_ms1_frame_below_rt = frames_properties_df[(frames_properties_df.MsMsType == cfg.FRAME_TYPE_MS1)].Id.min()
+        closest_ms1_frame_below_rt = ms1_frame_props_df.Id.min()
     return (closest_ms1_frame_below_rt, closest_ms1_frame_above_rt)
 
 # find the closest lower ms1 frame_id, and the closest upper ms1 frame_id
