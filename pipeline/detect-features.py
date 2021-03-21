@@ -208,7 +208,7 @@ def generate_feature_id(precursor_id, feature_sequence_number):
     feature_id = (precursor_id * 100) + feature_sequence_number  # assumes there will not be more than 99 features found for a precursor
     return feature_id
 
-def extract_cuboid_attributes(precursor_cuboid_row, args.precursor_definition_method):
+def extract_cuboid_attributes(precursor_cuboid_row):
     cuboid_d = {}
     if args.precursor_definition_method == 'pasef':
         cuboid_d['precursor_id'] = precursor_cuboid_row.precursor_cuboid_id
@@ -226,7 +226,7 @@ def extract_cuboid_attributes(precursor_cuboid_row, args.precursor_definition_me
         cuboid_d['rt_apex'] = precursor_cuboid_row.anchor_point_retention_time_secs
         cuboid_d['rt_lower'] = precursor_cuboid_row.rt_lower
         cuboid_d['rt_upper'] = precursor_cuboid_row.rt_upper
-
+    return cuboid_d
 
 ###################################
 parser = argparse.ArgumentParser(description='Detect the features in a run\'s precursor cuboids.')
@@ -298,7 +298,7 @@ if not ray.is_initialized():
         ray.init(local_mode=True)
 
 # find the features in each precursor cuboid
-features_l = ray.get([detect_ms1_features.remote(precursor_cuboid_d=cuboid_d, converted_db_name=CONVERTED_DATABASE_NAME) for row in precursor_cuboids_df.itertuples()])
+features_l = ray.get([detect_ms1_features.remote(precursor_cuboid_row=row, converted_db_name=CONVERTED_DATABASE_NAME) for row in precursor_cuboids_df.itertuples()])
 
 # join the list of dataframes into a single dataframe
 features_df = pd.concat(features_l, axis=0, sort=False)
