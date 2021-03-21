@@ -18,9 +18,9 @@ def number_of_workers():
     return number_of_workers
 
 # returns a dataframe with the prepared isolation windows
-def load_isolation_windows(cfg):
+def load_isolation_windows():
     # get all the isolation windows
-    db_conn = sqlite3.connect(cfg.CONVERTED_DATABASE_NAME)
+    db_conn = sqlite3.connect(CONVERTED_DATABASE_NAME)
     isolation_window_df = pd.read_sql_query("select * from isolation_windows order by Precursor", db_conn)
     db_conn.close()
 
@@ -33,7 +33,7 @@ def load_isolation_windows(cfg):
         stop_idx = start_idx + 20
         isolation_window_df = isolation_window_df[start_idx:stop_idx]
 
-    print("loaded {} isolation windows from {}".format(len(isolation_window_df), cfg.CONVERTED_DATABASE_NAME))
+    print("loaded {} isolation windows from {}".format(len(isolation_window_df), CONVERTED_DATABASE_NAME))
     return isolation_window_df
 
 # returns a dataframe with the frame properties
@@ -78,13 +78,6 @@ def find_closest_ms1_frame_to_ms2_frame(cfg, frames_properties_df, ms2_frame_id)
     ms2_frame_rt = frames_properties_df[frames_properties_df.Id == ms2_frame_id].iloc[0].Time
     # get the closest ms1 frames
     return find_closest_ms1_frame_to_rt(cfg, frames_properties_df, ms2_frame_rt, cfg.RT_FRAGMENT_EVENT_DELTA_FRAMES)
-
-# find all the frame ids of a specified type within the range of RT
-def frames_in_rt_range(cfg, frames_properties_df, frame_type, rt_lower, rt_upper):
-    lower_frame_id, _ = find_closest_ms1_frame_to_rt(cfg, frames_properties_df,rt_lower)
-    _, upper_frame_id = find_closest_ms1_frame_to_rt(cfg, frames_properties_df,rt_upper)
-    frames_l = frames_properties_df[(frames_properties_df.MsMsType == frame_type) & (frames_properties_df.Id >= lower_frame_id) & (frames_properties_df.Id <= upper_frame_id)].Id.astype(int).tolist()
-    return frames_l
 
 @ray.remote
 def process_precursor(cfg, frame_properties_df, precursor_id, precursor_group_df):
