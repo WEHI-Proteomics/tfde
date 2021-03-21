@@ -9,7 +9,7 @@ import json
 import configparser
 from configparser import ExtendedInterpolation
 import multiprocessing as mp
-
+import ray
 
 # determine the number of workers based on the number of available cores and the proportion of the machine to be used
 def number_of_workers():
