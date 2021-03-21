@@ -159,7 +159,7 @@ CUBOIDS_COORDS_FILE = '{}/exp-{}-run-{}-precursor-cuboid-coords-pasef.pkl'.forma
 
 # get the frame metadata
 print("loading the frames information")
-frames_properties_df = load_frame_properties()
+frame_properties_df = load_frame_properties()
 
 # load the isolation windows table
 print("loading the isolation windows")
