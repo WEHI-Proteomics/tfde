@@ -64,7 +64,65 @@ def calculate_cuboid_intensity_at_mz(centre_mz, raw_points):
     # extract the raw points for this peak
     mono_points_df = raw_points[(raw_points.mz >= mz_lower) & (raw_points.mz <= mz_upper)]
     mono_intensity = mono_points_df.intensity.sum()
-    return mono_intensity
+    return (mono_intensity,mono_points_df)
+
+# determine the mono peak apex and extent in CCS and RT
+def determine_peak_characteristics(mono_mz, ms1_raw_points_df):
+    # determine the raw that belong to the mono peak
+    mono_intensity,mono_points_df = calculate_cuboid_intensity_at_mz(mono_mz, ms1_raw_points_df)
+    if len(mono_points_df) > 0:
+        # collapsing the monoisotopic's summed points onto the mobility dimension
+        scan_df = mono_points_df.groupby(['scan'], as_index=False).intensity.sum()
+        mobility_curve_fit = False
+        try:
+            guassian_params = peakutils.peak.gaussian_fit(scan_df.scan, scan_df.intensity, center_only=False)
+            scan_apex = guassian_params[1]
+            scan_side_width = min(2 * abs(guassian_params[2]), SCAN_BASE_PEAK_WIDTH)  # number of standard deviations either side of the apex
+            scan_lower = scan_apex - scan_side_width
+            scan_upper = scan_apex + scan_side_width
+            if (scan_apex >= wide_scan_lower) and (scan_apex <= wide_scan_upper):
+                mobility_curve_fit = True
+        except:
+            pass
+
+        # if we couldn't fit a curve to the mobility dimension, take the intensity-weighted centroid
+        if not mobility_curve_fit:
+            scan_apex = mz_centroid(scan_df.intensity.to_numpy(), scan_df.scan.to_numpy())
+            scan_lower = scan_apex - SCAN_BASE_PEAK_WIDTH
+            scan_upper = scan_apex + SCAN_BASE_PEAK_WIDTH
+
+        # In the RT dimension, look wider to find the apex
+        rt_df = mono_points_df.groupby(['frame_id','retention_time_secs'], as_index=False).intensity.sum()
+        rt_curve_fit = False
+        try:
+            guassian_params = peakutils.peak.gaussian_fit(rt_df.retention_time_secs, rt_df.intensity, center_only=False)
+            rt_apex = guassian_params[1]
+            rt_side_width = min(3 * abs(guassian_params[2]), RT_BASE_PEAK_WIDTH_SECS)  # number of standard deviations either side of the apex
+            rt_lower = rt_apex - rt_side_width
+            rt_upper = rt_apex + rt_side_width
+            if (rt_apex >= wide_rt_lower) and (rt_apex <= wide_rt_upper):
+                rt_curve_fit = True
+        except:
+            pass
+
+        # if we couldn't fit a curve to the RT dimension, take the intensity-weighted centroid
+        if not rt_curve_fit:
+            rt_apex = mz_centroid(rt_df.intensity.to_numpy(), rt_df.retention_time_secs.to_numpy())
+            rt_lower = rt_apex - RT_BASE_PEAK_WIDTH_SECS
+            rt_upper = rt_apex + RT_BASE_PEAK_WIDTH_SECS
+
+        # package the result
+        result_d = {}
+        result_d['scan_apex'] = scan_apex
+        result_d['scan_lower'] = scan_lower
+        result_d['scan_upper'] = scan_upper
+        result_d['rt_apex'] = rt_apex
+        result_d['rt_lower'] = rt_lower
+        result_d['rt_upper'] = rt_upper
+    else:
+        print('found no raw points where the mono peak should be: {}'.format(round(mono_mz,4)))
+        result = None
+    return result
 
 # prepare the metadata and raw points for the feature detection
 @ray.remote
@@ -103,18 +161,30 @@ def detect_ms1_features(precursor_cuboid_row, converted_db_name):
         feature_d['monoisotopic_mass'] = (feature_d['monoisotopic_mz'] * feature_d['charge']) - (PROTON_MASS * feature_d['charge'])
         feature_d['feature_intensity'] = row.intensity
         feature_d['envelope_mono_peak_intensity'] = row.envelope[0][1]
+        feature_d['envelope_mono_peak_three_sigma_intensity'],_ = calculate_cuboid_intensity_at_mz(centre_mz=row.envelope[0][0], raw_points=ms1_points_df)
         feature_d['envelope'] = json.dumps([tuple(e) for e in row.envelope])
         feature_d['isotope_count'] = len(row.envelope)
         feature_d['deconvolution_score'] = row.score
         # from the precursor cuboid
         feature_d['precursor_id'] = precursor_cuboid_row.precursor_cuboid_id
-        feature_d['envelope_mono_peak_three_sigma_intensity'] = calculate_cuboid_intensity_at_mz(centre_mz=row.envelope[0][0], raw_points=ms1_points_df)
-        feature_d['scan_apex'] = precursor_cuboid_row.anchor_point_scan
-        feature_d['scan_lower'] = precursor_cuboid_row.scan_lower
-        feature_d['scan_upper'] = precursor_cuboid_row.scan_upper
-        feature_d['rt_apex'] = precursor_cuboid_row.anchor_point_retention_time_secs
-        feature_d['rt_lower'] = precursor_cuboid_row.rt_lower
-        feature_d['rt_upper'] = precursor_cuboid_row.rt_upper
+        if args.precursor_definition_method == 'pasef':
+            mono_mz = row.envelope[0][0]
+            peak_d = determine_peak_characteristics(mono_mz, ms1_points_df)  # could also do this for 3did, but that method defines much tighter cuboids so it shouldn't be necessary
+            if peak_d is not None:
+                feature_d['scan_apex'] = peak_d['scan_apex']
+                feature_d['scan_lower'] = peak_d['scan_lower']
+                feature_d['scan_upper'] = peak_d['scan_upper']
+                feature_d['rt_apex'] = peak_d['rt_apex']
+                feature_d['rt_lower'] = peak_d['rt_lower']
+                feature_d['rt_upper'] = peak_d['rt_upper']
+        elif args.precursor_definition_method == '3did':
+            feature_d['scan_apex'] = precursor_cuboid_row.anchor_point_scan
+            feature_d['scan_lower'] = precursor_cuboid_row.scan_lower
+            feature_d['scan_upper'] = precursor_cuboid_row.scan_upper
+            feature_d['rt_apex'] = precursor_cuboid_row.anchor_point_retention_time_secs
+            feature_d['rt_lower'] = precursor_cuboid_row.rt_lower
+            feature_d['rt_upper'] = precursor_cuboid_row.rt_upper
+        # assign a unique identifier to this feature
         feature_d['feature_id'] = generate_feature_id(precursor_cuboid_row.precursor_cuboid_id, idx+1)
         # add it to the list
         feature_l.append(feature_d)
@@ -138,14 +208,35 @@ def generate_feature_id(precursor_id, feature_sequence_number):
     feature_id = (precursor_id * 100) + feature_sequence_number  # assumes there will not be more than 99 features found for a precursor
     return feature_id
 
+def extract_cuboid_attributes(precursor_cuboid_row, args.precursor_definition_method):
+    cuboid_d = {}
+    if args.precursor_definition_method == 'pasef':
+        cuboid_d['precursor_id'] = precursor_cuboid_row.precursor_cuboid_id
+        cuboid_d['scan_apex'] = precursor_cuboid_row.anchor_point_scan
+        cuboid_d['scan_lower'] = precursor_cuboid_row.scan_lower
+        cuboid_d['scan_upper'] = precursor_cuboid_row.scan_upper
+        cuboid_d['rt_apex'] = precursor_cuboid_row.anchor_point_retention_time_secs
+        cuboid_d['rt_lower'] = precursor_cuboid_row.rt_lower
+        cuboid_d['rt_upper'] = precursor_cuboid_row.rt_upper
+    else if args.precursor_definition_method == '3did':
+        cuboid_d['precursor_id'] = precursor_cuboid_row.precursor_cuboid_id
+        cuboid_d['scan_apex'] = precursor_cuboid_row.anchor_point_scan
+        cuboid_d['scan_lower'] = precursor_cuboid_row.scan_lower
+        cuboid_d['scan_upper'] = precursor_cuboid_row.scan_upper
+        cuboid_d['rt_apex'] = precursor_cuboid_row.anchor_point_retention_time_secs
+        cuboid_d['rt_lower'] = precursor_cuboid_row.rt_lower
+        cuboid_d['rt_upper'] = precursor_cuboid_row.rt_upper
+
+
 ###################################
-parser = argparse.ArgumentParser(description='Detect the features precursor cuboids found in a run with 3D intensity descent.')
+parser = argparse.ArgumentParser(description='Detect the features in a run\'s precursor cuboids.')
 parser.add_argument('-eb','--experiment_base_dir', type=str, default='./experiments', help='Path to the experiments directory.', required=False)
 parser.add_argument('-en','--experiment_name', type=str, help='Name of the experiment.', required=True)
 parser.add_argument('-rn','--run_name', type=str, help='Name of the run.', required=True)
+parser.add_argument('-pdm','--precursor_definition_method', type=str, choices=['pasef','3did'], help='The method used to define the precursor cuboids.', required=True)
 parser.add_argument('-ml','--mz_lower', type=int, default='100', help='Lower limit for m/z.', required=False)
 parser.add_argument('-mu','--mz_upper', type=int, default='1700', help='Upper limit for m/z.', required=False)
-parser.add_argument('-ini','--ini_file', type=str, default='./open-path/pda/pasef-process-short-gradient.ini', help='Path to the config file.', required=False)
+parser.add_argument('-ini','--ini_file', type=str, default='./otf-peak-detect/pipeline/pasef-process-short-gradient.ini', help='Path to the config file.', required=False)
 parser.add_argument('-pid', '--precursor_id', type=int, help='Only process this precursor ID.', required=False)
 parser.add_argument('-rm','--ray_mode', type=str, choices=['local','cluster'], help='The Ray mode to use.', required=True)
 parser.add_argument('-pc','--proportion_of_cores_to_use', type=float, default=0.9, help='Proportion of the machine\'s cores to use for this program.', required=False)
@@ -171,8 +262,13 @@ if not os.path.isfile(CONVERTED_DATABASE_NAME):
     print("The converted database is required but doesn't exist: {}".format(CONVERTED_DATABASE_NAME))
     sys.exit(1)
 
-CUBOIDS_DIR = "{}/precursor-cuboids-3did".format(EXPERIMENT_DIR)
-CUBOIDS_FILE = '{}/exp-{}-run-{}-mz-{}-{}-precursor-cuboids.pkl'.format(CUBOIDS_DIR, args.experiment_name, args.run_name, args.mz_lower, args.mz_upper)
+# input cuboids
+CUBOIDS_DIR = "{}/precursor-cuboids-{}".format(EXPERIMENT_DIR, args.precursor_definition_method)
+CUBOIDS_FILE = '{}/exp-{}-run-{}-mz-{}-{}-rt-{}-{}-precursor-cuboids-{}.pkl'.format(CUBOIDS_DIR, args.experiment_name, args.run_name, round(args.mz_lower), round(args.mz_upper), round(args.rt_lower), round(args.rt_upper), args.precursor_definition_method)
+
+# output features
+FEATURES_DIR = "{}/features-{}".format(EXPERIMENT_DIR, args.precursor_definition_method)
+FEATURES_FILE = '{}/exp-{}-run-{}-mz-{}-{}-rt-{}-{}-features-{}.pkl'.format(FEATURES_DIR, args.experiment_name, args.run_name, round(args.mz_lower), round(args.mz_upper), round(args.rt_lower), round(args.rt_upper), args.precursor_definition_method)
 
 # check the cuboids file
 if not os.path.isfile(CUBOIDS_FILE):
@@ -186,9 +282,6 @@ print('loaded {} precursor cuboids from {}'.format(len(precursor_cuboids_df), CU
 # limit the cuboids to just the selected one
 if args.precursor_id is not None:
     precursor_cuboids_df = precursor_cuboids_df[(precursor_cuboids_df.precursor_cuboid_id == args.precursor_id)]
-
-FEATURES_DIR = "{}/features-3did".format(EXPERIMENT_DIR)
-FEATURES_FILE = '{}/exp-{}-run-{}-features-3did.pkl'.format(FEATURES_DIR, args.experiment_name, args.run_name)
 
 if args.precursor_id is None:
     # set up the output directory
@@ -205,7 +298,7 @@ if not ray.is_initialized():
         ray.init(local_mode=True)
 
 # find the features in each precursor cuboid
-features_l = ray.get([detect_ms1_features.remote(precursor_cuboid_row=row, converted_db_name=CONVERTED_DATABASE_NAME) for row in precursor_cuboids_df.itertuples()])
+features_l = ray.get([detect_ms1_features.remote(precursor_cuboid_d=cuboid_d, converted_db_name=CONVERTED_DATABASE_NAME) for row in precursor_cuboids_df.itertuples()])
 
 # join the list of dataframes into a single dataframe
 features_df = pd.concat(features_l, axis=0, sort=False)
