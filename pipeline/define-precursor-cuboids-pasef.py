@@ -185,11 +185,14 @@ if not ray.is_initialized():
         ray.init(local_mode=True)
 
 # determine the coordinates of each precursor's cuboid
-print("extracting the raw points for each precursor cuboid for {} precursors".format(len(isolation_window_df.Precursor.unique())))
+print("defining the cuboids for {} precursors".format(len(isolation_window_df.Precursor.unique())))
 coords_l = ray.get([process_precursor.remote(frame_properties_df=frame_properties_df, precursor_id=group_name, precursor_group_df=group_df) for group_name,group_df in isolation_window_df.groupby('Precursor')])
 coords_df = pd.DataFrame(coords_l)
 coords_df['precursor_cuboid_id'] = coords_df.index
-coords_df.to_pickle(CUBOIDS_COORDS_FILE)
+
+# write them out
+print('writing {} cuboid definitions to {}'.format(len(coords_df), CUBOIDS_FILE))
+coords_df.to_pickle(CUBOIDS_FILE)
 
 stop_run = time.time()
 print("total running time ({}): {} seconds".format(parser.prog, round(stop_run-start_run,1)))
