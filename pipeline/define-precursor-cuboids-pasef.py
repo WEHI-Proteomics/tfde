@@ -183,6 +183,7 @@ if not ray.is_initialized():
 print("extracting the raw points for each precursor cuboid for {} precursors".format(len(isolation_window_df.Precursor.unique())))
 coords_l = ray.get([process_precursor.remote(frame_properties_df=frame_properties_df, precursor_id=group_name, precursor_group_df=group_df) for group_name,group_df in isolation_window_df.groupby('Precursor')])
 coords_df = pd.DataFrame(coords_l)
+coords_df['precursor_cuboid_id'] = coords_df.index
 coords_df.to_pickle(CUBOIDS_COORDS_FILE)
 
 stop_run = time.time()
