@@ -18,14 +18,14 @@ def number_of_workers():
     return number_of_workers
 
 # returns a dataframe with the prepared isolation windows
-def load_isolation_windows(cfg):
+def load_isolation_windows():
     # get all the isolation windows
     db_conn = sqlite3.connect(CONVERTED_DATABASE_NAME)
     isolation_window_df = pd.read_sql_query("select * from isolation_windows order by Precursor", db_conn)
     db_conn.close()
 
-    isolation_window_df['mz_lower'] = isolation_window_df.IsolationMz - (isolation_window_df.IsolationWidth / 2) - cfg.getfloat('ms2', 'MS2_MZ_ISOLATION_WINDOW_EXTENSION')
-    isolation_window_df['mz_upper'] = isolation_window_df.IsolationMz + (isolation_window_df.IsolationWidth / 2) + cfg.getfloat('ms2', 'MS2_MZ_ISOLATION_WINDOW_EXTENSION')
+    isolation_window_df['mz_lower'] = isolation_window_df.IsolationMz - (isolation_window_df.IsolationWidth / 2) - MS2_MZ_ISOLATION_WINDOW_EXTENSION
+    isolation_window_df['mz_upper'] = isolation_window_df.IsolationMz + (isolation_window_df.IsolationWidth / 2) + MS2_MZ_ISOLATION_WINDOW_EXTENSION
 
     if args.small_set_mode:
         # select a subset around the middle
@@ -55,8 +55,8 @@ def metadata_for_frame(frame_properties_df, frame_id):
 
 # find the closest lower ms1 frame_id, and the closest upper ms1 frame_id
 # number_of_ms1_frames_padding is the number of ms1 frames to extend
-def find_closest_ms1_frame_to_rt(cfg, frames_properties_df, retention_time_secs, number_of_ms1_frames_padding=0):
-    ms1_frame_props_df = frames_properties_df[(frames_properties_df.MsMsType == cfg.getint('common','FRAME_TYPE_MS1'))]
+def find_closest_ms1_frame_to_rt(frames_properties_df, retention_time_secs, number_of_ms1_frames_padding=0):
+    ms1_frame_props_df = frames_properties_df[(frames_properties_df.MsMsType == FRAME_TYPE_MS1)]
     # find the closest ms1 frame above
     df = ms1_frame_props_df[(ms1_frame_props_df.Time > retention_time_secs)]
     if len(df) > (number_of_ms1_frames_padding+1):
@@ -74,19 +74,19 @@ def find_closest_ms1_frame_to_rt(cfg, frames_properties_df, retention_time_secs,
     return (closest_ms1_frame_below_rt, closest_ms1_frame_above_rt)
 
 # find the closest lower ms1 frame_id, and the closest upper ms1 frame_id
-def find_closest_ms1_frame_to_ms2_frame(cfg, frames_properties_df, ms2_frame_id):
+def find_closest_ms1_frame_to_ms2_frame(frames_properties_df, ms2_frame_id):
     # get the ms2 frame's RT
     ms2_frame_rt = frames_properties_df[frames_properties_df.Id == ms2_frame_id].iloc[0].Time
     # get the closest ms1 frames
-    return find_closest_ms1_frame_to_rt(cfg, frames_properties_df, ms2_frame_rt, cfg.getint('ms1','RT_FRAGMENT_EVENT_DELTA_FRAMES'))
+    return find_closest_ms1_frame_to_rt(frames_properties_df, ms2_frame_rt, RT_FRAGMENT_EVENT_DELTA_FRAMES)
 
 @ray.remote
-def process_precursor(cfg, frame_properties_df, precursor_id, precursor_group_df):
+def process_precursor(frame_properties_df, precursor_id, precursor_group_df):
     # calculate the coordinates
     window = precursor_group_df.iloc[0]
     window_mz_lower = window.mz_lower                                             # the isolation window's m/z range
     window_mz_upper = window.mz_upper
-    wide_mz_lower = window_mz_lower - (cfg.getfloat('common','CARBON_MASS_DIFFERENCE') / 1)            # get more points in case we need to look for a missed monoisotopic peak - assume charge 1+ to allow for maximum distance to the left
+    wide_mz_lower = window_mz_lower - (CARBON_MASS_DIFFERENCE / 1)                # get more points in case we need to look for a missed monoisotopic peak - assume charge 1+ to allow for maximum distance to the left
     wide_mz_upper = window_mz_upper
     scan_width = int(window.ScanNumEnd - window.ScanNumBegin)                     # the isolation window's scan range
     fe_scan_lower = int(window.ScanNumBegin)                                      # fragmentation event scan range
@@ -95,12 +95,12 @@ def process_precursor(cfg, frame_properties_df, precursor_id, precursor_group_df
     wide_scan_upper = int(window.ScanNumEnd + scan_width)
     fe_ms2_frame_lower = precursor_group_df.Frame.astype(int).min()               # only the ms2 frames associated with the precursor
     fe_ms2_frame_upper = precursor_group_df.Frame.astype(int).max()
-    fe_ms1_frame_lower,_ = find_closest_ms1_frame_to_ms2_frame(cfg, frame_properties_df,fe_ms2_frame_lower)
-    _,fe_ms1_frame_upper = find_closest_ms1_frame_to_ms2_frame(cfg, frame_properties_df,fe_ms2_frame_upper)
-    wide_rt_lower = metadata_for_frame(frame_properties_df, precursor_group_df.Frame.astype(int).min())['retention_time_secs'] - cfg.getfloat('common','RT_BASE_PEAK_WIDTH_SECS')  # get more points to make sure we get the apex of the peak in retention time
-    wide_rt_upper = metadata_for_frame(frame_properties_df, precursor_group_df.Frame.astype(int).max())['retention_time_secs'] + cfg.getfloat('common','RT_BASE_PEAK_WIDTH_SECS')
-    wide_frame_lower,_ = find_closest_ms1_frame_to_rt(cfg, frame_properties_df, wide_rt_lower)
-    _,wide_frame_upper = find_closest_ms1_frame_to_rt(cfg, frame_properties_df, wide_rt_upper)
+    fe_ms1_frame_lower,_ = find_closest_ms1_frame_to_ms2_frame(frame_properties_df,fe_ms2_frame_lower)
+    _,fe_ms1_frame_upper = find_closest_ms1_frame_to_ms2_frame(frame_properties_df,fe_ms2_frame_upper)
+    wide_rt_lower = metadata_for_frame(frame_properties_df, precursor_group_df.Frame.astype(int).min())['retention_time_secs'] - RT_BASE_PEAK_WIDTH_SECS  # get more points to make sure we get the apex of the peak in retention time
+    wide_rt_upper = metadata_for_frame(frame_properties_df, precursor_group_df.Frame.astype(int).max())['retention_time_secs'] + RT_BASE_PEAK_WIDTH_SECS
+    wide_frame_lower,_ = find_closest_ms1_frame_to_rt(frame_properties_df, wide_rt_lower)
+    _,wide_frame_upper = find_closest_ms1_frame_to_rt(frame_properties_df, wide_rt_upper)
 
     # collect the coordinates for the precursor cuboid
     precursor_coordinates_columns = ['precursor_id', 'window_mz_lower', 'window_mz_upper', 'wide_mz_lower', 'wide_mz_upper', 'window_scan_width', 'fe_scan_lower', 'fe_scan_upper', 'wide_scan_lower', 'wide_scan_upper', 'wide_rt_lower', 'wide_rt_upper', 'fe_ms1_frame_lower', 'fe_ms1_frame_upper', 'fe_ms2_frame_lower', 'fe_ms2_frame_upper', 'wide_frame_lower', 'wide_frame_upper', 'number_of_windows']
@@ -150,6 +150,13 @@ if not os.path.isfile(args.ini_file):
 config = configparser.ConfigParser(interpolation=ExtendedInterpolation())
 config.read(args.ini_file)
 
+# set up constants
+FRAME_TYPE_MS1 = cfg.getint('common','FRAME_TYPE_MS1')
+MS2_MZ_ISOLATION_WINDOW_EXTENSION = cfg.getfloat('ms2', 'MS2_MZ_ISOLATION_WINDOW_EXTENSION')
+CARBON_MASS_DIFFERENCE = cfg.getfloat('common','CARBON_MASS_DIFFERENCE')
+RT_FRAGMENT_EVENT_DELTA_FRAMES = cfg.getint('ms1','RT_FRAGMENT_EVENT_DELTA_FRAMES')
+RT_BASE_PEAK_WIDTH_SECS = cfg.getfloat('common','RT_BASE_PEAK_WIDTH_SECS')
+
 # set up the precursor cuboids
 CUBOIDS_DIR = '{}/precursor-cuboids'.format(EXPERIMENT_DIR)
 if not os.path.exists(CUBOIDS_DIR):
@@ -176,7 +183,7 @@ if not ray.is_initialized():
 
 # determine the coordinates of each precursor's cuboid
 print("extracting the raw points for each precursor cuboid for {} precursors".format(len(isolation_window_df.Precursor.unique())))
-coords_l = ray.get([process_precursor.remote(cfg=config, frame_properties_df=frame_properties_df, precursor_id=group_name, precursor_group_df=group_df) for group_name,group_df in isolation_window_df.groupby('Precursor')])
+coords_l = ray.get([process_precursor.remote(frame_properties_df=frame_properties_df, precursor_id=group_name, precursor_group_df=group_df) for group_name,group_df in isolation_window_df.groupby('Precursor')])
 coords_df = pd.DataFrame(coords_l)
 coords_df.to_pickle(CUBOIDS_COORDS_FILE)
 
