@@ -78,7 +78,7 @@ def find_closest_ms1_frame_to_ms2_frame(cfg, frames_properties_df, ms2_frame_id)
     # get the ms2 frame's RT
     ms2_frame_rt = frames_properties_df[frames_properties_df.Id == ms2_frame_id].iloc[0].Time
     # get the closest ms1 frames
-    return find_closest_ms1_frame_to_rt(cfg, frames_properties_df, ms2_frame_rt, cfg.RT_FRAGMENT_EVENT_DELTA_FRAMES)
+    return find_closest_ms1_frame_to_rt(cfg, frames_properties_df, ms2_frame_rt, cfg.getint('ms1','RT_FRAGMENT_EVENT_DELTA_FRAMES'))
 
 @ray.remote
 def process_precursor(cfg, frame_properties_df, precursor_id, precursor_group_df):
@@ -86,7 +86,7 @@ def process_precursor(cfg, frame_properties_df, precursor_id, precursor_group_df
     window = precursor_group_df.iloc[0]
     window_mz_lower = window.mz_lower                                             # the isolation window's m/z range
     window_mz_upper = window.mz_upper
-    wide_mz_lower = window_mz_lower - (cfg.CARBON_MASS_DIFFERENCE / 1)            # get more points in case we need to look for a missed monoisotopic peak - assume charge 1+ to allow for maximum distance to the left
+    wide_mz_lower = window_mz_lower - (cfg.getfloat('common','CARBON_MASS_DIFFERENCE') / 1)            # get more points in case we need to look for a missed monoisotopic peak - assume charge 1+ to allow for maximum distance to the left
     wide_mz_upper = window_mz_upper
     scan_width = int(window.ScanNumEnd - window.ScanNumBegin)                     # the isolation window's scan range
     fe_scan_lower = int(window.ScanNumBegin)                                      # fragmentation event scan range
@@ -97,8 +97,8 @@ def process_precursor(cfg, frame_properties_df, precursor_id, precursor_group_df
     fe_ms2_frame_upper = precursor_group_df.Frame.astype(int).max()
     fe_ms1_frame_lower,_ = find_closest_ms1_frame_to_ms2_frame(cfg, frames_properties_df,fe_ms2_frame_lower)
     _,fe_ms1_frame_upper = find_closest_ms1_frame_to_ms2_frame(cfg, frames_properties_df,fe_ms2_frame_upper)
-    wide_rt_lower = metadata_for_frame(frame_properties_df, precursor_group_df.Frame.astype(int).min())['retention_time_secs'] - cfg.RT_BASE_PEAK_WIDTH_SECS  # get more points to make sure we get the apex of the peak in retention time
-    wide_rt_upper = metadata_for_frame(frame_properties_df, precursor_group_df.Frame.astype(int).max())['retention_time_secs'] + cfg.RT_BASE_PEAK_WIDTH_SECS
+    wide_rt_lower = metadata_for_frame(frame_properties_df, precursor_group_df.Frame.astype(int).min())['retention_time_secs'] - cfg.getfloat('ms1','RT_BASE_PEAK_WIDTH_SECS')  # get more points to make sure we get the apex of the peak in retention time
+    wide_rt_upper = metadata_for_frame(frame_properties_df, precursor_group_df.Frame.astype(int).max())['retention_time_secs'] + cfg.getfloat('ms1','RT_BASE_PEAK_WIDTH_SECS')
     wide_frame_lower,_ = find_closest_ms1_frame_to_rt(cfg, frames_properties_df, wide_rt_lower)
     _,wide_frame_upper = find_closest_ms1_frame_to_rt(cfg, frames_properties_df, wide_rt_upper)
 
