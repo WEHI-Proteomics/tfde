@@ -218,7 +218,7 @@ def extract_cuboid_attributes(precursor_cuboid_row):
         cuboid_d['rt_apex'] = precursor_cuboid_row.anchor_point_retention_time_secs
         cuboid_d['rt_lower'] = precursor_cuboid_row.rt_lower
         cuboid_d['rt_upper'] = precursor_cuboid_row.rt_upper
-    else if args.precursor_definition_method == '3did':
+    elif args.precursor_definition_method == '3did':
         cuboid_d['precursor_id'] = precursor_cuboid_row.precursor_cuboid_id
         cuboid_d['scan_apex'] = precursor_cuboid_row.anchor_point_scan
         cuboid_d['scan_lower'] = precursor_cuboid_row.scan_lower
