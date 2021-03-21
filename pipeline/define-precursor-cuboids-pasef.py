@@ -115,6 +115,10 @@ parser = argparse.ArgumentParser(description='Extract the precursor cuboids from
 parser.add_argument('-eb','--experiment_base_dir', type=str, default='./experiments', help='Path to the experiments directory.', required=False)
 parser.add_argument('-en','--experiment_name', type=str, help='Name of the experiment.', required=True)
 parser.add_argument('-rn','--run_name', type=str, help='Name of the run.', required=True)
+parser.add_argument('-ml','--mz_lower', type=int, default='100', help='Lower limit for m/z.', required=False)
+parser.add_argument('-mu','--mz_upper', type=int, default='1700', help='Upper limit for m/z.', required=False)
+parser.add_argument('-rl','--rt_lower', type=int, default='1650', help='Lower limit for retention time.', required=False)
+parser.add_argument('-ru','--rt_upper', type=int, default='2200', help='Upper limit for retention time.', required=False)
 parser.add_argument('-ini','--ini_file', type=str, default='./otf-peak-detect/pipeline/pasef-process-short-gradient.ini', help='Path to the config file.', required=False)
 parser.add_argument('-ssm','--small_set_mode', action='store_true', help='A small subset of the data for testing purposes.')
 parser.add_argument('-rm','--ray_mode', type=str, choices=['cluster','join','local'], help='The Ray mode to use.', required=True)
@@ -159,11 +163,11 @@ RT_FRAGMENT_EVENT_DELTA_FRAMES = cfg.getint('ms1','RT_FRAGMENT_EVENT_DELTA_FRAME
 RT_BASE_PEAK_WIDTH_SECS = cfg.getfloat('common','RT_BASE_PEAK_WIDTH_SECS')
 
 # set up the precursor cuboids
-CUBOIDS_DIR = '{}/precursor-cuboids'.format(EXPERIMENT_DIR)
+CUBOIDS_DIR = '{}/precursor-cuboids-pasef'.format(EXPERIMENT_DIR)
 if not os.path.exists(CUBOIDS_DIR):
     os.makedirs(CUBOIDS_DIR)
 
-CUBOIDS_COORDS_FILE = '{}/exp-{}-run-{}-precursor-cuboid-coords-pasef.pkl'.format(CUBOIDS_DIR, args.experiment_name, args.run_name)
+CUBOIDS_FILE = '{}/exp-{}-run-{}-mz-{}-{}-rt-{}-{}-precursor-cuboids-pasef.pkl'.format(CUBOIDS_DIR, args.experiment_name, args.run_name, args.mz_lower, args.mz_upper, args.rt_lower, args.rt_upper)
 
 # get the frame metadata
 print("loading the frames information")

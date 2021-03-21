@@ -361,17 +361,12 @@ if not os.path.isfile(CONVERTED_DATABASE_NAME):
     print("The converted database is required but doesn't exist: {}".format(CONVERTED_DATABASE_NAME))
     sys.exit(1)
 
-CUBOIDS_DIR = "{}/precursor-cuboids-3did".format(EXPERIMENT_DIR)
-CUBOIDS_FILE = '{}/exp-{}-run-{}-mz-{}-{}-precursor-cuboids.pkl'.format(CUBOIDS_DIR, args.experiment_name, args.run_name, args.mz_lower, args.mz_upper)
+# set up the precursor cuboids
+CUBOIDS_DIR = '{}/precursor-cuboids-3did'.format(EXPERIMENT_DIR)
+if not os.path.exists(CUBOIDS_DIR):
+    os.makedirs(CUBOIDS_DIR)
 
-# set up the output directory
-if os.path.exists(CUBOIDS_DIR):
-    shutil.rmtree(CUBOIDS_DIR)
-os.makedirs(CUBOIDS_DIR)
-
-# set up the output file
-if os.path.isfile(CUBOIDS_FILE):
-    os.remove(CUBOIDS_FILE)
+CUBOIDS_FILE = '{}/exp-{}-run-{}-mz-{}-{}-rt-{}-{}-precursor-cuboids-3did.pkl'.format(CUBOIDS_DIR, args.experiment_name, args.run_name, round(args.mz_lower), round(args.mz_upper), round(args.rt_lower), round(args.rt_upper))
 
 # set up Ray
 print("setting up Ray")
