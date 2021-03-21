@@ -9,10 +9,13 @@ from ctypes import *
 if sys.platform[:5] == "win32":
     libname = "timsdata.dll"
 elif sys.platform[:5] == "linux":
-    libname = "libtimsdata.so"
+    if os.path.exists('/home/ubuntu/'):
+        libname = "/home/ubuntu/otf-peak-detect/timstof-sdk/libtimsdata.so"
+    else:
+        libname = "/home/daryl/otf-peak-detect/timstof-sdk/libtimsdata.so"
 else:
     raise Exception("Unsupported platform.")
-    
+
 dll = cdll.LoadLibrary(libname)
 dll.tims_open.argtypes = [ c_char_p, c_uint32 ]
 dll.tims_open.restype = c_uint64
@@ -68,7 +71,7 @@ def decodeArrayOfStrings (blob):
         return unicode(str(blob), 'utf-8').split('\0')[:-1]
     if sys.version_info.major == 3:
         return str(blob, 'utf-8').split('\0')[:-1]
-        
+
 class TimsData:
 
     def __init__ (self, analysis_directory, use_recalibrated_state=False):
@@ -94,8 +97,8 @@ class TimsData:
 
     def __del__ (self):
         if hasattr(self, 'handle'):
-            self.dll.tims_close(self.handle)         
-            
+            self.dll.tims_close(self.handle)
+
     def __callConversionFunc (self, frame_id, input_data, func):
 
         if type(input_data) is np.ndarray and input_data.dtype == np.float64:
@@ -119,10 +122,10 @@ class TimsData:
 
     def indexToMz (self, frame_id, mzs):
         return self.__callConversionFunc(frame_id, mzs, self.dll.tims_index_to_mz)
-        
+
     def mzToIndex (self, frame_id, mzs):
         return self.__callConversionFunc(frame_id, mzs, self.dll.tims_mz_to_index)
-        
+
     def scanNumToOneOverK0 (self, frame_id, mzs):
         return self.__callConversionFunc(frame_id, mzs, self.dll.tims_scannum_to_oneoverk0)
 
@@ -135,7 +138,7 @@ class TimsData:
     def voltageToScanNum (self, frame_id, mzs):
         return self.__callConversionFunc(frame_id, mzs, self.dll.tims_voltage_to_scannum)
 
-        
+
     # Output: list of tuples (indices, intensities)
     def readScans (self, frame_id, scan_begin, scan_end):
 
