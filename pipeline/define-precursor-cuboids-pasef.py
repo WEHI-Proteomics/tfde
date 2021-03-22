@@ -193,6 +193,9 @@ coords_df['precursor_cuboid_id'] = coords_df.index
 
 # write them out
 print('writing {} cuboid definitions to {}'.format(len(coords_df), CUBOIDS_FILE))
+info.append(('total_running_time',round(time.time()-start_run,1)))
+info.append(('processor',parser.prog))
+info.append(('processed', time.ctime()))
 content_d = {'coords_df':coords_df, 'metadata':info}
 with open(CUBOIDS_FILE, 'wb') as handle:
     pickle.dump(content_d, handle)
