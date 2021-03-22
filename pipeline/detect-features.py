@@ -315,6 +315,7 @@ cfg = configparser.ConfigParser(interpolation=ExtendedInterpolation())
 cfg.read(args.ini_file)
 
 # set up constants
+FRAME_TYPE_MS1 = cfg.getint('common','FRAME_TYPE_MS1')
 MS1_PEAK_DELTA = cfg.getfloat('ms1', 'MS1_PEAK_DELTA')
 PROTON_MASS = cfg.getfloat('common', 'PROTON_MASS')
 RT_BASE_PEAK_WIDTH_SECS = cfg.getfloat('common', 'RT_BASE_PEAK_WIDTH_SECS')
