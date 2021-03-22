@@ -263,7 +263,7 @@ def detect_ms1_features_3did(precursor_cuboid_row, converted_db_name):
 # determine the number of workers based on the number of available cores and the proportion of the machine to be used
 def number_of_workers():
     number_of_cores = mp.cpu_count()
-    number_of_workers = int(args.proportion_of_cores_to_use * number_of_cores)
+    number_of_workers = round(args.proportion_of_cores_to_use * number_of_cores)
     return number_of_workers
 
 # generate a unique feature_id from the precursor id and the feature sequence number found for that precursor
