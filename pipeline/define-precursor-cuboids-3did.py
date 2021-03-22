@@ -18,7 +18,7 @@ import pickle
 def create_indexes(db_file_name):
     db_conn = sqlite3.connect(db_file_name)
     src_c = db_conn.cursor()
-    src_c.execute("create index if not exists idx_define_precursor_cuboid_3did_1 on frames (frame_type,retention_time_secs,mz)")
+    src_c.execute("create index if not exists idx_extract_mz_bands_1 on frames (frame_type,retention_time_secs,mz)")
     db_conn.close()
 
 # define a straight line to exclude the charge-1 cloud
@@ -57,13 +57,6 @@ def number_of_workers():
     number_of_cores = mp.cpu_count()
     number_of_workers = int(args.proportion_of_cores_to_use * number_of_cores)
     return number_of_workers
-
-# set up the indexes we need for queries
-def create_indexes(db_file_name):
-    db_conn = sqlite3.connect(db_file_name)
-    src_c = db_conn.cursor()
-    src_c.execute("create index if not exists idx_three_d_1 on frames (frame_type, mz, retention_time_secs)")
-    db_conn.close()
 
 # determine the maximum filter length for the number of points
 def find_filter_length(number_of_points):
