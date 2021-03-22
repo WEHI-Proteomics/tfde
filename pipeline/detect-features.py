@@ -12,15 +12,9 @@ import shutil
 from ms_deisotope import deconvolute_peaks, averagine, scoring
 from ms_deisotope.deconvolution import peak_retention_strategy
 import pickle
+import configparser
+from configparser import ExtendedInterpolation
 
-# frame types for PASEF mode
-FRAME_TYPE_MS1 = 0
-FRAME_TYPE_MS2 = 8
-
-# include points from either side of the intense point, in Da
-MS1_PEAK_DELTA = 0.1
-
-PROTON_MASS = 1.007276
 
 # takes a numpy array of intensity, and another of mz
 def mz_centroid(_int_f, _mz_f):
@@ -50,8 +44,7 @@ def ms1_intensity_descent(ms1_peaks_a, ms1_peak_delta):
 
 # find 3sigma for a specified m/z
 def calculate_ms1_peak_delta(mz):
-    instrument_resolution = 40000
-    delta_m = mz / instrument_resolution  # FWHM of the peak
+    delta_m = mz / INSTRUMENT_RESOLUTION  # FWHM of the peak
     sigma = delta_m / 2.35482  # std dev is FWHM / 2.35482. See https://en.wikipedia.org/wiki/Full_width_at_half_maximum
     ms1_peak_delta = 3 * sigma  # 99.7% of values fall within +/- 3 sigma
     return ms1_peak_delta
@@ -308,6 +301,22 @@ CONVERTED_DATABASE_NAME = "{}/converted-databases/exp-{}-run-{}-converted.sqlite
 if not os.path.isfile(CONVERTED_DATABASE_NAME):
     print("The converted database is required but doesn't exist: {}".format(CONVERTED_DATABASE_NAME))
     sys.exit(1)
+
+# check the INI file exists
+if not os.path.isfile(args.ini_file):
+    print("The configuration file doesn't exist: {}".format(args.ini_file))
+    sys.exit(1)
+
+# load the INI file
+cfg = configparser.ConfigParser(interpolation=ExtendedInterpolation())
+cfg.read(args.ini_file)
+
+# set up constants
+MS1_PEAK_DELTA = cfg.getfloat('ms1', 'MS1_PEAK_DELTA')
+PROTON_MASS = cfg.getfloat('common', 'PROTON_MASS')
+RT_BASE_PEAK_WIDTH_SECS = cfg.getfloat('common', 'RT_BASE_PEAK_WIDTH_SECS')
+SCAN_BASE_PEAK_WIDTH = cfg.getint('common', 'SCAN_BASE_PEAK_WIDTH')
+INSTRUMENT_RESOLUTION = cfg.getfloat('common', 'INSTRUMENT_RESOLUTION')
 
 # input cuboids
 CUBOIDS_DIR = "{}/precursor-cuboids-{}".format(EXPERIMENT_DIR, args.precursor_definition_method)
