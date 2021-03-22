@@ -173,7 +173,7 @@ def detect_ms1_features_pasef(precursor_cuboid_row, converted_db_name):
         feature_d['deconvolution_score'] = row.score
         # from the precursor cuboid
         feature_d['precursor_id'] = precursor_cuboid_row.precursor_cuboid_id
-        peak_d = determine_peak_characteristics(row.envelope[0][0], ms1_points_df)
+        peak_d = determine_mono_peak_characteristics(row.envelope[0][0], ms1_points_df)
         if peak_d is not None:
             feature_d['scan_apex'] = peak_d['scan_apex']
             feature_d['scan_lower'] = peak_d['scan_lower']
