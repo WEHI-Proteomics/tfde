@@ -80,6 +80,10 @@ def find_precursor_cuboids(segment_mz_lower, segment_mz_upper):
     # assign each point a unique identifier
     raw_df['point_id'] = raw_df.index
 
+    # use cuDF for acceleration
+    if args.use_cudf:
+        raw_df = cudf.DataFrame.from_pandas(raw_df)
+
     precursor_cuboids_l = []
     anchor_point_s = raw_df.loc[raw_df.intensity.idxmax()]
     while anchor_point_s.intensity >= args.minimum_anchor_point_intensity:
@@ -336,6 +340,7 @@ parser.add_argument('-ini','--ini_file', type=str, default='./otf-peak-detect/pi
 parser.add_argument('-rm','--ray_mode', type=str, choices=['local','cluster'], help='The Ray mode to use.', required=True)
 parser.add_argument('-pc','--proportion_of_cores_to_use', type=float, default=0.9, help='Proportion of the machine\'s cores to use for this program.', required=False)
 parser.add_argument('-v','--visualise', action='store_true', help='Generate data for visualisation of the segmentation.')
+parser.add_argument('-cudf','--use_cudf', action='store_true', help='Convert the Pandas dataframe to cuDF.')
 args = parser.parse_args()
 
 # Print the arguments for the log
