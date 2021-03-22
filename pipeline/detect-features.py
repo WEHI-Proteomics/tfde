@@ -69,7 +69,7 @@ def determine_mono_peak_characteristics(centre_mz, ms1_raw_points_df):
     mz_delta = calculate_ms1_peak_delta(centre_mz)
     mz_lower = centre_mz - mz_delta
     mz_upper = centre_mz + mz_delta
-    mono_points_df = raw_points[(ms1_raw_points_df.mz >= mz_lower) & (ms1_raw_points_df.mz <= mz_upper)]
+    mono_points_df = ms1_raw_points_df[(ms1_raw_points_df.mz >= mz_lower) & (ms1_raw_points_df.mz <= mz_upper)]
     # determine the peak's extent in CCS and RT
     if len(mono_points_df) > 0:
         # collapsing the monoisotopic's summed points onto the mobility dimension
