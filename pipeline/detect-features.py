@@ -11,6 +11,7 @@ import sqlite3
 import shutil
 from ms_deisotope import deconvolute_peaks, averagine, scoring
 from ms_deisotope.deconvolution import peak_retention_strategy
+import pickle
 
 # frame types for PASEF mode
 FRAME_TYPE_MS1 = 0
@@ -264,11 +265,11 @@ if not os.path.isfile(CONVERTED_DATABASE_NAME):
 
 # input cuboids
 CUBOIDS_DIR = "{}/precursor-cuboids-{}".format(EXPERIMENT_DIR, args.precursor_definition_method)
-CUBOIDS_FILE = '{}/exp-{}-run-{}-mz-{}-{}-rt-{}-{}-precursor-cuboids-{}.pkl'.format(CUBOIDS_DIR, args.experiment_name, args.run_name, round(args.mz_lower), round(args.mz_upper), round(args.rt_lower), round(args.rt_upper), args.precursor_definition_method)
+CUBOIDS_FILE = '{}/exp-{}-run-{}-precursor-cuboids-{}.pkl'.format(CUBOIDS_DIR, args.experiment_name, args.run_name, args.precursor_definition_method)
 
 # output features
 FEATURES_DIR = "{}/features-{}".format(EXPERIMENT_DIR, args.precursor_definition_method)
-FEATURES_FILE = '{}/exp-{}-run-{}-mz-{}-{}-rt-{}-{}-features-{}.pkl'.format(FEATURES_DIR, args.experiment_name, args.run_name, round(args.mz_lower), round(args.mz_upper), round(args.rt_lower), round(args.rt_upper), args.precursor_definition_method)
+FEATURES_FILE = '{}/exp-{}-run-{}-features-{}.pkl'.format(FEATURES_DIR, args.experiment_name, args.run_name, args.precursor_definition_method)
 
 # check the cuboids file
 if not os.path.isfile(CUBOIDS_FILE):
@@ -276,7 +277,9 @@ if not os.path.isfile(CUBOIDS_FILE):
     sys.exit(1)
 
 # load the precursor cuboids
-precursor_cuboids_df = pd.read_pickle(CUBOIDS_FILE)
+with open(CUBOIDS_FILE, 'rb') as handle:
+    d = pickle.load(handle)
+precursor_cuboids_df = d['coords_df']
 print('loaded {} precursor cuboids from {}'.format(len(precursor_cuboids_df), CUBOIDS_FILE))
 
 # limit the cuboids to just the selected one
@@ -305,4 +308,12 @@ features_df = pd.concat(features_l, axis=0, sort=False)
 
 # write out all the features
 print("writing {} features to {}".format(len(features_df), FEATURES_FILE))
-features_df.to_pickle(FEATURES_FILE)
+info.append(('total_running_time',round(time.time()-start_run,1)))
+info.append(('processor',parser.prog))
+info.append(('processed', time.ctime()))
+content_d = {'features_df':features_df, 'metadata':info}
+with open(FEATURES_FILE, 'wb') as handle:
+    pickle.dump(content_d, handle)
+
+stop_run = time.time()
+print("total running time ({}): {} seconds".format(parser.prog, round(stop_run-start_run,1)))
