@@ -14,6 +14,13 @@ import sys
 import multiprocessing as mp
 import pickle
 
+# set up the indexes we need for queries
+def create_indexes(db_file_name):
+    db_conn = sqlite3.connect(db_file_name)
+    src_c = db_conn.cursor()
+    src_c.execute("create index if not exists idx_define_precursor_cuboid_3did_1 on frames (frame_type,retention_time_secs,mz)")
+    db_conn.close()
+
 # define a straight line to exclude the charge-1 cloud
 def scan_coords_for_single_charge_region(mz_lower, mz_upper):
     scan_for_mz_lower = -1 * ((1.2 * mz_lower) - 1252)
@@ -70,7 +77,7 @@ def find_precursor_cuboids(segment_mz_lower, segment_mz_upper):
     point_cluster_retries = 0
 
     db_conn = sqlite3.connect(CONVERTED_DATABASE_NAME)
-    raw_df = pd.read_sql_query("select frame_id,mz,scan,intensity,retention_time_secs from frames where frame_type == {} and mz >= {} and mz <= {} and retention_time_secs >= {} and retention_time_secs <= {} and intensity >= {}".format(FRAME_TYPE_MS1, segment_mz_lower, segment_mz_upper, args.rt_lower, args.rt_upper, INTENSITY_THRESHOLD), db_conn)
+    raw_df = pd.read_sql_query("select frame_id,mz,scan,intensity,retention_time_secs from frames where frame_type == {} and retention_time_secs >= {} and retention_time_secs <= {} and mz >= {} and mz <= {}".format(FRAME_TYPE_MS1, args.rt_lower, args.rt_upper, segment_mz_lower, segment_mz_upper), db_conn)
     db_conn.close()
 
     raw_df.reset_index(drop=True, inplace=True)
@@ -288,13 +295,7 @@ def find_precursor_cuboids(segment_mz_lower, segment_mz_upper):
 
 
 
-# frame types for PASEF mode
-FRAME_TYPE_MS1 = 0
-FRAME_TYPE_MS2 = 8
-
-MS1_PEAK_DELTA = 0.1
-RT_BASE_PEAK_WIDTH = 10
-
+# move these constants to the INI file
 ANCHOR_POINT_MZ_LOWER_OFFSET = 0.6   # one isotope for charge-2 plus a little bit more
 ANCHOR_POINT_MZ_UPPER_OFFSET = 3.0   # six isotopes for charge-2 plus a little bit more
 
@@ -361,12 +362,30 @@ if not os.path.isfile(CONVERTED_DATABASE_NAME):
     print("The converted database is required but doesn't exist: {}".format(CONVERTED_DATABASE_NAME))
     sys.exit(1)
 
+# check the INI file exists
+if not os.path.isfile(args.ini_file):
+    print("The configuration file doesn't exist: {}".format(args.ini_file))
+    sys.exit(1)
+
+# load the INI file
+cfg = configparser.ConfigParser(interpolation=ExtendedInterpolation())
+cfg.read(args.ini_file)
+
+# set up constants
+FRAME_TYPE_MS1 = cfg.getint('common','FRAME_TYPE_MS1')
+MS1_PEAK_DELTA = cfg.getfloat('ms1','MS1_PEAK_DELTA')
+RT_BASE_PEAK_WIDTH = cfg.getfloat('common','RT_BASE_PEAK_WIDTH_SECS')
+
+# set up the indexes
+print('setting up indexes on {}'.format(CONVERTED_DATABASE_NAME))
+create_indexes(db_file_name=CONVERTED_DATABASE_NAME)
+
 # set up the precursor cuboids
 CUBOIDS_DIR = '{}/precursor-cuboids-3did'.format(EXPERIMENT_DIR)
 if not os.path.exists(CUBOIDS_DIR):
     os.makedirs(CUBOIDS_DIR)
 
-CUBOIDS_FILE = '{}/exp-{}-run-{}-mz-{}-{}-rt-{}-{}-precursor-cuboids-3did.pkl'.format(CUBOIDS_DIR, args.experiment_name, args.run_name, round(args.mz_lower), round(args.mz_upper), round(args.rt_lower), round(args.rt_upper))
+CUBOIDS_FILE = '{}/exp-{}-run-{}-precursor-cuboids-3did.pkl'.format(CUBOIDS_DIR, args.experiment_name, args.run_name)
 
 # set up Ray
 print("setting up Ray")
@@ -387,14 +406,18 @@ cuboids_l = ray.get([find_precursor_cuboids.remote(segment_mz_lower=args.mz_lowe
 cuboids_l = [item for sublist in cuboids_l for item in sublist]  # cuboids_l is a list of lists, so we need to flatten it
 
 # assign each cuboid a unique identifier
-precursor_cuboids_df = pd.DataFrame(cuboids_l)
-precursor_cuboids_df['precursor_cuboid_id'] = precursor_cuboids_df.index
+coords_df = pd.DataFrame(cuboids_l)
+coords_df['precursor_cuboid_id'] = coords_df.index
 
 # ... and save them in a file
 print()
-print('saving {} precursor cuboids to {}'.format(len(precursor_cuboids_df), CUBOIDS_FILE))
-precursor_cuboids_df.to_pickle(CUBOIDS_FILE)
-
+print('saving {} precursor cuboids to {}'.format(len(coords_df), CUBOIDS_FILE))
+info.append(('total_running_time',round(time.time()-start_run,1)))
+info.append(('processor',parser.prog))
+info.append(('processed', time.ctime()))
+content_d = {'coords_df':coords_df, 'metadata':info}
+with open(CUBOIDS_FILE, 'wb') as handle:
+    pickle.dump(content_d, handle)
 
 stop_run = time.time()
 print("total running time ({}): {} seconds".format(parser.prog, round(stop_run-start_run,1)))
