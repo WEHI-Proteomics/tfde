@@ -313,6 +313,7 @@ if not os.path.isfile(CONVERTED_DATABASE_NAME):
     sys.exit(1)
 
 # set up the indexes
+print('setting up indexes on {}'.format(CONVERTED_DATABASE_NAME))
 create_indexes(db_file_name=CONVERTED_DATABASE_NAME)
 
 # check the INI file exists
