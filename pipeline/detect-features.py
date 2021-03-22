@@ -16,6 +16,13 @@ import configparser
 from configparser import ExtendedInterpolation
 
 
+# set up the indexes we need for queries
+def create_indexes(db_file_name):
+    db_conn = sqlite3.connect(db_file_name)
+    src_c = db_conn.cursor()
+    src_c.execute("create index if not exists idx_detect_features_1 on frames (frame_type,retention_time_secs,scan,mz)")
+    db_conn.close()
+
 # takes a numpy array of intensity, and another of mz
 def mz_centroid(_int_f, _mz_f):
     return ((_int_f/_int_f.sum()) * _mz_f).sum()
@@ -129,7 +136,7 @@ def determine_mono_peak_characteristics(centre_mz, ms1_raw_points_df):
 def detect_ms1_features_pasef(precursor_cuboid_row, converted_db_name):
     # load the raw points for this cuboid
     db_conn = sqlite3.connect(converted_db_name)
-    ms1_points_df = pd.read_sql_query("select frame_id,mz,scan,intensity,retention_time_secs from frames where frame_type == {} and mz >= {} and mz <= {} and scan >= {} and scan <= {} and retention_time_secs >= {} and retention_time_secs <= {}".format(FRAME_TYPE_MS1, precursor_cuboid_row.wide_mz_lower, precursor_cuboid_row.wide_mz_upper, precursor_cuboid_row.wide_scan_lower, precursor_cuboid_row.wide_scan_upper, precursor_cuboid_row.wide_rt_lower, precursor_cuboid_row.wide_rt_upper), db_conn)
+    ms1_points_df = pd.read_sql_query("select frame_id,mz,scan,intensity,retention_time_secs from frames where frame_type == {} and retention_time_secs >= {} and retention_time_secs <= {} and scan >= {} and scan <= {} and mz >= {} and mz <= {}".format(FRAME_TYPE_MS1, precursor_cuboid_row.wide_rt_lower, precursor_cuboid_row.wide_rt_upper, precursor_cuboid_row.wide_scan_lower, precursor_cuboid_row.wide_scan_upper, precursor_cuboid_row.wide_mz_lower, precursor_cuboid_row.wide_mz_upper), db_conn)
     db_conn.close()
 
     # constrain the raw points to the isolation windows so we can find the features
@@ -196,7 +203,7 @@ def detect_ms1_features_pasef(precursor_cuboid_row, converted_db_name):
 def detect_ms1_features_3did(precursor_cuboid_row, converted_db_name):
     # load the raw points for this cuboid
     db_conn = sqlite3.connect(converted_db_name)
-    ms1_points_df = pd.read_sql_query("select frame_id,mz,scan,intensity,retention_time_secs from frames where frame_type == {} and mz >= {} and mz <= {} and scan >= {} and scan <= {} and retention_time_secs >= {} and retention_time_secs <= {}".format(FRAME_TYPE_MS1, precursor_cuboid_row.mz_lower, precursor_cuboid_row.mz_upper, precursor_cuboid_row.scan_lower, precursor_cuboid_row.scan_upper, precursor_cuboid_row.rt_lower, precursor_cuboid_row.rt_upper), db_conn)
+    ms1_points_df = pd.read_sql_query("select frame_id,mz,scan,intensity,retention_time_secs from frames where frame_type == {} and retention_time_secs >= {} and retention_time_secs <= {} and scan >= {} and scan <= {} and mz >= {} and mz <= {}".format(FRAME_TYPE_MS1, precursor_cuboid_row.rt_lower, precursor_cuboid_row.rt_upper, precursor_cuboid_row.scan_lower, precursor_cuboid_row.scan_upper, precursor_cuboid_row.mz_lower, precursor_cuboid_row.mz_upper), db_conn)
     db_conn.close()
 
     # intensity descent
@@ -304,6 +311,9 @@ CONVERTED_DATABASE_NAME = "{}/converted-databases/exp-{}-run-{}-converted.sqlite
 if not os.path.isfile(CONVERTED_DATABASE_NAME):
     print("The converted database is required but doesn't exist: {}".format(CONVERTED_DATABASE_NAME))
     sys.exit(1)
+
+# set up the indexes
+create_indexes(db_file_name=CONVERTED_DATABASE_NAME)
 
 # check the INI file exists
 if not os.path.isfile(args.ini_file):
