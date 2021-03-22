@@ -85,6 +85,9 @@ def determine_mono_peak_characteristics(centre_mz, ms1_raw_points_df):
             scan_lower = scan_apex - SCAN_BASE_PEAK_WIDTH
             scan_upper = scan_apex + SCAN_BASE_PEAK_WIDTH
 
+        # constrain the mono points to the CCS extent
+        mono_points_df = mono_points_df[(mono_points_df.scan >= scan_lower) & (mono_points_df.scan <= scan_upper)]
+
         # In the RT dimension, look wider to find the apex
         rt_df = mono_points_df.groupby(['frame_id','retention_time_secs'], as_index=False).intensity.sum()
         rt_curve_fit = False
@@ -102,8 +105,8 @@ def determine_mono_peak_characteristics(centre_mz, ms1_raw_points_df):
         # if we couldn't fit a curve to the RT dimension, take the intensity-weighted centroid
         if not rt_curve_fit:
             rt_apex = mz_centroid(rt_df.intensity.to_numpy(), rt_df.retention_time_secs.to_numpy())
-            rt_lower = rt_apex - RT_BASE_PEAK_WIDTH_SECS
-            rt_upper = rt_apex + RT_BASE_PEAK_WIDTH_SECS
+            rt_lower = rt_apex - (RT_BASE_PEAK_WIDTH_SECS / 2)
+            rt_upper = rt_apex + (RT_BASE_PEAK_WIDTH_SECS / 2)
 
         # package the result
         result_d = {}
