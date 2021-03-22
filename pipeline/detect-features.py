@@ -64,9 +64,9 @@ def calculate_peak_intensity(peak_characteristics, raw_points):
     return mono_intensity
 
 # determine the mono peak apex and extent in CCS and RT
-def determine_mono_peak_characteristics(mono_mz, ms1_raw_points_df):
+def determine_mono_peak_characteristics(centre_mz, ms1_raw_points_df):
     # determine the raw points that belong to the mono peak
-    mz_delta = calculate_ms1_peak_delta(mono_mz)
+    mz_delta = calculate_ms1_peak_delta(centre_mz)
     mz_lower = centre_mz - mz_delta
     mz_upper = centre_mz + mz_delta
     mono_points_df = raw_points[(ms1_raw_points_df.mz >= mz_lower) & (ms1_raw_points_df.mz <= mz_upper)]
@@ -114,7 +114,7 @@ def determine_mono_peak_characteristics(mono_mz, ms1_raw_points_df):
 
         # package the result
         result_d = {}
-        result_d['mz_apex'] = mono_mz
+        result_d['mz_apex'] = centre_mz
         result_d['mz_lower'] = mz_lower
         result_d['mz_upper'] = mz_upper
         result_d['scan_apex'] = scan_apex
@@ -124,7 +124,7 @@ def determine_mono_peak_characteristics(mono_mz, ms1_raw_points_df):
         result_d['rt_lower'] = rt_lower
         result_d['rt_upper'] = rt_upper
     else:
-        print('found no raw points where the mono peak should be: {}'.format(round(mono_mz,4)))
+        print('found no raw points where the mono peak should be: {}'.format(round(centre_mz,4)))
         result = None
     return result
 
@@ -173,7 +173,7 @@ def detect_ms1_features_pasef(precursor_cuboid_row, converted_db_name):
         feature_d['deconvolution_score'] = row.score
         # from the precursor cuboid
         feature_d['precursor_id'] = precursor_cuboid_row.precursor_cuboid_id
-        peak_d = determine_mono_peak_characteristics(row.envelope[0][0], ms1_points_df)
+        peak_d = determine_mono_peak_characteristics(centre_mz=row.envelope[0][0], ms1_raw_points_df=ms1_points_df)
         if peak_d is not None:
             feature_d['scan_apex'] = peak_d['scan_apex']
             feature_d['scan_lower'] = peak_d['scan_lower']
