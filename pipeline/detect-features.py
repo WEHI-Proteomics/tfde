@@ -121,8 +121,8 @@ def determine_mono_peak_characteristics(centre_mz, ms1_raw_points_df):
         result_d['rt_upper'] = rt_upper
     else:
         print('found no raw points where the mono peak should be: {}'.format(round(centre_mz,4)))
-        result = None
-    return result
+        result_d = None
+    return result_d
 
 # prepare the metadata and raw points for the feature detection
 @ray.remote
