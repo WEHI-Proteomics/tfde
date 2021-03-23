@@ -20,7 +20,7 @@ from configparser import ExtendedInterpolation
 def create_indexes(db_file_name):
     db_conn = sqlite3.connect(db_file_name)
     src_c = db_conn.cursor()
-    src_c.execute("create index if not exists idx_detect_features_1 on frames (frame_type,retention_time_secs,scan,mz)")
+    src_c.execute("create index if not exists idx_extract_cuboids_1 on frames (frame_type,retention_time_secs,scan,mz)")
     db_conn.close()
 
 # takes a numpy array of intensity, and another of mz
