@@ -24,12 +24,6 @@ def create_indexes(db_file_name):
     src_c.execute("create index if not exists idx_extract_mz_bands_1 on frames (frame_type,retention_time_secs,mz)")
     db_conn.close()
 
-# define a straight line to exclude the charge-1 cloud
-def scan_coords_for_single_charge_region(mz_lower, mz_upper):
-    scan_for_mz_lower = -1 * ((1.2 * mz_lower) - 1252)
-    scan_for_mz_upper = -1 * ((1.2 * mz_upper) - 1252)
-    return (scan_for_mz_lower,scan_for_mz_upper)
-
 # a distance metric for points within an isotope
 def point_metric(r1, r2):
     mz_1 = r1[0]
@@ -127,10 +121,10 @@ def find_precursor_cuboids(segment_mz_lower, segment_mz_upper):
         valleys_df = scan_df[scan_df.scan.isin(valley_x_l)]
         visualise_d['scan_valleys_df'] = valleys_df
 
-        upper_x = valleys_df[valleys_df.scan > anchor_point_s.scan].scan.min()
+        upper_x = valleys_df[valleys_df.scan > anchor_point_s['scan']].scan.min()
         if math.isnan(upper_x):
             upper_x = scan_df.scan.max()
-        lower_x = valleys_df[valleys_df.scan < anchor_point_s.scan].scan.max()
+        lower_x = valleys_df[valleys_df.scan < anchor_point_s['scan']].scan.max()
         if math.isnan(lower_x):
             lower_x = scan_df.scan.min()
 
@@ -223,10 +217,10 @@ def find_precursor_cuboids(segment_mz_lower, segment_mz_upper):
                 valleys_df = rt_df[rt_df.retention_time_secs.isin(valley_x_l)]
                 visualise_d['rt_valleys_df'] = valleys_df
 
-                upper_x = valleys_df[valleys_df.retention_time_secs > anchor_point_s.retention_time_secs].retention_time_secs.min()
+                upper_x = valleys_df[valleys_df.retention_time_secs > anchor_point_s['retention_time_secs']].retention_time_secs.min()
                 if math.isnan(upper_x):
                     upper_x = rt_df.retention_time_secs.max()
-                lower_x = valleys_df[valleys_df.retention_time_secs < anchor_point_s.retention_time_secs].retention_time_secs.max()
+                lower_x = valleys_df[valleys_df.retention_time_secs < anchor_point_s['retention_time_secs']].retention_time_secs.max()
                 if math.isnan(lower_x):
                     lower_x = rt_df.retention_time_secs.min()
 
@@ -245,7 +239,7 @@ def find_precursor_cuboids(segment_mz_lower, segment_mz_upper):
 
                 # add this cuboid to the list
                 precursor_coordinates_columns = ['mz_lower', 'mz_upper', 'scan_lower', 'scan_upper', 'rt_lower', 'rt_upper', 'anchor_point_intensity', 'anchor_point_mz', 'anchor_point_scan', 'anchor_point_retention_time_secs', 'anchor_point_frame_id', 'number_of_isotope_clusters', 'number_of_point_clusters_in_anchor_isotope_cluster']
-                precursor_coordinates_values = [mz_lower, mz_upper, int(scan_lower), int(scan_upper), rt_lower, rt_upper, int(anchor_point_s.intensity), anchor_point_s.mz, int(anchor_point_s.scan), anchor_point_s.retention_time_secs, int(anchor_point_s.frame_id), int(number_of_isotope_clusters), int(number_of_point_clusters_in_anchor_isotope_cluster)]
+                precursor_coordinates_values = [mz_lower, mz_upper, int(scan_lower), int(scan_upper), rt_lower, rt_upper, int(anchor_point_s['intensity']), anchor_point_s['mz'], int(anchor_point_s['scan']), anchor_point_s['retention_time_secs'], int(anchor_point_s['frame_id']), int(number_of_isotope_clusters), int(number_of_point_clusters_in_anchor_isotope_cluster)]
                 precursor_coordinates_d = {}
                 for idx,c in enumerate(precursor_coordinates_columns):
                     precursor_coordinates_d[c] = precursor_coordinates_values[idx]
@@ -278,7 +272,7 @@ def find_precursor_cuboids(segment_mz_lower, segment_mz_upper):
                 #     # print('max isotope cluster retries reached for mz={} to {}'.format(segment_mz_lower, segment_mz_upper))
                 #     break
         else:
-            points_to_remove_l = [anchor_point_s.point_id]
+            points_to_remove_l = [anchor_point_s['point_id']]
             raw_cudf_df.loc[raw_cudf_df.point_id.isin(points_to_remove_l), 'intensity'] = PROCESSED_INTENSITY_INDICATOR
             # print('x', end='', flush=True)
             point_cluster_retries += 1
