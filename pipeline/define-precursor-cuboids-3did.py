@@ -61,7 +61,7 @@ def find_filter_length(number_of_points):
     return filter_lengths[next(x[0] for x in enumerate(filter_lengths) if x[1] < number_of_points)]
 
 # process a segment of this run's data, and return a list of precursor cuboids
-@ray.remote(num_gpus=1)
+@ray.remote
 def find_precursor_cuboids(segment_mz_lower, segment_mz_upper):
     isotope_cluster_retries = 0
     point_cluster_retries = 0
@@ -387,9 +387,9 @@ CUBOIDS_FILE = '{}/exp-{}-run-{}-precursor-cuboids-3did.pkl'.format(CUBOIDS_DIR,
 print("setting up Ray")
 if not ray.is_initialized():
     if args.ray_mode == "cluster":
-        ray.init(num_cpus=number_of_workers(), num_gpus=2)
+        ray.init(num_cpus=number_of_workers())
     else:
-        ray.init(local_mode=True, num_gpus=2)
+        ray.init(local_mode=True)
 
 print('setting up indexes on {}'.format(CONVERTED_DATABASE_NAME))
 create_indexes(CONVERTED_DATABASE_NAME)
