@@ -15,6 +15,7 @@ import multiprocessing as mp
 import pickle
 import configparser
 from configparser import ExtendedInterpolation
+import cudf
 
 # set up the indexes we need for queries
 def create_indexes(db_file_name):
