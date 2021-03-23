@@ -90,7 +90,7 @@ def find_precursor_cuboids(segment_mz_lower, segment_mz_upper):
         scan_upper = anchor_point_s.scan + ANCHOR_POINT_SCAN_UPPER_OFFSET
 
         # constrain the raw points to the search area for this anchor point
-        candidate_region_df = raw_df[(raw_df.frame_id == anchor_point_s.frame_id) & (raw_df.mz >= mz_lower) & (raw_df.mz <= mz_upper) & (raw_df.scan >= scan_lower) & (raw_df.scan <= scan_upper)].copy()
+        candidate_region_df = raw_df[(raw_df.intensity >= INTENSITY_THRESHOLD) & (raw_df.frame_id == anchor_point_s.frame_id) & (raw_df.mz >= mz_lower) & (raw_df.mz <= mz_upper) & (raw_df.scan >= scan_lower) & (raw_df.scan <= scan_upper)].copy()
         visualise_d = {}
         visualise_d['anchor_point_s'] = anchor_point_s
         visualise_d['initial_candidate_region_df'] = candidate_region_df
@@ -297,6 +297,7 @@ ANCHOR_POINT_MZ_UPPER_OFFSET = 3.0   # six isotopes for charge-2 plus a little b
 ANCHOR_POINT_SCAN_LOWER_OFFSET = 100
 ANCHOR_POINT_SCAN_UPPER_OFFSET = 100
 
+INTENSITY_THRESHOLD = 50
 PROCESSED_INTENSITY_INDICATOR = -1
 
 MAX_ISOTOPE_CLUSTER_RETRIES = 1000
