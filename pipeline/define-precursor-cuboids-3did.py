@@ -20,7 +20,7 @@ from configparser import ExtendedInterpolation
 def create_indexes(db_file_name):
     db_conn = sqlite3.connect(db_file_name)
     src_c = db_conn.cursor()
-    src_c.execute("create index if not exists idx_extract_mz_bands_1 on frames (frame_type,retention_time_secs,mz)")
+    src_c.execute("create index if not exists idx_extract_cuboids_1 on frames (frame_type,retention_time_secs,scan,mz)")
     db_conn.close()
 
 # define a straight line to exclude the charge-1 cloud
@@ -65,19 +65,28 @@ def find_filter_length(number_of_points):
     filter_lengths = [51,11,5]  # must be a positive odd number, greater than the polynomial order, and less than the number of points to be filtered
     return filter_lengths[next(x[0] for x in enumerate(filter_lengths) if x[1] < number_of_points)]
 
+# define a straight line to exclude the charge-1 cloud
+def scan_coords_for_single_charge_region(mz_lower, mz_upper):
+    scan_for_mz_lower = max(int(-1 * ((1.2 * mz_lower) - 1252)), 0)
+    scan_for_mz_upper = max(int(-1 * ((1.2 * mz_upper) - 1252)), 0)
+    return {'scan_for_mz_lower':scan_for_mz_lower, 'scan_for_mz_upper',scan_for_mz_upper}
+
 # process a segment of this run's data, and return a list of precursor cuboids
 @ray.remote
 def find_precursor_cuboids(segment_mz_lower, segment_mz_upper):
     isotope_cluster_retries = 0
     point_cluster_retries = 0
 
+    # find out where the charge-1 cloud ends and only include points below it (i.e. include points with a higher scan)
+    scan_limit = scan_coords_for_single_charge_region(mz_lower=segment_mz_lower, mz_upper=segment_mz_upper)['scan_for_mz_upper']
+
+    # load the raw points for this m/z segment
     db_conn = sqlite3.connect(CONVERTED_DATABASE_NAME)
-    raw_df = pd.read_sql_query("select frame_id,mz,scan,intensity,retention_time_secs from frames where frame_type == {} and retention_time_secs >= {} and retention_time_secs <= {} and mz >= {} and mz <= {}".format(FRAME_TYPE_MS1, args.rt_lower, args.rt_upper, segment_mz_lower, segment_mz_upper), db_conn)
+    raw_df = pd.read_sql_query("select frame_id,mz,scan,intensity,retention_time_secs from frames where frame_type == {} and retention_time_secs >= {} and retention_time_secs <= {} and scan >= {} and mz >= {} and mz <= {}".format(FRAME_TYPE_MS1, args.rt_lower, args.rt_upper, scan_limit, segment_mz_lower, segment_mz_upper), db_conn)
     db_conn.close()
 
-    raw_df.reset_index(drop=True, inplace=True)
-
     # assign each point a unique identifier
+    raw_df.reset_index(drop=True, inplace=True)  # just in case
     raw_df['point_id'] = raw_df.index
 
     precursor_cuboids_l = []
