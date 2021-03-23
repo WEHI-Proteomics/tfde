@@ -23,12 +23,6 @@ def create_indexes(db_file_name):
     src_c.execute("create index if not exists idx_extract_cuboids_1 on frames (frame_type,retention_time_secs,scan,mz)")
     db_conn.close()
 
-# define a straight line to exclude the charge-1 cloud
-def scan_coords_for_single_charge_region(mz_lower, mz_upper):
-    scan_for_mz_lower = -1 * ((1.2 * mz_lower) - 1252)
-    scan_for_mz_upper = -1 * ((1.2 * mz_upper) - 1252)
-    return (scan_for_mz_lower,scan_for_mz_upper)
-
 # a distance metric for points within an isotope
 def point_metric(r1, r2):
     mz_1 = r1[0]
@@ -69,7 +63,7 @@ def find_filter_length(number_of_points):
 def scan_coords_for_single_charge_region(mz_lower, mz_upper):
     scan_for_mz_lower = max(int(-1 * ((1.2 * mz_lower) - 1252)), 0)
     scan_for_mz_upper = max(int(-1 * ((1.2 * mz_upper) - 1252)), 0)
-    return {'scan_for_mz_lower':scan_for_mz_lower, 'scan_for_mz_upper',scan_for_mz_upper}
+    return {'scan_for_mz_lower':scan_for_mz_lower, 'scan_for_mz_upper':scan_for_mz_upper}
 
 # process a segment of this run's data, and return a list of precursor cuboids
 @ray.remote
