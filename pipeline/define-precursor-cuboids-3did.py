@@ -250,8 +250,7 @@ def find_precursor_cuboids(segment_mz_lower, segment_mz_upper):
                 isotope_cluster_retries = 0
 
                 # set the intensity so we don't process them again
-                # raw_df.loc[raw_df.point_id.isin(points_to_remove_l), 'intensity'] = PROCESSED_INTENSITY_INDICATOR
-                raw_df.drop(raw_df.point_id.isin(points_to_remove_l), inplace=True)
+                raw_df.drop(points_to_remove_l, inplace=True)
 
                 if args.visualise:
                     # save the visualisation info
@@ -267,8 +266,7 @@ def find_precursor_cuboids(segment_mz_lower, segment_mz_upper):
                 clusters_to_remove_l = [anchor_point_cluster]
                 points_to_remove_l = candidate_region_df[candidate_region_df.cluster.isin(clusters_to_remove_l)].point_id.tolist()
                 # print('removing clusters {}, {} points'.format(clusters_to_remove_l, len(points_to_remove_l)))
-                # raw_df.loc[raw_df.point_id.isin(points_to_remove_l), 'intensity'] = PROCESSED_INTENSITY_INDICATOR
-                raw_df.drop(raw_df.point_id.isin(points_to_remove_l), inplace=True)
+                raw_df.drop(points_to_remove_l, inplace=True)
                 # print('_', end='', flush=True)
                 isotope_cluster_retries += 1
                 # if isotope_cluster_retries >= MAX_ISOTOPE_CLUSTER_RETRIES:
@@ -276,8 +274,7 @@ def find_precursor_cuboids(segment_mz_lower, segment_mz_upper):
                 #     break
         else:
             points_to_remove_l = [anchor_point_s.point_id]
-            # raw_df.loc[raw_df.point_id.isin(points_to_remove_l), 'intensity'] = PROCESSED_INTENSITY_INDICATOR
-            raw_df.drop(raw_df.point_id.isin(points_to_remove_l), inplace=True)
+            raw_df.drop(points_to_remove_l, inplace=True)
             # print('x', end='', flush=True)
             point_cluster_retries += 1
             # if point_cluster_retries >= MAX_POINT_CLUSTER_RETRIES:
