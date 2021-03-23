@@ -15,6 +15,7 @@ import multiprocessing as mp
 import pickle
 import configparser
 from configparser import ExtendedInterpolation
+import cudf
 
 # set up the indexes we need for queries
 def create_indexes(db_file_name):
@@ -80,23 +81,27 @@ def find_precursor_cuboids(segment_mz_lower, segment_mz_upper):
     # assign each point a unique identifier
     raw_df['point_id'] = raw_df.index
 
+    # get the cuDF version of the dataframe
+    raw_cudf_df = cudf.DataFrame.from_pandas(raw_df)
+
     precursor_cuboids_l = []
-    anchor_point_s = raw_df.loc[raw_df.intensity.idxmax()]
-    while anchor_point_s.intensity >= args.minimum_anchor_point_intensity:
+    raw_cudf_df = raw_cudf_df.sort_values(by=['intensity'], ascending=False, inplace=False)
+    anchor_point_s = raw_cudf_df.iloc[0]
+    while anchor_point_s['intensity'] >= args.minimum_anchor_point_intensity:
         # define the search area in the m/z and scan dimensions
-        mz_lower = anchor_point_s.mz - ANCHOR_POINT_MZ_LOWER_OFFSET
-        mz_upper = anchor_point_s.mz + ANCHOR_POINT_MZ_UPPER_OFFSET
-        scan_lower = anchor_point_s.scan - ANCHOR_POINT_SCAN_LOWER_OFFSET
-        scan_upper = anchor_point_s.scan + ANCHOR_POINT_SCAN_UPPER_OFFSET
+        mz_lower = anchor_point_s['mz'] - ANCHOR_POINT_MZ_LOWER_OFFSET
+        mz_upper = anchor_point_s['mz'] + ANCHOR_POINT_MZ_UPPER_OFFSET
+        scan_lower = anchor_point_s['scan'] - ANCHOR_POINT_SCAN_LOWER_OFFSET
+        scan_upper = anchor_point_s['scan'] + ANCHOR_POINT_SCAN_UPPER_OFFSET
 
         # constrain the raw points to the search area for this anchor point
-        candidate_region_df = raw_df[(raw_df.intensity >= INTENSITY_THRESHOLD) & (raw_df.frame_id == anchor_point_s.frame_id) & (raw_df.mz >= mz_lower) & (raw_df.mz <= mz_upper) & (raw_df.scan >= scan_lower) & (raw_df.scan <= scan_upper)].copy()
+        candidate_region_df = raw_cudf_df[(raw_cudf_df.intensity >= INTENSITY_THRESHOLD) & (raw_cudf_df.frame_id == anchor_point_s['frame_id']) & (raw_cudf_df.mz >= mz_lower) & (raw_cudf_df.mz <= mz_upper) & (raw_cudf_df.scan >= scan_lower) & (raw_cudf_df.scan <= scan_upper)].copy()
         visualise_d = {}
         visualise_d['anchor_point_s'] = anchor_point_s
         visualise_d['initial_candidate_region_df'] = candidate_region_df
 
-        peak_mz_lower = anchor_point_s.mz-MS1_PEAK_DELTA
-        peak_mz_upper = anchor_point_s.mz+MS1_PEAK_DELTA
+        peak_mz_lower = anchor_point_s['mz']-MS1_PEAK_DELTA
+        peak_mz_upper = anchor_point_s['mz']+MS1_PEAK_DELTA
         visualise_d['peak_mz_lower'] = peak_mz_lower
         visualise_d['peak_mz_upper'] = peak_mz_upper
 
@@ -105,7 +110,7 @@ def find_precursor_cuboids(segment_mz_lower, segment_mz_upper):
 
         # find the extent of the anchor point's peak in the mobility dimension
         scan_df = peak_df.groupby(['scan'], as_index=False).intensity.sum()
-        scan_df.sort_values(by=['scan'], ascending=True, inplace=True)
+        scan_df = scan_df.sort_values(by=['scan'], ascending=True, inplace=False)
 
         # apply a smoothing filter to the points
         scan_df['filtered_intensity'] = scan_df.intensity  # set the default
@@ -145,7 +150,7 @@ def find_precursor_cuboids(segment_mz_lower, segment_mz_upper):
         clusters = dbscan.fit_predict(X)
         candidate_region_df['cluster'] = clusters
         visualise_d['candidate_region_with_isotope_clusters_df'] = candidate_region_df
-        anchor_point_cluster = candidate_region_df[candidate_region_df.point_id == anchor_point_s.point_id].iloc[0].cluster
+        anchor_point_cluster = candidate_region_df[candidate_region_df.point_id == anchor_point_s['point_id']].iloc[0].cluster
 
         number_of_point_clusters = len(candidate_region_df[candidate_region_df.cluster >= 0].cluster.unique())
 
@@ -199,9 +204,9 @@ def find_precursor_cuboids(segment_mz_lower, segment_mz_upper):
                 visualise_d['isotope_cluster_scan_upper'] = scan_upper
 
                 # determine the feature's extent in RT by looking at the anchor point's peak
-                ap_raw_points_in_rt_df = raw_df[(raw_df.mz >= anchor_point_cluster_points_df.mz.min()) & (raw_df.mz <= anchor_point_cluster_points_df.mz.max()) & (raw_df.scan >= anchor_point_cluster_points_df.scan.min()) & (raw_df.scan <= anchor_point_cluster_points_df.scan.max()) & (raw_df.retention_time_secs >= anchor_point_s.retention_time_secs-RT_BASE_PEAK_WIDTH) & (raw_df.retention_time_secs <= anchor_point_s.retention_time_secs+RT_BASE_PEAK_WIDTH)]
+                ap_raw_points_in_rt_df = raw_cudf_df[(raw_cudf_df.mz >= anchor_point_cluster_points_df.mz.min()) & (raw_cudf_df.mz <= anchor_point_cluster_points_df.mz.max()) & (raw_cudf_df.scan >= anchor_point_cluster_points_df.scan.min()) & (raw_cudf_df.scan <= anchor_point_cluster_points_df.scan.max()) & (raw_cudf_df.retention_time_secs >= anchor_point_s['retention_time_secs']-RT_BASE_PEAK_WIDTH) & (raw_cudf_df.retention_time_secs <= anchor_point_s['retention_time_secs']+RT_BASE_PEAK_WIDTH)]
                 rt_df = ap_raw_points_in_rt_df.groupby(['frame_id','retention_time_secs'], as_index=False).intensity.sum()
-                rt_df.sort_values(by=['retention_time_secs'], ascending=True, inplace=True)
+                rt_df = rt_df.sort_values(by=['retention_time_secs'], ascending=True, inplace=False)
 
                 # filter the points
                 rt_df['filtered_intensity'] = rt_df.intensity  # set the default
@@ -232,11 +237,11 @@ def find_precursor_cuboids(segment_mz_lower, segment_mz_upper):
 
                 # make sure the RT extent isn't too extreme
                 if (rt_upper - rt_lower) > RT_BASE_PEAK_WIDTH:
-                    rt_lower = anchor_point_s.retention_time_secs - (RT_BASE_PEAK_WIDTH / 2)
-                    rt_upper = anchor_point_s.retention_time_secs + (RT_BASE_PEAK_WIDTH / 2)
+                    rt_lower = anchor_point_s['retention_time_secs'] - (RT_BASE_PEAK_WIDTH / 2)
+                    rt_upper = anchor_point_s['retention_time_secs'] + (RT_BASE_PEAK_WIDTH / 2)
 
                 # get the point ids for the feature in 3D
-                points_to_remove_l = raw_df[(raw_df.mz >= mz_lower) & (raw_df.mz <= mz_upper) & (raw_df.scan >= scan_lower) & (raw_df.scan <= scan_upper) & (raw_df.retention_time_secs >= rt_lower) & (raw_df.retention_time_secs <= rt_upper)].point_id.tolist()
+                points_to_remove_l = raw_cudf_df[(raw_cudf_df.mz >= mz_lower) & (raw_cudf_df.mz <= mz_upper) & (raw_cudf_df.scan >= scan_lower) & (raw_cudf_df.scan <= scan_upper) & (raw_cudf_df.retention_time_secs >= rt_lower) & (raw_cudf_df.retention_time_secs <= rt_upper)].point_id.tolist()
 
                 # add this cuboid to the list
                 precursor_coordinates_columns = ['mz_lower', 'mz_upper', 'scan_lower', 'scan_upper', 'rt_lower', 'rt_upper', 'anchor_point_intensity', 'anchor_point_mz', 'anchor_point_scan', 'anchor_point_retention_time_secs', 'anchor_point_frame_id', 'number_of_isotope_clusters', 'number_of_point_clusters_in_anchor_isotope_cluster']
@@ -250,11 +255,11 @@ def find_precursor_cuboids(segment_mz_lower, segment_mz_upper):
                 isotope_cluster_retries = 0
 
                 # set the intensity so we don't process them again
-                raw_df.loc[raw_df.point_id.isin(points_to_remove_l), 'intensity'] = PROCESSED_INTENSITY_INDICATOR
+                raw_cudf_df.loc[raw_cudf_df.point_id.isin(points_to_remove_l), 'intensity'] = PROCESSED_INTENSITY_INDICATOR
 
                 if args.visualise:
                     # save the visualisation info
-                    with open('visualise-three-d-{}.pkl'.format(int(anchor_point_s.intensity)), 'wb') as f:
+                    with open('visualise-three-d-{}.pkl'.format(int(anchor_point_s['intensity'])), 'wb') as f:
                         pickle.dump(visualise_d, f)
             else:
                 # just remove the anchor point's cluster because we could not form a series
@@ -266,7 +271,7 @@ def find_precursor_cuboids(segment_mz_lower, segment_mz_upper):
                 clusters_to_remove_l = [anchor_point_cluster]
                 points_to_remove_l = candidate_region_df[candidate_region_df.cluster.isin(clusters_to_remove_l)].point_id.tolist()
                 # print('removing clusters {}, {} points'.format(clusters_to_remove_l, len(points_to_remove_l)))
-                raw_df.loc[raw_df.point_id.isin(points_to_remove_l), 'intensity'] = PROCESSED_INTENSITY_INDICATOR
+                raw_cudf_df.loc[raw_cudf_df.point_id.isin(points_to_remove_l), 'intensity'] = PROCESSED_INTENSITY_INDICATOR
                 # print('_', end='', flush=True)
                 isotope_cluster_retries += 1
                 # if isotope_cluster_retries >= MAX_ISOTOPE_CLUSTER_RETRIES:
@@ -274,7 +279,7 @@ def find_precursor_cuboids(segment_mz_lower, segment_mz_upper):
                 #     break
         else:
             points_to_remove_l = [anchor_point_s.point_id]
-            raw_df.loc[raw_df.point_id.isin(points_to_remove_l), 'intensity'] = PROCESSED_INTENSITY_INDICATOR
+            raw_cudf_df.loc[raw_cudf_df.point_id.isin(points_to_remove_l), 'intensity'] = PROCESSED_INTENSITY_INDICATOR
             # print('x', end='', flush=True)
             point_cluster_retries += 1
             # if point_cluster_retries >= MAX_POINT_CLUSTER_RETRIES:
@@ -282,7 +287,8 @@ def find_precursor_cuboids(segment_mz_lower, segment_mz_upper):
             #     break
 
         # find the next anchor point
-        anchor_point_s = raw_df.loc[raw_df.intensity.idxmax()]
+        raw_cudf_df = raw_cudf_df.sort_values(by=['intensity'], ascending=False, inplace=False)
+        anchor_point_s = raw_cudf_df.iloc[0]
 
     # return what we found in this segment
     print('found {} cuboids for mz={} to {}'.format(len(precursor_cuboids_l), segment_mz_lower, segment_mz_upper))
