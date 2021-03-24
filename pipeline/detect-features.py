@@ -148,7 +148,7 @@ def detect_ms1_features(precursor_cuboid_d, converted_db_name):
 
     # deconvolution
     ms1_peaks_l = list(map(tuple, peaks_a))
-    deconvoluted_peaks, _priority_targets = deconvolute_peaks(ms1_peaks_l, use_quick_charge=True, averagine=averagine.peptide, charge_range=(1,5), error_tolerance=5.0, scorer=scoring.MSDeconVFitter(MIN_SCORE_MS1_DECONVOLUTION_FEATURE), truncate_after=0.95)
+    deconvoluted_peaks, _priority_targets = deconvolute_peaks(ms1_peaks_l, use_quick_charge=True, averagine=averagine.peptide, charge_range=(FEATURE_DETECTION_MIN_CHARGE,FEATURE_DETECTION_MAX_CHARGE), error_tolerance=5.0, scorer=scoring.MSDeconVFitter(MIN_SCORE_MS1_DECONVOLUTION_FEATURE), truncate_after=0.95)
 
     # collect features from deconvolution
     ms1_deconvoluted_peaks_l = []
@@ -300,6 +300,8 @@ RT_BASE_PEAK_WIDTH_SECS = cfg.getfloat('common', 'RT_BASE_PEAK_WIDTH_SECS')
 SCAN_BASE_PEAK_WIDTH = cfg.getint('common', 'SCAN_BASE_PEAK_WIDTH')
 INSTRUMENT_RESOLUTION = cfg.getfloat('common', 'INSTRUMENT_RESOLUTION')
 MIN_SCORE_MS1_DECONVOLUTION_FEATURE = cfg.getfloat('ms1', 'MIN_SCORE_MS1_DECONVOLUTION_FEATURE')
+FEATURE_DETECTION_MIN_CHARGE = cfg.getint('ms1', 'FEATURE_DETECTION_MIN_CHARGE')
+FEATURE_DETECTION_MAX_CHARGE = cfg.getint('ms1', 'FEATURE_DETECTION_MAX_CHARGE')
 
 # input cuboids
 CUBOIDS_DIR = "{}/precursor-cuboids-{}".format(EXPERIMENT_DIR, args.precursor_definition_method)
