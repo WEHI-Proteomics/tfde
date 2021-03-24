@@ -136,7 +136,7 @@ def determine_mono_peak_characteristics(centre_mz, ms1_raw_points_df):
 def detect_ms1_features(precursor_cuboid_d, converted_db_name):
     # load the raw points for this cuboid
     db_conn = sqlite3.connect(converted_db_name)
-    wide_ms1_points_df = pd.read_sql_query("select frame_id,mz,scan,intensity,retention_time_secs from frames where frame_type == {} and retention_time_secs >= {} and retention_time_secs <= {} and scan >= {} and scan <= {} and mz >= {} and mz <= {}".format(FRAME_TYPE_MS1, precursor_cuboid_d['wide_rt_lower'], precursor_cuboid_d['wide_rt_upper'], precursor_cuboid_d['wide_scan_lower'], precursor_cuboid_d['wide_scan_upper'], precursor_cuboid_d['wide_mz_lower'], precursor_cuboid_d['wide_mz_upper']), db_conn)
+    wide_ms1_points_df = pd.read_sql_query("select frame_id,mz,scan,intensity,retention_time_secs from frames where frame_type == {} and retention_time_secs >= {} and retention_time_secs <= {} and scan >= {} and scan <= {} and mz >= {} and mz <= {}".format(FRAME_TYPE_MS1, precursor_cuboid_d['wide_ms1_rt_lower'], precursor_cuboid_d['wide_ms1_rt_upper'], precursor_cuboid_d['wide_scan_lower'], precursor_cuboid_d['wide_scan_upper'], precursor_cuboid_d['wide_mz_lower'], precursor_cuboid_d['wide_mz_upper']), db_conn)
     db_conn.close()
 
     # constrain the raw points to the isolation windows so we can find the features
