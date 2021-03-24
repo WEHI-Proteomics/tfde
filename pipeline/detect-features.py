@@ -246,13 +246,13 @@ def detect_ms1_features_3did(precursor_cuboid_row, converted_db_name):
         feature_d['rt_apex'] = precursor_cuboid_row.anchor_point_retention_time_secs
         feature_d['rt_lower'] = precursor_cuboid_row.rt_lower
         feature_d['rt_upper'] = precursor_cuboid_row.rt_upper
-
+        # find the m/z range for the feature's mono peak
         centre_mz = row.envelope[0][0]
         mz_delta = calculate_ms1_peak_delta(centre_mz)
         mz_lower = centre_mz - mz_delta
         mz_upper = centre_mz + mz_delta
-
-        peak_d = {'mz_lower':mz_lower, 'mz_upper':mz_upper, 'scan_lower':scan_lower, 'scan_upper':scan_upper, 'rt_lower':rt_lower, 'rt_upper':rt_upper}
+        # calculate the mono peak intensity
+        peak_d = {'mz_lower':mz_lower, 'mz_upper':mz_upper, 'scan_lower':feature_d['scan_lower'], 'scan_upper':feature_d['scan_upper'], 'rt_lower':feature_d['rt_lower'], 'rt_upper':feature_d['rt_upper']}
         feature_d['envelope_mono_peak_three_sigma_intensity'] = calculate_peak_intensity(peak_characteristics=peak_d, raw_points=ms1_points_df)
         # assign a unique identifier to this feature
         feature_d['feature_id'] = generate_feature_id(precursor_cuboid_row.precursor_cuboid_id, idx+1)
