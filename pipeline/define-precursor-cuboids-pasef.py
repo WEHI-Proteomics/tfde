@@ -94,18 +94,23 @@ def process_precursor(frame_properties_df, precursor_id, precursor_group_df):
     fe_scan_upper = int(window.ScanNumEnd)
     wide_scan_lower = int(window.ScanNumBegin - scan_width)                       # get more points to make sure we get the apex of the peak in drift
     wide_scan_upper = int(window.ScanNumEnd + scan_width)
+
     fe_ms2_frame_lower = precursor_group_df.Frame.astype(int).min()               # only the ms2 frames associated with the precursor
     fe_ms2_frame_upper = precursor_group_df.Frame.astype(int).max()
+    fe_ms2_rt_lower = metadata_for_frame(frame_properties_df, fe_ms2_frame_lower)['retention_time_secs']
+    fe_ms2_rt_upper = metadata_for_frame(frame_properties_df, fe_ms2_frame_upper)['retention_time_secs']
+
     fe_ms1_frame_lower,_ = find_closest_ms1_frame_to_ms2_frame(frame_properties_df,fe_ms2_frame_lower)
     _,fe_ms1_frame_upper = find_closest_ms1_frame_to_ms2_frame(frame_properties_df,fe_ms2_frame_upper)
-    wide_rt_lower = metadata_for_frame(frame_properties_df, precursor_group_df.Frame.astype(int).min())['retention_time_secs'] - RT_BASE_PEAK_WIDTH_SECS  # get more points to make sure we get the apex of the peak in retention time
-    wide_rt_upper = metadata_for_frame(frame_properties_df, precursor_group_df.Frame.astype(int).max())['retention_time_secs'] + RT_BASE_PEAK_WIDTH_SECS
-    wide_frame_lower,_ = find_closest_ms1_frame_to_rt(frame_properties_df, wide_rt_lower)
-    _,wide_frame_upper = find_closest_ms1_frame_to_rt(frame_properties_df, wide_rt_upper)
+    fe_ms1_rt_lower = metadata_for_frame(frame_properties_df, fe_ms1_frame_lower)['retention_time_secs']
+    fe_ms1_rt_upper = metadata_for_frame(frame_properties_df, fe_ms1_frame_upper)['retention_time_secs']
+
+    wide_ms1_rt_lower = fe_ms1_rt_lower - RT_BASE_PEAK_WIDTH_SECS  # get more points to make sure we get the apex of the peak in retention time
+    wide_ms1_rt_upper = fe_ms1_rt_upper + RT_BASE_PEAK_WIDTH_SECS
 
     # collect the coordinates for the precursor cuboid
-    precursor_coordinates_columns = ['precursor_id', 'window_mz_lower', 'window_mz_upper', 'wide_mz_lower', 'wide_mz_upper', 'window_scan_width', 'fe_scan_lower', 'fe_scan_upper', 'wide_scan_lower', 'wide_scan_upper', 'wide_rt_lower', 'wide_rt_upper', 'fe_ms1_frame_lower', 'fe_ms1_frame_upper', 'fe_ms2_frame_lower', 'fe_ms2_frame_upper', 'wide_frame_lower', 'wide_frame_upper', 'number_of_windows']
-    precursor_coordinates_values = [int(precursor_id), window_mz_lower, window_mz_upper, wide_mz_lower, wide_mz_upper, int(scan_width), int(fe_scan_lower), int(fe_scan_upper), int(wide_scan_lower), int(wide_scan_upper), wide_rt_lower, wide_rt_upper, int(fe_ms1_frame_lower), int(fe_ms1_frame_upper), int(fe_ms2_frame_lower), int(fe_ms2_frame_upper), int(wide_frame_lower), int(wide_frame_upper), len(precursor_group_df)]
+    precursor_coordinates_columns = ['precursor_id', 'window_mz_lower', 'window_mz_upper', 'wide_mz_lower', 'wide_mz_upper', 'fe_scan_lower', 'fe_scan_upper', 'wide_scan_lower', 'wide_scan_upper', 'fe_ms1_rt_lower', 'fe_ms1_rt_upper', 'fe_ms2_rt_lower', 'fe_ms2_rt_upper', 'wide_ms1_rt_lower', 'wide_ms1_rt_upper', 'number_of_windows']
+    precursor_coordinates_values = [int(precursor_id), window_mz_lower, window_mz_upper, wide_mz_lower, wide_mz_upper, int(fe_scan_lower), int(fe_scan_upper), int(wide_scan_lower), int(wide_scan_upper), fe_ms1_rt_lower, fe_ms1_rt_upper, fe_ms2_rt_lower, fe_ms2_rt_upper, wide_ms1_rt_lower, wide_ms1_rt_upper, len(precursor_group_df)]
     precursor_coordinates_d = {}
     for idx,c in enumerate(precursor_coordinates_columns):
         precursor_coordinates_d[c] = precursor_coordinates_values[idx]
