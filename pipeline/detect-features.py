@@ -239,8 +239,8 @@ def get_common_cuboid_definition_from_3did(precursor_cuboid_row):
     d['wide_scan_upper'] = precursor_cuboid_row.scan_upper
     d['ms1_rt_lower'] = precursor_cuboid_row.rt_lower
     d['ms1_rt_upper'] = precursor_cuboid_row.rt_upper
-    d['wide_ms1_rt_lower'] = precursor_cuboid_row.ms1_rt_lower
-    d['wide_ms1_rt_upper'] = precursor_cuboid_row.ms1_rt_upper
+    d['wide_ms1_rt_lower'] = precursor_cuboid_row.rt_lower
+    d['wide_ms1_rt_upper'] = precursor_cuboid_row.rt_upper
     d['ms2_rt_lower'] = None
     d['ms2_rt_upper'] = None
     return d
