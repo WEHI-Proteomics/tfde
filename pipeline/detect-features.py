@@ -140,7 +140,7 @@ def detect_ms1_features(precursor_cuboid_d, converted_db_name):
     db_conn.close()
 
     # constrain the raw points to the isolation windows so we can find the features
-    ms1_points_df = wide_ms1_points_df[(wide_ms1_points_df.mz >= precursor_cuboid_d['mz_lower']) & (wide_ms1_points_df.mz <= precursor_cuboid_d['mz_upper']) & (wide_ms1_points_df.scan >= precursor_cuboid_d['scan_lower']) & (wide_ms1_points_df.scan <= precursor_cuboid_d['scan_upper']) & (wide_ms1_points_df.retention_time_secs >= precursor_cuboid_d['rt_lower']) & (wide_ms1_points_df.retention_time_secs <= precursor_cuboid_d['rt_upper'])]
+    ms1_points_df = wide_ms1_points_df[(wide_ms1_points_df.mz >= precursor_cuboid_d['mz_lower']) & (wide_ms1_points_df.mz <= precursor_cuboid_d['mz_upper']) & (wide_ms1_points_df.scan >= precursor_cuboid_d['scan_lower']) & (wide_ms1_points_df.scan <= precursor_cuboid_d['scan_upper']) & (wide_ms1_points_df.retention_time_secs >= precursor_cuboid_d['ms1_rt_lower']) & (wide_ms1_points_df.retention_time_secs <= precursor_cuboid_d['ms1_rt_upper'])]
 
     # intensity descent
     raw_points_a = ms1_points_df[['mz','intensity']].to_numpy()
