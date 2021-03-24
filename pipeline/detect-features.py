@@ -208,7 +208,7 @@ def generate_feature_id(precursor_id, feature_sequence_number):
 # map the pasef cuboid coordinates to the common form
 def get_common_cuboid_definition_from_pasef(precursor_cuboid_row):
     d = {}
-    d['precursor_cuboid_id'] = precursor_cuboid_row.precursor_id
+    d['precursor_cuboid_id'] = precursor_cuboid_row.precursor_cuboid_id
     d['mz_lower'] = precursor_cuboid_row.window_mz_lower
     d['mz_upper'] = precursor_cuboid_row.window_mz_upper
     d['wide_mz_lower'] = precursor_cuboid_row.wide_mz_lower
@@ -320,7 +320,7 @@ if not ray.is_initialized():
 
 # find the features in each precursor cuboid
 if args.precursor_definition_method == 'pasef':
-    features_l = ray.get([detect_ms1_features_pasef.remote(precursor_cuboid_d=get_common_cuboid_definition_from_pasef(row), converted_db_name=CONVERTED_DATABASE_NAME) for row in precursor_cuboids_df.itertuples()])
+    features_l = ray.get([detect_ms1_features.remote(precursor_cuboid_d=get_common_cuboid_definition_from_pasef(row), converted_db_name=CONVERTED_DATABASE_NAME) for row in precursor_cuboids_df.itertuples()])
 # elif args.precursor_definition_method == '3did':
 #     features_l = ray.get([detect_ms1_features_3did.remote(precursor_cuboid_d=row, converted_db_name=CONVERTED_DATABASE_NAME) for row in precursor_cuboids_df.itertuples()])
 
