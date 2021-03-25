@@ -5,6 +5,7 @@ import json
 import time
 import argparse
 import os
+import pickle
 
 ###################################
 parser = argparse.ArgumentParser(description='Remove duplicates of the features detected.')
