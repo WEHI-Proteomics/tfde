@@ -54,7 +54,6 @@ features_df['dup_scan_lower'] = features_df.scan_apex - args.scan_tolerance
 features_df['dup_scan_upper'] = features_df.scan_apex + args.scan_tolerance
 features_df['dup_rt_lower'] = features_df.rt_apex - args.rt_tolerance
 features_df['dup_rt_upper'] = features_df.rt_apex + args.rt_tolerance
-features_df['dup_composite_key'] = features_df.apply(lambda row: '{},{}'.format(row.feature_id, row.precursor_id), axis=1)
 
 # remove these after we're finished
 columns_to_drop_l = []
@@ -66,7 +65,6 @@ columns_to_drop_l.append('dup_scan_lower')
 columns_to_drop_l.append('dup_scan_upper')
 columns_to_drop_l.append('dup_rt_lower')
 columns_to_drop_l.append('dup_rt_upper')
-columns_to_drop_l.append('dup_composite_key')
 
 # see if any detections have a duplicate - if so, find the dup with the highest intensity and keep it
 keep_l = []
@@ -74,10 +72,10 @@ for row in features_df.itertuples():
     dup_df = features_df[(features_df.dup_mz > row.dup_mz_lower) & (features_df.dup_mz < row.dup_mz_upper) & (features_df.scan_apex > row.dup_scan_lower) & (features_df.scan_apex < row.dup_scan_upper) & (features_df.rt_apex > row.dup_rt_lower) & (features_df.rt_apex < row.dup_rt_upper)].copy()
     # group the dups by charge - take the most intense for each charge
     for group_name,group_df in dup_df.groupby(['charge'], as_index=False):
-        keep_l.append(group_df.iloc[0].dup_composite_key)
+        keep_l.append(group_df.iloc[0].feature_id)
 
 # remove any features that are not in the keep list
-dedup_df = features_df[features_df.dup_composite_key.isin(keep_l)].copy()
+dedup_df = features_df[features_df.feature_id.isin(keep_l)].copy()
 
 number_of_dups = len(features_df)-len(dedup_df)
 print('removed {} duplicates ({}% of the original detections)'.format(number_of_dups, round(number_of_dups/len(features_df)*100)))
