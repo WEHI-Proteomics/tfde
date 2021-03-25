@@ -27,30 +27,24 @@ print(info)
 start_run = time.time()
 
 EXPERIMENT_DIR = '{}/{}'.format(args.experiment_base_dir, args.experiment_name)
-
-if args.feature_detection_method == '3did':
-    FEATURES_DIR = '{}/features-3did'.format(EXPERIMENT_DIR)
-    FEATURES_FILE = '{}/exp-{}-run-{}-features-3did.pkl'.format(FEATURES_DIR, args.experiment_name, args.run_name)
-    MZ_COLUMN_NAME = 'monoisotopic_mz'
-    
-    features_df = pd.read_pickle(FEATURES_FILE)
-
-if args.feature_detection_method == 'pasef':
-    FEATURES_DIR = '{}/features'.format(EXPERIMENT_DIR)
-    FEATURES_FILE = '{}/detected-features-no-recal.sqlite'.format(FEATURES_DIR)
-    MZ_COLUMN_NAME = 'monoisotopic_mz'
-
-    db_conn = sqlite3.connect(FEATURES_FILE)
-    features_df = pd.read_sql_query("select * from features where rt_apex >= {} and rt_apex <= {} and run_name=='{}'".format(args.rt_lower, args.rt_upper, args.run_name), db_conn)
-    db_conn.close()
-
+FEATURES_DIR = '{}/features-{}'.format(EXPERIMENT_DIR, args.feature_detection_method)
+FEATURES_FILE = '{}/exp-{}-run-{}-features-{}.pkl'.format(FEATURES_DIR, args.experiment_name, args.run_name, args.feature_detection_method)
 FEATURES_DEDUP_FILE = '{}/exp-{}-run-{}-features-{}-dedup.pkl'.format(FEATURES_DIR, args.experiment_name, args.run_name, args.feature_detection_method)
+
+if not os.path.isfile(FEATURES_FILE):
+    print("The features file is required but doesn't exist: {}".format(FEATURES_FILE))
+    sys.exit(1)
+
+# load the features to de-dup
+with open(FEATURES_FILE, 'rb') as handle:
+    d = pickle.load(handle)
+features_df = d['features_df']
 
 print('there are {} features prior to de-dup'.format(len(features_df)))
 
+# set up dup definitions
 MZ_TOLERANCE_PERCENT = args.mz_tolerance_ppm * 10**-4
-
-features_df['dup_mz'] = features_df[MZ_COLUMN_NAME]  # shorthand to reduce verbosity
+features_df['dup_mz'] = features_df['monoisotopic_mz']  # shorthand to reduce verbosity
 features_df['dup_mz_ppm_tolerance'] = features_df.dup_mz * MZ_TOLERANCE_PERCENT / 100
 features_df['dup_mz_lower'] = features_df.dup_mz - features_df.dup_mz_ppm_tolerance
 features_df['dup_mz_upper'] = features_df.dup_mz + features_df.dup_mz_ppm_tolerance
@@ -91,7 +85,12 @@ print('there are {} detected de-duplicated features'.format(len(dedup_df)))
 dedup_df.drop(columns_to_drop_l, axis=1, inplace=True)
 
 # save the de-dup features
-dedup_df.to_pickle(FEATURES_DEDUP_FILE)
+info.append(('total_running_time',round(time.time()-start_run,1)))
+info.append(('processor',parser.prog))
+info.append(('processed', time.ctime()))
+content_d = {'features_dedup_df':dedup_df, 'metadata':info}
+with open(FEATURES_DEDUP_FILE, 'wb') as handle:
+    pickle.dump(content_d, handle)
 print('wrote {} de-dup features to {}'.format(len(dedup_df), FEATURES_DEDUP_FILE))
 
 stop_run = time.time()
