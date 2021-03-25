@@ -27,34 +27,36 @@ def create_indexes(db_file_name):
 def mz_centroid(_int_f, _mz_f):
     return ((_int_f/_int_f.sum()) * _mz_f).sum()
 
-# ms1_peaks_a is a numpy array of [mz,intensity]
+# peaks_a is a numpy array of [mz,intensity]
 # returns a numpy array of [mz_centroid,summed_intensity]
-def ms1_intensity_descent(ms1_peaks_a, ms1_peak_delta):
+def intensity_descent(peaks_a, peak_delta=None):
     # intensity descent
-    ms1_peaks_l = []
-    while len(ms1_peaks_a) > 0:
+    peaks_l = []
+    while len(peaks_a) > 0:
         # find the most intense point
-        max_intensity_index = np.argmax(ms1_peaks_a[:,1])
-        peak_mz = ms1_peaks_a[max_intensity_index,0]
-        peak_mz_lower = peak_mz - ms1_peak_delta
-        peak_mz_upper = peak_mz + ms1_peak_delta
+        max_intensity_index = np.argmax(peaks_a[:,1])
+        peak_mz = peaks_a[max_intensity_index,0]
+        if peak_delta == None:
+            peak_delta = calculate_peak_delta(mz=peak_mz)
+        peak_mz_lower = peak_mz - peak_delta
+        peak_mz_upper = peak_mz + peak_delta
 
         # get all the raw points within this m/z region
-        peak_indexes = np.where((ms1_peaks_a[:,0] >= peak_mz_lower) & (ms1_peaks_a[:,0] <= peak_mz_upper))[0]
+        peak_indexes = np.where((peaks_a[:,0] >= peak_mz_lower) & (peaks_a[:,0] <= peak_mz_upper))[0]
         if len(peak_indexes) > 0:
-            mz_cent = mz_centroid(ms1_peaks_a[peak_indexes,1], ms1_peaks_a[peak_indexes,0])
-            summed_intensity = ms1_peaks_a[peak_indexes,1].sum()
-            ms1_peaks_l.append((mz_cent, summed_intensity))
+            mz_cent = mz_centroid(peaks_a[peak_indexes,1], peaks_a[peak_indexes,0])
+            summed_intensity = peaks_a[peak_indexes,1].sum()
+            peaks_l.append((mz_cent, summed_intensity))
             # remove the raw points assigned to this peak
-            ms1_peaks_a = np.delete(ms1_peaks_a, peak_indexes, axis=0)
-    return np.array(ms1_peaks_l)
+            peaks_a = np.delete(peaks_a, peak_indexes, axis=0)
+    return np.array(peaks_l)
 
 # find 3sigma for a specified m/z
-def calculate_ms1_peak_delta(mz):
+def calculate_peak_delta(mz):
     delta_m = mz / INSTRUMENT_RESOLUTION  # FWHM of the peak
     sigma = delta_m / 2.35482  # std dev is FWHM / 2.35482. See https://en.wikipedia.org/wiki/Full_width_at_half_maximum
     ms1_peak_delta = 3 * sigma  # 99.7% of values fall within +/- 3 sigma
-    return ms1_peak_delta
+    return peak_delta
     
 # calculate the sum of the raw points in the mono m/z
 def calculate_peak_intensity(peak_characteristics, raw_points):
@@ -66,7 +68,7 @@ def calculate_peak_intensity(peak_characteristics, raw_points):
 # determine the mono peak apex and extent in CCS and RT
 def determine_mono_peak_characteristics(centre_mz, ms1_raw_points_df):
     # determine the raw points that belong to the mono peak
-    mz_delta = calculate_ms1_peak_delta(centre_mz)
+    mz_delta = calculate_peak_delta(centre_mz)
     mz_lower = centre_mz - mz_delta
     mz_upper = centre_mz + mz_delta
     mono_points_df = ms1_raw_points_df[(ms1_raw_points_df.mz >= mz_lower) & (ms1_raw_points_df.mz <= mz_upper)]
@@ -131,9 +133,27 @@ def determine_mono_peak_characteristics(centre_mz, ms1_raw_points_df):
         result_d = None
     return result_d
 
+# resolve the fragment ions for this feature
+# returns a decharged peak list (neutral mass+proton mass, intensity)
+def resolve_fragment_ions(feature_d, ms2_points_df):
+    # perform intensity descent to resolve peaks
+    raw_points_a = ms2_points_df[['mz','intensity']].to_numpy()
+    peaks_a = intensity_descent(peaks_a=raw_points_a, peak_delta=MS2_PEAK_DELTA)
+    # deconvolute the spectra
+    peaks_l = list(map(tuple, peaks_a))
+    deconvoluted_peaks, _ = deconvolute_peaks(peaks_l, use_quick_charge=True, averagine=averagine.peptide, charge_range=(1,feature_d['charge']), scorer=scoring.MSDeconVFitter(minimum_score=MIN_SCORE_MS2_DECONVOLUTION_FEATURE, mass_error_tolerance=0.1), error_tolerance=4e-5, truncate_after=0.8, retention_strategy=peak_retention_strategy.TopNRetentionStrategy(n_peaks=100, base_peak_coefficient=1e-6, max_mass=1800.0))
+    # package the spectra as a list
+    deconvoluted_peaks_l = []
+    for peak in deconvoluted_peaks:
+        d = {}
+        d['decharged_mass'] = round(peak.neutral_mass+PROTON_MASS, 4)
+        d['intensity'] = peak.intensity
+        deconvoluted_peaks_l.append(d)
+    return deconvoluted_peaks_l
+
 # prepare the metadata and raw points for the feature detection
 @ray.remote
-def detect_ms1_features(precursor_cuboid_d, converted_db_name):
+def detect_features(precursor_cuboid_d, converted_db_name):
     # load the raw points for this cuboid
     db_conn = sqlite3.connect(converted_db_name)
     wide_ms1_points_df = pd.read_sql_query("select frame_id,mz,scan,intensity,retention_time_secs from frames where frame_type == {} and retention_time_secs >= {} and retention_time_secs <= {} and scan >= {} and scan <= {} and mz >= {} and mz <= {}".format(FRAME_TYPE_MS1, precursor_cuboid_d['wide_ms1_rt_lower'], precursor_cuboid_d['wide_ms1_rt_upper'], precursor_cuboid_d['wide_scan_lower'], precursor_cuboid_d['wide_scan_upper'], precursor_cuboid_d['wide_mz_lower'], precursor_cuboid_d['wide_mz_upper']), db_conn)
@@ -144,7 +164,7 @@ def detect_ms1_features(precursor_cuboid_d, converted_db_name):
 
     # intensity descent
     raw_points_a = ms1_points_df[['mz','intensity']].to_numpy()
-    peaks_a = ms1_intensity_descent(raw_points_a, MS1_PEAK_DELTA)
+    peaks_a = intensity_descent(peaks_a=raw_points_a, peak_delta=MS1_PEAK_DELTA)
 
     # deconvolution
     ms1_peaks_l = list(map(tuple, peaks_a))
@@ -160,6 +180,12 @@ def detect_ms1_features(precursor_cuboid_d, converted_db_name):
             second_peak_mz = peak.envelope[1][0]
             ms1_deconvoluted_peaks_l.append((mono_peak_mz, second_peak_mz, mono_intensity, peak.score, peak.signal_to_noise, peak.charge, peak.envelope, peak.neutral_mass))
     deconvolution_features_df = pd.DataFrame(ms1_deconvoluted_peaks_l, columns=['mono_mz','second_peak_mz','intensity','score','SN','charge','envelope','neutral_mass'])
+
+    # load the ms2 data for the precursor
+    if len(deconvolution_features_df) > 0:
+        db_conn = sqlite3.connect(converted_db_name)
+        ms2_points_df = pd.read_sql_query("select frame_id,mz,scan,intensity,retention_time_secs from frames where frame_type == {} and retention_time_secs >= {} and retention_time_secs <= {} and scan >= {} and scan <= {}".format(FRAME_TYPE_MS2, precursor_cuboid_d['ms2_rt_lower'], precursor_cuboid_d['ms2_rt_upper'], precursor_cuboid_d['scan_lower'], precursor_cuboid_d['scan_upper']), db_conn)
+        db_conn.close()
 
     # determine the feature attributes
     feature_l = []
@@ -185,6 +211,9 @@ def detect_ms1_features(precursor_cuboid_d, converted_db_name):
             feature_d['rt_lower'] = peak_d['rt_lower']
             feature_d['rt_upper'] = peak_d['rt_upper']
             feature_d['envelope_mono_peak_three_sigma_intensity'] = calculate_peak_intensity(peak_characteristics=peak_d, raw_points=wide_ms1_points_df)
+        # resolve the feature's fragment ions
+        fragment_ions_l = resolve_fragment_ions(feature_d, ms2_points_df)
+        feature_d['fragment_ions_l'] = json.dumps(fragment_ions_l)
         # assign a unique identifier to this feature
         feature_d['feature_id'] = generate_feature_id(precursor_cuboid_d['precursor_cuboid_id'], idx+1)
         # add it to the list
@@ -208,7 +237,7 @@ def generate_feature_id(precursor_id, feature_sequence_number):
 # map the pasef cuboid coordinates to the common form
 def get_common_cuboid_definition_from_pasef(precursor_cuboid_row):
     d = {}
-    d['precursor_cuboid_id'] = precursor_cuboid_row.precursor_cuboid_id
+    d['precursor_cuboid_id'] = precursor_cuboid_row.precursor_id  # the precursor_id from the isolation window table
     d['mz_lower'] = precursor_cuboid_row.window_mz_lower
     d['mz_upper'] = precursor_cuboid_row.window_mz_upper
     d['wide_mz_lower'] = precursor_cuboid_row.wide_mz_lower
@@ -228,7 +257,7 @@ def get_common_cuboid_definition_from_pasef(precursor_cuboid_row):
 # map the 3did cuboid coordinates to the common form
 def get_common_cuboid_definition_from_3did(precursor_cuboid_row):
     d = {}
-    d['precursor_cuboid_id'] = precursor_cuboid_row.precursor_cuboid_id
+    d['precursor_cuboid_id'] = precursor_cuboid_row.precursor_cuboid_id  # a unique identifier for the precursor cuboid
     d['mz_lower'] = precursor_cuboid_row.mz_lower
     d['mz_upper'] = precursor_cuboid_row.mz_upper
     d['wide_mz_lower'] = precursor_cuboid_row.mz_lower
@@ -257,6 +286,7 @@ parser.add_argument('-ini','--ini_file', type=str, default='./otf-peak-detect/pi
 parser.add_argument('-pid', '--precursor_id', type=int, help='Only process this precursor ID.', required=False)
 parser.add_argument('-rm','--ray_mode', type=str, choices=['local','cluster'], help='The Ray mode to use.', required=True)
 parser.add_argument('-pc','--proportion_of_cores_to_use', type=float, default=0.9, help='Proportion of the machine\'s cores to use for this program.', required=False)
+parser.add_argument('-v','--visualise', action='store_true', help='Generate data for visualisation of the feature detection.')
 args = parser.parse_args()
 
 # Print the arguments for the log
@@ -295,11 +325,13 @@ cfg.read(args.ini_file)
 # set up constants
 FRAME_TYPE_MS1 = cfg.getint('common','FRAME_TYPE_MS1')
 MS1_PEAK_DELTA = cfg.getfloat('ms1', 'MS1_PEAK_DELTA')
+MS2_PEAK_DELTA = cfg.getfloat('ms2', 'MS2_PEAK_DELTA')
 PROTON_MASS = cfg.getfloat('common', 'PROTON_MASS')
 RT_BASE_PEAK_WIDTH_SECS = cfg.getfloat('common', 'RT_BASE_PEAK_WIDTH_SECS')
 SCAN_BASE_PEAK_WIDTH = cfg.getint('common', 'SCAN_BASE_PEAK_WIDTH')
 INSTRUMENT_RESOLUTION = cfg.getfloat('common', 'INSTRUMENT_RESOLUTION')
 MIN_SCORE_MS1_DECONVOLUTION_FEATURE = cfg.getfloat('ms1', 'MIN_SCORE_MS1_DECONVOLUTION_FEATURE')
+MIN_SCORE_MS2_DECONVOLUTION_FEATURE = cfg.getfloat('ms2', 'MIN_SCORE_MS2_DECONVOLUTION_FEATURE')
 FEATURE_DETECTION_MIN_CHARGE = cfg.getint('ms1', 'FEATURE_DETECTION_MIN_CHARGE')
 FEATURE_DETECTION_MAX_CHARGE = cfg.getint('ms1', 'FEATURE_DETECTION_MAX_CHARGE')
 
@@ -342,9 +374,9 @@ if not ray.is_initialized():
 
 # find the features in each precursor cuboid
 if args.precursor_definition_method == 'pasef':
-    features_l = ray.get([detect_ms1_features.remote(precursor_cuboid_d=get_common_cuboid_definition_from_pasef(row), converted_db_name=CONVERTED_DATABASE_NAME) for row in precursor_cuboids_df.itertuples()])
+    features_l = ray.get([detect_features.remote(precursor_cuboid_d=get_common_cuboid_definition_from_pasef(row), converted_db_name=CONVERTED_DATABASE_NAME) for row in precursor_cuboids_df.itertuples()])
 elif args.precursor_definition_method == '3did':
-    features_l = ray.get([detect_ms1_features.remote(precursor_cuboid_d=get_common_cuboid_definition_from_3did(row), converted_db_name=CONVERTED_DATABASE_NAME) for row in precursor_cuboids_df.itertuples()])
+    features_l = ray.get([detect_features.remote(precursor_cuboid_d=get_common_cuboid_definition_from_3did(row), converted_db_name=CONVERTED_DATABASE_NAME) for row in precursor_cuboids_df.itertuples()])
 
 # join the list of dataframes into a single dataframe
 features_df = pd.concat(features_l, axis=0, sort=False)
