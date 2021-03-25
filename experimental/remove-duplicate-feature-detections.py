@@ -4,6 +4,7 @@ import sqlite3
 import json
 import time
 import argparse
+import os
 
 ###################################
 parser = argparse.ArgumentParser(description='Remove duplicates of the features detected.')
