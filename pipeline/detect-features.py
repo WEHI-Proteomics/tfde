@@ -324,6 +324,7 @@ cfg.read(args.ini_file)
 
 # set up constants
 FRAME_TYPE_MS1 = cfg.getint('common','FRAME_TYPE_MS1')
+FRAME_TYPE_MS2 = cfg.getint('common','FRAME_TYPE_MS2')
 MS1_PEAK_DELTA = cfg.getfloat('ms1', 'MS1_PEAK_DELTA')
 MS2_PEAK_DELTA = cfg.getfloat('ms2', 'MS2_PEAK_DELTA')
 PROTON_MASS = cfg.getfloat('common', 'PROTON_MASS')
