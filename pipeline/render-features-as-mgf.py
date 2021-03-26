@@ -9,7 +9,7 @@ import pickle
 from pyteomics import mgf
 import shutil
 
-
+# collate the feature attributes for MGF rendering
 def collate_spectra_for_feature(feature_d, run_name):
     # sort the fragment ions by increasing m/z
     fragment_ions_df = pd.DataFrame(json.loads(feature_d['fragment_ions_l']))
