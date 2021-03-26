@@ -13,7 +13,7 @@ def run_process(process):
 
 
 ###########################
-parser = argparse.ArgumentParser(description='Run a Comet search on the MGF.')
+parser = argparse.ArgumentParser(description='Search the MGF against a sequence database and produce a collection of PSMs.')
 parser.add_argument('-eb','--experiment_base_dir', type=str, default='./experiments', help='Path to the experiments directory.', required=False)
 parser.add_argument('-en','--experiment_name', type=str, help='Name of the experiment.', required=True)
 parser.add_argument('-rn','--run_name', type=str, help='Name of the run.', required=True)
@@ -49,7 +49,7 @@ if not os.path.isfile(MGF_FILE):
     sys.exit(1)
 
 # set up the Comet output directory
-COMET_OUTPUT_DIR = "{}/comet-output".format(EXPERIMENT_DIR)
+COMET_OUTPUT_DIR = "{}/comet-output-{}".format(EXPERIMENT_DIR, args.feature_detection_method)
 if os.path.exists(COMET_OUTPUT_DIR):
     shutil.rmtree(COMET_OUTPUT_DIR)
 os.makedirs(COMET_OUTPUT_DIR)
