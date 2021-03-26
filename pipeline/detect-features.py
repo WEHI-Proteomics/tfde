@@ -287,7 +287,7 @@ parser.add_argument('-pid', '--precursor_id', type=int, help='Only process this 
 parser.add_argument('-rm','--ray_mode', type=str, choices=['local','cluster'], help='The Ray mode to use.', required=True)
 parser.add_argument('-pc','--proportion_of_cores_to_use', type=float, default=0.9, help='Proportion of the machine\'s cores to use for this program.', required=False)
 parser.add_argument('-v','--visualise', action='store_true', help='Generate data for visualisation of the feature detection.')
-parser.add_argument('-rd','--remove_duplicates', action='store_true', help='Remove duplicated features.')
+parser.add_argument('-drd','--do_not_remove_duplicates', action='store_true', help='Do not remove duplicated features.')
 args = parser.parse_args()
 
 # Print the arguments for the log
@@ -395,8 +395,8 @@ content_d = {'features_df':features_df, 'metadata':info}
 with open(FEATURES_FILE, 'wb') as handle:
     pickle.dump(content_d, handle)
 
-# de-dup the features if required
-if args.remove_duplicates:
+# de-dup the features
+if not args.do_not_remove_duplicates:
     dedup_start_run = time.time()
 
     # set up dup definitions
