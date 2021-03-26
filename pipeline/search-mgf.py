@@ -28,6 +28,8 @@ for arg in vars(args):
     info.append((arg, getattr(args, arg)))
 print(info)
 
+start_run = time.time()
+
 # check the experiment directory exists
 EXPERIMENT_DIR = "{}/{}".format(args.experiment_base_dir, args.experiment_name)
 if not os.path.exists(EXPERIMENT_DIR):
