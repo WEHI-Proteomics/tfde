@@ -36,6 +36,7 @@ parser.add_argument('-eb','--experiment_base_dir', type=str, default='./experime
 parser.add_argument('-en','--experiment_name', type=str, help='Name of the experiment.', required=True)
 parser.add_argument('-rn','--run_name', type=str, help='Name of the run.', required=True)
 parser.add_argument('-fdm','--feature_detection_method', type=str, choices=['pasef','3did'], help='Which feature detection method.', required=True)
+parser.add_argument('-pid', '--precursor_id', type=int, help='Only process this precursor ID.', required=False)
 args = parser.parse_args()
 
 # Print the arguments for the log
@@ -58,6 +59,10 @@ if not os.path.isfile(FEATURES_DEDUP_FILE):
 with open(FEATURES_DEDUP_FILE, 'rb') as handle:
     d = pickle.load(handle)
 features_df = d['features_df']
+
+# trim down the features to just those from the specified precursor_id
+if args.precursor_id is not None:
+    features_df = features_df[(features_df.precursor_cuboid_id == args.precursor_id)]
 print('loaded {} features from {}'.format(len(features_df), FEATURES_DEDUP_FILE))
 
 # output MGF
