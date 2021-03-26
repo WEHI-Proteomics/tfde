@@ -66,8 +66,8 @@ if args.precursor_id is not None:
 print('loaded {} features from {}'.format(len(features_df), FEATURES_DEDUP_FILE))
 
 # output MGF
-MGF_DIR = "{}/mgf-{}".format(EXPERIMENT_DIR, args.precursor_definition_method)
-MGF_FILE = '{}/exp-{}-run-{}-features-{}.mgf'.format(MGF_DIR, args.experiment_name, args.run_name, args.precursor_definition_method)
+MGF_DIR = "{}/mgf-{}".format(EXPERIMENT_DIR, args.feature_detection_method)
+MGF_FILE = '{}/exp-{}-run-{}-features-{}.mgf'.format(MGF_DIR, args.experiment_name, args.run_name, args.feature_detection_method)
 
 # set up the output directory
 if os.path.exists(MGF_DIR):
