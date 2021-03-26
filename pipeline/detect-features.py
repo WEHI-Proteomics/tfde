@@ -55,7 +55,7 @@ def intensity_descent(peaks_a, peak_delta=None):
 def calculate_peak_delta(mz):
     delta_m = mz / INSTRUMENT_RESOLUTION  # FWHM of the peak
     sigma = delta_m / 2.35482  # std dev is FWHM / 2.35482. See https://en.wikipedia.org/wiki/Full_width_at_half_maximum
-    ms1_peak_delta = 3 * sigma  # 99.7% of values fall within +/- 3 sigma
+    peak_delta = 3 * sigma  # 99.7% of values fall within +/- 3 sigma
     return peak_delta
     
 # calculate the sum of the raw points in the mono m/z
