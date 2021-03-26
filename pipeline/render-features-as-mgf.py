@@ -7,6 +7,7 @@ import argparse
 import os
 import pickle
 from pyteomics import mgf
+import shutil
 
 
 def collate_spectra_for_feature(feature_d, run_name):
