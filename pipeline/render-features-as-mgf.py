@@ -16,7 +16,7 @@ def collate_spectra_for_feature(feature_d, run_name):
 
     spectrum = {}
     spectrum["m/z array"] = fragment_ions_df['decharged_mass'].to_numpy(dtype='float')
-    spectrum["intensity array"] = fragment_ions_df['integer'].to_numpy(dtype='uint')
+    spectrum["intensity array"] = fragment_ions_df['intensity'].to_numpy(dtype='uint')
 
     params = {}
     params["TITLE"] = "RawFile: {} Charge: {} FeatureIntensity: {} Feature#: {} RtApex: {} Precursor: {}".format(run_name, int(feature_d['charge']), int(feature_d['feature_intensity']), int(feature_d['feature_id']), round(feature_d['rt_apex'],2), int(feature_d['precursor_cuboid_id']))
