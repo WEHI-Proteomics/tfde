@@ -386,6 +386,9 @@ elif args.precursor_definition_method == '3did':
 # join the list of dataframes into a single dataframe
 features_df = pd.concat(features_l, axis=0, sort=False)
 
+# add the run name
+features_df['run_name'] = args.run_name
+
 # write out all the features
 print("writing {} features to {}".format(len(features_df), FEATURES_FILE))
 info.append(('total_running_time',round(time.time()-start_run,1)))
