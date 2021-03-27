@@ -44,7 +44,6 @@ if not os.path.exists(COMET_OUTPUT_DIR):
 
 # set up the output directory
 PERCOLATOR_OUTPUT_DIR = "{}/percolator-output-{}".format(EXPERIMENT_DIR, args.feature_detection_method)
-PERCOLATOR_STDOUT_FILE_NAME = "{}/percolator-stdout.log".format(PERCOLATOR_OUTPUT_DIR)
 if os.path.exists(PERCOLATOR_OUTPUT_DIR):
     shutil.rmtree(PERCOLATOR_OUTPUT_DIR)
 os.makedirs(PERCOLATOR_OUTPUT_DIR)
@@ -54,6 +53,39 @@ comet_output_file_list = glob.glob('{}/*.comet.target.pin'.format(COMET_OUTPUT_D
 comet_output_file_list_as_string = ' '.join(map(str, comet_output_file_list))
 cmd = "{}/crux-3.2.Linux.i686/bin/crux percolator --overwrite T --subset-max-train 1000000 --klammer F --maxiter 10 --output-dir {} --picked-protein {} --protein T --protein-enzyme {} --search-input auto --verbosity 30 --fileroot {} {} > {} 2>&1".format(os.getcwd(), PERCOLATOR_OUTPUT_DIR, args.fasta_file_name, args.protein_enzyme, args.experiment_name, comet_output_file_list_as_string, PERCOLATOR_STDOUT_FILE_NAME)
 run_process(cmd)
+
+# determine the mapping between the percolator index and the run file name - this is only available by parsing percolator's stdout redirected to a text file.
+PERCOLATOR_STDOUT_FILE_NAME = "{}/percolator-stdout.log".format(PERCOLATOR_OUTPUT_DIR)
+print("Determining the mapping between percolator index and each run")
+mapping = []
+with open(PERCOLATOR_STDOUT_FILE_NAME) as f:
+    lines = f.readlines()
+    for line in lines:
+        if line.startswith('INFO: Assigning index'):
+            splits = line.split(' ')
+            percolator_index = int(splits[3])
+            comet_filename = splits[5]
+            run_name = comet_filename.split('/')[-1].split('.')[0]  # e.g. 190719_Hela_Ecoli_1to3_06
+            mapping.append((percolator_index, run_name))
+mapping_df = pd.DataFrame(mapping, columns=['percolator_idx','run_name'])
+
+# load the percolator output
+PERCOLATOR_OUTPUT_FILE_NAME = "{}/{}.percolator.target.psms.txt".format(PERCOLATOR_OUTPUT_DIR, args.experiment_name)
+print("Loading the percolator output from {}".format(PERCOLATOR_OUTPUT_FILE_NAME))
+psms_df = pd.read_csv(PERCOLATOR_OUTPUT_FILE_NAME, sep='\t')
+
+# merge the run names with the percolator output
+percolator_df = pd.merge(psms_df, mapping_df, how='left', left_on=['file_idx'], right_on=['percolator_idx'])
+
+# merge the features with the percolator identifications
+identifications_df = pd.merge(features_df, percolator_df, how='left', left_on=['run_name','feature_id'], right_on=['run_name','scans'])
+
+# write out the identifications
+print("writing {} identifications to {}".format(len(dedup_df), FEATURES_DEDUP_FILE))
+info.append(('dedup_running_time',round(time.time()-dedup_start_run,1)))
+content_d = {'features_df':dedup_df, 'metadata':info}
+with open(FEATURES_DEDUP_FILE, 'wb') as handle:
+    pickle.dump(content_d, handle)
 
 stop_run = time.time()
 print("total running time ({}): {} seconds".format(parser.prog, round(stop_run-start_run,1)))
