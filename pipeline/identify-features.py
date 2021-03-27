@@ -49,13 +49,13 @@ if os.path.exists(PERCOLATOR_OUTPUT_DIR):
 os.makedirs(PERCOLATOR_OUTPUT_DIR)
 
 # process all the Comet output files in the base directory
+PERCOLATOR_STDOUT_FILE_NAME = "{}/percolator-stdout.log".format(PERCOLATOR_OUTPUT_DIR)
 comet_output_file_list = glob.glob('{}/*.comet.target.pin'.format(COMET_OUTPUT_DIR))
 comet_output_file_list_as_string = ' '.join(map(str, comet_output_file_list))
 cmd = "{}/crux-3.2.Linux.i686/bin/crux percolator --overwrite T --subset-max-train 1000000 --klammer F --maxiter 10 --output-dir {} --picked-protein {} --protein T --protein-enzyme {} --search-input auto --verbosity 30 --fileroot {} {} > {} 2>&1".format(os.getcwd(), PERCOLATOR_OUTPUT_DIR, args.fasta_file_name, args.protein_enzyme, args.experiment_name, comet_output_file_list_as_string, PERCOLATOR_STDOUT_FILE_NAME)
 run_process(cmd)
 
 # determine the mapping between the percolator index and the run file name - this is only available by parsing percolator's stdout redirected to a text file.
-PERCOLATOR_STDOUT_FILE_NAME = "{}/percolator-stdout.log".format(PERCOLATOR_OUTPUT_DIR)
 print("Determining the mapping between percolator index and each run")
 mapping = []
 with open(PERCOLATOR_STDOUT_FILE_NAME) as f:
