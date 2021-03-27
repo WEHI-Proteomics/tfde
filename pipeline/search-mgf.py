@@ -57,7 +57,7 @@ if os.path.exists(COMET_OUTPUT_DIR):
 os.makedirs(COMET_OUTPUT_DIR)
 
 # run comet on it
-cmd = "{}/crux-3.2.Linux.i686/bin/crux comet --parameter-file {} --output-dir {} --fileroot \"{}\" {} {}".format(os.getcwd(), args.comet_parameter_file_name, COMET_OUTPUT_DIR, args.run_name, MGF_FILE, args.fasta_file_name)
+cmd = "{}/crux-3.2.Linux.x86_64/bin/crux comet --parameter-file {} --output-dir {} --fileroot \"{}\" {} {}".format(os.getcwd(), args.comet_parameter_file_name, COMET_OUTPUT_DIR, args.run_name, MGF_FILE, args.fasta_file_name)
 run_process(cmd)
 
 stop_run = time.time()
