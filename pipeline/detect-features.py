@@ -443,7 +443,7 @@ if not args.do_not_remove_duplicates:
     # remove the columns we added earlier
     dedup_df.drop(columns_to_drop_l, axis=1, inplace=True)
 
-    FEATURES_DEDUP_FILE = '{}/exp-{}-run-{}-features-{}-dedup.pkl'.format(FEATURES_DIR, args.experiment_name, args.run_name, args.feature_detection_method)
+    FEATURES_DEDUP_FILE = '{}/exp-{}-run-{}-features-{}-dedup.pkl'.format(FEATURES_DIR, args.experiment_name, args.run_name, args.precursor_definition_method)
 
     # write out all the features
     print("writing {} de-duped features to {}".format(len(dedup_df), FEATURES_DEDUP_FILE))
