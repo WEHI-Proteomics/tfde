@@ -8,7 +8,9 @@ import sys
 # run the command in a shell
 def run_process(process):
     print("Executing: {}".format(process))
-    os.system(process)
+    exit_status = os.WEXITSTATUS(os.system(process))
+    if exit_status != 0:
+        print('command had an exit status of {}'.format(exit_status))
 
 
 ################################
