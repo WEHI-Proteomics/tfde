@@ -400,6 +400,7 @@ with open(FEATURES_FILE, 'wb') as handle:
 
 # de-dup the features
 if not args.do_not_remove_duplicates:
+    print('removing duplicates from {}'.format(FEATURES_FILE))
     dedup_start_run = time.time()
 
     # set up dup definitions
