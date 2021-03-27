@@ -74,18 +74,9 @@ def frames_in_rt_range(frame_type, rt_lower, rt_upper):
     frames_l = frames_properties_df[(frames_properties_df.MsMsType == frame_type) & (frames_properties_df.Id >= lower_frame_id) & (frames_properties_df.Id <= upper_frame_id)].Id.astype(int).tolist()
     return frames_l
 
-def metadata_for_frame(frame_id):
-    row = frames_properties_a[np.where(frames_properties_a[:,0] == frame_id)][0]
-    result = {}
-    result['retention_time_secs'] = row[1]
-    result['frame_type'] = row[2]
-    return result
-
 # load the raw points within the given frame and scan range
 def load_raw_points(frame_lower, frame_upper):
     # check parameter ranges
-    scan_lower = 0
-    scan_upper = frames_properties_df.NumScans.max()-1
     min_frames = frames_properties_df.Id.min()
     max_frames = frames_properties_df.Id.max()-1
     if frame_lower < min_frames:
@@ -96,28 +87,34 @@ def load_raw_points(frame_lower, frame_upper):
     # connect to the database with the timsTOF SDK
     td = timsdata.TimsData(args.raw_database_directory)
 
-    # read the raw points in the specified range
+    # read the raw points in the specified frame range
     points = []
     for frame_id in range(frame_lower, frame_upper+1):
-        frame_info = metadata_for_frame(frame_id)
-        retention_time_secs = frame_info['retention_time_secs']
-        frame_type = int(frame_info['frame_type'])
+        # find the metadata for this frame
+        frame_info = frames_properties_df[(frames_properties_df.Id == frame_id)].iloc[0]
+        retention_time_secs = frame_info['Time']
+        frame_type = int(frame_info['MsMsType'])
+        number_of_scans = int(frame_info['NumScans'])
+
+        # determine the 1/k0 and voltage values for each scan
+        scan_number_axis = np.arange(number_of_scans, dtype=np.float64)
+        ook0_axis = td.scanNumToOneOverK0(frame_id, scan_number_axis)
+        voltage_axis = td.scanNumToVoltage(frame_id, scan_number_axis)
+
+        # read the points from the scan lines
         frame_points = []
-        for scan_idx, scan_intensities in enumerate(td.readScans(frame_id=frame_id, scan_begin=scan_lower, scan_end=scan_upper+1)):
-            # get the m/z values for points on this scan
-            indexes = np.array(scan_intensities[0], dtype=np.float64)
-            mz_values = td.indexToMz(frame_id, indexes)  # an array of m/z values for the points
-            intensity_values = scan_intensities[1]
-            # determine the scan line number
-            scan = scan_lower + scan_idx
-            # add the points to the list
-            number_of_values = len(mz_values)
-            for i in range(0, number_of_values):   # step through the readings (i.e. points) on this scan line
+        for scan in td.readScans(frame_id=frame_id, scan_begin=0, scan_end=number_of_scans):
+            index = np.array(scan[0], dtype=np.float64)
+            mz_values = td.indexToMz(frame_id, index)
+            intensity_values = scan[1]
+            one_over_k0 = ook0_axis[scan]
+            voltage = voltage_axis[scan]
+            number_of_points_on_scan = len(mz_values)
+            for i in range(0, number_of_points_on_scan):   # step through the readings (i.e. points) on this scan line
                 mz_value = float(mz_values[i])
                 intensity = int(intensity_values[i])
-                frame_points.append((frame_id, frame_type, mz_value, scan, intensity, retention_time_secs))
-        points += frame_points
-    points_df = pd.DataFrame(points, columns=['frame_id', 'frame_type', 'mz', 'scan', 'intensity', 'retention_time_secs'])
+                frame_points.append({'frame_id':frame_id, 'frame_type':frame_type, 'mz_value':mz_value, 'scan':scan, 'intensity':intensity, 'retention_time_secs':retention_time_secs, 'one_over_k0':one_over_k0, 'voltage':voltage})
+    points_df = pd.DataFrame(frame_points)
     return points_df
 
 
@@ -183,7 +180,8 @@ if os.path.isfile(RUN_DB_NAME):
 # get the frame metadata
 print("loading the frames information")
 frames_properties_df = load_frame_properties(RAW_DATABASE_NAME)
-frames_properties_a = frames_properties_df[['Id','Time','MsMsType']].to_numpy()
+
+# save it in our converted database
 db_conn = sqlite3.connect(RUN_DB_NAME)
 frames_properties_df.to_sql(name='frame_properties', con=db_conn, if_exists='replace', index=False)
 db_conn.close()
