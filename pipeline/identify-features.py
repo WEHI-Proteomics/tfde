@@ -69,23 +69,23 @@ with open(PERCOLATOR_STDOUT_FILE_NAME) as f:
             mapping.append((percolator_index, run_name))
 mapping_df = pd.DataFrame(mapping, columns=['percolator_idx','run_name'])
 
-# load the percolator output
-PERCOLATOR_OUTPUT_FILE_NAME = "{}/{}.percolator.target.psms.txt".format(PERCOLATOR_OUTPUT_DIR, args.experiment_name)
-print("Loading the percolator output from {}".format(PERCOLATOR_OUTPUT_FILE_NAME))
-psms_df = pd.read_csv(PERCOLATOR_OUTPUT_FILE_NAME, sep='\t')
+# # load the percolator output
+# PERCOLATOR_OUTPUT_FILE_NAME = "{}/{}.percolator.target.psms.txt".format(PERCOLATOR_OUTPUT_DIR, args.experiment_name)
+# print("Loading the percolator output from {}".format(PERCOLATOR_OUTPUT_FILE_NAME))
+# psms_df = pd.read_csv(PERCOLATOR_OUTPUT_FILE_NAME, sep='\t')
 
-# merge the run names with the percolator output
-percolator_df = pd.merge(psms_df, mapping_df, how='left', left_on=['file_idx'], right_on=['percolator_idx'])
+# # merge the run names with the percolator output
+# percolator_df = pd.merge(psms_df, mapping_df, how='left', left_on=['file_idx'], right_on=['percolator_idx'])
 
-# merge the features with the percolator identifications
-identifications_df = pd.merge(features_df, percolator_df, how='left', left_on=['run_name','feature_id'], right_on=['run_name','scans'])
+# # merge the features with the percolator identifications
+# identifications_df = pd.merge(features_df, percolator_df, how='left', left_on=['run_name','feature_id'], right_on=['run_name','scans'])
 
-# write out the identifications
-print("writing {} identifications to {}".format(len(dedup_df), FEATURES_DEDUP_FILE))
-info.append(('dedup_running_time',round(time.time()-dedup_start_run,1)))
-content_d = {'features_df':dedup_df, 'metadata':info}
-with open(FEATURES_DEDUP_FILE, 'wb') as handle:
-    pickle.dump(content_d, handle)
+# # write out the identifications
+# print("writing {} identifications to {}".format(len(dedup_df), FEATURES_DEDUP_FILE))
+# info.append(('dedup_running_time',round(time.time()-dedup_start_run,1)))
+# content_d = {'features_df':dedup_df, 'metadata':info}
+# with open(FEATURES_DEDUP_FILE, 'wb') as handle:
+#     pickle.dump(content_d, handle)
 
 stop_run = time.time()
 print("total running time ({}): {} seconds".format(parser.prog, round(stop_run-start_run,1)))
