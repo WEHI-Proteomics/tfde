@@ -59,7 +59,7 @@ if not os.path.isfile(FEATURES_DEDUP_FILE):
 # load the features
 with open(FEATURES_DEDUP_FILE, 'rb') as handle:
     d = pickle.load(handle)
-features_df = d['features_dedup_df']
+features_df = d['features_df']
 
 # trim down the features to just those from the specified precursor_id
 if args.precursor_id is not None:
