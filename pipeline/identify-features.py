@@ -92,6 +92,7 @@ mapping_df = pd.DataFrame(mapping, columns=['file_idx','run_name'])
 PERCOLATOR_OUTPUT_FILE_NAME = "{}/{}.percolator.target.psms.txt".format(PERCOLATOR_OUTPUT_DIR, args.experiment_name)
 psms_df = pd.read_csv(PERCOLATOR_OUTPUT_FILE_NAME, sep='\t')
 psms_df.rename(columns={'scan': 'feature_id'}, inplace=True)
+psms_df.drop(['charge'], axis=1, inplace=True)
 
 # remove the poor quality identifications
 psms_df = psms_df[psms_df['percolator q-value'] <= MAXIMUM_Q_VALUE]
@@ -117,7 +118,7 @@ identifications_df = pd.merge(features_df, percolator_df, how='left', left_on=['
 identifications_df.dropna(subset=['sequence'], inplace=True)
 
 # add the mass of cysteine carbamidomethylation to the theoretical peptide mass from percolator, for the fixed modification of carbamidomethyl
-identifications_df['observed_monoisotopic_mass'] = (identifications_df.monoisotopic_mz * identifications_df.charge) - (PROTON_MASS * identifications_df.charge_y)
+identifications_df['observed_monoisotopic_mass'] = (identifications_df.monoisotopic_mz * identifications_df.charge) - (PROTON_MASS * identifications_df.charge)
 identifications_df['theoretical_peptide_mass'] = identifications_df['peptide mass'] + (identifications_df.sequence.str.count('C') * ADD_C_CYSTEINE_DA)
 
 # now we can calculate the difference between the feature's monoisotopic mass and the theoretical peptide mass that is calculated from the 
