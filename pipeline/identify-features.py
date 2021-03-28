@@ -5,6 +5,7 @@ import time
 import argparse
 import sys
 import pandas as pd
+import pickle
 
 # run the command in a shell
 def run_process(process):
@@ -68,25 +69,55 @@ with open(PERCOLATOR_STDOUT_FILE_NAME) as f:
             comet_filename = splits[5]
             run_name = comet_filename.split('/')[-1].split('.')[0]  # e.g. 190719_Hela_Ecoli_1to3_06
             mapping.append((percolator_index, run_name))
-mapping_df = pd.DataFrame(mapping, columns=['percolator_idx','run_name'])
+mapping_df = pd.DataFrame(mapping, columns=['file_idx','run_name'])
 
-# # load the percolator output
-# PERCOLATOR_OUTPUT_FILE_NAME = "{}/{}.percolator.target.psms.txt".format(PERCOLATOR_OUTPUT_DIR, args.experiment_name)
-# print("Loading the percolator output from {}".format(PERCOLATOR_OUTPUT_FILE_NAME))
-# psms_df = pd.read_csv(PERCOLATOR_OUTPUT_FILE_NAME, sep='\t')
+# load the percolator output
+PERCOLATOR_OUTPUT_FILE_NAME = "{}/{}.percolator.target.psms.txt".format(PERCOLATOR_OUTPUT_DIR, args.experiment_name)
+psms_df = pd.read_csv(PERCOLATOR_OUTPUT_FILE_NAME, sep='\t')
+psms_df.rename(columns={'scan': 'feature_id'}, inplace=True)
 
-# # merge the run names with the percolator output
-# percolator_df = pd.merge(psms_df, mapping_df, how='left', left_on=['file_idx'], right_on=['percolator_idx'])
+# remove the poor quality identifications
+psms_df = psms_df[psms_df['percolator q-value'] <= MAXIMUM_Q_VALUE]
+psms_df = psms_df[psms_df['peptide mass'] > 0]
 
-# # merge the features with the percolator identifications
-# identifications_df = pd.merge(features_df, percolator_df, how='left', left_on=['run_name','feature_id'], right_on=['run_name','scans'])
+percolator_df = pd.merge(psms_df, mapping_df, how='left', left_on=['file_idx'], right_on=['file_idx'])
 
-# # write out the identifications
-# print("writing {} identifications to {}".format(len(dedup_df), FEATURES_DEDUP_FILE))
-# info.append(('dedup_running_time',round(time.time()-dedup_start_run,1)))
-# content_d = {'features_df':dedup_df, 'metadata':info}
-# with open(FEATURES_DEDUP_FILE, 'wb') as handle:
-#     pickle.dump(content_d, handle)
+# load the features
+FEATURES_DIR = '{}/features-{}'.format(EXPERIMENT_DIR, args.feature_detection_method)
+FEATURES_DEDUP_FILE = '{}/exp-{}-run-{}-features-{}-dedup.pkl'.format(FEATURES_DIR, args.experiment_name, args.run_name, args.feature_detection_method)
+with open(FEATURES_DEDUP_FILE, 'rb') as handle:
+    d = pickle.load(handle)
+features_df = d['features_dedup_df']
 
+# merge the identifications with the features
+identifications_df = pd.merge(features_df, percolator_df, how='left', left_on=['run_name','feature_id'], right_on=['run_name','feature_id'])
+
+# remove any features that were not identified
+identifications_df.dropna(subset=['sequence'], inplace=True)
+
+# count how many unique peptides were identified
+sequences_l = []
+for group_name,group_df in identifications_df.groupby(['sequence','charge_x'], as_index=False):
+    sequences_l.append({'sequence_charge':group_name, 'feature_ids':group_df.feature_id.tolist()})
+sequences_df = pd.DataFrame(sequences_l)
+print('there were {} unique peptides identified'.format(len(sequences_df)))
+
+# set up the output directory
+IDENTIFICATIONS_DIR = '{}/identifications-{}'.format(EXPERIMENT_DIR, args.feature_detection_method)
+if os.path.exists(IDENTIFICATIONS_DIR):
+    shutil.rmtree(IDENTIFICATIONS_DIR)
+os.makedirs(IDENTIFICATIONS_DIR)
+
+# write out the identifications
+IDENTIFICATIONS_FILE = '{}/exp-{}-run-{}-identifications-{}.pkl'.format(IDENTIFICATIONS_DIR, args.experiment_name, args.run_name, args.feature_detection_method)
+print("writing {} identifications to {}".format(len(identifications_df), IDENTIFICATIONS_FILE))
+info.append(('total_running_time',round(time.time()-start_run,1)))
+info.append(('processor',parser.prog))
+info.append(('processed', time.ctime()))
+content_d = {'identifications_df':identifications_df, 'metadata':info}
+with open(IDENTIFICATIONS_FILE, 'wb') as handle:
+    pickle.dump(content_d, handle)
+
+# finish up
 stop_run = time.time()
 print("total running time ({}): {} seconds".format(parser.prog, round(stop_run-start_run,1)))
