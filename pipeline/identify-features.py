@@ -123,8 +123,8 @@ identifications_df['theoretical_peptide_mass'] = identifications_df['peptide mas
 
 # now we can calculate the difference between the feature's monoisotopic mass and the theoretical peptide mass that is calculated from the 
 # sequence's molecular formula and its modifications
-percolator_df['mass_accuracy_ppm'] = (percolator_df['observed_monoisotopic_mass'] - percolator_df['theoretical_peptide_mass']) / percolator_df['theoretical_peptide_mass'] * 10**6
-percolator_df['mass_error'] = percolator_df['observed_monoisotopic_mass'] - percolator_df['theoretical_peptide_mass']
+identifications_df['mass_accuracy_ppm'] = (identifications_df['observed_monoisotopic_mass'] - identifications_df['theoretical_peptide_mass']) / identifications_df['theoretical_peptide_mass'] * 10**6
+identifications_df['mass_error'] = identifications_df['observed_monoisotopic_mass'] - identifications_df['theoretical_peptide_mass']
 
 # count how many unique peptides were identified
 sequences_l = []
