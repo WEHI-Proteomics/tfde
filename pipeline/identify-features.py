@@ -128,7 +128,7 @@ identifications_df['mass_error'] = identifications_df['observed_monoisotopic_mas
 
 # count how many unique peptides were identified
 sequences_l = []
-for group_name,group_df in identifications_df.groupby(['sequence','charge_x'], as_index=False):
+for group_name,group_df in identifications_df.groupby(['sequence','charge'], as_index=False):
     sequences_l.append({'sequence_charge':group_name, 'feature_ids':group_df.feature_id.tolist()})
 sequences_df = pd.DataFrame(sequences_l)
 print('there were {} unique peptides identified'.format(len(sequences_df)))
