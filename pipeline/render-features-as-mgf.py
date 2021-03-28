@@ -22,7 +22,10 @@ def collate_spectra_for_feature(feature_d, run_name):
     params = {}
     params["TITLE"] = "RawFile: {} Charge: {} FeatureIntensity: {} Feature#: {} RtApex: {} Precursor: {}".format(run_name, int(feature_d['charge']), int(feature_d['feature_intensity']), int(feature_d['feature_id']), round(feature_d['rt_apex'],2), int(feature_d['precursor_cuboid_id']))
     params["INSTRUMENT"] = "ESI-QUAD-TOF"
-    params["PEPMASS"] = "{} {}".format(round(feature_d['monoisotopic_mz'],6), int(feature_d['feature_intensity']))
+    if args.use_unsaturated_points_for_mz:
+        params["PEPMASS"] = "{} {}".format(round(feature_d['mono_mz_without_saturated_points'],6), int(feature_d['feature_intensity']))
+    else:
+        params["PEPMASS"] = "{} {}".format(round(feature_d['monoisotopic_mz'],6), int(feature_d['feature_intensity']))
     params["CHARGE"] = "{}+".format(int(feature_d['charge']))
     params["RTINSECONDS"] = "{}".format(round(feature_d['rt_apex'],2))
     params["SCANS"] = "{}".format(int(feature_d['feature_id']))
@@ -38,6 +41,7 @@ parser.add_argument('-en','--experiment_name', type=str, help='Name of the exper
 parser.add_argument('-rn','--run_name', type=str, help='Name of the run.', required=True)
 parser.add_argument('-fdm','--feature_detection_method', type=str, choices=['pasef','3did'], help='Which feature detection method.', required=True)
 parser.add_argument('-pid', '--precursor_id', type=int, help='Only process this precursor ID.', required=False)
+parser.add_argument('-ns','--use_unsaturated_points_for_mz', action='store_true', help='Use the mono m/z calculated with only non-saturated points.')
 args = parser.parse_args()
 
 # Print the arguments for the log
