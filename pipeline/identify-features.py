@@ -102,10 +102,13 @@ percolator_df = pd.merge(psms_df, mapping_df, how='left', left_on=['file_idx'], 
 
 # load the features
 FEATURES_DIR = '{}/features-{}'.format(EXPERIMENT_DIR, args.feature_detection_method)
-FEATURES_DEDUP_FILE = '{}/exp-{}-run-{}-features-{}-dedup.pkl'.format(FEATURES_DIR, args.experiment_name, args.run_name, args.feature_detection_method)
-with open(FEATURES_DEDUP_FILE, 'rb') as handle:
-    d = pickle.load(handle)
-features_df = d['features_dedup_df']
+df_l = []
+files_l = glob.glob('{}/exp-{}-run-*-features-*-dedup.pkl'.format(FEATURES_DIR, args.experiment_name))
+for f in files_l:
+    with open(f, 'rb') as handle:
+        d = pickle.load(handle)
+    df_l.append(d['features_dedup_df'])
+features_df = pd.concat(df_l, axis=0, sort=False)
 
 # merge the identifications with the features
 identifications_df = pd.merge(features_df, percolator_df, how='left', left_on=['run_name','feature_id'], right_on=['run_name','feature_id'])
@@ -136,7 +139,7 @@ if os.path.exists(IDENTIFICATIONS_DIR):
 os.makedirs(IDENTIFICATIONS_DIR)
 
 # write out the identifications
-IDENTIFICATIONS_FILE = '{}/exp-{}-run-{}-identifications-{}.pkl'.format(IDENTIFICATIONS_DIR, args.experiment_name, args.run_name, args.feature_detection_method)
+IDENTIFICATIONS_FILE = '{}/exp-{}-identifications-{}.pkl'.format(IDENTIFICATIONS_DIR, args.experiment_name, args.feature_detection_method)
 print("writing {} identifications to {}".format(len(identifications_df), IDENTIFICATIONS_FILE))
 info.append(('total_running_time',round(time.time()-start_run,1)))
 info.append(('processor',parser.prog))
