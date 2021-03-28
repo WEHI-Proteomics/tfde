@@ -65,6 +65,111 @@ def calculate_peak_intensity(peak_characteristics, raw_points):
     mono_intensity = mono_points_df.intensity.sum()
     return mono_intensity
 
+# calculate the mono intensity when it's model-adjusted for point saturation
+def calculate_phr_adjusted_intensity(peak_characteristics, envelope, raw_points):
+    # get the raw points for each isotope
+    rt_lower = peak_characteristics['rt_lower']
+    rt_upper = peak_characteristics['rt_upper']
+    scan_lower = peak_characteristics['scan_lower']
+    scan_upper = peak_characteristics['scan_upper']
+    isotopes_l = []
+    for idx,isotope in enumerate(envelope):
+        mz = isotope[0]
+        intensity = isotope[1]
+        mz_delta = calculate_peak_delta(mz)
+        mz_lower = mz - mz_delta
+        mz_upper = mz + mz_delta
+        df = raw_points[(raw_points.mz >= mz_lower) & (raw_points.mz <= mz_upper) & (raw_points.scan >= scan_lower) & (raw_points.scan <= scan_upper) & (raw_points.retention_time_secs >= rt_lower) & (raw_points.retention_time_secs <= rt_upper)]
+        saturated = df.intensity.max() > SATURATION_INTENSITY
+        isotopes_l.append({'intensity':df.intensity.sum(), 'saturated':saturated})
+    isotopes_df = pd.DataFrame(isotopes_l)
+
+    # set the summed intensity to be the default adjusted intensity for all isotopes
+    isotopes_df['inferred_intensity'] = isotopes_df.intensity
+    isotopes_df['inferred'] = False
+
+    if len(isotopes_df.saturated.unique()) == 2:  # there are saturated and unsaturated isotopes
+        # find the first unsaturated isotope
+        unsaturated_idx = isotopes_df[(isotopes_df.saturated == False)].iloc[0].name
+
+        # using as a reference the most intense isotope that is not in saturation, derive the isotope intensities back to the monoisotopic
+        Hpn = isotopes_df.iloc[unsaturated_idx].intensity
+        for peak_number in reversed(range(1,unsaturated_idx+1)):
+            # calculate the phr for the next-lower peak
+            phr = peak_ratio(monoisotopic_mass, peak_number, number_of_sulphur=0)
+            if phr is not None:
+                Hpn_minus_1 = Hpn / phr
+                isotopes_df.at[peak_number-1, 'inferred_intensity'] = int(Hpn_minus_1)
+                isotopes_df.at[peak_number-1, 'inferred'] = True
+                Hpn = Hpn_minus_1
+            else:
+                break
+        
+    # return the mono intensity and whether it was adjusted for saturation
+    mono_intensity = isotopes_df.iloc[0].inferred_intensity
+    mono_inferred = isotopes_df.iloc[0].inferred
+    return {'mono_intensity':mono_intensity, 'mono_inferred':mono_inferred, 'adjusted_isotopes':isotopes_df.to_dict('records')}
+
+# Find the ratio of H(peak_number)/H(peak_number-1) for peak_number=1..6
+# peak_number = 0 refers to the monoisotopic peak
+# number_of_sulphur = number of sulphur atoms in the molecule
+#
+# source: Valkenborg et al, "A Model-Based Method for the Prediction of the Isotopic Distribution of Peptides", https://core.ac.uk/download/pdf/82021511.pdf
+def peak_ratio(monoisotopic_mass, peak_number, number_of_sulphur):
+    MAX_NUMBER_OF_SULPHUR_ATOMS = 3
+    MAX_NUMBER_OF_PREDICTED_RATIOS = 6
+
+    S0_r = np.empty(MAX_NUMBER_OF_PREDICTED_RATIOS+1, dtype=np.ndarray)
+    S0_r[1] = np.array([-0.00142320578040, 0.53158267080224, 0.00572776591574, -0.00040226083326, -0.00007968737684])
+    S0_r[2] = np.array([0.06258138406507, 0.24252967352808, 0.01729736525102, -0.00427641490976, 0.00038011211412])
+    S0_r[3] = np.array([0.03092092306220, 0.22353930450345, -0.02630395501009, 0.00728183023772, -0.00073155573939])
+    S0_r[4] = np.array([-0.02490747037406, 0.26363266501679, -0.07330346656184, 0.01876886839392, -0.00176688757979])
+    S0_r[5] = np.array([-0.19423148776489, 0.45952477474223, -0.18163820209523, 0.04173579115885, -0.00355426505742])
+    S0_r[6] = np.array([0.04574408690798, -0.05092121193598, 0.13874539944789, -0.04344815868749, 0.00449747222180])
+
+    S1_r = np.empty(MAX_NUMBER_OF_PREDICTED_RATIOS+1, dtype=np.ndarray)
+    S1_r[1] = np.array([-0.01040584267474, 0.53121149663696, 0.00576913817747, -0.00039325152252, -0.00007954180489])
+    S1_r[2] = np.array([0.37339166598255, -0.15814640001919, 0.24085046064819, -0.06068695741919, 0.00563606634601])
+    S1_r[3] = np.array([0.06969331604484, 0.28154425636993, -0.08121643989151, 0.02372741957255, -0.00238998426027])
+    S1_r[4] = np.array([0.04462649178239, 0.23204790123388, -0.06083969521863, 0.01564282892512, -0.00145145206815])
+    S1_r[5] = np.array([-0.20727547407753, 0.53536509500863, -0.22521649838170, 0.05180965157326, -0.00439750995163])
+    S1_r[6] = np.array([0.27169670700251, -0.37192045082925, 0.31939855191976, -0.08668833166842, 0.00822975581940])
+
+    S2_r = np.empty(MAX_NUMBER_OF_PREDICTED_RATIOS+1, dtype=np.ndarray)
+    S2_r[1] = np.array([-0.01937823810470, 0.53084210514216, 0.00580573751882, -0.00038281138203, -0.00007958217070])
+    S2_r[2] = np.array([0.68496829280011, -0.54558176102022, 0.44926662609767, -0.11154849560657, 0.01023294598884])
+    S2_r[3] = np.array([0.04215807391059, 0.40434195078925, -0.15884974959493, 0.04319968814535, -0.00413693825139])
+    S2_r[4] = np.array([0.14015578207913, 0.14407679007180, -0.01310480312503, 0.00362292256563, -0.00034189078786])
+    S2_r[5] = np.array([-0.02549241716294, 0.32153542852101, -0.11409513283836, 0.02617210469576, -0.00221816103608])
+    S2_r[6] = np.array([-0.14490868030324, 0.33629928307361, -0.08223564735018, 0.01023410734015, -0.00027717589598])
+
+    model_params = np.empty(MAX_NUMBER_OF_SULPHUR_ATOMS, dtype=np.ndarray)
+    model_params[0] = S0_r
+    model_params[1] = S1_r
+    model_params[2] = S2_r
+
+    ratio = None
+    if (((1 <= peak_number <= 3) & (((number_of_sulphur == 0) & (498 <= monoisotopic_mass <= 3915)) |
+                                    ((number_of_sulphur == 1) & (530 <= monoisotopic_mass <= 3947)) |
+                                    ((number_of_sulphur == 2) & (562 <= monoisotopic_mass <= 3978)))) |
+       ((peak_number == 4) & (((number_of_sulphur == 0) & (907 <= monoisotopic_mass <= 3915)) |
+                              ((number_of_sulphur == 1) & (939 <= monoisotopic_mass <= 3947)) |
+                              ((number_of_sulphur == 2) & (971 <= monoisotopic_mass <= 3978)))) |
+       ((peak_number == 5) & (((number_of_sulphur == 0) & (1219 <= monoisotopic_mass <= 3915)) |
+                              ((number_of_sulphur == 1) & (1251 <= monoisotopic_mass <= 3947)) |
+                              ((number_of_sulphur == 2) & (1283 <= monoisotopic_mass <= 3978)))) |
+       ((peak_number == 6) & (((number_of_sulphur == 0) & (1559 <= monoisotopic_mass <= 3915)) |
+                              ((number_of_sulphur == 1) & (1591 <= monoisotopic_mass <= 3947)) |
+                              ((number_of_sulphur == 2) & (1623 <= monoisotopic_mass <= 3978))))):
+        beta0 = model_params[number_of_sulphur][peak_number][0]
+        beta1 = model_params[number_of_sulphur][peak_number][1]
+        beta2 = model_params[number_of_sulphur][peak_number][2]
+        beta3 = model_params[number_of_sulphur][peak_number][3]
+        beta4 = model_params[number_of_sulphur][peak_number][4]
+        scaled_m = monoisotopic_mass / 1000.0
+        ratio = beta0 + (beta1*scaled_m) + beta2*(scaled_m**2) + beta3*(scaled_m**3) + beta4*(scaled_m**4)
+    return ratio
+
 # determine the mono peak apex and extent in CCS and RT
 def determine_mono_peak_characteristics(centre_mz, ms1_raw_points_df):
     # determine the raw points that belong to the mono peak
@@ -221,6 +326,10 @@ def detect_features(precursor_cuboid_d, converted_db_name):
             feature_d['rt_upper'] = peak_d['rt_upper']
             feature_d['mono_mz_without_saturated_points'] = peak_d['mono_mz_without_saturated_points']
             feature_d['envelope_mono_peak_three_sigma_intensity'] = calculate_peak_intensity(peak_characteristics=peak_d, raw_points=wide_ms1_points_df)
+            adj_d = calculate_phr_adjusted_intensity(peak_characteristics=peak_d, envelope=row.envelope, raw_points=wide_ms1_points_df)
+            feature_d['envelope_phr_adjusted_intensity'] = adj_d['mono_intensity']
+            feature_d['envelope_phr_adjusted_intensity_flag'] = adj_d['mono_adjusted']
+            feature_d['envelope_phr_adjusted_isotopes'] = adj_d['adjusted_isotopes']
 
         # resolve the feature's fragment ions
         fragment_ions_l = resolve_fragment_ions(feature_d, ms2_points_df)
