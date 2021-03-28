@@ -66,7 +66,7 @@ def calculate_peak_intensity(peak_characteristics, raw_points):
     return mono_intensity
 
 # calculate the mono intensity when it's model-adjusted for point saturation
-def calculate_phr_adjusted_intensity(peak_characteristics, envelope, raw_points):
+def calculate_phr_adjusted_intensity(peak_characteristics, monoisotopic_mass, envelope, raw_points):
     # get the raw points for each isotope
     rt_lower = peak_characteristics['rt_lower']
     rt_upper = peak_characteristics['rt_upper']
@@ -326,7 +326,7 @@ def detect_features(precursor_cuboid_d, converted_db_name):
             feature_d['rt_upper'] = peak_d['rt_upper']
             feature_d['mono_mz_without_saturated_points'] = peak_d['mono_mz_without_saturated_points']
             feature_d['envelope_mono_peak_three_sigma_intensity'] = calculate_peak_intensity(peak_characteristics=peak_d, raw_points=wide_ms1_points_df)
-            adj_d = calculate_phr_adjusted_intensity(peak_characteristics=peak_d, envelope=row.envelope, raw_points=wide_ms1_points_df)
+            adj_d = calculate_phr_adjusted_intensity(peak_characteristics=peak_d, monoisotopic_mass=feature_d['monoisotopic_mass'], envelope=row.envelope, raw_points=wide_ms1_points_df)
             feature_d['envelope_phr_adjusted_intensity'] = adj_d['mono_intensity']
             feature_d['envelope_phr_adjusted_intensity_flag'] = adj_d['mono_inferred']
             feature_d['envelope_phr_adjusted_isotopes'] = adj_d['adjusted_isotopes']
