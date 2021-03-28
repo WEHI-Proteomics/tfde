@@ -108,7 +108,7 @@ files_l = glob.glob('{}/exp-{}-run-*-features-*-dedup.pkl'.format(FEATURES_DIR, 
 for f in files_l:
     with open(f, 'rb') as handle:
         d = pickle.load(handle)
-    df_l.append(d['features_dedup_df'])
+    df_l.append(d['features_df'])
 features_df = pd.concat(df_l, axis=0, sort=False)
 
 # merge the identifications with the features
