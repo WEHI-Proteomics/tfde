@@ -22,6 +22,7 @@ parser.add_argument('-en','--experiment_name', type=str, help='Name of the exper
 parser.add_argument('-ff','--fasta_file_name', type=str, default='./otf-peak-detect/fasta/Human_Yeast_Ecoli.fasta', help='File name of the FASTA file.', required=False)
 parser.add_argument('-pe','--protein_enzyme', type=str, default='trypsin', choices=['no_enzyme','elastase','pepsin','proteinasek','thermolysin','trypsinp','chymotrypsin','lys-n','lys-c','arg-c','asp-n','glu-c','trypsin'], help='Enzyme used for digestion. Passed to percolator.', required=False)
 parser.add_argument('-fdm','--feature_detection_method', type=str, choices=['pasef','3did'], help='Which feature detection method.', required=True)
+parser.add_argument('-ini','--ini_file', type=str, default='./otf-peak-detect/pipeline/pasef-process-short-gradient.ini', help='Path to the config file.', required=False)
 args = parser.parse_args()
 
 # Print the arguments for the log
@@ -43,6 +44,20 @@ COMET_OUTPUT_DIR = "{}/comet-output-{}".format(EXPERIMENT_DIR, args.feature_dete
 if not os.path.exists(COMET_OUTPUT_DIR):
     print("The comet output directory is required but does not exist: {}".format(COMET_OUTPUT_DIR))
     sys.exit(1)
+
+# check the INI file exists
+if not os.path.isfile(args.ini_file):
+    print("The configuration file doesn't exist: {}".format(args.ini_file))
+    sys.exit(1)
+
+# load the INI file
+cfg = configparser.ConfigParser(interpolation=ExtendedInterpolation())
+cfg.read(args.ini_file)
+
+# set up constants
+PROTON_MASS = cfg.getfloat('common','PROTON_MASS')
+ADD_C_CYSTEINE_DA = cfg.getfloat('common','ADD_C_CYSTEINE_DA')
+MAXIMUM_Q_VALUE = cfg.getfloat('common','MAXIMUM_Q_VALUE')
 
 # set up the output directory
 PERCOLATOR_OUTPUT_DIR = "{}/percolator-output-{}".format(EXPERIMENT_DIR, args.feature_detection_method)
@@ -80,6 +95,7 @@ psms_df.rename(columns={'scan': 'feature_id'}, inplace=True)
 psms_df = psms_df[psms_df['percolator q-value'] <= MAXIMUM_Q_VALUE]
 psms_df = psms_df[psms_df['peptide mass'] > 0]
 
+# add the run names
 percolator_df = pd.merge(psms_df, mapping_df, how='left', left_on=['file_idx'], right_on=['file_idx'])
 
 # load the features
@@ -94,6 +110,15 @@ identifications_df = pd.merge(features_df, percolator_df, how='left', left_on=['
 
 # remove any features that were not identified
 identifications_df.dropna(subset=['sequence'], inplace=True)
+
+# add the mass of cysteine carbamidomethylation to the theoretical peptide mass from percolator, for the fixed modification of carbamidomethyl
+identifications_df['observed_monoisotopic_mass'] = (identifications_df.monoisotopic_mz * identifications_df.charge) - (PROTON_MASS * identifications_df.charge_y)
+identifications_df['theoretical_peptide_mass'] = identifications_df['peptide mass'] + (identifications_df.sequence.str.count('C') * ADD_C_CYSTEINE_DA)
+
+# now we can calculate the difference between the feature's monoisotopic mass and the theoretical peptide mass that is calculated from the 
+# sequence's molecular formula and its modifications
+percolator_df['mass_accuracy_ppm'] = (percolator_df['observed_monoisotopic_mass'] - percolator_df['theoretical_peptide_mass']) / percolator_df['theoretical_peptide_mass'] * 10**6
+percolator_df['mass_error'] = percolator_df['observed_monoisotopic_mass'] - percolator_df['theoretical_peptide_mass']
 
 # count how many unique peptides were identified
 sequences_l = []
