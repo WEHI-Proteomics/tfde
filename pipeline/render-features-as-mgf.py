@@ -82,9 +82,12 @@ os.makedirs(MGF_DIR)
 # associate the spectra with each feature found for this precursor
 associations = []
 for row in features_df.itertuples():
-    # collate them for the MGF
-    spectrum = collate_spectra_for_feature(feature_d=row._asdict(), run_name=args.run_name)
-    associations.append(spectrum)
+    if (not args.use_unsaturated_points_for_mz) or (args.use_unsaturated_points_for_mz and (row.mono_mz_without_saturated_points > 0)):
+        # collate them for the MGF
+        spectrum = collate_spectra_for_feature(feature_d=row._asdict(), run_name=args.run_name)
+        associations.append(spectrum)
+    else:
+        print('skipping feature_id {} because its mon without saturated points was zero'.format(row.feature_id))
 
 # generate the MGF for all the features
 print("writing {} entries to {}".format(len(associations), MGF_FILE))
