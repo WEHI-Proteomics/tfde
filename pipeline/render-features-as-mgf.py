@@ -87,7 +87,7 @@ for row in features_df.itertuples():
         spectrum = collate_spectra_for_feature(feature_d=row._asdict(), run_name=args.run_name)
         associations.append(spectrum)
     else:
-        print('skipping feature_id {} because its mon without saturated points was zero'.format(row.feature_id))
+        print('skipping feature_id {} because its mono m/z without saturated points was zero'.format(row.feature_id))
 
 # generate the MGF for all the features
 print("writing {} entries to {}".format(len(associations), MGF_FILE))
