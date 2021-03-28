@@ -72,6 +72,7 @@ def determine_mono_peak_characteristics(centre_mz, ms1_raw_points_df):
     mz_lower = centre_mz - mz_delta
     mz_upper = centre_mz + mz_delta
     mono_points_df = ms1_raw_points_df[(ms1_raw_points_df.mz >= mz_lower) & (ms1_raw_points_df.mz <= mz_upper)]
+
     # determine the peak's extent in CCS and RT
     if len(mono_points_df) > 0:
         # collapsing the monoisotopic's summed points onto the mobility dimension
@@ -117,11 +118,19 @@ def determine_mono_peak_characteristics(centre_mz, ms1_raw_points_df):
             rt_lower = rt_apex - (RT_BASE_PEAK_WIDTH_SECS / 2)
             rt_upper = rt_apex + (RT_BASE_PEAK_WIDTH_SECS / 2)
 
+        # constrain the mono points to the RT extent
+        mono_points_df = mono_points_df[(mono_points_df.retention_time_secs >= rt_lower) & (mono_points_df.retention_time_secs <= rt_upper)]
+
+        # now that we have the full extent of the feature in RT, recalculate the feature m/z to gain the most mass accuracy (without points in saturation)
+        mono_points_without_saturation_df = mono_points_df[(mono_points_df.intensity < SATURATION_INTENSITY)]
+        monoisotopic_mz_without_saturated_points = mz_centroid(mono_points_without_saturation_df.intensity.to_numpy(), mono_points_without_saturation_df.mz.to_numpy())
+
         # package the result
         result_d = {}
         result_d['mz_apex'] = centre_mz
         result_d['mz_lower'] = mz_lower
         result_d['mz_upper'] = mz_upper
+        result_d['mono_mz_without_saturated_points'] = monoisotopic_mz_without_saturated_points
         result_d['scan_apex'] = scan_apex
         result_d['scan_lower'] = scan_lower
         result_d['scan_upper'] = scan_upper
@@ -210,7 +219,9 @@ def detect_features(precursor_cuboid_d, converted_db_name):
             feature_d['rt_apex'] = peak_d['rt_apex']
             feature_d['rt_lower'] = peak_d['rt_lower']
             feature_d['rt_upper'] = peak_d['rt_upper']
+            feature_d['mono_mz_without_saturated_points'] = peak_d['mono_mz_without_saturated_points']
             feature_d['envelope_mono_peak_three_sigma_intensity'] = calculate_peak_intensity(peak_characteristics=peak_d, raw_points=wide_ms1_points_df)
+
         # resolve the feature's fragment ions
         fragment_ions_l = resolve_fragment_ions(feature_d, ms2_points_df)
         feature_d['fragment_ions_l'] = json.dumps(fragment_ions_l)
@@ -339,6 +350,7 @@ FEATURE_DETECTION_MAX_CHARGE = cfg.getint('ms1', 'FEATURE_DETECTION_MAX_CHARGE')
 DUP_MZ_TOLERANCE_PPM = cfg.getint('ms1', 'DUP_MZ_TOLERANCE_PPM')
 DUP_SCAN_TOLERANCE = cfg.getint('ms1', 'DUP_SCAN_TOLERANCE')
 DUP_RT_TOLERANCE = cfg.getint('ms1', 'DUP_RT_TOLERANCE')
+SATURATION_INTENSITY = cfg.getint('common', 'SATURATION_INTENSITY')
 
 # input cuboids
 CUBOIDS_DIR = "{}/precursor-cuboids-{}".format(EXPERIMENT_DIR, args.precursor_definition_method)
