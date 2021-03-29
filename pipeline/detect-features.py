@@ -58,67 +58,6 @@ def calculate_peak_delta(mz):
     peak_delta = 3 * sigma  # 99.7% of values fall within +/- 3 sigma
     return peak_delta
     
-# calculate the sum of the raw points in the mono m/z
-def calculate_peak_intensity(peak_characteristics, raw_points):
-    # extract the raw points for this peak
-    mono_points_df = raw_points[(raw_points.mz >= peak_characteristics['mz_lower']) & (raw_points.mz <= peak_characteristics['mz_upper']) & (raw_points.scan >= peak_characteristics['scan_lower']) & (raw_points.scan <= peak_characteristics['scan_upper']) & (raw_points.retention_time_secs >= peak_characteristics['rt_lower']) & (raw_points.retention_time_secs <= peak_characteristics['rt_upper'])]
-    mono_intensity = mono_points_df.intensity.sum()
-    return mono_intensity
-
-# calculate the mono intensity when it's model-adjusted for point saturation
-def calculate_phr_adjusted_intensity(peak_characteristics, monoisotopic_mass, envelope, raw_points):
-    outcome = ''
-    # get the raw points for each isotope
-    rt_lower = peak_characteristics['rt_lower']
-    rt_upper = peak_characteristics['rt_upper']
-    scan_lower = peak_characteristics['scan_lower']
-    scan_upper = peak_characteristics['scan_upper']
-    isotopes_l = []
-    for idx,isotope in enumerate(envelope):
-        mz = isotope[0]
-        intensity = isotope[1]
-        mz_delta = calculate_peak_delta(mz)
-        mz_lower = mz - mz_delta
-        mz_upper = mz + mz_delta
-        df = raw_points[(raw_points.mz >= mz_lower) & (raw_points.mz <= mz_upper) & (raw_points.scan >= scan_lower) & (raw_points.scan <= scan_upper) & (raw_points.retention_time_secs >= rt_lower) & (raw_points.retention_time_secs <= rt_upper)]
-        saturated = df.intensity.max() > SATURATION_INTENSITY
-        isotopes_l.append({'intensity':df.intensity.sum(), 'saturated':saturated})
-    isotopes_df = pd.DataFrame(isotopes_l)
-
-    # set the summed intensity to be the default adjusted intensity for all isotopes
-    isotopes_df['inferred_intensity'] = isotopes_df.intensity
-    isotopes_df['inferred'] = False
-
-    # if the mono is saturated and there are non-saturated isotopes to use as a reference...
-    if (isotopes_df.iloc[0].saturated == True):
-        if (len(isotopes_df[isotopes_df.saturated == False]) > 0):
-            # find the first unsaturated isotope
-            unsaturated_idx = isotopes_df[(isotopes_df.saturated == False)].iloc[0].name
-
-            # using as a reference the most intense isotope that is not in saturation, derive the isotope intensities back to the monoisotopic
-            Hpn = isotopes_df.iloc[unsaturated_idx].intensity
-            for peak_number in reversed(range(1,unsaturated_idx+1)):
-                # calculate the phr for the next-lower peak
-                phr = peak_ratio(monoisotopic_mass, peak_number, number_of_sulphur=0)
-                if phr is not None:
-                    Hpn_minus_1 = Hpn / phr
-                    isotopes_df.at[peak_number-1, 'inferred_intensity'] = int(Hpn_minus_1)
-                    isotopes_df.at[peak_number-1, 'inferred'] = True
-                    Hpn = Hpn_minus_1
-                else:
-                    outcome = 'could_not_calculate_phr'
-                    break
-        else:
-            outcome = 'no_nonsaturated_isotopes'
-    else:
-        outcome = 'monoisotopic_not_saturated'
-
-    # return the mono intensity and whether it was adjusted for saturation
-    mono_intensity = isotopes_df.iloc[0].inferred_intensity
-    if isotopes_df.iloc[0].inferred:
-        outcome = 'monoisotopic_intensity_adjusted'
-    return {'mono_intensity':mono_intensity, 'outcome':outcome, 'adjusted_isotopes':isotopes_df.to_dict('records')}
-
 # Find the ratio of H(peak_number)/H(peak_number-1) for peak_number=1..6
 # peak_number = 0 refers to the monoisotopic peak
 # number_of_sulphur = number of sulphur atoms in the molecule
@@ -179,13 +118,13 @@ def peak_ratio(monoisotopic_mass, peak_number, number_of_sulphur):
         ratio = beta0 + (beta1*scaled_m) + beta2*(scaled_m**2) + beta3*(scaled_m**3) + beta4*(scaled_m**4)
     return ratio
 
-# determine the mono peak apex and extent in CCS and RT
-def determine_mono_peak_characteristics(centre_mz, ms1_raw_points_df):
+# determine the mono peak apex and extent in CCS and RT and calculate isotopic peak intensities
+def determine_feature_characteristics(envelope, raw_points_df):
     # determine the raw points that belong to the mono peak
-    mz_delta = calculate_peak_delta(centre_mz)
+    mz_delta = calculate_peak_delta(envelope[0][1])
     mz_lower = centre_mz - mz_delta
     mz_upper = centre_mz + mz_delta
-    mono_points_df = ms1_raw_points_df[(ms1_raw_points_df.mz >= mz_lower) & (ms1_raw_points_df.mz <= mz_upper)]
+    mono_points_df = raw_points_df[(raw_points_df.mz >= mz_lower) & (raw_points_df.mz <= mz_upper)]
 
     # determine the peak's extent in CCS and RT
     if len(mono_points_df) > 0:
@@ -206,13 +145,13 @@ def determine_mono_peak_characteristics(centre_mz, ms1_raw_points_df):
         # if we couldn't fit a curve to the mobility dimension, take the intensity-weighted centroid
         if not mobility_curve_fit:
             scan_apex = mz_centroid(scan_df.intensity.to_numpy(), scan_df.scan.to_numpy())
-            scan_lower = scan_apex - SCAN_BASE_PEAK_WIDTH
-            scan_upper = scan_apex + SCAN_BASE_PEAK_WIDTH
+            scan_lower = scan_apex - (SCAN_BASE_PEAK_WIDTH / 2)
+            scan_upper = scan_apex + (SCAN_BASE_PEAK_WIDTH / 2)
 
         # constrain the mono points to the CCS extent
         mono_points_df = mono_points_df[(mono_points_df.scan >= scan_lower) & (mono_points_df.scan <= scan_upper)]
 
-        # In the RT dimension, look wider to find the apex
+        # in the RT dimension, look wider to find the apex
         rt_df = mono_points_df.groupby(['frame_id','retention_time_secs'], as_index=False).intensity.sum()
         rt_curve_fit = False
         try:
@@ -239,6 +178,50 @@ def determine_mono_peak_characteristics(centre_mz, ms1_raw_points_df):
         mono_points_without_saturation_df = mono_points_df[(mono_points_df.intensity < SATURATION_INTENSITY)]
         monoisotopic_mz_without_saturated_points = mz_centroid(mono_points_without_saturation_df.intensity.to_numpy(), mono_points_without_saturation_df.mz.to_numpy())
 
+        # constrain the raw points to the CCS and RT extent of the monoisotopic peak
+        mono_ccs_rt_extent_df = raw_points_df[(raw_points.scan >= scan_lower) & (raw_points.scan <= scan_upper) & (raw_points.retention_time_secs >= rt_lower) & (raw_points.retention_time_secs <= rt_upper)]
+
+        # calculate the isotope intensities from the constrained raw points
+        isotopes_l = []
+        for idx,isotope in enumerate(envelope):
+            mz = isotope[0]
+            intensity = isotope[1]
+            mz_delta = calculate_peak_delta(mz)
+            mz_lower = mz - mz_delta
+            mz_upper = mz + mz_delta
+            df = mono_ccs_rt_extent_df[(mono_ccs_rt_extent_df.mz >= mz_lower) & (mono_ccs_rt_extent_df.mz <= mz_upper)]
+            saturated = df.intensity.max() > SATURATION_INTENSITY
+            isotopes_l.append({'intensity':df.intensity.sum(), 'saturated':saturated})
+        isotopes_df = pd.DataFrame(isotopes_l)
+
+        # set the summed intensity to be the default adjusted intensity for all isotopes
+        isotopes_df['inferred_intensity'] = isotopes_df.intensity
+        isotopes_df['inferred'] = False
+
+        # if the mono is saturated and there are non-saturated isotopes to use as a reference...
+        if (isotopes_df.iloc[0].saturated == True):
+            if (len(isotopes_df[isotopes_df.saturated == False]) > 0):
+                # find the first unsaturated isotope
+                unsaturated_idx = isotopes_df[(isotopes_df.saturated == False)].iloc[0].name
+
+                # using as a reference the most intense isotope that is not in saturation, derive the isotope intensities back to the monoisotopic
+                Hpn = isotopes_df.iloc[unsaturated_idx].intensity
+                for peak_number in reversed(range(1,unsaturated_idx+1)):
+                    # calculate the phr for the next-lower peak
+                    phr = peak_ratio(monoisotopic_mass, peak_number, number_of_sulphur=0)
+                    if phr is not None:
+                        Hpn_minus_1 = Hpn / phr
+                        isotopes_df.at[peak_number-1, 'inferred_intensity'] = int(Hpn_minus_1)
+                        isotopes_df.at[peak_number-1, 'inferred'] = True
+                        Hpn = Hpn_minus_1
+                    else:
+                        outcome = 'could_not_calculate_phr'
+                        break
+            else:
+                outcome = 'no_nonsaturated_isotopes'
+        else:
+            outcome = 'monoisotopic_not_saturated'
+
         # package the result
         result_d = {}
         result_d['mz_apex'] = centre_mz
@@ -251,6 +234,9 @@ def determine_mono_peak_characteristics(centre_mz, ms1_raw_points_df):
         result_d['rt_apex'] = rt_apex
         result_d['rt_lower'] = rt_lower
         result_d['rt_upper'] = rt_upper
+        result_d['mono_intensity_from_raw_points'] = isotopes_df.iloc[0].inferred_intensity if isotopes_df.iloc[0].inferred else isotopes_df.iloc[0].intensity
+        result_d['mono_intensity_adjustment_outcome'] = outcome
+        result_d['isotopic_peaks'] = isotopes_df.to_dict('records')
     else:
         print('found no raw points where the mono peak should be: {}'.format(round(centre_mz,4)))
         result_d = None
@@ -319,27 +305,25 @@ def detect_features(precursor_cuboid_d, converted_db_name):
         feature_d['charge'] = row.charge
         feature_d['monoisotopic_mass'] = (feature_d['monoisotopic_mz'] * feature_d['charge']) - (PROTON_MASS * feature_d['charge'])
         feature_d['feature_intensity'] = row.intensity
+        feature_d['envelope_mono_peak_mz'] = row.envelope[0][0]
         feature_d['envelope_mono_peak_intensity'] = row.envelope[0][1]
         feature_d['envelope'] = json.dumps([tuple(e) for e in row.envelope])
         feature_d['isotope_count'] = len(row.envelope)
         feature_d['deconvolution_score'] = row.score
+        feature_characteristics_d = determine_feature_characteristics(envelope=row.envelope, raw_points_df=wide_ms1_points_df)
+        if feature_characteristics_d is not None:
+            feature_d['scan_apex'] = feature_characteristics_d['scan_apex']
+            feature_d['scan_lower'] = feature_characteristics_d['scan_lower']
+            feature_d['scan_upper'] = feature_characteristics_d['scan_upper']
+            feature_d['rt_apex'] = feature_characteristics_d['rt_apex']
+            feature_d['rt_lower'] = feature_characteristics_d['rt_lower']
+            feature_d['rt_upper'] = feature_characteristics_d['rt_upper']
+            feature_d['mono_mz_without_saturated_points'] = feature_characteristics_d['mono_mz_without_saturated_points']
+            feature_d['mono_intensity_from_raw_points'] = feature_characteristics_d['mono_intensity_from_raw_points']
+            feature_d['mono_intensity_adjustment_outcome'] = feature_characteristics_d['mono_intensity_adjustment_outcome']
+            feature_d['isotopic_peak_intensities_from_raw_points'] = feature_characteristics_d['isotopic_peaks']
         # from the precursor cuboid
         feature_d['precursor_cuboid_id'] = precursor_cuboid_d['precursor_cuboid_id']
-        peak_d = determine_mono_peak_characteristics(centre_mz=row.envelope[0][0], ms1_raw_points_df=wide_ms1_points_df)
-        if peak_d is not None:
-            feature_d['scan_apex'] = peak_d['scan_apex']
-            feature_d['scan_lower'] = peak_d['scan_lower']
-            feature_d['scan_upper'] = peak_d['scan_upper']
-            feature_d['rt_apex'] = peak_d['rt_apex']
-            feature_d['rt_lower'] = peak_d['rt_lower']
-            feature_d['rt_upper'] = peak_d['rt_upper']
-            feature_d['mono_mz_without_saturated_points'] = peak_d['mono_mz_without_saturated_points']
-            feature_d['envelope_mono_peak_three_sigma_intensity'] = calculate_peak_intensity(peak_characteristics=peak_d, raw_points=wide_ms1_points_df)
-            adj_d = calculate_phr_adjusted_intensity(peak_characteristics=peak_d, monoisotopic_mass=feature_d['monoisotopic_mass'], envelope=row.envelope, raw_points=wide_ms1_points_df)
-            feature_d['envelope_phr_adjusted_intensity'] = adj_d['mono_intensity']
-            feature_d['envelope_phr_outcome'] = adj_d['outcome']
-            feature_d['envelope_phr_adjusted_isotopes'] = adj_d['adjusted_isotopes']
-
         # resolve the feature's fragment ions
         fragment_ions_l = resolve_fragment_ions(feature_d, ms2_points_df)
         feature_d['fragment_ions_l'] = json.dumps(fragment_ions_l)
