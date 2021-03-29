@@ -90,7 +90,7 @@ def calculate_phr_adjusted_intensity(peak_characteristics, monoisotopic_mass, en
     isotopes_df['inferred'] = False
 
     # if the mono is saturated and there are non-saturated isotopes to use as a reference...
-    if (isotopes_df.iloc[0].saturated == True)
+    if (isotopes_df.iloc[0].saturated == True):
         if (len(isotopes_df[isotopes_df.saturated == False]) > 0):
             # find the first unsaturated isotope
             unsaturated_idx = isotopes_df[(isotopes_df.saturated == False)].iloc[0].name
