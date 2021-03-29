@@ -67,6 +67,7 @@ def calculate_peak_intensity(peak_characteristics, raw_points):
 
 # calculate the mono intensity when it's model-adjusted for point saturation
 def calculate_phr_adjusted_intensity(peak_characteristics, monoisotopic_mass, envelope, raw_points):
+    could_not_infer = False
     # get the raw points for each isotope
     rt_lower = peak_characteristics['rt_lower']
     rt_upper = peak_characteristics['rt_upper']
@@ -88,7 +89,8 @@ def calculate_phr_adjusted_intensity(peak_characteristics, monoisotopic_mass, en
     isotopes_df['inferred_intensity'] = isotopes_df.intensity
     isotopes_df['inferred'] = False
 
-    if len(isotopes_df.saturated.unique()) == 2:  # there are saturated and unsaturated isotopes
+    # if the mono is saturated and there are non-saturated isotopes to use as a reference...
+    if (isotopes_df.iloc[0].saturated == True) and (len(isotopes_df[isotopes_df.saturated == False]) > 0):
         # find the first unsaturated isotope
         unsaturated_idx = isotopes_df[(isotopes_df.saturated == False)].iloc[0].name
 
@@ -103,12 +105,16 @@ def calculate_phr_adjusted_intensity(peak_characteristics, monoisotopic_mass, en
                 isotopes_df.at[peak_number-1, 'inferred'] = True
                 Hpn = Hpn_minus_1
             else:
+                could_not_infer = True
                 break
-        
+    else:
+        print('the mono is saturated but there are no non-saturated isotopes to use as a reference')
+        could_not_infer = True
+
     # return the mono intensity and whether it was adjusted for saturation
     mono_intensity = isotopes_df.iloc[0].inferred_intensity
     mono_inferred = isotopes_df.iloc[0].inferred
-    return {'mono_intensity':mono_intensity, 'mono_inferred':mono_inferred, 'adjusted_isotopes':isotopes_df.to_dict('records')}
+    return {'mono_intensity':mono_intensity, 'mono_inferred':mono_inferred, 'could_not_infer':could_not_infer, 'adjusted_isotopes':isotopes_df.to_dict('records')}
 
 # Find the ratio of H(peak_number)/H(peak_number-1) for peak_number=1..6
 # peak_number = 0 refers to the monoisotopic peak
@@ -329,6 +335,7 @@ def detect_features(precursor_cuboid_d, converted_db_name):
             adj_d = calculate_phr_adjusted_intensity(peak_characteristics=peak_d, monoisotopic_mass=feature_d['monoisotopic_mass'], envelope=row.envelope, raw_points=wide_ms1_points_df)
             feature_d['envelope_phr_adjusted_intensity'] = adj_d['mono_intensity']
             feature_d['envelope_phr_adjusted_intensity_flag'] = adj_d['mono_inferred']
+            feature_d['envelope_phr_could_not_adjust_flag'] = adj_d['could_not_infer']
             feature_d['envelope_phr_adjusted_isotopes'] = adj_d['adjusted_isotopes']
 
         # resolve the feature's fragment ions
