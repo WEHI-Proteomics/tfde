@@ -119,7 +119,7 @@ def peak_ratio(monoisotopic_mass, peak_number, number_of_sulphur):
     return ratio
 
 # determine the mono peak apex and extent in CCS and RT and calculate isotopic peak intensities
-def determine_feature_characteristics(envelope, raw_points_df):
+def determine_feature_characteristics(envelope, monoisotopic_mass, raw_points_df):
     # determine the raw points that belong to the mono peak
     mono_mz = envelope[0][0]
     mz_delta = calculate_peak_delta(mz=mono_mz)
@@ -311,7 +311,7 @@ def detect_features(precursor_cuboid_d, converted_db_name):
         feature_d['envelope'] = json.dumps([tuple(e) for e in row.envelope])
         feature_d['isotope_count'] = len(row.envelope)
         feature_d['deconvolution_score'] = row.score
-        feature_characteristics_d = determine_feature_characteristics(envelope=row.envelope, raw_points_df=wide_ms1_points_df)
+        feature_characteristics_d = determine_feature_characteristics(envelope=row.envelope, monoisotopic_mass=feature_d['monoisotopic_mass'], raw_points_df=wide_ms1_points_df)
         if feature_characteristics_d is not None:
             feature_d['scan_apex'] = feature_characteristics_d['scan_apex']
             feature_d['scan_lower'] = feature_characteristics_d['scan_lower']
