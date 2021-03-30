@@ -180,7 +180,7 @@ def determine_feature_characteristics(envelope, raw_points_df):
         monoisotopic_mz_without_saturated_points = mz_centroid(mono_points_without_saturation_df.intensity.to_numpy(), mono_points_without_saturation_df.mz.to_numpy())
 
         # constrain the raw points to the CCS and RT extent of the monoisotopic peak
-        mono_ccs_rt_extent_df = raw_points_df[(raw_points.scan >= scan_lower) & (raw_points.scan <= scan_upper) & (raw_points.retention_time_secs >= rt_lower) & (raw_points.retention_time_secs <= rt_upper)]
+        mono_ccs_rt_extent_df = raw_points_df[(raw_points_df.scan >= scan_lower) & (raw_points_df.scan <= scan_upper) & (raw_points_df.retention_time_secs >= rt_lower) & (raw_points_df.retention_time_secs <= rt_upper)]
 
         # calculate the isotope intensities from the constrained raw points
         isotopes_l = []
