@@ -200,7 +200,9 @@ def determine_feature_characteristics(envelope, monoisotopic_mass, raw_points_df
         isotopes_df['inferred'] = False
 
         # if the mono is saturated and there are non-saturated isotopes to use as a reference...
+        outcome = ''
         if (isotopes_df.iloc[0].saturated == True):
+            outcome = 'monoisotopic_saturated_adjusted'
             if (len(isotopes_df[isotopes_df.saturated == False]) > 0):
                 # find the first unsaturated isotope
                 unsaturated_idx = isotopes_df[(isotopes_df.saturated == False)].iloc[0].name
