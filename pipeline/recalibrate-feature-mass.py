@@ -43,7 +43,8 @@ def adjust_features(run_name, idents_for_training_df, run_features_df):
     run_features_df['predicted_mass_error'] = y
     run_features_df['recalibrated_monoisotopic_mass'] = run_features_df.monoisotopic_mass - run_features_df.predicted_mass_error
     run_features_df['recalibrated_monoisotopic_mz'] = run_features_df.apply(lambda row: mono_mass_to_mono_mz(row.recalibrated_monoisotopic_mass, row.charge), axis=1)
-    return run_features_df
+
+    return {'run_name':run_name, 'adjusted_features_df':run_features_df}
 
 # determine the number of workers based on the number of available cores and the proportion of the machine to be used
 def number_of_workers():
@@ -108,19 +109,12 @@ print('loaded {} identifications with q-value lower than {} from {}'.format(len(
 
 # load the features for recalibration
 FEATURES_DIR = '{}/features-{}'.format(EXPERIMENT_DIR, args.feature_detection_method)
-FEATURES_DEDUP_FILE = '{}/exp-{}-run-{}-features-{}-dedup.pkl'.format(FEATURES_DIR, args.experiment_name, args.run_name, args.feature_detection_method)
-
-if not os.path.isfile(FEATURES_DEDUP_FILE):
-    print("The features file is required but doesn't exist: {}".format(FEATURES_DEDUP_FILE))
-    sys.exit(1)
-
-with open(FEATURES_DEDUP_FILE, 'rb') as handle:
-    features_df = pickle.load(handle)['features_df']
-print('loaded {} features for recalibration from {}'.format(len(features_df), FEATURES_DEDUP_FILE))
-
-# set up the output directory
-FEATURES_DIR = '{}/features-{}'.format(EXPERIMENT_DIR, args.feature_detection_method)
-RECAL_FEATURES_FILE = '{}/exp-{}-run-{}-features-{}-recalibrated.pkl'.format(FEATURES_DIR, args.experiment_name, args.run_name, args.feature_detection_method)
+feature_files = glob.glob("{}/exp-{}-run-*-features-{}-dedup.pkl".format(FEATURES_DIR, args.experiment_name, args.feature_detection_method))
+features_l = []
+for f in feature_files:
+    with open(f, 'rb') as handle:
+        features_l.append(pickle.load(handle)['features_df'])
+print('loaded {} features from {} files for recalibration'.format(len(features_df), len(feature_files)))
 
 # set up Ray
 print("setting up Ray")
@@ -135,17 +129,16 @@ if not ray.is_initialized():
 print("training models and adjusting monoisotopic mass for each feature")
 adjusted_features_l = ray.get([adjust_features.remote(run_name, idents_for_training_df=group_df, run_features_df=features_df[features_df.run_name == run_name]) for file_idx,group_df in idents_df.groupby('run_name')])
 
-# join the list of dataframes into a single dataframe
-adjustments_df = pd.concat(adjustments_l, axis=0, sort=False)
-
 # write out the recalibrated features
-print("writing {} recalibrated features to {}".format(len(adjustments_df), RECAL_FEATURES_FILE))
-info.append(('total_running_time',round(time.time()-start_run,1)))
-info.append(('processor',parser.prog))
-info.append(('processed', time.ctime()))
-content_d = {'features_df':adjustments_df, 'metadata':info}
-with open(RECAL_FEATURES_FILE, 'wb') as handle:
-    pickle.dump(content_d, handle)
+for adj in adjusted_features_l:
+    RECAL_FEATURES_FILE = '{}/exp-{}-run-{}-features-{}-recalibrated.pkl'.format(FEATURES_DIR, args.experiment_name, adj['run_name'], args.feature_detection_method)
+    print("writing {} recalibrated features to {}".format(len(adjustments_df), RECAL_FEATURES_FILE))
+    info.append(('total_running_time',round(time.time()-start_run,1)))
+    info.append(('processor',parser.prog))
+    info.append(('processed', time.ctime()))
+    content_d = {'features_df':adj['adjusted_features_df'], 'metadata':info}
+    with open(RECAL_FEATURES_FILE, 'wb') as handle:
+        pickle.dump(content_d, handle)
 
 # finish up
 stop_run = time.time()
