@@ -8,6 +8,7 @@ import os
 import pickle
 from pyteomics import mgf
 import shutil
+import sys
 
 # collate the feature attributes for MGF rendering
 def collate_spectra_for_feature(feature_d, mz_name, run_name):
