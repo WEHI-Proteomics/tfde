@@ -10,7 +10,7 @@ from pyteomics import mgf
 import shutil
 
 # collate the feature attributes for MGF rendering
-def collate_spectra_for_feature(feature_d, run_name):
+def collate_spectra_for_feature(feature_d, mz_name, run_name):
     # sort the fragment ions by increasing m/z
     fragment_ions_df = pd.DataFrame(json.loads(feature_d['fragment_ions_l']))
     fragment_ions_df.sort_values(by=['decharged_mass'], ascending=True, inplace=True)
@@ -22,10 +22,7 @@ def collate_spectra_for_feature(feature_d, run_name):
     params = {}
     params["TITLE"] = "RawFile: {} Charge: {} FeatureIntensity: {} Feature#: {} RtApex: {} Precursor: {}".format(run_name, int(feature_d['charge']), int(feature_d['feature_intensity']), int(feature_d['feature_id']), round(feature_d['rt_apex'],2), int(feature_d['precursor_cuboid_id']))
     params["INSTRUMENT"] = "ESI-QUAD-TOF"
-    if args.use_unsaturated_points_for_mz:
-        params["PEPMASS"] = "{} {}".format(round(feature_d['mono_mz_without_saturated_points'],6), int(feature_d['feature_intensity']))
-    else:
-        params["PEPMASS"] = "{} {}".format(round(feature_d['monoisotopic_mz'],6), int(feature_d['feature_intensity']))
+    params["PEPMASS"] = "{} {}".format(round(feature_d[mz_name],6), int(feature_d['feature_intensity']))
     params["CHARGE"] = "{}+".format(int(feature_d['charge']))
     params["RTINSECONDS"] = "{}".format(round(feature_d['rt_apex'],2))
     params["SCANS"] = "{}".format(int(feature_d['feature_id']))
@@ -42,6 +39,7 @@ parser.add_argument('-rn','--run_name', type=str, help='Name of the run.', requi
 parser.add_argument('-fdm','--feature_detection_method', type=str, choices=['pasef','3did'], help='Which feature detection method.', required=True)
 parser.add_argument('-pid', '--precursor_id', type=int, help='Only process this precursor ID.', required=False)
 parser.add_argument('-ns','--use_unsaturated_points_for_mz', action='store_true', help='Use the mono m/z calculated with only non-saturated points.')
+parser.add_argument('-recal','--recalibration_mode', action='store_true', help='Use the recalibrated features.')
 args = parser.parse_args()
 
 # Print the arguments for the log
@@ -54,37 +52,47 @@ start_run = time.time()
 
 EXPERIMENT_DIR = '{}/{}'.format(args.experiment_base_dir, args.experiment_name)
 FEATURES_DIR = '{}/features-{}'.format(EXPERIMENT_DIR, args.feature_detection_method)
-FEATURES_DEDUP_FILE = '{}/exp-{}-run-{}-features-{}-dedup.pkl'.format(FEATURES_DIR, args.experiment_name, args.run_name, args.feature_detection_method)
+MGF_DIR = "{}/mgf-{}".format(EXPERIMENT_DIR, args.feature_detection_method)
 
-if not os.path.isfile(FEATURES_DEDUP_FILE):
-    print("The features file is required but doesn't exist: {}".format(FEATURES_DEDUP_FILE))
+# handle whether or not this is for recalibrated features
+if not args.recalibration_mode:
+    FEATURES_FILE = '{}/exp-{}-run-{}-features-{}-dedup.pkl'.format(FEATURES_DIR, args.experiment_name, args.run_name, args.feature_detection_method)
+    if args.use_unsaturated_points_for_mz:
+        monoisotopic_mz_column_name = 'mono_mz_without_saturated_points'
+    else:
+        monoisotopic_mz_column_name = 'monoisotopic_mz'
+    # output MGF
+    MGF_FILE = '{}/exp-{}-run-{}-features-{}.mgf'.format(MGF_DIR, args.experiment_name, args.run_name, args.feature_detection_method)
+else:
+    FEATURES_FILE = '{}/exp-{}-run-{}-features-{}-recalibrated.pkl'.format(FEATURES_DIR, args.experiment_name, args.run_name, args.feature_detection_method)
+    monoisotopic_mz_column_name = 'recalibrated_monoisotopic_mz'
+    # output MGF
+    MGF_FILE = '{}/exp-{}-run-{}-features-{}-recalibrated.mgf'.format(MGF_DIR, args.experiment_name, args.run_name, args.feature_detection_method)
+
+if not os.path.isfile(FEATURES_DIR):
+    print("The features file is required but doesn't exist: {}".format(FEATURES_DIR))
     sys.exit(1)
 
 # load the features
-with open(FEATURES_DEDUP_FILE, 'rb') as handle:
+with open(FEATURES_DIR, 'rb') as handle:
     d = pickle.load(handle)
 features_df = d['features_df']
 
 # trim down the features to just those from the specified precursor_id
 if args.precursor_id is not None:
     features_df = features_df[(features_df.precursor_cuboid_id == args.precursor_id)]
-print('loaded {} features from {}'.format(len(features_df), FEATURES_DEDUP_FILE))
-
-# output MGF
-MGF_DIR = "{}/mgf-{}".format(EXPERIMENT_DIR, args.feature_detection_method)
-MGF_FILE = '{}/exp-{}-run-{}-features-{}.mgf'.format(MGF_DIR, args.experiment_name, args.run_name, args.feature_detection_method)
+print('loaded {} features from {}'.format(len(features_df), FEATURES_DIR))
 
 # set up the output directory
-if os.path.exists(MGF_DIR):
-    shutil.rmtree(MGF_DIR)
-os.makedirs(MGF_DIR)
+if not os.path.exists(MGF_DIR):
+    os.makedirs(MGF_DIR)
 
 # associate the spectra with each feature found for this precursor
 associations = []
 for row in features_df.itertuples():
     if (not args.use_unsaturated_points_for_mz) or (args.use_unsaturated_points_for_mz and (row.mono_mz_without_saturated_points > 0)):
         # collate them for the MGF
-        spectrum = collate_spectra_for_feature(feature_d=row._asdict(), run_name=args.run_name)
+        spectrum = collate_spectra_for_feature(feature_d=row._asdict(), mz_name=monoisotopic_mz_column_name, run_name=args.run_name)
         associations.append(spectrum)
     else:
         print('skipping feature_id {} because its mono m/z without saturated points was zero'.format(row.feature_id))
