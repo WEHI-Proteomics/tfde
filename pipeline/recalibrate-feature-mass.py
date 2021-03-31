@@ -10,6 +10,8 @@ import configparser
 from configparser import ExtendedInterpolation
 from sklearn.ensemble import GradientBoostingRegressor
 from sklearn.model_selection import GridSearchCV,ShuffleSplit
+import ray
+import multiprocessing as mp
 
 # convert the monoisotopic mass to the monoisotopic m/z
 def mono_mass_to_mono_mz(monoisotopic_mass, charge):
@@ -42,6 +44,12 @@ def adjust_features(run_name, idents_for_training_df, run_features_df):
     run_features_df['recalibrated_monoisotopic_mass'] = run_features_df.monoisotopic_mass - run_features_df.predicted_mass_error
     run_features_df['recalibrated_monoisotopic_mz'] = run_features_df.apply(lambda row: mono_mass_to_mono_mz(row.recalibrated_monoisotopic_mass, row.charge), axis=1)
     return run_features_df
+
+# determine the number of workers based on the number of available cores and the proportion of the machine to be used
+def number_of_workers():
+    number_of_cores = mp.cpu_count()
+    number_of_workers = round(args.proportion_of_cores_to_use * number_of_cores)
+    return number_of_workers
 
 
 ################################
@@ -114,6 +122,14 @@ print('loaded {} features for recalibration from {}'.format(len(features_df), FE
 # set up the output directory
 FEATURES_DIR = '{}/features-{}'.format(EXPERIMENT_DIR, args.feature_detection_method)
 RECAL_FEATURES_FILE = '{}/exp-{}-run-{}-features-{}-recalibrated.pkl'.format(FEATURES_DIR, args.experiment_name, args.run_name, args.feature_detection_method)
+
+# set up Ray
+print("setting up Ray")
+if not ray.is_initialized():
+    if args.ray_mode == "cluster":
+        ray.init(num_cpus=number_of_workers())
+    else:
+        ray.init(local_mode=True)
 
 # for each run, produce a model that estimates the mass error from a feature's characteristics, and generate a revised feature file with adjusted mass, 
 # to get a smaller mass error on a second Comet search with tighter mass tolerance.
