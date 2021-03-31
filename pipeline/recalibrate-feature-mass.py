@@ -31,19 +31,19 @@ def adjust_features(run_name, idents_for_training_df, run_features_df):
     if args.search_for_new_model_parameters:
         # do a grid search to find the best regressor dimensions
         parameters = {
-            "loss":["deviance"],
+            "loss":["ls"],
             "learning_rate": [0.01, 0.05, 0.1, 0.2],
             # "min_samples_split": np.linspace(0.1, 0.5, 6),
             # "min_samples_leaf": np.linspace(0.1, 0.5, 6),
             "max_depth":[3, 5, 8, 20, 100],
-            "max_features":["log2","sqrt"],
+            "max_features":["log2", "sqrt"],
             "criterion": ["friedman_mse",  "mae"],
             "subsample":[0.6, 0.8, 1.0],
             "n_estimators":[50, 100, 1000, 2000]
             }
 
         print('setting up grid search')
-        gbc = GridSearchCV(GradientBoostingRegressor(), parameters, cv=2, scoring='accuracy', verbose=10, n_jobs=-1)   # cross-validation splitting strategy uses 'cv' folds in a (Stratified)KFold; folds are made by preserving the percentage of samples for each class
+        gbc = GridSearchCV(GradientBoostingRegressor(), parameters, cv=2, scoring='neg_mean_squared_error', verbose=10, n_jobs=-1)   # cross-validation splitting strategy uses 'cv' folds in a (Stratified)KFold; folds are made by preserving the percentage of samples for each class
                                                                                                                                                 # use all processors
         print('fitting to the training set')
         gbc.fit(X_train, y_train)  # find the best fit within the parameter search space
