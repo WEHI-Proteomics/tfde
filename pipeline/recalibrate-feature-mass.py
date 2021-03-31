@@ -12,6 +12,7 @@ from sklearn.ensemble import GradientBoostingRegressor
 from sklearn.model_selection import GridSearchCV,ShuffleSplit
 import ray
 import multiprocessing as mp
+import pickle
 
 # convert the monoisotopic mass to the monoisotopic m/z
 def mono_mass_to_mono_mz(monoisotopic_mass, charge):
