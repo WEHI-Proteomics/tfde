@@ -48,15 +48,17 @@ if not os.path.exists(MGF_DIR):
 # check the MGF file
 if not args.recalibration_mode:
     MGF_FILE = '{}/exp-{}-run-{}-features-{}.mgf'.format(MGF_DIR, args.experiment_name, args.run_name, args.feature_detection_method)
+    COMET_OUTPUT_DIR = "{}/comet-output-{}".format(EXPERIMENT_DIR, args.feature_detection_method)
 else:
     MGF_FILE = '{}/exp-{}-run-{}-features-{}-recalibrated.mgf'.format(MGF_DIR, args.experiment_name, args.run_name, args.feature_detection_method)
+    COMET_OUTPUT_DIR = "{}/comet-output-{}-recalibrated".format(EXPERIMENT_DIR, args.feature_detection_method)
 
+# check the MGF file
 if not os.path.isfile(MGF_FILE):
     print("The MGF file is required but doesn't exist: {}".format(MGF_FILE))
     sys.exit(1)
 
 # set up the Comet output directory
-COMET_OUTPUT_DIR = "{}/comet-output-{}".format(EXPERIMENT_DIR, args.feature_detection_method)
 if not os.path.exists(COMET_OUTPUT_DIR):
     os.makedirs(COMET_OUTPUT_DIR)
 
