@@ -4,6 +4,8 @@ import shutil
 import time
 import argparse
 import sys
+import configparser
+from configparser import ExtendedInterpolation
 
 
 # run the command in a shell
