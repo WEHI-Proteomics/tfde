@@ -47,9 +47,9 @@ if not os.path.exists(MGF_DIR):
 
 # check the MGF file
 if not args.recalibration_mode:
-    MGF_FILE = '{}/exp-{}-run-{}-features-{}-recalibrated.mgf'.format(MGF_DIR, args.experiment_name, args.run_name, args.feature_detection_method)
-else:
     MGF_FILE = '{}/exp-{}-run-{}-features-{}.mgf'.format(MGF_DIR, args.experiment_name, args.run_name, args.feature_detection_method)
+else:
+    MGF_FILE = '{}/exp-{}-run-{}-features-{}-recalibrated.mgf'.format(MGF_DIR, args.experiment_name, args.run_name, args.feature_detection_method)
 
 if not os.path.isfile(MGF_FILE):
     print("The MGF file is required but doesn't exist: {}".format(MGF_FILE))
