@@ -46,6 +46,15 @@ def adjust_features(run_name, idents_for_training_df, run_features_df):
 
     return {'run_name':run_name, 'adjusted_features_df':run_features_df}
 
+# source: https://shankarmsy.github.io/stories/gbrt-sklearn.html
+def GradientBooster(param_grid, n_jobs, X_train, y_train):
+    estimator = GradientBoostingRegressor()
+    cv = ShuffleSplit(n_splits=10, train_size=0.8, test_size=0.2, random_state=0)
+    classifier = GridSearchCV(estimator=estimator, cv=cv, param_grid=param_grid, n_jobs=n_jobs)
+    classifier.fit(X_train, y_train)
+    print('best estimator found by grid search: {}'.format(classifier.best_estimator_))
+    return cv, classifier.best_estimator_
+
 # determine the number of workers based on the number of available cores and the proportion of the machine to be used
 def number_of_workers():
     number_of_cores = mp.cpu_count()
