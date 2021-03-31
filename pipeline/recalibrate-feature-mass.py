@@ -10,6 +10,7 @@ import configparser
 from configparser import ExtendedInterpolation
 from sklearn.ensemble import GradientBoostingRegressor
 from sklearn.model_selection import GridSearchCV,ShuffleSplit
+from sklearn.model_selection import train_test_split
 import ray
 import multiprocessing as mp
 
@@ -23,17 +24,49 @@ def mono_mass_to_mono_mz(monoisotopic_mass, charge):
 def adjust_features(run_name, idents_for_training_df, run_features_df):
     print("processing {} features for run {}".format(len(run_features_df), run_name))
 
-    X_train = idents_for_training_df[['mono_mz_without_saturated_points','scan_apex','rt_apex','feature_intensity']].to_numpy()
-    y_train = idents_for_training_df[['mass_error']].to_numpy()[:,0]
+    X = idents_for_training_df[['mono_mz_without_saturated_points','scan_apex','rt_apex','feature_intensity']].to_numpy()
+    y = idents_for_training_df[['mass_error']].to_numpy()[:,0]
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.1)
 
-    # search for the best model in the specified hyperparameter space
-    param_grid = {'n_estimators':[100], 'learning_rate': [0.1, 0.05, 0.02, 0.01], 'max_depth':[20, 10, 6, 4], 'min_samples_leaf':[3, 5, 9, 17], 'max_features':[1.0, 0.3, 0.1] }
-    cv, best_estimator = GradientBooster(param_grid=param_grid, n_jobs=number_of_workers(), X_train=X_train, y_train=y_train)
-    print('best estimator found by grid search: {}'.format(best_estimator))
+    if args.search_for_new_model_parameters:
+        # do a grid search to find the best regressor dimensions
+        parameters = {
+            "loss":["deviance"],
+            "learning_rate": [0.01, 0.05, 0.1, 0.2],
+            # "min_samples_split": np.linspace(0.1, 0.5, 6),
+            # "min_samples_leaf": np.linspace(0.1, 0.5, 6),
+            "max_depth":[3, 5, 8, 20, 100],
+            "max_features":["log2","sqrt"],
+            "criterion": ["friedman_mse",  "mae"],
+            "subsample":[0.6, 0.8, 1.0],
+            "n_estimators":[50, 100, 1000, 2000]
+            }
 
-    # use the best parameters to train the model
-    best_estimator.fit(X_train, y_train)
-    print("R-squared for training set (best model found): {}".format(best_estimator.score(X_train, y_train)))
+        print('setting up grid search')
+        gbc = GridSearchCV(GradientBoostingRegressor(), parameters, cv=2, scoring='accuracy', verbose=10, n_jobs=-1)   # cross-validation splitting strategy uses 'cv' folds in a (Stratified)KFold; folds are made by preserving the percentage of samples for each class
+                                                                                                                                                # use all processors
+        print('fitting to the training set')
+        gbc.fit(X_train, y_train)  # find the best fit within the parameter search space
+
+        best_estimator = gbc.best_estimator_
+        best_params = gbc.best_params_
+        print(best_params)
+    else:
+        # use the model parameters we found previously
+        best_estimator = GradientBoostingRegressor(
+                loss = 'deviance',
+                learning_rate = 0.05,
+                max_depth = 8,
+                max_features = 'sqrt',
+                criterion = 'friedman_mse',
+                subsample = 1.0,
+                n_estimators = 2000
+        )
+        best_estimator.fit(X_train, y_train)  # find the best fit within the parameter search space
+
+    train_score = best_estimator.score(X_train, y_train)
+    test_score = best_estimator.score(X_test, y_test)
+    print("R-squared for training set: {}, test set: {}".format(round(train_score,2), round(test_score,2)))
 
     # use the trained model to predict the mass error for all the detected features
     X = run_features_df[['mono_mz_without_saturated_points','scan_apex','rt_apex','feature_intensity']].to_numpy()
@@ -45,14 +78,6 @@ def adjust_features(run_name, idents_for_training_df, run_features_df):
     run_features_df['recalibrated_monoisotopic_mz'] = run_features_df.apply(lambda row: mono_mass_to_mono_mz(row.recalibrated_monoisotopic_mass, row.charge), axis=1)
 
     return {'run_name':run_name, 'adjusted_features_df':run_features_df}
-
-# source: https://shankarmsy.github.io/stories/gbrt-sklearn.html
-def GradientBooster(param_grid, n_jobs, X_train, y_train):
-    estimator = GradientBoostingRegressor()
-    cv = ShuffleSplit(n_splits=10, train_size=0.8, test_size=0.2, random_state=0)
-    classifier = GridSearchCV(estimator=estimator, cv=cv, param_grid=param_grid, n_jobs=n_jobs)
-    classifier.fit(X_train, y_train)
-    return cv, classifier.best_estimator_
 
 # determine the number of workers based on the number of available cores and the proportion of the machine to be used
 def number_of_workers():
@@ -69,6 +94,7 @@ parser.add_argument('-fdm','--feature_detection_method', type=str, choices=['pas
 parser.add_argument('-ini','--ini_file', type=str, default='./otf-peak-detect/pipeline/pasef-process-short-gradient.ini', help='Path to the config file.', required=False)
 parser.add_argument('-rm','--ray_mode', type=str, choices=['local','cluster'], help='The Ray mode to use.', required=True)
 parser.add_argument('-pc','--proportion_of_cores_to_use', type=float, default=0.9, help='Proportion of the machine\'s cores to use for this program.', required=False)
+parser.add_argument('-snmp','--search_for_new_model_parameters', action='store_true', help='Search for new model parameters.')
 args = parser.parse_args()
 
 # Print the arguments for the log
