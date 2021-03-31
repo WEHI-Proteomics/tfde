@@ -21,15 +21,15 @@ def mono_mass_to_mono_mz(monoisotopic_mass, charge):
 # detected (not just those with high quality identifications), and adjust their calculated mass to give zero mass error.
 @ray.remote
 def adjust_features(run_name, idents_for_training_df, run_features_df):
-    print("Processing file {}".format(run_name))
+    print("processing {} features for run {}".format(len(run_features_df), run_name))
 
     X_train = idents_for_training_df[['mono_mz_without_saturated_points','scan_apex','rt_apex','feature_intensity']].to_numpy()
     y_train = idents_for_training_df[['mass_error']].to_numpy()[:,0]
 
     # search for the best model in the specified hyperparameter space
     param_grid = {'n_estimators':[100], 'learning_rate': [0.1, 0.05, 0.02, 0.01], 'max_depth':[20, 10, 6, 4], 'min_samples_leaf':[3, 5, 9, 17], 'max_features':[1.0, 0.3, 0.1] }
-    n_jobs = 2
-    cv, best_estimator = GradientBooster(param_grid, n_jobs, X_train, y_train)
+    cv, best_estimator = GradientBooster(param_grid=param_grid, n_jobs=number_of_workers(), X_train=X_train, y_train=y_train)
+    print('best estimator found by grid search: {}'.format(best_estimator))
 
     # use the best parameters to train the model
     best_estimator.fit(X_train, y_train)
@@ -52,7 +52,6 @@ def GradientBooster(param_grid, n_jobs, X_train, y_train):
     cv = ShuffleSplit(n_splits=10, train_size=0.8, test_size=0.2, random_state=0)
     classifier = GridSearchCV(estimator=estimator, cv=cv, param_grid=param_grid, n_jobs=n_jobs)
     classifier.fit(X_train, y_train)
-    print('best estimator found by grid search: {}'.format(classifier.best_estimator_))
     return cv, classifier.best_estimator_
 
 # determine the number of workers based on the number of available cores and the proportion of the machine to be used
