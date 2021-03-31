@@ -70,14 +70,12 @@ else:
     # output MGF
     MGF_FILE = '{}/exp-{}-run-{}-features-{}-recalibrated.mgf'.format(MGF_DIR, args.experiment_name, args.run_name, args.feature_detection_method)
 
-if not os.path.isfile(FEATURES_DIR):
-    print("The features file is required but doesn't exist: {}".format(FEATURES_DIR))
-    sys.exit(1)
+if not os.path.isfile(FEATURES_FILE):
+    print("The features file is required but doesn't exist: {}".format(FEATURES_FILE))
 
 # load the features
-with open(FEATURES_DIR, 'rb') as handle:
-    d = pickle.load(handle)
-features_df = d['features_df']
+with open(FEATURES_FILE, 'rb') as handle:
+    features_df = pickle.load(handle)['features_df']
 
 # trim down the features to just those from the specified precursor_id
 if args.precursor_id is not None:
