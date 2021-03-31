@@ -143,11 +143,12 @@ adjusted_features_l = ray.get([adjust_features.remote(run_name=group_name, ident
 # write out the recalibrated features
 for adj in adjusted_features_l:
     RECAL_FEATURES_FILE = '{}/exp-{}-run-{}-features-{}-recalibrated.pkl'.format(FEATURES_DIR, args.experiment_name, adj['run_name'], args.feature_detection_method)
-    print("writing {} recalibrated features to {}".format(len(adjustments_df), RECAL_FEATURES_FILE))
+    recal_features_df = adj['adjusted_features_df']
+    print("writing {} recalibrated features to {}".format(len(recal_features_df), RECAL_FEATURES_FILE))
     info.append(('total_running_time',round(time.time()-start_run,1)))
     info.append(('processor',parser.prog))
     info.append(('processed', time.ctime()))
-    content_d = {'features_df':adj['adjusted_features_df'], 'metadata':info}
+    content_d = {'features_df':recal_features_df, 'metadata':info}
     with open(RECAL_FEATURES_FILE, 'wb') as handle:
         pickle.dump(content_d, handle)
 
