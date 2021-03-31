@@ -130,7 +130,7 @@ if not ray.is_initialized():
 # for each run, produce a model that estimates the mass error from a feature's characteristics, and generate a revised feature file with adjusted mass, 
 # to get a smaller mass error on a second Comet search with tighter mass tolerance.
 print("training models and adjusting monoisotopic mass for each feature")
-adjusted_features_l = ray.get([adjust_features.remote(run_name, idents_for_training_df=group_df, run_features_df=features_df[features_df.run_name == run_name]) for file_idx,group_df in idents_df.groupby('run_name')])
+adjusted_features_l = ray.get([adjust_features.remote(run_name=group_name, idents_for_training_df=group_df, run_features_df=features_df[features_df.run_name == group_name]) for group_name,group_df in idents_df.groupby('run_name')])
 
 # write out the recalibrated features
 for adj in adjusted_features_l:
