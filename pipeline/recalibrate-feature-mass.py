@@ -12,7 +12,6 @@ from sklearn.ensemble import GradientBoostingRegressor
 from sklearn.model_selection import GridSearchCV,ShuffleSplit
 import ray
 import multiprocessing as mp
-import pickle
 
 # convert the monoisotopic mass to the monoisotopic m/z
 def mono_mass_to_mono_mz(monoisotopic_mass, charge):
@@ -103,7 +102,7 @@ if not os.path.isfile(IDENTIFICATIONS_FILE):
 
 # load the identifications to use for the training set
 with open(IDENTIFICATIONS_FILE, 'rb') as handle:
-    idents_df = pickle.load(handle)['features_df']
+    idents_df = pickle.load(handle)['identifications_df']
 idents_df = idents_df[(idents_df['percolator q-value'] <= MAXIMUM_Q_VALUE_FOR_RECAL_TRAINING_SET)]
 print('loaded {} identifications with q-value lower than {} from {}'.format(len(idents_df), MAXIMUM_Q_VALUE_FOR_RECAL_TRAINING_SET, IDENTIFICATIONS_FILE))
 
@@ -116,8 +115,7 @@ if not os.path.isfile(FEATURES_DEDUP_FILE):
     sys.exit(1)
 
 with open(FEATURES_DEDUP_FILE, 'rb') as handle:
-    d = pickle.load(handle)
-features_df = d['features_df']
+    features_df = pickle.load(handle)['features_df']
 print('loaded {} features for recalibration from {}'.format(len(features_df), FEATURES_DEDUP_FILE))
 
 # set up the output directory
