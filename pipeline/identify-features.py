@@ -26,6 +26,7 @@ parser.add_argument('-pe','--protein_enzyme', type=str, default='trypsin', choic
 parser.add_argument('-fdm','--feature_detection_method', type=str, choices=['pasef','3did'], help='Which feature detection method.', required=True)
 parser.add_argument('-ini','--ini_file', type=str, default='./otf-peak-detect/pipeline/pasef-process-short-gradient.ini', help='Path to the config file.', required=False)
 parser.add_argument('-ns','--use_unsaturated_points_for_mz', action='store_true', help='Use the mono m/z calculated with only non-saturated points.')
+parser.add_argument('-recal','--recalibration_mode', action='store_true', help='Use the recalibrated Comet output.')
 args = parser.parse_args()
 
 # Print the arguments for the log
@@ -42,8 +43,14 @@ if not os.path.exists(EXPERIMENT_DIR):
     print("The experiment directory is required but doesn't exist: {}".format(EXPERIMENT_DIR))
     sys.exit(1)
 
+if not args.recalibration_mode:
+    COMET_OUTPUT_DIR = "{}/comet-output-{}".format(EXPERIMENT_DIR, args.feature_detection_method)
+    PERCOLATOR_OUTPUT_DIR = "{}/percolator-output-{}".format(EXPERIMENT_DIR, args.feature_detection_method)
+else:
+    COMET_OUTPUT_DIR = "{}/comet-output-{}-recalibrated".format(EXPERIMENT_DIR, args.feature_detection_method)
+    PERCOLATOR_OUTPUT_DIR = "{}/percolator-output-{}-recalibrated".format(EXPERIMENT_DIR, args.feature_detection_method)
+
 # check the comet directory
-COMET_OUTPUT_DIR = "{}/comet-output-{}".format(EXPERIMENT_DIR, args.feature_detection_method)
 if not os.path.exists(COMET_OUTPUT_DIR):
     print("The comet output directory is required but does not exist: {}".format(COMET_OUTPUT_DIR))
     sys.exit(1)
@@ -63,7 +70,6 @@ ADD_C_CYSTEINE_DA = cfg.getfloat('common','ADD_C_CYSTEINE_DA')
 MAXIMUM_Q_VALUE = cfg.getfloat('common','MAXIMUM_Q_VALUE')
 
 # set up the output directory
-PERCOLATOR_OUTPUT_DIR = "{}/percolator-output-{}".format(EXPERIMENT_DIR, args.feature_detection_method)
 if os.path.exists(PERCOLATOR_OUTPUT_DIR):
     shutil.rmtree(PERCOLATOR_OUTPUT_DIR)
 os.makedirs(PERCOLATOR_OUTPUT_DIR)
@@ -105,7 +111,11 @@ percolator_df = pd.merge(psms_df, mapping_df, how='left', left_on=['file_idx'], 
 # load the features
 FEATURES_DIR = '{}/features-{}'.format(EXPERIMENT_DIR, args.feature_detection_method)
 df_l = []
-files_l = glob.glob('{}/exp-{}-run-*-features-*-dedup.pkl'.format(FEATURES_DIR, args.experiment_name))
+if not args.recalibration_mode:
+    files_l = glob.glob('{}/exp-{}-run-*-features-*-dedup.pkl'.format(FEATURES_DIR, args.experiment_name))
+else:
+    files_l = glob.glob('{}/exp-{}-run-*-features-*-recalibrated.pkl'.format(FEATURES_DIR, args.experiment_name))
+
 for f in files_l:
     with open(f, 'rb') as handle:
         d = pickle.load(handle)
@@ -139,12 +149,14 @@ print('there were {} unique peptides identified'.format(len(sequences_df)))
 
 # set up the output directory
 IDENTIFICATIONS_DIR = '{}/identifications-{}'.format(EXPERIMENT_DIR, args.feature_detection_method)
-if os.path.exists(IDENTIFICATIONS_DIR):
-    shutil.rmtree(IDENTIFICATIONS_DIR)
-os.makedirs(IDENTIFICATIONS_DIR)
+if not os.path.exists(IDENTIFICATIONS_DIR):
+    os.makedirs(IDENTIFICATIONS_DIR)
 
 # write out the identifications
-IDENTIFICATIONS_FILE = '{}/exp-{}-identifications-{}.pkl'.format(IDENTIFICATIONS_DIR, args.experiment_name, args.feature_detection_method)
+if not args.recalibration_mode:
+    IDENTIFICATIONS_FILE = '{}/exp-{}-identifications-{}.pkl'.format(IDENTIFICATIONS_DIR, args.experiment_name, args.feature_detection_method)
+else:
+    IDENTIFICATIONS_FILE = '{}/exp-{}-identifications-{}-recalibrated.pkl'.format(IDENTIFICATIONS_DIR, args.experiment_name, args.feature_detection_method)
 print("writing {} identifications to {}".format(len(identifications_df), IDENTIFICATIONS_FILE))
 info.append(('total_running_time',round(time.time()-start_run,1)))
 info.append(('processor',parser.prog))
