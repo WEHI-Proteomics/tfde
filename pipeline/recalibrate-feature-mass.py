@@ -37,7 +37,7 @@ def adjust_features(run_name, idents_for_training_df, run_features_df):
             # "min_samples_leaf": np.linspace(0.1, 0.5, 6),
             "max_depth":[3, 5, 8, 20, 100],
             "max_features":["log2", "sqrt"],
-            "criterion": ["friedman_mse",  "mae"],
+            "criterion": ["friedman_mse",  "lad"],
             "subsample":[0.6, 0.8, 1.0],
             "n_estimators":[50, 100, 1000, 2000]
             }
