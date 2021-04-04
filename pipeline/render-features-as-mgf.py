@@ -80,7 +80,7 @@ with open(FEATURES_FILE, 'rb') as handle:
 # trim down the features to just those from the specified precursor_id
 if args.precursor_id is not None:
     features_df = features_df[(features_df.precursor_cuboid_id == args.precursor_id)]
-print('loaded {} features from {}'.format(len(features_df), FEATURES_DIR))
+print('loaded {} features from {}'.format(len(features_df), FEATURES_FILE))
 
 # set up the output directory
 if not os.path.exists(MGF_DIR):
