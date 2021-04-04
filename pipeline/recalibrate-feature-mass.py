@@ -9,8 +9,9 @@ import pickle
 import configparser
 from configparser import ExtendedInterpolation
 from sklearn.ensemble import GradientBoostingRegressor
-from sklearn.model_selection import GridSearchCV,ShuffleSplit
+from sklearn.model_selection import RandomizedSearchCV
 from sklearn.model_selection import train_test_split
+import numpy as np
 import ray
 import multiprocessing as mp
 
@@ -41,8 +42,8 @@ def adjust_features(run_name, idents_for_training_df, run_features_df):
             'min_samples_leaf':range(10,71,10),
             'max_features':["log2", "sqrt"],
             }
-        # cross-validation splitting strategy uses 'cv' folds in a (Stratified)KFold; folds are made by preserving the percentage of samples for each class
-        rsearch = GridSearchCV(GradientBoostingRegressor(), parameter_search_space, cv=5, scoring='neg_mean_absolute_error', verbose=10, n_jobs=-1)
+        # cross-validation splitting strategy uses 'cv' folds in a (Stratified)KFold
+        rsearch = RandomizedSearchCV(GradientBoostingRegressor(), parameter_search_space, n_iter=100, n_jobs=-1, random_state=10, cv=5, scoring='neg_mean_absolute_error')
         print('fitting to the training set')
         # find the best fit within the parameter search space
         rsearch.fit(X_train, y_train)
