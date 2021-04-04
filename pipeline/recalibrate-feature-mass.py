@@ -33,8 +33,6 @@ def adjust_features(run_name, idents_for_training_df, run_features_df):
         parameters = {
             "loss":["ls"],
             "learning_rate": [0.01, 0.05, 0.1, 0.2],
-            # "min_samples_split": np.linspace(0.1, 0.5, 6),
-            # "min_samples_leaf": np.linspace(0.1, 0.5, 6),
             "max_depth":[3, 5, 8, 20, 100],
             "max_features":["log2", "sqrt"],
             "criterion": ["friedman_mse",  "lad"],
@@ -53,15 +51,8 @@ def adjust_features(run_name, idents_for_training_df, run_features_df):
         print(best_params)
     else:
         # use the model parameters we found previously
-        best_estimator = GradientBoostingRegressor(
-                loss = 'deviance',
-                learning_rate = 0.05,
-                max_depth = 8,
-                max_features = 'sqrt',
-                criterion = 'friedman_mse',
-                subsample = 1.0,
-                n_estimators = 2000
-        )
+        best_params = {'criterion': 'lad', 'learning_rate': 0.01, 'loss': 'ls', 'max_depth': 5, 'max_features': 'log2', 'n_estimators': 1000, 'subsample': 0.6}
+        best_estimator = GradientBoostingRegressor(**best_params)
         best_estimator.fit(X_train, y_train)  # find the best fit within the parameter search space
 
     train_score = best_estimator.score(X_train, y_train)
