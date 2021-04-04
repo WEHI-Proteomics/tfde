@@ -29,32 +29,33 @@ def adjust_features(run_name, idents_for_training_df, run_features_df):
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.1)
 
     if args.search_for_new_model_parameters:
-        # do a grid search to find the best regressor dimensions
-        parameters = {
-            "loss":["ls"],
+        # do a randomised search to find the best regressor dimensions
+        print('setting up randomised search')
+        parameter_search_space = {
+            "loss": ['ls','lad','huber'],
             "learning_rate": [0.01, 0.05, 0.1, 0.2],
-            "max_depth":[3, 5, 8, 20, 100],
-            "max_features":["log2", "sqrt"],
-            "criterion": ["friedman_mse",  "lad"],
-            "subsample":[0.6, 0.8, 1.0],
-            "n_estimators":[50, 100, 1000, 2000]
+            'n_estimators': range(20,510,10),
+            'max_depth':range(5,30,2), 
+            'min_samples_split':range(100,1001,100),
+            'subsample':list(np.arange(0.2,0.9,0.1)),
+            'min_samples_leaf':range(10,71,10),
+            'max_features':["log2", "sqrt"],
             }
-
-        print('setting up grid search')
-        gbc = GridSearchCV(GradientBoostingRegressor(), parameters, cv=2, scoring='neg_mean_squared_error', verbose=10, n_jobs=-1)   # cross-validation splitting strategy uses 'cv' folds in a (Stratified)KFold; folds are made by preserving the percentage of samples for each class
-                                                                                                                                                # use all processors
+        # cross-validation splitting strategy uses 'cv' folds in a (Stratified)KFold; folds are made by preserving the percentage of samples for each class
+        rsearch = GridSearchCV(GradientBoostingRegressor(), parameter_search_space, cv=5, scoring='neg_mean_absolute_error', verbose=10, n_jobs=-1)
         print('fitting to the training set')
-        gbc.fit(X_train, y_train)  # find the best fit within the parameter search space
-
-        best_estimator = gbc.best_estimator_
-        best_params = gbc.best_params_
+        # find the best fit within the parameter search space
+        rsearch.fit(X_train, y_train)
+        best_estimator = rsearch.best_estimator_
+        best_params = rsearch.best_params_
         print(best_params)
     else:
         # use the model parameters we found previously
-        best_params = {'criterion': 'lad', 'learning_rate': 0.01, 'loss': 'ls', 'max_depth': 5, 'max_features': 'log2', 'n_estimators': 1000, 'subsample': 0.6}
+        best_params = {'subsample': 0.8, 'n_estimators': 340, 'min_samples_split': 600, 'min_samples_leaf': 50, 'max_features': 'log2', 'max_depth': 11, 'loss': 'lad', 'learning_rate': 0.1}
         best_estimator = GradientBoostingRegressor(**best_params)
         best_estimator.fit(X_train, y_train)  # find the best fit within the parameter search space
 
+    # calculate the estimator's score on the train and test sets
     train_score = best_estimator.score(X_train, y_train)
     test_score = best_estimator.score(X_test, y_test)
     print("R-squared for training set: {}, test set: {}".format(round(train_score,2), round(test_score,2)))
