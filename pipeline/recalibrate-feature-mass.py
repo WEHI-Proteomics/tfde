@@ -52,7 +52,7 @@ def adjust_features(run_name, idents_for_training_df, run_features_df):
         print(best_params)
     else:
         # use the model parameters we found previously
-        best_params = {'subsample': 0.8, 'n_estimators': 340, 'min_samples_split': 600, 'min_samples_leaf': 50, 'max_features': 'log2', 'max_depth': 11, 'loss': 'lad', 'learning_rate': 0.1}
+        best_params = {'subsample': 0.6, 'n_estimators': 280, 'min_samples_split': 400, 'min_samples_leaf': 10, 'max_features': 'log2', 'max_depth': 11, 'loss': 'lad', 'learning_rate': 0.05}
         best_estimator = GradientBoostingRegressor(**best_params)
         best_estimator.fit(X_train, y_train)  # find the best fit within the parameter search space
 
