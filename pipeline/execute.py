@@ -34,7 +34,7 @@ def task_search_mgf():
     MGF_DIR = "{}/mgf-{}".format(EXPERIMENT_DIR, feature_detection_method)
     MGF_FILE = '{}/exp-{}-run-{}-features-{}.mgf'.format(MGF_DIR, experiment_name, run_name, feature_detection_method)
     # cmd
-    cmd = 'python -u search-mgf-against-sequence-db.py -eb {experiment_base} -en {experiment_name} -rn {run_name} -ini {INI_FILE} -ff {fasta_name} -fdm pasef -ns'.format(experiment_base=experiment_base_dir, experiment_name=experiment_name, run_name=run_name, INI_FILE=ini_file, fasta_name=fasta_file_name)
+    cmd = 'python -u search-mgf-against-sequence-db.py -eb {experiment_base} -en {experiment_name} -rn {run_name} -ini {INI_FILE} -ff {fasta_name} -fdm pasef'.format(experiment_base=experiment_base_dir, experiment_name=experiment_name, run_name=run_name, INI_FILE=ini_file, fasta_name=fasta_file_name)
     # output
     comet_output = '{experiment_base}/comet-output-pasef/{run_name}.comet.log.txt'.format(experiment_base=EXPERIMENT_DIR, run_name=run_name)
     return {
@@ -104,7 +104,7 @@ def task_search_mgf_recalibrated():
     MGF_DIR = "{}/mgf-{}".format(EXPERIMENT_DIR, feature_detection_method)
     MGF_FILE = '{}/exp-{}-run-{}-features-{}-recalibrated.mgf'.format(MGF_DIR, experiment_name, run_name, feature_detection_method)
     # cmd
-    cmd = 'python -u search-mgf-against-sequence-db.py -eb {experiment_base} -en {experiment_name} -rn {run_name} -ini {INI_FILE} -ff {fasta_name} -fdm pasef -ns -recal'.format(experiment_base=experiment_base_dir, experiment_name=experiment_name, run_name=run_name, INI_FILE=ini_file, fasta_name=fasta_file_name)
+    cmd = 'python -u search-mgf-against-sequence-db.py -eb {experiment_base} -en {experiment_name} -rn {run_name} -ini {INI_FILE} -ff {fasta_name} -fdm pasef -recal'.format(experiment_base=experiment_base_dir, experiment_name=experiment_name, run_name=run_name, INI_FILE=ini_file, fasta_name=fasta_file_name)
     # output
     comet_output = '{experiment_base}/comet-output-pasef-recalibrated/{run_name}.comet.log.txt'.format(experiment_base=EXPERIMENT_DIR, run_name=run_name)
     return {
