@@ -16,7 +16,7 @@ FASTA_NAME = '../fasta/Human_Yeast_Ecoli.fasta'
 def task_render_mgf():
     # input
     FEATURES_DIR = '{}/features-{}'.format(EXPERIMENT_DIR, feature_detection_method)
-    FEATURES_FILE = '{}/exp-{}-run-{}-features-{}.pkl'.format(FEATURES_DIR, experiment_name, run_name, feature_detection_method)
+    FEATURES_FILE = '{}/exp-{}-run-{}-features-{}.pkl'.format(FEATURES_DIR, experiment_name, RUN_NAME, feature_detection_method)
     # command
     cmd = 'python -u render-features-as-mgf.py -eb {experiment_base} -en {experiment_name} -rn {run_name} -fdm pasef -ns'.format(experiment_base=experiment_base_dir, experiment_name=experiment_name, run_name=RUN_NAME)
     # output
@@ -32,7 +32,7 @@ def task_render_mgf():
 def task_search_mgf():
     # input
     MGF_DIR = "{}/mgf".format(EXPERIMENT_DIR)
-    MGF_FILE = '{}/exp-{}-run-{}-features-{}.mgf'.format(MGF_DIR, experiment_name, run_name, feature_detection_method)
+    MGF_FILE = '{}/exp-{}-run-{}-features-{}.mgf'.format(MGF_DIR, experiment_name, RUN_NAME, feature_detection_method)
     # cmd
     cmd = 'python -u search-mgf-against-sequence-db.py -eb {experiment_base} -en {experiment_name} -rn {run_name} -ini {ini_name} -ff {fasta_name} -fdm pasef -ns'.format(experiment_base=experiment_base_dir, experiment_name=experiment_name, run_name=RUN_NAME, ini_name=INI_NAME, fasta_name=FASTA_NAME)
     # output
@@ -85,7 +85,7 @@ def task_mass_recalibration():
 def task_render_mgf_recalibrated():
     # input
     FEATURES_DIR = '{}/features-{}'.format(EXPERIMENT_DIR, feature_detection_method)
-    FEATURES_FILE = '{}/exp-{}-run-{}-features-{}-recalibrated.pkl'.format(FEATURES_DIR, experiment_name, run_name, feature_detection_method)
+    FEATURES_FILE = '{}/exp-{}-run-{}-features-{}-recalibrated.pkl'.format(FEATURES_DIR, experiment_name, RUN_NAME, feature_detection_method)
     # command
     cmd = 'python -u render-features-as-mgf.py -eb {experiment_base} -en {experiment_name} -rn {run_name} -fdm pasef -ns -recal'.format(experiment_base=experiment_base_dir, experiment_name=experiment_name, run_name=RUN_NAME)
     # output
@@ -101,7 +101,7 @@ def task_render_mgf_recalibrated():
 def task_search_mgf_recalibrated():
     # input
     MGF_DIR = "{}/mgf-recalibrated".format(EXPERIMENT_DIR)
-    MGF_FILE = '{}/exp-{}-run-{}-features-{}-recalibrated.mgf'.format(MGF_DIR, experiment_name, run_name, feature_detection_method)
+    MGF_FILE = '{}/exp-{}-run-{}-features-{}-recalibrated.mgf'.format(MGF_DIR, experiment_name, RUN_NAME, feature_detection_method)
     # cmd
     cmd = 'python -u search-mgf-against-sequence-db.py -eb {experiment_base} -en {experiment_name} -rn {run_name} -ini {ini_name} -ff {fasta_name} -fdm pasef -ns -recal'.format(experiment_base=experiment_base_dir, experiment_name=experiment_name, run_name=RUN_NAME, ini_name=INI_NAME, fasta_name=FASTA_NAME)
     # output
