@@ -107,13 +107,12 @@ psms_df.rename(columns={'scan': 'feature_id'}, inplace=True)
 psms_df.drop(['charge'], axis=1, inplace=True)
 
 # remove the poor quality identifications
-psms_df = psms_df[psms_df['percolator q-value'] <= MAXIMUM_Q_VALUE]
 psms_df = psms_df[psms_df['peptide mass'] > 0]
 
 # add the run names
 percolator_df = pd.merge(psms_df, mapping_df, how='left', left_on=['file_idx'], right_on=['file_idx'])
 
-# load the features
+# load the detected features
 FEATURES_DIR = '{}/features-{}'.format(EXPERIMENT_DIR, args.feature_detection_method)
 df_l = []
 if not args.recalibration_mode:
@@ -147,7 +146,8 @@ sequences_l = []
 for group_name,group_df in identifications_df.groupby(['sequence','charge'], as_index=False):
     sequences_l.append({'sequence_charge':group_name, 'feature_ids':group_df.feature_id.tolist()})
 sequences_df = pd.DataFrame(sequences_l)
-print('there were {} unique peptides identified'.format(len(sequences_df)))
+sequences_df = sequences_df[sequences_df['percolator q-value'] <= MAXIMUM_Q_VALUE]
+print('there were {} unique peptides identified with q-value less than {}'.format(len(sequences_df), MAXIMUM_Q_VALUE))
 
 # set up the output directory
 IDENTIFICATIONS_DIR = '{}/identifications-{}'.format(EXPERIMENT_DIR, args.feature_detection_method)
