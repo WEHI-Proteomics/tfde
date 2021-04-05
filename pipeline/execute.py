@@ -23,7 +23,7 @@ def task_render_mgf():
     MGF_DIR = "{}/mgf".format(EXPERIMENT_DIR)
     MGF_FILE = '{}/exp-{}-run-{}-features-{}.mgf'.format(MGF_DIR, experiment_name, run_name, feature_detection_method)
     return {
-        'file_dep': ['render-features-as-mgf.py',FEATURES_FILE,INI_NAME],
+        'file_dep': ['render-features-as-mgf.py',FEATURES_FILE,ini_file],
         'actions': [cmd],
         'targets': [MGF_FILE],
         'verbosity': 2
@@ -34,11 +34,11 @@ def task_search_mgf():
     MGF_DIR = "{}/mgf".format(EXPERIMENT_DIR)
     MGF_FILE = '{}/exp-{}-run-{}-features-{}.mgf'.format(MGF_DIR, experiment_name, run_name, feature_detection_method)
     # cmd
-    cmd = 'python -u search-mgf-against-sequence-db.py -eb {experiment_base} -en {experiment_name} -rn {run_name} -ini {INI_FILE} -ff {fasta_name} -fdm pasef -ns'.format(experiment_base=experiment_base_dir, experiment_name=experiment_name, run_name=run_name, INI_FILE=INI_NAME, fasta_name=fasta_file_name)
+    cmd = 'python -u search-mgf-against-sequence-db.py -eb {experiment_base} -en {experiment_name} -rn {run_name} -ini {INI_FILE} -ff {fasta_name} -fdm pasef -ns'.format(experiment_base=experiment_base_dir, experiment_name=experiment_name, run_name=run_name, INI_FILE=ini_file, fasta_name=fasta_file_name)
     # output
     comet_output = '{experiment_base}/comet-output-pasef/{run_name}.comet.log.txt'.format(experiment_base=EXPERIMENT_DIR, run_name=run_name)
     return {
-        'file_dep': ['search-mgf-against-sequence-db.py',MGF_FILE,INI_NAME,fasta_file_name],
+        'file_dep': ['search-mgf-against-sequence-db.py',MGF_FILE,ini_file,fasta_file_name],
         'actions': [cmd],
         'targets': [comet_output],
         'verbosity': 2
@@ -48,12 +48,12 @@ def task_identify_searched_features():
     # input
     comet_output = '{experiment_base}/comet-output-pasef/{run_name}.comet.log.txt'.format(experiment_base=EXPERIMENT_DIR, run_name=run_name)
     # cmd
-    cmd = 'python -u identify-searched-features.py -eb {experiment_base} -en {experiment_name} -ini {INI_FILE} -ff {fasta_name} -fdm pasef -ns'.format(experiment_base=experiment_base_dir, experiment_name=experiment_name, INI_FILE=INI_NAME, fasta_name=fasta_file_name)
+    cmd = 'python -u identify-searched-features.py -eb {experiment_base} -en {experiment_name} -ini {INI_FILE} -ff {fasta_name} -fdm pasef -ns'.format(experiment_base=experiment_base_dir, experiment_name=experiment_name, INI_FILE=ini_file, fasta_name=fasta_file_name)
     # output
     IDENTIFICATIONS_DIR = '{}/identifications-{}'.format(EXPERIMENT_DIR, feature_detection_method)
     IDENTIFICATIONS_FILE = '{}/exp-{}-identifications-{}.pkl'.format(IDENTIFICATIONS_DIR, experiment_name, feature_detection_method)
     return {
-        'file_dep': ['identify-searched-features.py',comet_output,INI_NAME,fasta_file_name],
+        'file_dep': ['identify-searched-features.py',comet_output,ini_file,fasta_file_name],
         'actions': [cmd],
         'targets': [IDENTIFICATIONS_FILE],
         'verbosity': 2
@@ -68,12 +68,12 @@ def task_mass_recalibration():
     IDENTIFICATIONS_DIR = '{}/identifications-{}'.format(EXPERIMENT_DIR, feature_detection_method)
     IDENTIFICATIONS_FILE = '{}/exp-{}-identifications-{}.pkl'.format(IDENTIFICATIONS_DIR, experiment_name, feature_detection_method)
     # command
-    cmd = 'python -u recalibrate-feature-mass.py -eb {experiment_base} -en {experiment_name} -ini {INI_FILE} -fdm pasef -rm cluster'.format(experiment_base=experiment_base_dir, experiment_name=experiment_name, INI_FILE=INI_NAME)
+    cmd = 'python -u recalibrate-feature-mass.py -eb {experiment_base} -en {experiment_name} -ini {INI_FILE} -fdm pasef -rm cluster'.format(experiment_base=experiment_base_dir, experiment_name=experiment_name, INI_FILE=ini_file)
     # output
     FEATURES_DIR = '{}/features-{}'.format(EXPERIMENT_DIR, feature_detection_method)
     RECAL_FEATURES_FILE = '{}/exp-{}-run-{}-features-{}-recalibrated.pkl'.format(FEATURES_DIR, experiment_name, run_name, feature_detection_method)
     return {
-        'file_dep': ['recalibrate-feature-mass.py',IDENTIFICATIONS_FILE,INI_NAME],
+        'file_dep': ['recalibrate-feature-mass.py',IDENTIFICATIONS_FILE,ini_file],
         'actions': [cmd],
         'targets': [RECAL_FEATURES_FILE],
         'verbosity': 2
@@ -93,7 +93,7 @@ def task_render_mgf_recalibrated():
     MGF_DIR = "{}/mgf-recalibrated".format(EXPERIMENT_DIR)
     MGF_FILE = '{}/exp-{}-run-{}-features-{}-recalibrated.mgf'.format(MGF_DIR, experiment_name, run_name, feature_detection_method)
     return {
-        'file_dep': ['render-features-as-mgf.py',FEATURES_FILE,INI_NAME],
+        'file_dep': ['render-features-as-mgf.py',FEATURES_FILE,ini_file],
         'actions': [cmd],
         'targets': [MGF_FILE],
         'verbosity': 2
@@ -104,11 +104,11 @@ def task_search_mgf_recalibrated():
     MGF_DIR = "{}/mgf-recalibrated".format(EXPERIMENT_DIR)
     MGF_FILE = '{}/exp-{}-run-{}-features-{}-recalibrated.mgf'.format(MGF_DIR, experiment_name, run_name, feature_detection_method)
     # cmd
-    cmd = 'python -u search-mgf-against-sequence-db.py -eb {experiment_base} -en {experiment_name} -rn {run_name} -ini {INI_FILE} -ff {fasta_name} -fdm pasef -ns -recal'.format(experiment_base=experiment_base_dir, experiment_name=experiment_name, run_name=run_name, INI_FILE=INI_NAME, fasta_name=fasta_file_name)
+    cmd = 'python -u search-mgf-against-sequence-db.py -eb {experiment_base} -en {experiment_name} -rn {run_name} -ini {INI_FILE} -ff {fasta_name} -fdm pasef -ns -recal'.format(experiment_base=experiment_base_dir, experiment_name=experiment_name, run_name=run_name, INI_FILE=ini_file, fasta_name=fasta_file_name)
     # output
     comet_output = '{experiment_base}/comet-output-pasef-recalibrated/{run_name}.comet.log.txt'.format(experiment_base=EXPERIMENT_DIR, run_name=run_name)
     return {
-        'file_dep': ['search-mgf-against-sequence-db.py',MGF_FILE,INI_NAME,fasta_file_name],
+        'file_dep': ['search-mgf-against-sequence-db.py',MGF_FILE,ini_file,fasta_file_name],
         'actions': [cmd],
         'targets': [comet_output],
         'verbosity': 2
@@ -118,11 +118,11 @@ def task_identify_searched_features_recalibrated():
     # input
     comet_output = '{experiment_base}/comet-output-pasef-recalibrated/{run_name}.comet.log.txt'.format(experiment_base=EXPERIMENT_DIR, run_name=run_name)
     # cmd
-    cmd = 'python -u identify-searched-features.py -eb {experiment_base} -en {experiment_name} -ini {INI_FILE} -ff {fasta_name} -fdm pasef -ns -recal'.format(experiment_base=experiment_base_dir, experiment_name=experiment_name, INI_FILE=INI_NAME, fasta_name=fasta_file_name)
+    cmd = 'python -u identify-searched-features.py -eb {experiment_base} -en {experiment_name} -ini {INI_FILE} -ff {fasta_name} -fdm pasef -ns -recal'.format(experiment_base=experiment_base_dir, experiment_name=experiment_name, INI_FILE=ini_file, fasta_name=fasta_file_name)
     # output
     IDENTIFICATIONS_FILE = '{}/exp-{}-identifications-{}-recalibrated.pkl'.format(IDENTIFICATIONS_DIR, experiment_name, feature_detection_method)
     return {
-        'file_dep': ['identify-searched-features.py',comet_output,INI_NAME,fasta_file_name],
+        'file_dep': ['identify-searched-features.py',comet_output,ini_file,fasta_file_name],
         'actions': [cmd],
         'targets': [IDENTIFICATIONS_FILE],
         'verbosity': 2
