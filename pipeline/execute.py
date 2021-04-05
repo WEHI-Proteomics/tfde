@@ -26,6 +26,7 @@ def task_render_mgf():
         'file_dep': ['render-features-as-mgf.py',FEATURES_FILE,ini_file],
         'actions': [cmd],
         'targets': [MGF_FILE],
+        'clean': True,
         'verbosity': 2
     }
 
@@ -41,6 +42,7 @@ def task_search_mgf():
         'file_dep': ['search-mgf-against-sequence-db.py',MGF_FILE,ini_file,fasta_file_name],
         'actions': [cmd],
         'targets': [comet_output],
+        'clean': True,
         'verbosity': 2
     }
 
@@ -56,6 +58,7 @@ def task_identify_searched_features():
         'file_dep': ['identify-searched-features.py',comet_output,ini_file,fasta_file_name],
         'actions': [cmd],
         'targets': [IDENTIFICATIONS_FILE],
+        'clean': True,
         'verbosity': 2
     }
 
@@ -76,6 +79,7 @@ def task_mass_recalibration():
         'file_dep': ['recalibrate-feature-mass.py',IDENTIFICATIONS_FILE,ini_file],
         'actions': [cmd],
         'targets': [RECAL_FEATURES_FILE],
+        'clean': True,
         'verbosity': 2
     }
 
@@ -96,6 +100,7 @@ def task_render_mgf_recalibrated():
         'file_dep': ['render-features-as-mgf.py',FEATURES_FILE,ini_file],
         'actions': [cmd],
         'targets': [MGF_FILE],
+        'clean': True,
         'verbosity': 2
     }
 
@@ -111,6 +116,7 @@ def task_search_mgf_recalibrated():
         'file_dep': ['search-mgf-against-sequence-db.py',MGF_FILE,ini_file,fasta_file_name],
         'actions': [cmd],
         'targets': [comet_output],
+        'clean': True,
         'verbosity': 2
     }
 
@@ -126,5 +132,6 @@ def task_identify_searched_features_recalibrated():
         'file_dep': ['identify-searched-features.py',comet_output,ini_file,fasta_file_name],
         'actions': [cmd],
         'targets': [IDENTIFICATIONS_FILE],
+        'clean': True,
         'verbosity': 2
     }
