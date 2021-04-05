@@ -14,6 +14,7 @@ from ms_deisotope.deconvolution import peak_retention_strategy
 import pickle
 import configparser
 from configparser import ExtendedInterpolation
+from os.path import expanduser
 
 
 # set up the indexes we need for queries
@@ -263,9 +264,17 @@ def resolve_fragment_ions(feature_d, ms2_points_df):
         deconvoluted_peaks_l.append(d)
     return deconvoluted_peaks_l
 
+# save visualisation data for later analysis of how feature detection works
+def save_visualisation(visualise_d):
+    precursor_cuboid_id = precursor_cuboid_d['precursor_cuboid_id']
+    VIS_FILE = '{}/feature-detection-visualisation-{}.pkl'.format(expanduser("~"), precursor_cuboid_id)
+    print("writing feature detection visualisation data to {}".format(VIS_FILE))
+    with open(VIS_FILE, 'wb') as handle:
+        pickle.dump(visualise_d, handle)
+
 # prepare the metadata and raw points for the feature detection
 @ray.remote
-def detect_features(precursor_cuboid_d, converted_db_name):
+def detect_features(precursor_cuboid_d, converted_db_name, visualise):
     # load the raw points for this cuboid
     db_conn = sqlite3.connect(converted_db_name)
     wide_ms1_points_df = pd.read_sql_query("select frame_id,mz,scan,intensity,retention_time_secs from frames where frame_type == {} and retention_time_secs >= {} and retention_time_secs <= {} and scan >= {} and scan <= {} and mz >= {} and mz <= {}".format(FRAME_TYPE_MS1, precursor_cuboid_d['wide_ms1_rt_lower'], precursor_cuboid_d['wide_ms1_rt_upper'], precursor_cuboid_d['wide_scan_lower'], precursor_cuboid_d['wide_scan_upper'], precursor_cuboid_d['wide_mz_lower'], precursor_cuboid_d['wide_mz_upper']), db_conn)
@@ -335,6 +344,18 @@ def detect_features(precursor_cuboid_d, converted_db_name):
         # add it to the list
         feature_l.append(feature_d)
     features_df = pd.DataFrame(feature_l)
+
+    # gather the information for visualisation if required
+    if visualise:
+        visualisation_d = {
+            'precursor_cuboid_d':precursor_cuboid_d,
+            'wide_ms1_points_df':wide_ms1_points_df,
+            'ms1_points_df':ms1_points_df,
+            'peaks_after_intensity_descent':peaks_a,
+            'deconvolution_features_df':deconvolution_features_df,
+            'features_df':features_df
+        }
+        save_visualisation(visualisation_d)
 
     print("found {} features for precursor {}".format(len(features_df), precursor_cuboid_d['precursor_cuboid_id']))
     return features_df
@@ -496,9 +517,9 @@ if not ray.is_initialized():
 
 # find the features in each precursor cuboid
 if args.precursor_definition_method == 'pasef':
-    features_l = ray.get([detect_features.remote(precursor_cuboid_d=get_common_cuboid_definition_from_pasef(row), converted_db_name=CONVERTED_DATABASE_NAME) for row in precursor_cuboids_df.itertuples()])
+    features_l = ray.get([detect_features.remote(precursor_cuboid_d=get_common_cuboid_definition_from_pasef(row), converted_db_name=CONVERTED_DATABASE_NAME, visualise=(args.precursor_id is not None)) for row in precursor_cuboids_df.itertuples()])
 elif args.precursor_definition_method == '3did':
-    features_l = ray.get([detect_features.remote(precursor_cuboid_d=get_common_cuboid_definition_from_3did(row), converted_db_name=CONVERTED_DATABASE_NAME) for row in precursor_cuboids_df.itertuples()])
+    features_l = ray.get([detect_features.remote(precursor_cuboid_d=get_common_cuboid_definition_from_3did(row), converted_db_name=CONVERTED_DATABASE_NAME, visualise=(args.precursor_id is not None)) for row in precursor_cuboids_df.itertuples()])
 
 # join the list of dataframes into a single dataframe
 features_df = pd.concat(features_l, axis=0, sort=False)
