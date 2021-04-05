@@ -90,7 +90,7 @@ def task_render_mgf_recalibrated():
     # command
     cmd = 'python -u render-features-as-mgf.py -eb {experiment_base} -en {experiment_name} -rn {run_name} -fdm pasef -ns -recal'.format(experiment_base=experiment_base_dir, experiment_name=experiment_name, run_name=run_name)
     # output
-    MGF_DIR = "{}/mgf-recalibrated".format(EXPERIMENT_DIR)
+    MGF_DIR = "{}/mgf-{}".format(EXPERIMENT_DIR, feature_detection_method)
     MGF_FILE = '{}/exp-{}-run-{}-features-{}-recalibrated.mgf'.format(MGF_DIR, experiment_name, run_name, feature_detection_method)
     return {
         'file_dep': ['render-features-as-mgf.py',FEATURES_FILE,ini_file],
