@@ -21,7 +21,7 @@ def task_render_mgf():
     cmd = 'python -u render-features-as-mgf.py -eb {experiment_base} -en {experiment_name} -rn {run_name} -fdm pasef -ns'.format(experiment_base=experiment_base_dir, experiment_name=experiment_name, run_name=RUN_NAME)
     # output
     MGF_DIR = "{}/mgf".format(EXPERIMENT_DIR)
-    MGF_FILE = '{}/exp-{}-run-{}-features-{}.mgf'.format(MGF_DIR, experiment_name, run_name, feature_detection_method)
+    MGF_FILE = '{}/exp-{}-run-{}-features-{}.mgf'.format(MGF_DIR, experiment_name, RUN_NAME, feature_detection_method)
     return {
         'file_dep': ['render-features-as-mgf.py',FEATURES_FILE,INI_NAME],
         'actions': [cmd],
@@ -90,7 +90,7 @@ def task_render_mgf_recalibrated():
     cmd = 'python -u render-features-as-mgf.py -eb {experiment_base} -en {experiment_name} -rn {run_name} -fdm pasef -ns -recal'.format(experiment_base=experiment_base_dir, experiment_name=experiment_name, run_name=RUN_NAME)
     # output
     MGF_DIR = "{}/mgf-recalibrated".format(EXPERIMENT_DIR)
-    MGF_FILE = '{}/exp-{}-run-{}-features-{}-recalibrated.mgf'.format(MGF_DIR, experiment_name, run_name, feature_detection_method)
+    MGF_FILE = '{}/exp-{}-run-{}-features-{}-recalibrated.mgf'.format(MGF_DIR, experiment_name, RUN_NAME, feature_detection_method)
     return {
         'file_dep': ['render-features-as-mgf.py',FEATURES_FILE,INI_NAME],
         'actions': [cmd],
