@@ -9,6 +9,6 @@ def task_identify_searched_features():
     return {
         'file_dep': ['identify-searched-features.py','pasef-process-short-gradient.ini','../fasta/Human_Yeast_Ecoli.fasta','{experiment_base}/comet-output-pasef-recalibrated/{run_name}.comet.log.txt'.format(experiment_base=EXPERIMENT_DIR, run_name=RUN_NAME)],
         'actions': ['python -u identify-searched-features.py -eb {} -en {} -ini pasef-process-short-gradient.ini -ff ../fasta/Human_Yeast_Ecoli.fasta -fdm pasef -ns -recal'.format(experiment_base_dir, experiment_name)],
-        'targets': ['{}/identifications-pasef/exp-{}-identifications-pasef-recalibrated.pkl'.format(experiment_name)],
+        'targets': ['{}/identifications-pasef/exp-{}-identifications-pasef-recalibrated.pkl'.format(EXPERIMENT_DIR, experiment_name)],
         'verbosity': 2
     }
