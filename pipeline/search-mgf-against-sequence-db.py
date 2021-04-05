@@ -6,6 +6,7 @@ import argparse
 import sys
 import configparser
 from configparser import ExtendedInterpolation
+from os.path import expanduser
 
 
 # run the command in a shell
@@ -83,7 +84,7 @@ if not os.path.exists(COMET_OUTPUT_DIR):
     os.makedirs(COMET_OUTPUT_DIR)
 
 # run comet on it
-cmd = "{}/crux-3.2.Linux.x86_64/bin/crux comet --parameter-file {} --output-dir {} --fileroot \"{}\" {} {}".format(os.getcwd(), COMET_PARAM_FILE, COMET_OUTPUT_DIR, args.run_name, MGF_FILE, args.fasta_file_name)
+cmd = "{}/crux-3.2.Linux.x86_64/bin/crux comet --parameter-file {} --output-dir {} --fileroot \"{}\" {} {}".format(expanduser("~"), COMET_PARAM_FILE, COMET_OUTPUT_DIR, args.run_name, MGF_FILE, args.fasta_file_name)
 run_process(cmd)
 
 stop_run = time.time()
