@@ -120,6 +120,7 @@ def task_identify_searched_features_recalibrated():
     # cmd
     cmd = 'python -u identify-searched-features.py -eb {experiment_base} -en {experiment_name} -ini {INI_FILE} -ff {fasta_name} -fdm pasef -ns -recal'.format(experiment_base=experiment_base_dir, experiment_name=experiment_name, INI_FILE=ini_file, fasta_name=fasta_file_name)
     # output
+    IDENTIFICATIONS_DIR = '{}/identifications-{}'.format(EXPERIMENT_DIR, feature_detection_method)
     IDENTIFICATIONS_FILE = '{}/exp-{}-identifications-{}-recalibrated.pkl'.format(IDENTIFICATIONS_DIR, experiment_name, feature_detection_method)
     return {
         'file_dep': ['identify-searched-features.py',comet_output,ini_file,fasta_file_name],
