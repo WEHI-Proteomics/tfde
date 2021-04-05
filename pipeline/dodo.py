@@ -3,6 +3,6 @@
 def task_identify_searched_features():
     return {
         'file_dep': ['identify-searched-features.py'],
-        'actions': ['python -u identify-features.py -eb /media/big-ssd/experiments -en P3856 -fdm pasef -ns -recal'],
+        'actions': ['python -u identify-searched-features.py -eb /media/big-ssd/experiments -en P3856 -fdm pasef -ns -recal'],
         'targets': ['/media/big-ssd/experiments/P3856/identifications-pasef/exp-P3856-identifications-pasef-recalibrated.pkl']
     }
