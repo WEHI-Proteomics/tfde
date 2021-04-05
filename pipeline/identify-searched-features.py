@@ -144,9 +144,9 @@ identifications_df['mass_error'] = identifications_df['observed_monoisotopic_mas
 # count how many unique peptides were identified
 sequences_l = []
 for group_name,group_df in identifications_df.groupby(['sequence','charge'], as_index=False):
-    sequences_l.append({'sequence_charge':group_name, 'feature_ids':group_df.feature_id.tolist()})
+    if group_df['percolator q-value'].min() <= MAXIMUM_Q_VALUE:
+        sequences_l.append({'sequence_charge':group_name, 'feature_ids':group_df.feature_id.tolist()})
 sequences_df = pd.DataFrame(sequences_l)
-sequences_df = sequences_df[sequences_df['percolator q-value'] <= MAXIMUM_Q_VALUE]
 print('there were {} unique peptides identified with q-value less than {}'.format(len(sequences_df), MAXIMUM_Q_VALUE))
 
 # set up the output directory
