@@ -9,6 +9,14 @@ feature_detection_method = 'pasef'
 
 EXPERIMENT_DIR = "{}/{}".format(experiment_base_dir, experiment_name)
 
+
+####################
+# raw conversion, cuboid definition, feature detection (TO BE ADDED)
+####################
+
+
+
+
 ####################
 # initial search
 ####################
