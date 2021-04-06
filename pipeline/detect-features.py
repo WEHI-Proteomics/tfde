@@ -374,7 +374,7 @@ def generate_feature_id(precursor_id, feature_sequence_number):
 # map the pasef cuboid coordinates to the common form
 def get_common_cuboid_definition_from_pasef(precursor_cuboid_row):
     d = {}
-    d['precursor_cuboid_id'] = precursor_cuboid_row.precursor_id  # the precursor_id from the isolation window table
+    d['precursor_cuboid_id'] = precursor_cuboid_row.precursor_cuboid_id  # the precursor_id from the isolation window table
     d['mz_lower'] = precursor_cuboid_row.window_mz_lower
     d['mz_upper'] = precursor_cuboid_row.window_mz_upper
     d['wide_mz_lower'] = precursor_cuboid_row.wide_mz_lower
