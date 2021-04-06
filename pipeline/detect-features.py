@@ -533,7 +533,7 @@ with open(FEATURES_FILE, 'wb') as handle:
     pickle.dump(content_d, handle)
 
 # de-dup the features
-if not args.do_not_remove_duplicates:
+if (len(features_df) > 2) and (not args.do_not_remove_duplicates):
     print('removing duplicates from {}'.format(FEATURES_FILE))
     dedup_start_run = time.time()
 
@@ -576,15 +576,18 @@ if not args.do_not_remove_duplicates:
 
     # remove the columns we added earlier
     dedup_df.drop(columns_to_drop_l, axis=1, inplace=True)
+else:
+    # nothing to de-dup
+    dedup_df = features_df
 
-    FEATURES_DEDUP_FILE = '{}/exp-{}-run-{}-features-{}-dedup.pkl'.format(FEATURES_DIR, args.experiment_name, args.run_name, args.precursor_definition_method)
+FEATURES_DEDUP_FILE = '{}/exp-{}-run-{}-features-{}-dedup.pkl'.format(FEATURES_DIR, args.experiment_name, args.run_name, args.precursor_definition_method)
 
-    # write out all the features
-    print("writing {} de-duped features to {}".format(len(dedup_df), FEATURES_DEDUP_FILE))
-    info.append(('dedup_running_time',round(time.time()-dedup_start_run,1)))
-    content_d = {'features_df':dedup_df, 'metadata':info}
-    with open(FEATURES_DEDUP_FILE, 'wb') as handle:
-        pickle.dump(content_d, handle)
+# write out all the features
+print("writing {} de-duped features to {}".format(len(dedup_df), FEATURES_DEDUP_FILE))
+info.append(('dedup_running_time',round(time.time()-dedup_start_run,1)))
+content_d = {'features_df':dedup_df, 'metadata':info}
+with open(FEATURES_DEDUP_FILE, 'wb') as handle:
+    pickle.dump(content_d, handle)
 
 stop_run = time.time()
 print("total running time ({}): {} seconds".format(parser.prog, round(stop_run-start_run,1)))
