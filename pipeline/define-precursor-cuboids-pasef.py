@@ -109,11 +109,24 @@ def process_precursor(frame_properties_df, precursor_id, precursor_group_df):
     wide_ms1_rt_upper = fe_ms1_rt_upper + RT_BASE_PEAK_WIDTH_SECS
 
     # collect the coordinates for the precursor cuboid
-    precursor_coordinates_columns = ['precursor_id', 'window_mz_lower', 'window_mz_upper', 'wide_mz_lower', 'wide_mz_upper', 'fe_scan_lower', 'fe_scan_upper', 'wide_scan_lower', 'wide_scan_upper', 'fe_ms1_rt_lower', 'fe_ms1_rt_upper', 'fe_ms2_rt_lower', 'fe_ms2_rt_upper', 'wide_ms1_rt_lower', 'wide_ms1_rt_upper', 'number_of_windows']
-    precursor_coordinates_values = [int(precursor_id), window_mz_lower, window_mz_upper, wide_mz_lower, wide_mz_upper, int(fe_scan_lower), int(fe_scan_upper), int(wide_scan_lower), int(wide_scan_upper), fe_ms1_rt_lower, fe_ms1_rt_upper, fe_ms2_rt_lower, fe_ms2_rt_upper, wide_ms1_rt_lower, wide_ms1_rt_upper, len(precursor_group_df)]
-    precursor_coordinates_d = {}
-    for idx,c in enumerate(precursor_coordinates_columns):
-        precursor_coordinates_d[c] = precursor_coordinates_values[idx]
+    precursor_coordinates_d = {
+        'precursor_cuboid_id': int(precursor_id),
+        'window_mz_lower': window_mz_lower,
+        'window_mz_upper': window_mz_upper,
+        'wide_mz_lower': wide_mz_lower,
+        'wide_mz_upper': wide_mz_upper,
+        'fe_scan_lower': int(fe_scan_lower),
+        'fe_scan_upper': int(fe_scan_upper),
+        'wide_scan_lower': int(wide_scan_lower),
+        'wide_scan_upper': int(wide_scan_upper),
+        'fe_ms1_rt_lower': fe_ms1_rt_lower,
+        'fe_ms1_rt_upper': fe_ms1_rt_upper,
+        'fe_ms2_rt_lower': fe_ms2_rt_lower,
+        'fe_ms2_rt_upper': fe_ms2_rt_upper,
+        'wide_ms1_rt_lower': wide_ms1_rt_lower,
+        'wide_ms1_rt_upper': wide_ms1_rt_upper,
+        'number_of_windows': len(precursor_group_df)
+    }
     return precursor_coordinates_d
 
 ##############################################
