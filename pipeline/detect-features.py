@@ -308,6 +308,8 @@ def detect_features(precursor_cuboid_d, converted_db_name, visualise):
             deconvolution_features_df = high_quality_df
         else:
             deconvolution_features_df = df.loc[df.score.idxmax()].to_frame()
+        
+        print(deconvolution_features_df)
 
         # load the ms2 data for the precursor
         db_conn = sqlite3.connect(converted_db_name)
