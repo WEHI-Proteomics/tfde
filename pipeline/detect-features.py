@@ -307,7 +307,7 @@ def detect_features(precursor_cuboid_d, converted_db_name, visualise):
         if len(high_quality_df) > 0:
             deconvolution_features_df = high_quality_df
         else:
-            deconvolution_features_df = df.loc[df.score.idxmax()]
+            deconvolution_features_df = df.loc[df.score.idxmax()].to_frame()
 
     # load the ms2 data for the precursor
     if len(deconvolution_features_df) > 0:
