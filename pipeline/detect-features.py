@@ -280,11 +280,8 @@ def detect_features(precursor_cuboid_d, converted_db_name, visualise):
     wide_ms1_points_df = pd.read_sql_query("select frame_id,mz,scan,intensity,retention_time_secs from frames where frame_type == {} and retention_time_secs >= {} and retention_time_secs <= {} and scan >= {} and scan <= {} and mz >= {} and mz <= {}".format(FRAME_TYPE_MS1, precursor_cuboid_d['wide_ms1_rt_lower'], precursor_cuboid_d['wide_ms1_rt_upper'], precursor_cuboid_d['wide_scan_lower'], precursor_cuboid_d['wide_scan_upper'], precursor_cuboid_d['wide_mz_lower'], precursor_cuboid_d['wide_mz_upper']), db_conn)
     db_conn.close()
 
-    # constrain the raw points to the isolation windows so we can find the features
-    ms1_points_df = wide_ms1_points_df[(wide_ms1_points_df.mz >= precursor_cuboid_d['mz_lower']) & (wide_ms1_points_df.mz <= precursor_cuboid_d['mz_upper']) & (wide_ms1_points_df.scan >= precursor_cuboid_d['scan_lower']) & (wide_ms1_points_df.scan <= precursor_cuboid_d['scan_upper']) & (wide_ms1_points_df.retention_time_secs >= precursor_cuboid_d['ms1_rt_lower']) & (wide_ms1_points_df.retention_time_secs <= precursor_cuboid_d['ms1_rt_upper'])]
-
     # intensity descent
-    raw_points_a = ms1_points_df[['mz','intensity']].to_numpy()
+    raw_points_a = wide_ms1_points_df[['mz','intensity']].to_numpy()
     peaks_a = intensity_descent(peaks_a=raw_points_a, peak_delta=MS1_PEAK_DELTA)
 
     # deconvolution
@@ -351,7 +348,6 @@ def detect_features(precursor_cuboid_d, converted_db_name, visualise):
         visualisation_d = {
             'precursor_cuboid_d':precursor_cuboid_d,
             'wide_ms1_points_df':wide_ms1_points_df,
-            'ms1_points_df':ms1_points_df,
             'peaks_after_intensity_descent':peaks_a,
             'deconvolution_features_df':deconvolution_features_df,
             'features_df':features_df
