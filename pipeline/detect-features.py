@@ -309,48 +309,50 @@ def detect_features(precursor_cuboid_d, converted_db_name, visualise):
         else:
             deconvolution_features_df = df.loc[df.score.idxmax()].to_frame()
 
-    # load the ms2 data for the precursor
-    if len(deconvolution_features_df) > 0:
+        # load the ms2 data for the precursor
         db_conn = sqlite3.connect(converted_db_name)
         ms2_points_df = pd.read_sql_query("select frame_id,mz,scan,intensity,retention_time_secs from frames where frame_type == {} and retention_time_secs >= {} and retention_time_secs <= {} and scan >= {} and scan <= {}".format(FRAME_TYPE_MS2, precursor_cuboid_d['ms2_rt_lower'], precursor_cuboid_d['ms2_rt_upper'], precursor_cuboid_d['scan_lower'], precursor_cuboid_d['scan_upper']), db_conn)
         db_conn.close()
 
-    # determine the feature attributes
-    feature_l = []
-    for idx,row in enumerate(deconvolution_features_df.itertuples()):
-        feature_d = {}
-        # from deconvolution for this feature
-        feature_d['monoisotopic_mz'] = row.mono_mz
-        feature_d['charge'] = row.charge
-        feature_d['monoisotopic_mass'] = (feature_d['monoisotopic_mz'] * feature_d['charge']) - (PROTON_MASS * feature_d['charge'])
-        feature_d['feature_intensity'] = row.intensity
-        feature_d['envelope_mono_peak_mz'] = row.envelope[0][0]
-        feature_d['envelope_mono_peak_intensity'] = row.envelope[0][1]
-        feature_d['envelope'] = json.dumps([tuple(e) for e in row.envelope])
-        feature_d['isotope_count'] = len(row.envelope)
-        feature_d['deconvolution_score'] = row.score
-        feature_characteristics_d = determine_feature_characteristics(envelope=row.envelope, monoisotopic_mass=feature_d['monoisotopic_mass'], raw_points_df=wide_ms1_points_df)
-        if feature_characteristics_d is not None:
-            feature_d['scan_apex'] = feature_characteristics_d['scan_apex']
-            feature_d['scan_lower'] = feature_characteristics_d['scan_lower']
-            feature_d['scan_upper'] = feature_characteristics_d['scan_upper']
-            feature_d['rt_apex'] = feature_characteristics_d['rt_apex']
-            feature_d['rt_lower'] = feature_characteristics_d['rt_lower']
-            feature_d['rt_upper'] = feature_characteristics_d['rt_upper']
-            feature_d['mono_mz_without_saturated_points'] = feature_characteristics_d['mono_mz_without_saturated_points']
-            feature_d['mono_intensity_from_raw_points'] = feature_characteristics_d['mono_intensity_from_raw_points']
-            feature_d['mono_intensity_adjustment_outcome'] = feature_characteristics_d['mono_intensity_adjustment_outcome']
-            feature_d['isotopic_peak_intensities_from_raw_points'] = feature_characteristics_d['isotopic_peaks']
-        # from the precursor cuboid
-        feature_d['precursor_cuboid_id'] = precursor_cuboid_d['precursor_cuboid_id']
-        # resolve the feature's fragment ions
-        fragment_ions_l = resolve_fragment_ions(feature_d, ms2_points_df)
-        feature_d['fragment_ions_l'] = json.dumps(fragment_ions_l)
-        # assign a unique identifier to this feature
-        feature_d['feature_id'] = generate_feature_id(precursor_cuboid_d['precursor_cuboid_id'], idx+1)
-        # add it to the list
-        feature_l.append(feature_d)
-    features_df = pd.DataFrame(feature_l)
+        # determine the feature attributes
+        feature_l = []
+        for idx,row in enumerate(deconvolution_features_df.itertuples()):
+            feature_d = {}
+            # from deconvolution for this feature
+            feature_d['monoisotopic_mz'] = row.mono_mz
+            feature_d['charge'] = row.charge
+            feature_d['monoisotopic_mass'] = (feature_d['monoisotopic_mz'] * feature_d['charge']) - (PROTON_MASS * feature_d['charge'])
+            feature_d['feature_intensity'] = row.intensity
+            feature_d['envelope_mono_peak_mz'] = row.envelope[0][0]
+            feature_d['envelope_mono_peak_intensity'] = row.envelope[0][1]
+            feature_d['envelope'] = json.dumps([tuple(e) for e in row.envelope])
+            feature_d['isotope_count'] = len(row.envelope)
+            feature_d['deconvolution_score'] = row.score
+            feature_characteristics_d = determine_feature_characteristics(envelope=row.envelope, monoisotopic_mass=feature_d['monoisotopic_mass'], raw_points_df=wide_ms1_points_df)
+            if feature_characteristics_d is not None:
+                feature_d['scan_apex'] = feature_characteristics_d['scan_apex']
+                feature_d['scan_lower'] = feature_characteristics_d['scan_lower']
+                feature_d['scan_upper'] = feature_characteristics_d['scan_upper']
+                feature_d['rt_apex'] = feature_characteristics_d['rt_apex']
+                feature_d['rt_lower'] = feature_characteristics_d['rt_lower']
+                feature_d['rt_upper'] = feature_characteristics_d['rt_upper']
+                feature_d['mono_mz_without_saturated_points'] = feature_characteristics_d['mono_mz_without_saturated_points']
+                feature_d['mono_intensity_from_raw_points'] = feature_characteristics_d['mono_intensity_from_raw_points']
+                feature_d['mono_intensity_adjustment_outcome'] = feature_characteristics_d['mono_intensity_adjustment_outcome']
+                feature_d['isotopic_peak_intensities_from_raw_points'] = feature_characteristics_d['isotopic_peaks']
+            # from the precursor cuboid
+            feature_d['precursor_cuboid_id'] = precursor_cuboid_d['precursor_cuboid_id']
+            # resolve the feature's fragment ions
+            fragment_ions_l = resolve_fragment_ions(feature_d, ms2_points_df)
+            feature_d['fragment_ions_l'] = json.dumps(fragment_ions_l)
+            # assign a unique identifier to this feature
+            feature_d['feature_id'] = generate_feature_id(precursor_cuboid_d['precursor_cuboid_id'], idx+1)
+            # add it to the list
+            feature_l.append(feature_d)
+        features_df = pd.DataFrame(feature_l)
+    else:
+        deconvolution_features_df = pd.DataFrame()
+        features_df = pd.DataFrame()
 
     # gather the information for visualisation if required
     if visualise:
