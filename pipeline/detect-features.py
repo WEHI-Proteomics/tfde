@@ -533,9 +533,9 @@ with open(FEATURES_FILE, 'wb') as handle:
     pickle.dump(content_d, handle)
 
 # de-dup the features
+dedup_start_run = time.time()
 if (len(features_df) > 2) and (not args.do_not_remove_duplicates):
     print('removing duplicates from {}'.format(FEATURES_FILE))
-    dedup_start_run = time.time()
 
     # set up dup definitions
     MZ_TOLERANCE_PERCENT = DUP_MZ_TOLERANCE_PPM * 10**-4
