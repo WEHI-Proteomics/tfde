@@ -297,7 +297,17 @@ def detect_features(precursor_cuboid_d, converted_db_name, visualise):
             mono_intensity = peak.intensity
             second_peak_mz = peak.envelope[1][0]
             ms1_deconvoluted_peaks_l.append((mono_peak_mz, second_peak_mz, mono_intensity, peak.score, peak.signal_to_noise, peak.charge, peak.envelope, peak.neutral_mass))
-    deconvolution_features_df = pd.DataFrame(ms1_deconvoluted_peaks_l, columns=['mono_mz','second_peak_mz','intensity','score','SN','charge','envelope','neutral_mass'])
+    df = pd.DataFrame(ms1_deconvoluted_peaks_l, columns=['mono_mz','second_peak_mz','intensity','score','SN','charge','envelope','neutral_mass'])
+
+    # if we have good quality features, let's take them all. If there's at least one of minimal quality, let's take the best one
+    if len(df) > 0:
+        min_quality_df = df[(df.score >= MIN_SCORE_MS1_DECONVOLUTION_FEATURE)]
+        high_quality_df = df[(df.score >= QUALITY_MIN_SCORE_MS1_DECONVOLUTION_FEATURE)]
+
+        if len(high_quality_df) > 0:
+            deconvolution_features_df = high_quality_df
+        else:
+            deconvolution_features_df = df.loc[df.score.idxmax()]
 
     # load the ms2 data for the precursor
     if len(deconvolution_features_df) > 0:
@@ -466,6 +476,7 @@ RT_BASE_PEAK_WIDTH_SECS = cfg.getfloat('common', 'RT_BASE_PEAK_WIDTH_SECS')
 SCAN_BASE_PEAK_WIDTH = cfg.getint('common', 'SCAN_BASE_PEAK_WIDTH')
 INSTRUMENT_RESOLUTION = cfg.getfloat('common', 'INSTRUMENT_RESOLUTION')
 MIN_SCORE_MS1_DECONVOLUTION_FEATURE = cfg.getfloat('ms1', 'MIN_SCORE_MS1_DECONVOLUTION_FEATURE')
+QUALITY_MIN_SCORE_MS1_DECONVOLUTION_FEATURE = cfg.getfloat('ms1', 'QUALITY_MIN_SCORE_MS1_DECONVOLUTION_FEATURE')
 MIN_SCORE_MS2_DECONVOLUTION_FEATURE = cfg.getfloat('ms2', 'MIN_SCORE_MS2_DECONVOLUTION_FEATURE')
 FEATURE_DETECTION_MIN_CHARGE = cfg.getint('ms1', 'FEATURE_DETECTION_MIN_CHARGE')
 FEATURE_DETECTION_MAX_CHARGE = cfg.getint('ms1', 'FEATURE_DETECTION_MAX_CHARGE')
