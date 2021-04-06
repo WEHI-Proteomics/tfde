@@ -307,7 +307,7 @@ def detect_features(precursor_cuboid_d, converted_db_name, visualise):
         if len(high_quality_df) > 0:
             deconvolution_features_df = high_quality_df
         else:
-            deconvolution_features_df = df.loc[df.score.idxmax()].to_frame()
+            deconvolution_features_df = min_quality_df.loc[min_quality_df.score.idxmax()].to_frame().T
         
         print(deconvolution_features_df)
 
