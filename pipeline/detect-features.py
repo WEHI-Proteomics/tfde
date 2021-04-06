@@ -193,8 +193,7 @@ def determine_feature_characteristics(envelope, monoisotopic_mass, raw_points_df
             mz_upper = mz + mz_delta
             df = mono_ccs_rt_extent_df[(mono_ccs_rt_extent_df.mz >= mz_lower) & (mono_ccs_rt_extent_df.mz <= mz_upper)]
             saturated = (df.intensity.max() > SATURATION_INTENSITY)
-            print('max intensity in peak {}: {} - saturated {}'.format(idx, df.intensity.max(), saturated))
-            isotopes_l.append({'mz':mz, 'intensity':df.intensity.sum(), 'saturated':saturated})
+            isotopes_l.append({'mz':mz, 'mz_lower':mz_lower, 'mz_upper':mz_upper, 'intensity':df.intensity.sum(), 'saturated':saturated})
         isotopes_df = pd.DataFrame(isotopes_l)
 
         # set the summed intensity to be the default adjusted intensity for all isotopes
