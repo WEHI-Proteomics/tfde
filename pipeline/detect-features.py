@@ -128,6 +128,9 @@ def determine_feature_characteristics(envelope, monoisotopic_mass, raw_points_df
     mz_upper = mono_mz + mz_delta
     mono_points_df = raw_points_df[(raw_points_df.mz >= mz_lower) & (raw_points_df.mz <= mz_upper)]
 
+    rt_fit_outcome = 'could_not_fit'
+    ccs_fit_outcome = 'could_not_fit'
+
     # determine the peak's extent in CCS and RT
     if len(mono_points_df) > 0:
         # collapsing the monoisotopic's summed points onto the mobility dimension
@@ -141,7 +144,11 @@ def determine_feature_characteristics(envelope, monoisotopic_mass, raw_points_df
             scan_upper = scan_apex + scan_side_width
             if (scan_apex >= wide_scan_lower) and (scan_apex <= wide_scan_upper):
                 mobility_curve_fit = True
+                ccs_fit_outcome = 'fit_within_wide_extent'
+            else:
+                ccs_fit_outcome = 'fit_not_within_wide_extent'
         except:
+            ccs_fit_outcome = 'fit_exception'
             pass
 
         # if we couldn't fit a curve to the mobility dimension, take the intensity-weighted centroid
@@ -164,7 +171,11 @@ def determine_feature_characteristics(envelope, monoisotopic_mass, raw_points_df
             rt_upper = rt_apex + rt_side_width
             if (rt_apex >= wide_rt_lower) and (rt_apex <= wide_rt_upper):
                 rt_curve_fit = True
+                rt_fit_outcome = 'fit_within_wide_extent'
+            else:
+                rt_fit_outcome = 'fit_not_within_wide_extent'
         except:
+            rt_fit_outcome = 'fit_exception'
             pass
 
         # if we couldn't fit a curve to the RT dimension, take the intensity-weighted centroid
@@ -236,10 +247,12 @@ def determine_feature_characteristics(envelope, monoisotopic_mass, raw_points_df
         result_d['scan_lower'] = scan_lower
         result_d['scan_upper'] = scan_upper
         result_d['scan_curve_fit'] = mobility_curve_fit
+        result_d['scan_fit_outcome'] = ccs_fit_outcome
         result_d['rt_apex'] = rt_apex
         result_d['rt_lower'] = rt_lower
         result_d['rt_upper'] = rt_upper
         result_d['rt_curve_fit'] = rt_curve_fit
+        result_d['rt_fit_outcome'] = rt_fit_outcome
         result_d['mono_intensity_from_raw_points'] = isotopes_df.iloc[0].inferred_intensity if isotopes_df.iloc[0].inferred else isotopes_df.iloc[0].intensity
         result_d['mono_intensity_adjustment_outcome'] = outcome
         result_d['isotopic_peaks'] = isotopes_df.to_dict('records')
