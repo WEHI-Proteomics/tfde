@@ -27,7 +27,7 @@ def task_define_precursor_cuboids():
     # command
     cmd = 'python -u define-precursor-cuboids-pasef.py -eb {experiment_base} -en {experiment_name} -rn {run_name} -rm cluster'.format(experiment_base=experiment_base_dir, experiment_name=experiment_name, run_name=run_name)
     # output
-    CUBOIDS_DIR = '{}/precursor-cuboids-{}'.format(EXPERIMENT_DIR, feature_detection_method)
+    CUBOIDS_DIR = '{}/precursor-cuboids-{}'.format(EXPERIMENT_DIR, precursor_definition_method)
     CUBOIDS_FILE = '{}/exp-{}-run-{}-precursor-cuboids-{}.pkl'.format(CUBOIDS_DIR, experiment_name, run_name, precursor_definition_method)
 
     return {
@@ -125,7 +125,7 @@ def task_mass_recalibration():
     # command
     cmd = 'python -u recalibrate-feature-mass.py -eb {experiment_base} -en {experiment_name} -ini {INI_FILE} -pdm {precursor_definition_method} -rm cluster'.format(experiment_base=experiment_base_dir, experiment_name=experiment_name, INI_FILE=ini_file, precursor_definition_method=precursor_definition_method)
     # output
-    FEATURES_DIR = '{}/features-{}'.format(EXPERIMENT_DIR, feature_detection_method)
+    FEATURES_DIR = '{}/features-{}'.format(EXPERIMENT_DIR, precursor_definition_method)
     RECAL_FEATURES_FILE = '{}/exp-{}-run-{}-features-{}-recalibrated.pkl'.format(FEATURES_DIR, experiment_name, run_name, precursor_definition_method)
 
     return {

@@ -114,7 +114,7 @@ psms_df = psms_df[psms_df['peptide mass'] > 0]
 percolator_df = pd.merge(psms_df, mapping_df, how='left', left_on=['file_idx'], right_on=['file_idx'])
 
 # load the detected features
-FEATURES_DIR = '{}/features-{}'.format(EXPERIMENT_DIR, args.feature_detection_method)
+FEATURES_DIR = '{}/features-{}'.format(EXPERIMENT_DIR, args.precursor_definition_method)
 df_l = []
 if not args.recalibration_mode:
     files_l = glob.glob('{}/exp-{}-run-*-features-*-dedup.pkl'.format(FEATURES_DIR, args.experiment_name))
@@ -151,7 +151,7 @@ sequences_df = pd.DataFrame(sequences_l)
 print('there were {} unique peptides identified with q-value less than {}'.format(len(sequences_df), MAXIMUM_Q_VALUE))
 
 # set up the output directory
-IDENTIFICATIONS_DIR = '{}/identifications-{}'.format(EXPERIMENT_DIR, args.feature_detection_method)
+IDENTIFICATIONS_DIR = '{}/identifications-{}'.format(EXPERIMENT_DIR, args.precursor_definition_method)
 if not os.path.exists(IDENTIFICATIONS_DIR):
     os.makedirs(IDENTIFICATIONS_DIR)
 
