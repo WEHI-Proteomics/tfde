@@ -235,9 +235,11 @@ def determine_feature_characteristics(envelope, monoisotopic_mass, raw_points_df
         result_d['scan_apex'] = scan_apex
         result_d['scan_lower'] = scan_lower
         result_d['scan_upper'] = scan_upper
+        result_d['scan_curve_fit'] = mobility_curve_fit
         result_d['rt_apex'] = rt_apex
         result_d['rt_lower'] = rt_lower
         result_d['rt_upper'] = rt_upper
+        result_d['rt_curve_fit'] = rt_curve_fit
         result_d['mono_intensity_from_raw_points'] = isotopes_df.iloc[0].inferred_intensity if isotopes_df.iloc[0].inferred else isotopes_df.iloc[0].intensity
         result_d['mono_intensity_adjustment_outcome'] = outcome
         result_d['isotopic_peaks'] = isotopes_df.to_dict('records')
