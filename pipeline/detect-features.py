@@ -331,16 +331,8 @@ def detect_features(precursor_cuboid_d, converted_db_name, visualise):
             feature_d['deconvolution_score'] = row.score
             feature_characteristics_d = determine_feature_characteristics(envelope=row.envelope, monoisotopic_mass=feature_d['monoisotopic_mass'], raw_points_df=wide_ms1_points_df)
             if feature_characteristics_d is not None:
-                feature_d['scan_apex'] = feature_characteristics_d['scan_apex']
-                feature_d['scan_lower'] = feature_characteristics_d['scan_lower']
-                feature_d['scan_upper'] = feature_characteristics_d['scan_upper']
-                feature_d['rt_apex'] = feature_characteristics_d['rt_apex']
-                feature_d['rt_lower'] = feature_characteristics_d['rt_lower']
-                feature_d['rt_upper'] = feature_characteristics_d['rt_upper']
-                feature_d['mono_mz_without_saturated_points'] = feature_characteristics_d['mono_mz_without_saturated_points']
-                feature_d['mono_intensity_from_raw_points'] = feature_characteristics_d['mono_intensity_from_raw_points']
-                feature_d['mono_intensity_adjustment_outcome'] = feature_characteristics_d['mono_intensity_adjustment_outcome']
-                feature_d['isotopic_peak_intensities_from_raw_points'] = feature_characteristics_d['isotopic_peaks']
+                # add the characteristics to the feature dictionary
+                feature_d = {**feature_d, **feature_characteristics_d}
             # from the precursor cuboid
             feature_d['precursor_cuboid_id'] = precursor_cuboid_d['precursor_cuboid_id']
             # resolve the feature's fragment ions
