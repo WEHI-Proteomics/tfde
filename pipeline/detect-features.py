@@ -256,6 +256,8 @@ def determine_feature_characteristics(envelope, monoisotopic_mass, raw_points_df
         result_d['mono_intensity_from_raw_points'] = isotopes_df.iloc[0].inferred_intensity if isotopes_df.iloc[0].inferred else isotopes_df.iloc[0].intensity
         result_d['mono_intensity_adjustment_outcome'] = outcome
         result_d['isotopic_peaks'] = isotopes_df.to_dict('records')
+        result_d['scan_df'] = scan_df.to_dict('records')
+        result_d['rt_df'] = rt_df.to_dict('records')
     else:
         print('found no raw points where the mono peak should be: {}'.format(round(centre_mz,4)))
         result_d = None
