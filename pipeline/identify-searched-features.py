@@ -24,7 +24,7 @@ parser.add_argument('-eb','--experiment_base_dir', type=str, default='./experime
 parser.add_argument('-en','--experiment_name', type=str, help='Name of the experiment.', required=True)
 parser.add_argument('-ff','--fasta_file_name', type=str, default='./otf-peak-detect/fasta/Human_Yeast_Ecoli.fasta', help='File name of the FASTA file.', required=False)
 parser.add_argument('-pe','--protein_enzyme', type=str, default='trypsin', choices=['no_enzyme','elastase','pepsin','proteinasek','thermolysin','trypsinp','chymotrypsin','lys-n','lys-c','arg-c','asp-n','glu-c','trypsin'], help='Enzyme used for digestion. Passed to percolator.', required=False)
-parser.add_argument('-fdm','--feature_detection_method', type=str, choices=['pasef','3did'], help='Which feature detection method.', required=True)
+parser.add_argument('-pdm','--precursor_definition_method', type=str, choices=['pasef','3did'], help='The method used to define the precursor cuboids.', required=True)
 parser.add_argument('-ini','--ini_file', type=str, default='./otf-peak-detect/pipeline/pasef-process-short-gradient.ini', help='Path to the config file.', required=False)
 parser.add_argument('-ns','--use_unsaturated_points_for_mz', action='store_true', help='Use the mono m/z calculated with only non-saturated points.')
 parser.add_argument('-recal','--recalibration_mode', action='store_true', help='Use the recalibrated Comet output.')
@@ -45,15 +45,15 @@ if not os.path.exists(EXPERIMENT_DIR):
     sys.exit(1)
 
 if not args.recalibration_mode:
-    COMET_OUTPUT_DIR = "{}/comet-output-{}".format(EXPERIMENT_DIR, args.feature_detection_method)
-    PERCOLATOR_OUTPUT_DIR = "{}/percolator-output-{}".format(EXPERIMENT_DIR, args.feature_detection_method)
+    COMET_OUTPUT_DIR = "{}/comet-output-{}".format(EXPERIMENT_DIR, args.precursor_definition_method)
+    PERCOLATOR_OUTPUT_DIR = "{}/percolator-output-{}".format(EXPERIMENT_DIR, args.precursor_definition_method)
     if args.use_unsaturated_points_for_mz:
         monoisotopic_mz_column_name = 'mono_mz_without_saturated_points'
     else:
         monoisotopic_mz_column_name = 'monoisotopic_mz'
 else:
-    COMET_OUTPUT_DIR = "{}/comet-output-{}-recalibrated".format(EXPERIMENT_DIR, args.feature_detection_method)
-    PERCOLATOR_OUTPUT_DIR = "{}/percolator-output-{}-recalibrated".format(EXPERIMENT_DIR, args.feature_detection_method)
+    COMET_OUTPUT_DIR = "{}/comet-output-{}-recalibrated".format(EXPERIMENT_DIR, args.precursor_definition_method)
+    PERCOLATOR_OUTPUT_DIR = "{}/percolator-output-{}-recalibrated".format(EXPERIMENT_DIR, args.precursor_definition_method)
     monoisotopic_mz_column_name = 'recalibrated_monoisotopic_mz'
 
 # check the comet directory
@@ -157,9 +157,9 @@ if not os.path.exists(IDENTIFICATIONS_DIR):
 
 # write out the identifications
 if not args.recalibration_mode:
-    IDENTIFICATIONS_FILE = '{}/exp-{}-identifications-{}.pkl'.format(IDENTIFICATIONS_DIR, args.experiment_name, args.feature_detection_method)
+    IDENTIFICATIONS_FILE = '{}/exp-{}-identifications-{}.pkl'.format(IDENTIFICATIONS_DIR, args.experiment_name, args.precursor_definition_method)
 else:
-    IDENTIFICATIONS_FILE = '{}/exp-{}-identifications-{}-recalibrated.pkl'.format(IDENTIFICATIONS_DIR, args.experiment_name, args.feature_detection_method)
+    IDENTIFICATIONS_FILE = '{}/exp-{}-identifications-{}-recalibrated.pkl'.format(IDENTIFICATIONS_DIR, args.experiment_name, args.precursor_definition_method)
 print("writing {} identifications to {}".format(len(identifications_df), IDENTIFICATIONS_FILE))
 info.append(('total_running_time',round(time.time()-start_run,1)))
 info.append(('processor',parser.prog))

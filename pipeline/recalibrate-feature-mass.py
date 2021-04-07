@@ -83,7 +83,7 @@ def number_of_workers():
 parser = argparse.ArgumentParser(description='Use high-quality identifications to recalibrate the mass of detected features.')
 parser.add_argument('-eb','--experiment_base_dir', type=str, default='./experiments', help='Path to the experiments directory.', required=False)
 parser.add_argument('-en','--experiment_name', type=str, help='Name of the experiment.', required=True)
-parser.add_argument('-fdm','--feature_detection_method', type=str, choices=['pasef','3did'], help='Which feature detection method.', required=True)
+parser.add_argument('-pdm','--precursor_definition_method', type=str, choices=['pasef','3did'], help='The method used to define the precursor cuboids.', required=True)
 parser.add_argument('-ini','--ini_file', type=str, default='./otf-peak-detect/pipeline/pasef-process-short-gradient.ini', help='Path to the config file.', required=False)
 parser.add_argument('-rm','--ray_mode', type=str, choices=['local','cluster'], help='The Ray mode to use.', required=True)
 parser.add_argument('-pc','--proportion_of_cores_to_use', type=float, default=0.9, help='Proportion of the machine\'s cores to use for this program.', required=False)
@@ -119,13 +119,13 @@ ADD_C_CYSTEINE_DA = cfg.getfloat('common','ADD_C_CYSTEINE_DA')
 MAXIMUM_Q_VALUE_FOR_RECAL_TRAINING_SET = cfg.getfloat('common','MAXIMUM_Q_VALUE_FOR_RECAL_TRAINING_SET')
 
 # check the identifications directory
-IDENTIFICATIONS_DIR = '{}/identifications-{}'.format(EXPERIMENT_DIR, args.feature_detection_method)
+IDENTIFICATIONS_DIR = '{}/identifications-{}'.format(EXPERIMENT_DIR, args.precursor_definition_method)
 if not os.path.exists(IDENTIFICATIONS_DIR):
     print("The identifications directory is required but doesn't exist: {}".format(IDENTIFICATIONS_DIR))
     sys.exit(1)
 
 # check the identifications file
-IDENTIFICATIONS_FILE = '{}/exp-{}-identifications-{}.pkl'.format(IDENTIFICATIONS_DIR, args.experiment_name, args.feature_detection_method)
+IDENTIFICATIONS_FILE = '{}/exp-{}-identifications-{}.pkl'.format(IDENTIFICATIONS_DIR, args.experiment_name, args.precursor_definition_method)
 if not os.path.isfile(IDENTIFICATIONS_FILE):
     print("The identifications file doesn't exist: {}".format(IDENTIFICATIONS_FILE))
     sys.exit(1)
@@ -137,8 +137,8 @@ idents_df = idents_df[(idents_df['percolator q-value'] <= MAXIMUM_Q_VALUE_FOR_RE
 print('loaded {} identifications with q-value lower than {} from {}'.format(len(idents_df), MAXIMUM_Q_VALUE_FOR_RECAL_TRAINING_SET, IDENTIFICATIONS_FILE))
 
 # load the features for recalibration
-FEATURES_DIR = '{}/features-{}'.format(EXPERIMENT_DIR, args.feature_detection_method)
-feature_files = glob.glob("{}/exp-{}-run-*-features-{}-dedup.pkl".format(FEATURES_DIR, args.experiment_name, args.feature_detection_method))
+FEATURES_DIR = '{}/features-{}'.format(EXPERIMENT_DIR, args.precursor_definition_method)
+feature_files = glob.glob("{}/exp-{}-run-*-features-{}-dedup.pkl".format(FEATURES_DIR, args.experiment_name, args.precursor_definition_method))
 features_l = []
 for f in feature_files:
     with open(f, 'rb') as handle:
@@ -161,7 +161,7 @@ adjusted_features_l = ray.get([adjust_features.remote(run_name=group_name, ident
 
 # write out the recalibrated features
 for adj in adjusted_features_l:
-    RECAL_FEATURES_FILE = '{}/exp-{}-run-{}-features-{}-recalibrated.pkl'.format(FEATURES_DIR, args.experiment_name, adj['run_name'], args.feature_detection_method)
+    RECAL_FEATURES_FILE = '{}/exp-{}-run-{}-features-{}-recalibrated.pkl'.format(FEATURES_DIR, args.experiment_name, adj['run_name'], args.precursor_definition_method)
     recal_features_df = adj['adjusted_features_df']
     print("writing {} recalibrated features to {}".format(len(recal_features_df), RECAL_FEATURES_FILE))
     info.append(('total_running_time',round(time.time()-start_run,1)))

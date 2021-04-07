@@ -37,7 +37,7 @@ parser = argparse.ArgumentParser(description='Render the detected features as an
 parser.add_argument('-eb','--experiment_base_dir', type=str, default='./experiments', help='Path to the experiments directory.', required=False)
 parser.add_argument('-en','--experiment_name', type=str, help='Name of the experiment.', required=True)
 parser.add_argument('-rn','--run_name', type=str, help='Name of the run.', required=True)
-parser.add_argument('-fdm','--feature_detection_method', type=str, choices=['pasef','3did'], help='Which feature detection method.', required=True)
+parser.add_argument('-pdm','--precursor_definition_method', type=str, choices=['pasef','3did'], help='The method used to define the precursor cuboids.', required=True)
 parser.add_argument('-pid', '--precursor_id', type=int, help='Only process this precursor ID.', required=False)
 parser.add_argument('-ns','--use_unsaturated_points_for_mz', action='store_true', help='Use the mono m/z calculated with only non-saturated points.')
 parser.add_argument('-recal','--recalibration_mode', action='store_true', help='Use the recalibrated features.')
@@ -52,23 +52,23 @@ print(info)
 start_run = time.time()
 
 EXPERIMENT_DIR = '{}/{}'.format(args.experiment_base_dir, args.experiment_name)
-FEATURES_DIR = '{}/features-{}'.format(EXPERIMENT_DIR, args.feature_detection_method)
-MGF_DIR = "{}/mgf-{}".format(EXPERIMENT_DIR, args.feature_detection_method)
+FEATURES_DIR = '{}/features-{}'.format(EXPERIMENT_DIR, args.precursor_definition_method)
+MGF_DIR = "{}/mgf-{}".format(EXPERIMENT_DIR, args.precursor_definition_method)
 
 # handle whether or not this is for recalibrated features
 if not args.recalibration_mode:
-    FEATURES_FILE = '{}/exp-{}-run-{}-features-{}-dedup.pkl'.format(FEATURES_DIR, args.experiment_name, args.run_name, args.feature_detection_method)
+    FEATURES_FILE = '{}/exp-{}-run-{}-features-{}-dedup.pkl'.format(FEATURES_DIR, args.experiment_name, args.run_name, args.precursor_definition_method)
     if args.use_unsaturated_points_for_mz:
         monoisotopic_mz_column_name = 'mono_mz_without_saturated_points'
     else:
         monoisotopic_mz_column_name = 'monoisotopic_mz'
     # output MGF
-    MGF_FILE = '{}/exp-{}-run-{}-features-{}.mgf'.format(MGF_DIR, args.experiment_name, args.run_name, args.feature_detection_method)
+    MGF_FILE = '{}/exp-{}-run-{}-features-{}.mgf'.format(MGF_DIR, args.experiment_name, args.run_name, args.precursor_definition_method)
 else:
-    FEATURES_FILE = '{}/exp-{}-run-{}-features-{}-recalibrated.pkl'.format(FEATURES_DIR, args.experiment_name, args.run_name, args.feature_detection_method)
+    FEATURES_FILE = '{}/exp-{}-run-{}-features-{}-recalibrated.pkl'.format(FEATURES_DIR, args.experiment_name, args.run_name, args.precursor_definition_method)
     monoisotopic_mz_column_name = 'recalibrated_monoisotopic_mz'
     # output MGF
-    MGF_FILE = '{}/exp-{}-run-{}-features-{}-recalibrated.mgf'.format(MGF_DIR, args.experiment_name, args.run_name, args.feature_detection_method)
+    MGF_FILE = '{}/exp-{}-run-{}-features-{}-recalibrated.mgf'.format(MGF_DIR, args.experiment_name, args.run_name, args.precursor_definition_method)
 
 if not os.path.isfile(FEATURES_FILE):
     print("The features file is required but doesn't exist: {}".format(FEATURES_FILE))
