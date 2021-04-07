@@ -25,7 +25,7 @@ def task_define_precursor_cuboids():
     # input
     CONVERTED_DATABASE_NAME = "{}/converted-databases/exp-{}-run-{}-converted.sqlite".format(EXPERIMENT_DIR, experiment_name, run_name)
     # command
-    cmd = 'python -u define-precursor-cuboids-pasef.py -eb {experiment_base} -en {experiment_name} -rn {run_name} -rm cluster'.format(experiment_base=experiment_base_dir, experiment_name=experiment_name, run_name=run_name)
+    cmd = 'python -u define-precursor-cuboids-pasef.py -eb {experiment_base} -en {experiment_name} -rn {run_name} -ini {INI_FILE} -rm cluster'.format(experiment_base=experiment_base_dir, experiment_name=experiment_name, run_name=run_name, INI_FILE=ini_file)
     # output
     CUBOIDS_DIR = '{}/precursor-cuboids-{}'.format(EXPERIMENT_DIR, precursor_definition_method)
     CUBOIDS_FILE = '{}/exp-{}-run-{}-precursor-cuboids-{}.pkl'.format(CUBOIDS_DIR, experiment_name, run_name, precursor_definition_method)
@@ -43,7 +43,7 @@ def task_detect_features():
     CUBOIDS_DIR = "{}/precursor-cuboids-{}".format(EXPERIMENT_DIR, precursor_definition_method)
     CUBOIDS_FILE = '{}/exp-{}-run-{}-precursor-cuboids-{}.pkl'.format(CUBOIDS_DIR, experiment_name, run_name, precursor_definition_method)
     # command
-    cmd = 'python -u detect-features.py -eb {experiment_base} -en {experiment_name} -rn {run_name} -rm cluster -pdm {precursor_definition_method}'.format(experiment_base=experiment_base_dir, experiment_name=experiment_name, run_name=run_name, precursor_definition_method=precursor_definition_method)
+    cmd = 'python -u detect-features.py -eb {experiment_base} -en {experiment_name} -rn {run_name} -ini {INI_FILE} -rm cluster -pdm {precursor_definition_method}'.format(experiment_base=experiment_base_dir, experiment_name=experiment_name, run_name=run_name, INI_FILE=ini_file, precursor_definition_method=precursor_definition_method)
     # output
     FEATURES_DIR = "{}/features-{}".format(EXPERIMENT_DIR, precursor_definition_method)
     FEATURES_FILE = '{}/exp-{}-run-{}-features-{}.pkl'.format(FEATURES_DIR, experiment_name, run_name, precursor_definition_method)
