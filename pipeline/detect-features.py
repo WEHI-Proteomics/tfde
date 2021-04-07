@@ -299,18 +299,15 @@ def detect_features(precursor_cuboid_d, converted_db_name, visualise):
             ms1_deconvoluted_peaks_l.append((mono_peak_mz, second_peak_mz, mono_intensity, peak.score, peak.signal_to_noise, peak.charge, peak.envelope, peak.neutral_mass))
     df = pd.DataFrame(ms1_deconvoluted_peaks_l, columns=['mono_mz','second_peak_mz','intensity','score','SN','charge','envelope','neutral_mass'])
 
-    # if we have good quality features, let's take them all. If there's at least one of minimal quality, let's take the best one
     if len(df) > 0:
+        # if we have good quality features, let's take them all. If there's at least one of minimal quality, let's take the best one
         min_quality_df = df[(df.score >= MIN_SCORE_MS1_DECONVOLUTION_FEATURE)]
         high_quality_df = df[(df.score >= QUALITY_MIN_SCORE_MS1_DECONVOLUTION_FEATURE)]
-
         if len(high_quality_df) > 0:
             deconvolution_features_df = high_quality_df
         else:
             deconvolution_features_df = min_quality_df.loc[min_quality_df.score.idxmax()].to_frame().T
         
-        print(deconvolution_features_df)
-
         # load the ms2 data for the precursor
         db_conn = sqlite3.connect(converted_db_name)
         ms2_points_df = pd.read_sql_query("select frame_id,mz,scan,intensity,retention_time_secs from frames where frame_type == {} and retention_time_secs >= {} and retention_time_secs <= {} and scan >= {} and scan <= {}".format(FRAME_TYPE_MS2, precursor_cuboid_d['ms2_rt_lower'], precursor_cuboid_d['ms2_rt_upper'], precursor_cuboid_d['scan_lower'], precursor_cuboid_d['scan_upper']), db_conn)
