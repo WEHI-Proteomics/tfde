@@ -606,7 +606,10 @@ if (len(features_df) > 2) and (not args.do_not_remove_duplicates):
     columns_to_drop_l.append('dup_rt_lower')
     columns_to_drop_l.append('dup_rt_upper')
 
-    # see if any detections have a duplicate - if so, find the dup with the highest intensity and keep it
+    # sort by decreasing intensity
+    features_df.sort_values(by=['feature_intensity'], ascending=False, inplace=True)
+
+    # see if any detections have a duplicate - if so, find the dup with the highest intensity (i.e. the first in the group) and keep it
     keep_l = []
     for row in features_df.itertuples():
         dup_df = features_df[(features_df.dup_mz > row.dup_mz_lower) & (features_df.dup_mz < row.dup_mz_upper) & (features_df.scan_apex > row.dup_scan_lower) & (features_df.scan_apex < row.dup_scan_upper) & (features_df.rt_apex > row.dup_rt_lower) & (features_df.rt_apex < row.dup_rt_upper)].copy()
