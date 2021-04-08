@@ -143,7 +143,7 @@ def determine_mono_characteristics(feature_d, precursor_cuboid_d, raw_points_df)
         # fit a curve to the dimension
         guassian_params = None
         try:
-            guassian_params = peakutils.peak.gaussian_fit(scan_df.scan, rt_df.intensity, center_only=False)
+            guassian_params = peakutils.peak.gaussian_fit(scan_df.scan, scan_df.intensity, center_only=False)
             scan_fit_outcome = 'fit_success'
         except:
             scan_fit_outcome = 'fit_failed'
