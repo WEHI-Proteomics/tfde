@@ -163,18 +163,18 @@ def determine_mono_characteristics(feature_d, precursor_cuboid_d, raw_points_df)
         except:
             filtered = False
 
-        # find the anchor point's scan value
-        anchor_point_scan = scan_df.loc[scan_df.filtered_intensity.idxmax()].scan
+        # find the scan apex
+        scan_apex = scan_df.loc[scan_df.filtered_intensity.idxmax()].scan
 
         # find the valleys nearest the anchor point
         valley_idxs = peakutils.indexes(-scan_df.filtered_intensity.values, thres=VALLEYS_THRESHOLD_SCAN, min_dist=VALLEYS_MIN_DIST_SCAN, thres_abs=False)
         valley_x_l = scan_df.iloc[valley_idxs].scan.to_list()
         valleys_df = scan_df[scan_df.scan.isin(valley_x_l)]
 
-        upper_x = valleys_df[valleys_df.scan > anchor_point_scan].scan.min()
+        upper_x = valleys_df[valleys_df.scan > scan_apex].scan.min()
         if math.isnan(upper_x):
             upper_x = scan_df.scan.max()
-        lower_x = valleys_df[valleys_df.scan < anchor_point_scan].scan.max()
+        lower_x = valleys_df[valleys_df.scan < scan_apex].scan.max()
         if math.isnan(lower_x):
             lower_x = scan_df.scan.min()
 
@@ -197,17 +197,17 @@ def determine_mono_characteristics(feature_d, precursor_cuboid_d, raw_points_df)
             filtered = False
 
         # find the anchor point's scan value
-        anchor_point_rt = rt_df.loc[rt_df.filtered_intensity.idxmax()].retention_time_secs
+        rt_apex = rt_df.loc[rt_df.filtered_intensity.idxmax()].retention_time_secs
 
         # find the valleys nearest the anchor point
         valley_idxs = peakutils.indexes(-rt_df.filtered_intensity.values, thres=VALLEYS_THRESHOLD_RT, min_dist=VALLEYS_MIN_DIST_RT, thres_abs=False)
         valley_x_l = rt_df.iloc[valley_idxs].retention_time_secs.to_list()
         valleys_df = rt_df[rt_df.retention_time_secs.isin(valley_x_l)]
 
-        upper_x = valleys_df[valleys_df.retention_time_secs > anchor_point_rt].retention_time_secs.min()
+        upper_x = valleys_df[valleys_df.retention_time_secs > rt_apex].retention_time_secs.min()
         if math.isnan(upper_x):
             upper_x = rt_df.retention_time_secs.max()
-        lower_x = valleys_df[valleys_df.retention_time_secs < anchor_point_rt].retention_time_secs.max()
+        lower_x = valleys_df[valleys_df.retention_time_secs < rt_apex].retention_time_secs.max()
         if math.isnan(lower_x):
             lower_x = rt_df.retention_time_secs.min()
 
