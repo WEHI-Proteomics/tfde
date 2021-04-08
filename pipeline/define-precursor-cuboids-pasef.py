@@ -209,6 +209,9 @@ print("defining the cuboids for {} precursors".format(len(isolation_window_df.Pr
 coords_l = ray.get([process_precursor.remote(frame_properties_df=frame_properties_df, precursor_id=group_name, precursor_group_df=group_df) for group_name,group_df in isolation_window_df.groupby('Precursor')])
 coords_df = pd.DataFrame(coords_l)
 
+# trim those we don't want
+coords_df = coords_df[(coords_df['fe_ms1_rt_lower'] >= args.rt_lower) & (coords_df['fe_ms1_rt_upper'] <= args.rt_upper)]
+
 # write them out
 print('writing {} cuboid definitions to {}'.format(len(coords_df), CUBOIDS_FILE))
 info.append(('total_running_time',round(time.time()-start_run,1)))
