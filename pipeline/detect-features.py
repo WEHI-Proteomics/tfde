@@ -167,7 +167,7 @@ def determine_mono_characteristics(feature_d, precursor_cuboid_d, raw_points_df)
         rt_lower = rt_apex - rt_side_width
         rt_upper = rt_apex + rt_side_width
         # determine whether it was a reasonable fit
-        if (rt_apex >= precursor_cuboid_d['wide_rt_lower']) and (rt_apex <= precursor_cuboid_d['wide_rt_upper']):
+        if (rt_apex >= precursor_cuboid_d['wide_ms1_rt_lower']) and (rt_apex <= precursor_cuboid_d['wide_ms1_rt_lower']):
             rt_curve_fit = True
             rt_fit_outcome = 'fit_within_wide_extent'
         else:
