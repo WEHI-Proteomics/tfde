@@ -139,42 +139,54 @@ def determine_mono_characteristics(feature_d, precursor_cuboid_d, raw_points_df)
     if len(mono_points_df) > 0:
         # collapsing the monoisotopic's summed points onto the mobility dimension
         scan_df = mono_points_df.groupby(['scan'], as_index=False).intensity.sum()
-        mobility_curve_fit = False
-        guassian_params = peakutils.peak.gaussian_fit(scan_df.scan, scan_df.intensity, center_only=False)
-        scan_apex = guassian_params[1]
-        scan_side_width = min(3 * abs(guassian_params[2]), SCAN_BASE_PEAK_WIDTH)  # number of standard deviations either side of the apex
-        scan_lower = scan_apex - scan_side_width
-        scan_upper = scan_apex + scan_side_width
-        # determine whether it was a reasonable fit
-        if (scan_apex >= precursor_cuboid_d['wide_scan_lower']) and (scan_apex <= precursor_cuboid_d['wide_scan_upper']):
-            mobility_curve_fit = True
-            ccs_fit_outcome = 'fit_within_wide_extent'
-        else:
+
+        # fit a curve to the dimension
+        guassian_params = None
+        try:
+            guassian_params = peakutils.peak.gaussian_fit(scan_df.scan, rt_df.intensity, center_only=False)
+            scan_fit_outcome = 'fit_success'
+        except:
+            scan_fit_outcome = 'fit_failed'
+            pass
+
+        if guassian_params is not None:
+            scan_apex = guassian_params[1]
+            scan_side_width = min(3 * abs(guassian_params[2]), SCAN_BASE_PEAK_WIDTH / 2)  # number of standard deviations either side of the apex
+            scan_lower = scan_apex - scan_side_width
+            scan_upper = scan_apex + scan_side_width
+
+        if (guassian_params is None) or (scan_apex < precursor_cuboid_d['wide_scan_lower']) or (scan_apex > precursor_cuboid_d['wide_scan_upper']):
             scan_apex = intensity_weighted_centroid(scan_df.intensity.to_numpy(), scan_df.scan.to_numpy())
             scan_lower = scan_apex - (SCAN_BASE_PEAK_WIDTH / 2)
             scan_upper = scan_apex + (SCAN_BASE_PEAK_WIDTH / 2)
-            ccs_fit_outcome = 'fit_not_within_wide_extent'
+            scan_fit_outcome += ',outside_extent' if guassian_params is not None else ''
 
         # constrain the mono points to the CCS extent
         mono_points_df = mono_points_df[(mono_points_df.scan >= scan_lower) & (mono_points_df.scan <= scan_upper)]
 
         # in the RT dimension, look wider to find the apex
         rt_df = mono_points_df.groupby(['frame_id','retention_time_secs'], as_index=False).intensity.sum()
-        rt_curve_fit = False
-        guassian_params = peakutils.peak.gaussian_fit(rt_df.retention_time_secs, rt_df.intensity, center_only=False)
-        rt_apex = guassian_params[1]
-        rt_side_width = min(3 * abs(guassian_params[2]), RT_BASE_PEAK_WIDTH_SECS)  # number of standard deviations either side of the apex
-        rt_lower = rt_apex - rt_side_width
-        rt_upper = rt_apex + rt_side_width
-        # determine whether it was a reasonable fit
-        if (rt_apex >= precursor_cuboid_d['wide_ms1_rt_lower']) and (rt_apex <= precursor_cuboid_d['wide_ms1_rt_lower']):
-            rt_curve_fit = True
-            rt_fit_outcome = 'fit_within_wide_extent'
-        else:
+
+        # fit a curve to the dimension
+        guassian_params = None
+        try:
+            guassian_params = peakutils.peak.gaussian_fit(rt_df.retention_time_secs, rt_df.intensity, center_only=False)
+            rt_fit_outcome = 'fit_success'
+        except:
+            rt_fit_outcome = 'fit_failed'
+            pass
+
+        if guassian_params is not None:
+            rt_apex = guassian_params[1]
+            rt_side_width = min(3 * abs(guassian_params[2]), RT_BASE_PEAK_WIDTH_SECS / 2)  # number of standard deviations either side of the apex
+            rt_lower = rt_apex - rt_side_width
+            rt_upper = rt_apex + rt_side_width
+
+        if (guassian_params is None) or (rt_apex < precursor_cuboid_d['wide_ms1_rt_lower']) or (rt_apex > precursor_cuboid_d['wide_ms1_rt_upper']):
             rt_apex = intensity_weighted_centroid(rt_df.intensity.to_numpy(), rt_df.retention_time_secs.to_numpy())
             rt_lower = rt_apex - (RT_BASE_PEAK_WIDTH_SECS / 2)
             rt_upper = rt_apex + (RT_BASE_PEAK_WIDTH_SECS / 2)
-            rt_fit_outcome = 'fit_not_within_wide_extent'
+            rt_fit_outcome += ',outside_extent' if guassian_params is not None else ''
 
         # constrain the mono points to the RT extent
         mono_points_df = mono_points_df[(mono_points_df.retention_time_secs >= rt_lower) & (mono_points_df.retention_time_secs <= rt_upper)]
@@ -238,12 +250,10 @@ def determine_mono_characteristics(feature_d, precursor_cuboid_d, raw_points_df)
         result_d['scan_apex'] = scan_apex
         result_d['scan_lower'] = scan_lower
         result_d['scan_upper'] = scan_upper
-        result_d['scan_curve_fit'] = mobility_curve_fit
-        result_d['scan_fit_outcome'] = ccs_fit_outcome
+        result_d['scan_fit_outcome'] = scan_fit_outcome
         result_d['rt_apex'] = rt_apex
         result_d['rt_lower'] = rt_lower
         result_d['rt_upper'] = rt_upper
-        result_d['rt_curve_fit'] = rt_curve_fit
         result_d['rt_fit_outcome'] = rt_fit_outcome
         result_d['mono_intensity_from_raw_points'] = isotopes_df.iloc[0].inferred_intensity if isotopes_df.iloc[0].inferred else isotopes_df.iloc[0].intensity
         result_d['mono_intensity_adjustment_outcome'] = outcome
