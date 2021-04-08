@@ -15,7 +15,7 @@ import pickle
 import configparser
 from configparser import ExtendedInterpolation
 from os.path import expanduser
-
+import peakutils
 
 # set up the indexes we need for queries
 def create_indexes(db_file_name):
