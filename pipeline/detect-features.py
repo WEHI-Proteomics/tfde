@@ -26,7 +26,7 @@ VALLEYS_THRESHOLD_SCAN = 0.5
 VALLEYS_MIN_DIST_RT = 2.0     # seconds
 VALLEYS_MIN_DIST_SCAN = 10.0  # scans
 
-SCAN_FILTER_POLY_ORDER = 3
+SCAN_FILTER_POLY_ORDER = 5
 RT_FILTER_POLY_ORDER = 3
 
 # set up the indexes we need for queries
