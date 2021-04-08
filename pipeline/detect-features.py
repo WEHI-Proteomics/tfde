@@ -301,7 +301,7 @@ def detect_features(precursor_cuboid_d, converted_db_name, visualise):
 
     # intensity descent
     raw_points_a = wide_ms1_points_df[['mz','intensity']].to_numpy()
-    peaks_a = intensity_descent(peaks_a=raw_points_a, peak_delta=MS1_PEAK_DELTA)
+    peaks_a = intensity_descent(peaks_a=raw_points_a, peak_delta=None)
 
     # deconvolution
     ms1_peaks_l = list(map(tuple, peaks_a))
