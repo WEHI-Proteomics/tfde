@@ -538,10 +538,10 @@ if not os.path.isfile(CUBOIDS_FILE):
 with open(CUBOIDS_FILE, 'rb') as handle:
     d = pickle.load(handle)
 precursor_cuboids_df = d['coords_df']
-print('loaded {} precursor cuboids from {}'.format(len(precursor_cuboids_df), CUBOIDS_FILE))
 
 # constrain the detection to the define RT limits
 precursor_cuboids_df = precursor_cuboids_df[(precursor_cuboids_df.wide_ms1_rt_lower > args.rt_lower) & (precursor_cuboids_df.wide_ms1_rt_upper < args.rt_upper)]
+print('loaded {} precursor cuboids within RT {}-{} from {}'.format(len(precursor_cuboids_df), args.rt_lower, args.rt_upper, CUBOIDS_FILE))
 
 # limit the cuboids to just the selected one
 if args.precursor_id is not None:
