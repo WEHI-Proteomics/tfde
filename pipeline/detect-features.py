@@ -16,6 +16,17 @@ import configparser
 from configparser import ExtendedInterpolation
 from os.path import expanduser
 import peakutils
+from scipy import signal
+
+# filter and peak detection parameters
+VALLEYS_THRESHOLD_RT = 0.5    # only consider valleys that drop more than this proportion of the normalised maximum
+VALLEYS_THRESHOLD_SCAN = 0.5
+
+VALLEYS_MIN_DIST_RT = 2.0     # seconds
+VALLEYS_MIN_DIST_SCAN = 10.0  # scans
+
+SCAN_FILTER_POLY_ORDER = 3
+RT_FILTER_POLY_ORDER = 3
 
 # set up the indexes we need for queries
 def create_indexes(db_file_name):
@@ -23,6 +34,11 @@ def create_indexes(db_file_name):
     src_c = db_conn.cursor()
     src_c.execute("create index if not exists idx_extract_cuboids_1 on frames (frame_type,retention_time_secs,scan,mz)")
     db_conn.close()
+
+# determine the maximum filter length for the number of points
+def find_filter_length(number_of_points):
+    filter_lengths = [51,11,5]  # must be a positive odd number, greater than the polynomial order, and less than the number of points to be filtered
+    return filter_lengths[next(x[0] for x in enumerate(filter_lengths) if x[1] < number_of_points)]
 
 # calculate the intensity-weighted centroid
 # takes a numpy array of intensity, and another of mz
@@ -132,61 +148,70 @@ def determine_mono_characteristics(feature_d, precursor_cuboid_d, raw_points_df)
     mz_upper = mono_mz + mz_delta
     mono_points_df = raw_points_df[(raw_points_df.mz >= mz_lower) & (raw_points_df.mz <= mz_upper)]
 
-    rt_fit_outcome = 'could_not_fit'
-    ccs_fit_outcome = 'could_not_fit'
-
     # determine the peak's extent in CCS and RT
     if len(mono_points_df) > 0:
         # collapsing the monoisotopic's summed points onto the mobility dimension
         scan_df = mono_points_df.groupby(['scan'], as_index=False).intensity.sum()
+        scan_df.sort_values(by=['scan'], ascending=True, inplace=True)
 
-        # fit a curve to the dimension
-        guassian_params = None
+        # apply a smoothing filter to the points
+        scan_df['filtered_intensity'] = scan_df.intensity  # set the default
         try:
-            guassian_params = peakutils.peak.gaussian_fit(scan_df.scan, scan_df.intensity, center_only=False)
-            scan_fit_outcome = 'fit_success'
+            scan_df['filtered_intensity'] = signal.savgol_filter(scan_df.intensity, window_length=find_filter_length(number_of_points=len(scan_df)), polyorder=SCAN_FILTER_POLY_ORDER)
+            filtered = True
         except:
-            scan_fit_outcome = 'fit_failed'
-            pass
+            filtered = False
 
-        if guassian_params is not None:
-            scan_apex = guassian_params[1]
-            scan_side_width = min(3 * abs(guassian_params[2]), SCAN_BASE_PEAK_WIDTH / 2)  # number of standard deviations either side of the apex
-            scan_lower = scan_apex - scan_side_width
-            scan_upper = scan_apex + scan_side_width
+        # find the anchor point's scan value
+        anchor_point_scan = scan_df.loc[scan_df.filtered_intensity.idxmax()].scan
 
-        if (guassian_params is None) or (scan_apex < precursor_cuboid_d['wide_scan_lower']) or (scan_apex > precursor_cuboid_d['wide_scan_upper']):
-            scan_apex = intensity_weighted_centroid(scan_df.intensity.to_numpy(), scan_df.scan.to_numpy())
-            scan_lower = scan_apex - (SCAN_BASE_PEAK_WIDTH / 2)
-            scan_upper = scan_apex + (SCAN_BASE_PEAK_WIDTH / 2)
-            scan_fit_outcome += ',outside_extent' if guassian_params is not None else ''
+        # find the valleys nearest the anchor point
+        valley_idxs = peakutils.indexes(-scan_df.filtered_intensity.values, thres=VALLEYS_THRESHOLD_SCAN, min_dist=VALLEYS_MIN_DIST_SCAN, thres_abs=False)
+        valley_x_l = scan_df.iloc[valley_idxs].scan.to_list()
+        valleys_df = scan_df[scan_df.scan.isin(valley_x_l)]
+
+        upper_x = valleys_df[valleys_df.scan > anchor_point_scan].scan.min()
+        if math.isnan(upper_x):
+            upper_x = scan_df.scan.max()
+        lower_x = valleys_df[valleys_df.scan < anchor_point_scan].scan.max()
+        if math.isnan(lower_x):
+            lower_x = scan_df.scan.min()
+
+        scan_lower = lower_x
+        scan_upper = upper_x
 
         # constrain the mono points to the CCS extent
         mono_points_df = mono_points_df[(mono_points_df.scan >= scan_lower) & (mono_points_df.scan <= scan_upper)]
 
         # in the RT dimension, look wider to find the apex
         rt_df = mono_points_df.groupby(['frame_id','retention_time_secs'], as_index=False).intensity.sum()
+        rt_df.sort_values(by=['retention_time_secs'], ascending=True, inplace=True)
 
-        # fit a curve to the dimension
-        guassian_params = None
+        # filter the points
+        rt_df['filtered_intensity'] = rt_df.intensity  # set the default
         try:
-            guassian_params = peakutils.peak.gaussian_fit(rt_df.retention_time_secs, rt_df.intensity, center_only=False)
-            rt_fit_outcome = 'fit_success'
+            rt_df['filtered_intensity'] = signal.savgol_filter(rt_df.intensity, window_length=find_filter_length(number_of_points=len(rt_df)), polyorder=RT_FILTER_POLY_ORDER)
+            filtered = True
         except:
-            rt_fit_outcome = 'fit_failed'
-            pass
+            filtered = False
 
-        if guassian_params is not None:
-            rt_apex = guassian_params[1]
-            rt_side_width = min(3 * abs(guassian_params[2]), RT_BASE_PEAK_WIDTH_SECS / 2)  # number of standard deviations either side of the apex
-            rt_lower = rt_apex - rt_side_width
-            rt_upper = rt_apex + rt_side_width
+        # find the anchor point's scan value
+        anchor_point_rt = rt_df.loc[rt_df.filtered_intensity.idxmax()].retention_time_secs
 
-        if (guassian_params is None) or (rt_apex < precursor_cuboid_d['wide_ms1_rt_lower']) or (rt_apex > precursor_cuboid_d['wide_ms1_rt_upper']):
-            rt_apex = intensity_weighted_centroid(rt_df.intensity.to_numpy(), rt_df.retention_time_secs.to_numpy())
-            rt_lower = rt_apex - (RT_BASE_PEAK_WIDTH_SECS / 2)
-            rt_upper = rt_apex + (RT_BASE_PEAK_WIDTH_SECS / 2)
-            rt_fit_outcome += ',outside_extent' if guassian_params is not None else ''
+        # find the valleys nearest the anchor point
+        valley_idxs = peakutils.indexes(-rt_df.filtered_intensity.values, thres=VALLEYS_THRESHOLD_RT, min_dist=VALLEYS_MIN_DIST_RT, thres_abs=False)
+        valley_x_l = rt_df.iloc[valley_idxs].retention_time_secs.to_list()
+        valleys_df = rt_df[rt_df.retention_time_secs.isin(valley_x_l)]
+
+        upper_x = valleys_df[valleys_df.retention_time_secs > anchor_point_rt].retention_time_secs.min()
+        if math.isnan(upper_x):
+            upper_x = rt_df.retention_time_secs.max()
+        lower_x = valleys_df[valleys_df.retention_time_secs < anchor_point_rt].retention_time_secs.max()
+        if math.isnan(lower_x):
+            lower_x = rt_df.retention_time_secs.min()
+
+        rt_lower = lower_x
+        rt_upper = upper_x
 
         # constrain the mono points to the RT extent
         mono_points_df = mono_points_df[(mono_points_df.retention_time_secs >= rt_lower) & (mono_points_df.retention_time_secs <= rt_upper)]
@@ -250,11 +275,9 @@ def determine_mono_characteristics(feature_d, precursor_cuboid_d, raw_points_df)
         result_d['scan_apex'] = scan_apex
         result_d['scan_lower'] = scan_lower
         result_d['scan_upper'] = scan_upper
-        result_d['scan_fit_outcome'] = scan_fit_outcome
         result_d['rt_apex'] = rt_apex
         result_d['rt_lower'] = rt_lower
         result_d['rt_upper'] = rt_upper
-        result_d['rt_fit_outcome'] = rt_fit_outcome
         result_d['mono_intensity_from_raw_points'] = isotopes_df.iloc[0].inferred_intensity if isotopes_df.iloc[0].inferred else isotopes_df.iloc[0].intensity
         result_d['mono_intensity_adjustment_outcome'] = outcome
         result_d['isotopic_peaks'] = isotopes_df.to_dict('records')
