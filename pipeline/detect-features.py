@@ -122,7 +122,7 @@ def peak_ratio(monoisotopic_mass, peak_number, number_of_sulphur):
 
 # determine the mono peak apex and extent in CCS and RT and calculate isotopic peak intensities
 def determine_mono_characteristics(feature_d, precursor_cuboid_d, raw_points_df):
-    envelope = feature_d['envelope']
+    envelope = json.loads(feature_d['envelope'])
     monoisotopic_mass = feature_d['monoisotopic_mass']
 
     # determine the raw points that belong to the mono peak
