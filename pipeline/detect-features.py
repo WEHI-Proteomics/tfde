@@ -24,12 +24,13 @@ def create_indexes(db_file_name):
     src_c.execute("create index if not exists idx_extract_cuboids_1 on frames (frame_type,retention_time_secs,scan,mz)")
     db_conn.close()
 
+# calculate the intensity-weighted centroid
 # takes a numpy array of intensity, and another of mz
-def mz_centroid(_int_f, _mz_f):
-    return ((_int_f/_int_f.sum()) * _mz_f).sum()
+def intensity_weighted_centroid(_int_f, _x_f):
+    return ((_int_f/_int_f.sum()) * _x_f).sum()
 
 # peaks_a is a numpy array of [mz,intensity]
-# returns a numpy array of [mz_centroid,summed_intensity]
+# returns a numpy array of [intensity_weighted_centroid,summed_intensity]
 def intensity_descent(peaks_a, peak_delta=None):
     # intensity descent
     peaks_l = []
@@ -45,7 +46,7 @@ def intensity_descent(peaks_a, peak_delta=None):
         # get all the raw points within this m/z region
         peak_indexes = np.where((peaks_a[:,0] >= peak_mz_lower) & (peaks_a[:,0] <= peak_mz_upper))[0]
         if len(peak_indexes) > 0:
-            mz_cent = mz_centroid(peaks_a[peak_indexes,1], peaks_a[peak_indexes,0])
+            mz_cent = intensity_weighted_centroid(peaks_a[peak_indexes,1], peaks_a[peak_indexes,0])
             summed_intensity = peaks_a[peak_indexes,1].sum()
             peaks_l.append((mz_cent, summed_intensity))
             # remove the raw points assigned to this peak
@@ -120,7 +121,10 @@ def peak_ratio(monoisotopic_mass, peak_number, number_of_sulphur):
     return ratio
 
 # determine the mono peak apex and extent in CCS and RT and calculate isotopic peak intensities
-def determine_feature_characteristics(envelope, monoisotopic_mass, raw_points_df):
+def determine_mono_characteristics(feature_d, precursor_cuboid_d, raw_points_df):
+    envelope = feature_d['envelope']
+    monoisotopic_mass = feature_d['monoisotopic_mass']
+
     # determine the raw points that belong to the mono peak
     mono_mz = envelope[0][0]
     mz_delta = calculate_peak_delta(mz=mono_mz)
@@ -136,26 +140,20 @@ def determine_feature_characteristics(envelope, monoisotopic_mass, raw_points_df
         # collapsing the monoisotopic's summed points onto the mobility dimension
         scan_df = mono_points_df.groupby(['scan'], as_index=False).intensity.sum()
         mobility_curve_fit = False
-        try:
-            guassian_params = peakutils.peak.gaussian_fit(scan_df.scan, scan_df.intensity, center_only=False)
-            scan_apex = guassian_params[1]
-            scan_side_width = min(2 * abs(guassian_params[2]), SCAN_BASE_PEAK_WIDTH)  # number of standard deviations either side of the apex
-            scan_lower = scan_apex - scan_side_width
-            scan_upper = scan_apex + scan_side_width
-            if (scan_apex >= wide_scan_lower) and (scan_apex <= wide_scan_upper):
-                mobility_curve_fit = True
-                ccs_fit_outcome = 'fit_within_wide_extent'
-            else:
-                ccs_fit_outcome = 'fit_not_within_wide_extent'
-        except:
-            ccs_fit_outcome = 'fit_exception'
-            pass
-
-        # if we couldn't fit a curve to the mobility dimension, take the intensity-weighted centroid
-        if not mobility_curve_fit:
-            scan_apex = mz_centroid(scan_df.intensity.to_numpy(), scan_df.scan.to_numpy())
+        guassian_params = peakutils.peak.gaussian_fit(scan_df.scan, scan_df.intensity, center_only=False)
+        scan_apex = guassian_params[1]
+        scan_side_width = min(3 * abs(guassian_params[2]), SCAN_BASE_PEAK_WIDTH)  # number of standard deviations either side of the apex
+        scan_lower = scan_apex - scan_side_width
+        scan_upper = scan_apex + scan_side_width
+        # determine whether it was a reasonable fit
+        if (scan_apex >= precursor_cuboid_d['wide_scan_lower']) and (scan_apex <= precursor_cuboid_d['wide_scan_upper']):
+            mobility_curve_fit = True
+            ccs_fit_outcome = 'fit_within_wide_extent'
+        else:
+            scan_apex = intensity_weighted_centroid(scan_df.intensity.to_numpy(), scan_df.scan.to_numpy())
             scan_lower = scan_apex - (SCAN_BASE_PEAK_WIDTH / 2)
             scan_upper = scan_apex + (SCAN_BASE_PEAK_WIDTH / 2)
+            ccs_fit_outcome = 'fit_not_within_wide_extent'
 
         # constrain the mono points to the CCS extent
         mono_points_df = mono_points_df[(mono_points_df.scan >= scan_lower) & (mono_points_df.scan <= scan_upper)]
@@ -163,33 +161,27 @@ def determine_feature_characteristics(envelope, monoisotopic_mass, raw_points_df
         # in the RT dimension, look wider to find the apex
         rt_df = mono_points_df.groupby(['frame_id','retention_time_secs'], as_index=False).intensity.sum()
         rt_curve_fit = False
-        try:
-            guassian_params = peakutils.peak.gaussian_fit(rt_df.retention_time_secs, rt_df.intensity, center_only=False)
-            rt_apex = guassian_params[1]
-            rt_side_width = min(3 * abs(guassian_params[2]), RT_BASE_PEAK_WIDTH_SECS)  # number of standard deviations either side of the apex
-            rt_lower = rt_apex - rt_side_width
-            rt_upper = rt_apex + rt_side_width
-            if (rt_apex >= wide_rt_lower) and (rt_apex <= wide_rt_upper):
-                rt_curve_fit = True
-                rt_fit_outcome = 'fit_within_wide_extent'
-            else:
-                rt_fit_outcome = 'fit_not_within_wide_extent'
-        except:
-            rt_fit_outcome = 'fit_exception'
-            pass
-
-        # if we couldn't fit a curve to the RT dimension, take the intensity-weighted centroid
-        if not rt_curve_fit:
-            rt_apex = mz_centroid(rt_df.intensity.to_numpy(), rt_df.retention_time_secs.to_numpy())
+        guassian_params = peakutils.peak.gaussian_fit(rt_df.retention_time_secs, rt_df.intensity, center_only=False)
+        rt_apex = guassian_params[1]
+        rt_side_width = min(3 * abs(guassian_params[2]), RT_BASE_PEAK_WIDTH_SECS)  # number of standard deviations either side of the apex
+        rt_lower = rt_apex - rt_side_width
+        rt_upper = rt_apex + rt_side_width
+        # determine whether it was a reasonable fit
+        if (rt_apex >= precursor_cuboid_d['wide_rt_lower']) and (rt_apex <= precursor_cuboid_d['wide_rt_upper']):
+            rt_curve_fit = True
+            rt_fit_outcome = 'fit_within_wide_extent'
+        else:
+            rt_apex = intensity_weighted_centroid(rt_df.intensity.to_numpy(), rt_df.retention_time_secs.to_numpy())
             rt_lower = rt_apex - (RT_BASE_PEAK_WIDTH_SECS / 2)
             rt_upper = rt_apex + (RT_BASE_PEAK_WIDTH_SECS / 2)
+            rt_fit_outcome = 'fit_not_within_wide_extent'
 
         # constrain the mono points to the RT extent
         mono_points_df = mono_points_df[(mono_points_df.retention_time_secs >= rt_lower) & (mono_points_df.retention_time_secs <= rt_upper)]
 
         # now that we have the full extent of the feature in RT, recalculate the feature m/z to gain the most mass accuracy (without points in saturation)
         mono_points_without_saturation_df = mono_points_df[(mono_points_df.intensity < SATURATION_INTENSITY)]
-        monoisotopic_mz_without_saturated_points = mz_centroid(mono_points_without_saturation_df.intensity.to_numpy(), mono_points_without_saturation_df.mz.to_numpy())
+        monoisotopic_mz_without_saturated_points = intensity_weighted_centroid(mono_points_without_saturation_df.intensity.to_numpy(), mono_points_without_saturation_df.mz.to_numpy())
 
         # constrain the raw points to the CCS and RT extent of the monoisotopic peak
         mono_ccs_rt_extent_df = raw_points_df[(raw_points_df.scan >= scan_lower) & (raw_points_df.scan <= scan_upper) & (raw_points_df.retention_time_secs >= rt_lower) & (raw_points_df.retention_time_secs <= rt_upper)]
@@ -344,10 +336,10 @@ def detect_features(precursor_cuboid_d, converted_db_name, visualise):
             feature_d['envelope'] = json.dumps([tuple(e) for e in row.envelope])
             feature_d['isotope_count'] = len(row.envelope)
             feature_d['deconvolution_score'] = row.score
-            feature_characteristics_d = determine_feature_characteristics(envelope=row.envelope, monoisotopic_mass=feature_d['monoisotopic_mass'], raw_points_df=wide_ms1_points_df)
-            if feature_characteristics_d is not None:
+            mono_characteristics_d = determine_mono_characteristics(feature_d=feature_d, precursor_cuboid_d=precursor_cuboid_d, raw_points_df=wide_ms1_points_df)
+            if mono_characteristics_d is not None:
                 # add the characteristics to the feature dictionary
-                feature_d = {**feature_d, **feature_characteristics_d}
+                feature_d = {**feature_d, **mono_characteristics_d}
             # from the precursor cuboid
             feature_d['precursor_cuboid_id'] = precursor_cuboid_d['precursor_cuboid_id']
             # resolve the feature's fragment ions
