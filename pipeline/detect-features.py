@@ -17,6 +17,7 @@ from configparser import ExtendedInterpolation
 from os.path import expanduser
 import peakutils
 from scipy import signal
+import math
 
 # filter and peak detection parameters
 VALLEYS_THRESHOLD_RT = 0.5    # only consider valleys that drop more than this proportion of the normalised maximum
