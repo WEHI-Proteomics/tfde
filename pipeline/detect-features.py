@@ -567,80 +567,81 @@ if args.precursor_definition_method == 'pasef':
 elif args.precursor_definition_method == '3did':
     features_l = ray.get([detect_features.remote(precursor_cuboid_d=get_common_cuboid_definition_from_3did(row), converted_db_name=CONVERTED_DATABASE_NAME, visualise=(args.precursor_id is not None)) for row in precursor_cuboids_df.itertuples()])
 
-# join the list of dataframes into a single dataframe
-features_df = pd.concat(features_l, axis=0, sort=False)
+if args.precursor_id is None:
+    # join the list of dataframes into a single dataframe
+    features_df = pd.concat(features_l, axis=0, sort=False)
 
-# add the run name
-features_df['run_name'] = args.run_name
+    # add the run name
+    features_df['run_name'] = args.run_name
 
-# write out all the features
-print("writing {} features to {}".format(len(features_df), FEATURES_FILE))
-info.append(('total_running_time',round(time.time()-start_run,1)))
-info.append(('processor',parser.prog))
-info.append(('processed', time.ctime()))
-content_d = {'features_df':features_df, 'metadata':info}
-with open(FEATURES_FILE, 'wb') as handle:
-    pickle.dump(content_d, handle)
+    # write out all the features
+    print("writing {} features to {}".format(len(features_df), FEATURES_FILE))
+    info.append(('total_running_time',round(time.time()-start_run,1)))
+    info.append(('processor',parser.prog))
+    info.append(('processed', time.ctime()))
+    content_d = {'features_df':features_df, 'metadata':info}
+    with open(FEATURES_FILE, 'wb') as handle:
+        pickle.dump(content_d, handle)
 
-# de-dup the features
-dedup_start_run = time.time()
-if (len(features_df) > 2) and (not args.do_not_remove_duplicates):
-    print('removing duplicates from {}'.format(FEATURES_FILE))
+    # de-dup the features
+    dedup_start_run = time.time()
+    if (len(features_df) > 2) and (not args.do_not_remove_duplicates):
+        print('removing duplicates from {}'.format(FEATURES_FILE))
 
-    # set up dup definitions
-    MZ_TOLERANCE_PERCENT = DUP_MZ_TOLERANCE_PPM * 10**-4
-    features_df['dup_mz'] = features_df['monoisotopic_mz']  # shorthand to reduce verbosity
-    features_df['dup_mz_ppm_tolerance'] = features_df.dup_mz * MZ_TOLERANCE_PERCENT / 100
-    features_df['dup_mz_lower'] = features_df.dup_mz - features_df.dup_mz_ppm_tolerance
-    features_df['dup_mz_upper'] = features_df.dup_mz + features_df.dup_mz_ppm_tolerance
-    features_df['dup_scan_lower'] = features_df.scan_apex - DUP_SCAN_TOLERANCE
-    features_df['dup_scan_upper'] = features_df.scan_apex + DUP_SCAN_TOLERANCE
-    features_df['dup_rt_lower'] = features_df.rt_apex - DUP_RT_TOLERANCE
-    features_df['dup_rt_upper'] = features_df.rt_apex + DUP_RT_TOLERANCE
+        # set up dup definitions
+        MZ_TOLERANCE_PERCENT = DUP_MZ_TOLERANCE_PPM * 10**-4
+        features_df['dup_mz'] = features_df['monoisotopic_mz']  # shorthand to reduce verbosity
+        features_df['dup_mz_ppm_tolerance'] = features_df.dup_mz * MZ_TOLERANCE_PERCENT / 100
+        features_df['dup_mz_lower'] = features_df.dup_mz - features_df.dup_mz_ppm_tolerance
+        features_df['dup_mz_upper'] = features_df.dup_mz + features_df.dup_mz_ppm_tolerance
+        features_df['dup_scan_lower'] = features_df.scan_apex - DUP_SCAN_TOLERANCE
+        features_df['dup_scan_upper'] = features_df.scan_apex + DUP_SCAN_TOLERANCE
+        features_df['dup_rt_lower'] = features_df.rt_apex - DUP_RT_TOLERANCE
+        features_df['dup_rt_upper'] = features_df.rt_apex + DUP_RT_TOLERANCE
 
-    # remove these after we're finished
-    columns_to_drop_l = []
-    columns_to_drop_l.append('dup_mz')
-    columns_to_drop_l.append('dup_mz_ppm_tolerance')
-    columns_to_drop_l.append('dup_mz_lower')
-    columns_to_drop_l.append('dup_mz_upper')
-    columns_to_drop_l.append('dup_scan_lower')
-    columns_to_drop_l.append('dup_scan_upper')
-    columns_to_drop_l.append('dup_rt_lower')
-    columns_to_drop_l.append('dup_rt_upper')
+        # remove these after we're finished
+        columns_to_drop_l = []
+        columns_to_drop_l.append('dup_mz')
+        columns_to_drop_l.append('dup_mz_ppm_tolerance')
+        columns_to_drop_l.append('dup_mz_lower')
+        columns_to_drop_l.append('dup_mz_upper')
+        columns_to_drop_l.append('dup_scan_lower')
+        columns_to_drop_l.append('dup_scan_upper')
+        columns_to_drop_l.append('dup_rt_lower')
+        columns_to_drop_l.append('dup_rt_upper')
 
-    # sort by decreasing intensity
-    features_df.sort_values(by=['feature_intensity'], ascending=False, inplace=True)
+        # sort by decreasing intensity
+        features_df.sort_values(by=['feature_intensity'], ascending=False, inplace=True)
 
-    # see if any detections have a duplicate - if so, find the dup with the highest intensity (i.e. the first in the group) and keep it
-    keep_l = []
-    for row in features_df.itertuples():
-        dup_df = features_df[(features_df.dup_mz > row.dup_mz_lower) & (features_df.dup_mz < row.dup_mz_upper) & (features_df.scan_apex > row.dup_scan_lower) & (features_df.scan_apex < row.dup_scan_upper) & (features_df.rt_apex > row.dup_rt_lower) & (features_df.rt_apex < row.dup_rt_upper)].copy()
-        # group the dups by charge - take the most intense for each charge
-        for group_name,group_df in dup_df.groupby(['charge'], as_index=False):
-            keep_l.append(group_df.iloc[0].feature_id)
+        # see if any detections have a duplicate - if so, find the dup with the highest intensity (i.e. the first in the group) and keep it
+        keep_l = []
+        for row in features_df.itertuples():
+            dup_df = features_df[(features_df.dup_mz > row.dup_mz_lower) & (features_df.dup_mz < row.dup_mz_upper) & (features_df.scan_apex > row.dup_scan_lower) & (features_df.scan_apex < row.dup_scan_upper) & (features_df.rt_apex > row.dup_rt_lower) & (features_df.rt_apex < row.dup_rt_upper)].copy()
+            # group the dups by charge - take the most intense for each charge
+            for group_name,group_df in dup_df.groupby(['charge'], as_index=False):
+                keep_l.append(group_df.iloc[0].feature_id)
 
-    # remove any features that are not in the keep list
-    dedup_df = features_df[features_df.feature_id.isin(keep_l)].copy()
+        # remove any features that are not in the keep list
+        dedup_df = features_df[features_df.feature_id.isin(keep_l)].copy()
 
-    number_of_dups = len(features_df)-len(dedup_df)
-    print('removed {} duplicates ({}% of the original detections)'.format(number_of_dups, round(number_of_dups/len(features_df)*100)))
-    print('there are {} detected de-duplicated features'.format(len(dedup_df)))
+        number_of_dups = len(features_df)-len(dedup_df)
+        print('removed {} duplicates ({}% of the original detections)'.format(number_of_dups, round(number_of_dups/len(features_df)*100)))
+        print('there are {} detected de-duplicated features'.format(len(dedup_df)))
 
-    # remove the columns we added earlier
-    dedup_df.drop(columns_to_drop_l, axis=1, inplace=True)
-else:
-    # nothing to de-dup
-    dedup_df = features_df
+        # remove the columns we added earlier
+        dedup_df.drop(columns_to_drop_l, axis=1, inplace=True)
+    else:
+        # nothing to de-dup
+        dedup_df = features_df
 
-FEATURES_DEDUP_FILE = '{}/exp-{}-run-{}-features-{}-dedup.pkl'.format(FEATURES_DIR, args.experiment_name, args.run_name, args.precursor_definition_method)
+    FEATURES_DEDUP_FILE = '{}/exp-{}-run-{}-features-{}-dedup.pkl'.format(FEATURES_DIR, args.experiment_name, args.run_name, args.precursor_definition_method)
 
-# write out all the features
-print("writing {} de-duped features to {}".format(len(dedup_df), FEATURES_DEDUP_FILE))
-info.append(('dedup_running_time',round(time.time()-dedup_start_run,1)))
-content_d = {'features_df':dedup_df, 'metadata':info}
-with open(FEATURES_DEDUP_FILE, 'wb') as handle:
-    pickle.dump(content_d, handle)
+    # write out all the features
+    print("writing {} de-duped features to {}".format(len(dedup_df), FEATURES_DEDUP_FILE))
+    info.append(('dedup_running_time',round(time.time()-dedup_start_run,1)))
+    content_d = {'features_df':dedup_df, 'metadata':info}
+    with open(FEATURES_DEDUP_FILE, 'wb') as handle:
+        pickle.dump(content_d, handle)
 
 stop_run = time.time()
 print("total running time ({}): {} seconds".format(parser.prog, round(stop_run-start_run,1)))
