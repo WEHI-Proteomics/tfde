@@ -294,7 +294,7 @@ def determine_mono_characteristics(feature_d, precursor_cuboid_d, raw_points_df)
 def resolve_fragment_ions(feature_d, ms2_points_df):
     # perform intensity descent to resolve peaks
     raw_points_a = ms2_points_df[['mz','intensity']].to_numpy()
-    peaks_a = intensity_descent(peaks_a=raw_points_a, peak_delta=MS2_PEAK_DELTA)
+    peaks_a = intensity_descent(peaks_a=raw_points_a, peak_delta=None)
     # deconvolute the spectra
     peaks_l = list(map(tuple, peaks_a))
     maximum_neutral_mass = 1700*feature_d['charge']
