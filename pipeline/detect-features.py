@@ -329,10 +329,10 @@ def resolve_fragment_ions(feature_d, ms2_points_df):
 
         filtered_fragment_ions_df = fragment_ions_df.dropna(subset = ['bin']).copy()
         filtered_fragment_ions_df.drop('bin', axis=1, inplace=True)
-
-        removed = len(fragment_ions_df) - len(filtered_fragment_ions_df)
-        print('removed {} fragment ions ({}%)'.format(removed, round(removed/len(fragment_ions_df)*100,1)))
         deconvoluted_peaks_l = filtered_fragment_ions_df.to_dict('records')
+
+        # removed = len(fragment_ions_df) - len(filtered_fragment_ions_df)
+        # print('removed {} fragment ions ({}%)'.format(removed, round(removed/len(fragment_ions_df)*100,1)))
 
     return deconvoluted_peaks_l
 
@@ -428,7 +428,7 @@ def detect_features(precursor_cuboid_d, converted_db_name, visualise):
         }
         save_visualisation(visualisation_d)
 
-    print("found {} features for precursor {}".format(len(features_df), precursor_cuboid_d['precursor_cuboid_id']))
+    # print("found {} features for precursor {}".format(len(features_df), precursor_cuboid_d['precursor_cuboid_id']))
     return features_df
 
 # determine the number of workers based on the number of available cores and the proportion of the machine to be used
