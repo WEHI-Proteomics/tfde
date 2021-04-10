@@ -289,6 +289,17 @@ def determine_mono_characteristics(feature_d, precursor_cuboid_d, raw_points_df)
         result_d = None
     return result_d
 
+# create the bins for mass defect windows in Da space
+def generate_mass_defect_windows(mass_defect_window_da_min, mass_defect_window_da_max):
+    bin_edges_l = []
+    for nominal_mass in range(mass_defect_window_da_min, mass_defect_window_da_max):
+        mass_centre = nominal_mass * 1.00048  # from https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3184890/
+        width = 0.19 + (0.0001 * nominal_mass)
+        lower_mass = mass_centre - (width / 2)
+        upper_mass = mass_centre + (width / 2)
+        bin_edges_l.append((lower_mass, upper_mass))
+    return bin_edges_l
+
 # resolve the fragment ions for this feature
 # returns a decharged peak list (neutral mass+proton mass, intensity)
 def resolve_fragment_ions(feature_d, ms2_points_df):
@@ -307,6 +318,22 @@ def resolve_fragment_ions(feature_d, ms2_points_df):
         d['neutral_mass'] = round(peak.neutral_mass, 4)
         d['intensity'] = peak.intensity
         deconvoluted_peaks_l.append(d)
+
+    if args.filter_by_mass_defect:
+        fragment_ions_df = pd.DataFrame(deconvoluted_peaks_l)
+        # generate the mass defect windows
+        bins_l = generate_mass_defect_windows(int(fragment_ions_df.neutral_mass.min()), int(fragment_ions_df.neutral_mass.max()))
+
+        bins = pd.IntervalIndex.from_tuples(bins_l)
+        fragment_ions_df['bin'] = pd.cut(fragment_ions_df.neutral_mass, bins)
+
+        filtered_fragment_ions_df = fragment_ions_df.dropna(subset = ['bin']).copy()
+        filtered_fragment_ions_df.drop('bin', axis=1, inplace=True)
+
+        removed = len(fragment_ions_df) - len(filtered_fragment_ions_df)
+        print('removed {} fragment ions ({}%)'.format(removed, round(removed/len(fragment_ions_df)*100,1)))
+        deconvoluted_peaks_l = filtered_fragment_ions_df.to_dict('records')
+
     return deconvoluted_peaks_l
 
 # save visualisation data for later analysis of how feature detection works
@@ -468,6 +495,7 @@ parser.add_argument('-pid', '--precursor_id', type=int, help='Only process this 
 parser.add_argument('-rm','--ray_mode', type=str, choices=['local','cluster'], help='The Ray mode to use.', required=True)
 parser.add_argument('-pc','--proportion_of_cores_to_use', type=float, default=0.9, help='Proportion of the machine\'s cores to use for this program.', required=False)
 parser.add_argument('-v','--visualise', action='store_true', help='Generate data for visualisation of the feature detection.')
+parser.add_argument('-fmdw','--filter_by_mass_defect', action='store_true', help='Filter fragment ions by mass defect windows.')
 parser.add_argument('-drd','--do_not_remove_duplicates', action='store_true', help='Do not remove duplicated features.')
 args = parser.parse_args()
 
