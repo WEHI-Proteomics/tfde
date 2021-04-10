@@ -302,7 +302,8 @@ def resolve_fragment_ions(feature_d, ms2_points_df):
     deconvoluted_peaks_l = []
     for peak in deconvoluted_peaks:
         d = {}
-        d['decharged_mass'] = round(peak.neutral_mass+PROTON_MASS, 4)
+        d['singly_protonated_mass'] = round(peak.neutral_mass+PROTON_MASS, 4)
+        d['neutral_mass'] = round(peak.neutral_mass, 4)
         d['intensity'] = peak.intensity
         deconvoluted_peaks_l.append(d)
     return deconvoluted_peaks_l
