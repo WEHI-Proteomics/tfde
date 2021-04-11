@@ -14,10 +14,10 @@ import sys
 def collate_spectra_for_feature(feature_d, mz_name, run_name):
     # sort the fragment ions by increasing m/z
     fragment_ions_df = pd.DataFrame(json.loads(feature_d['fragment_ions_l']))
-    fragment_ions_df.sort_values(by=['neutral_mass'], ascending=True, inplace=True)
+    fragment_ions_df.sort_values(by=['singly_protonated_mass'], ascending=True, inplace=True)
 
     spectrum = {}
-    spectrum["m/z array"] = fragment_ions_df['neutral_mass'].to_numpy(dtype='float')
+    spectrum["m/z array"] = fragment_ions_df['singly_protonated_mass'].to_numpy(dtype='float')
     spectrum["intensity array"] = fragment_ions_df['intensity'].to_numpy(dtype='uint')
 
     params = {}
