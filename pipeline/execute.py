@@ -67,7 +67,7 @@ def task_render_mgf():
     FEATURES_DIR = '{}/features-{}'.format(EXPERIMENT_DIR, precursor_definition_method)
     FEATURES_FILE = '{}/exp-{}-run-{}-features-{}.pkl'.format(FEATURES_DIR, experiment_name, run_name, precursor_definition_method)
     # command
-    cmd = 'python -u render-features-as-mgf.py -eb {experiment_base} -en {experiment_name} -rn {run_name} -pdm {precursor_definition_method} -ns'.format(experiment_base=experiment_base_dir, experiment_name=experiment_name, run_name=run_name, precursor_definition_method=precursor_definition_method)
+    cmd = 'python -u render-features-as-mgf.py -eb {experiment_base} -en {experiment_name} -rn {run_name} -pdm {precursor_definition_method}'.format(experiment_base=experiment_base_dir, experiment_name=experiment_name, run_name=run_name, precursor_definition_method=precursor_definition_method)
     # output
     MGF_DIR = "{}/mgf-{}".format(EXPERIMENT_DIR, precursor_definition_method)
     MGF_FILE = '{}/exp-{}-run-{}-features-{}.mgf'.format(MGF_DIR, experiment_name, run_name, precursor_definition_method)
@@ -101,7 +101,7 @@ def task_identify_searched_features():
     # input
     comet_output = '{experiment_base}/comet-output-pasef/{run_name}.comet.log.txt'.format(experiment_base=EXPERIMENT_DIR, run_name=run_name)
     # cmd
-    cmd = 'python -u identify-searched-features.py -eb {experiment_base} -en {experiment_name} -ini {INI_FILE} -ff {fasta_name} -pdm {precursor_definition_method} -ns'.format(experiment_base=experiment_base_dir, experiment_name=experiment_name, INI_FILE=ini_file, fasta_name=fasta_file_name, precursor_definition_method=precursor_definition_method)
+    cmd = 'python -u identify-searched-features.py -eb {experiment_base} -en {experiment_name} -ini {INI_FILE} -ff {fasta_name} -pdm {precursor_definition_method}'.format(experiment_base=experiment_base_dir, experiment_name=experiment_name, INI_FILE=ini_file, fasta_name=fasta_file_name, precursor_definition_method=precursor_definition_method)
     # output
     IDENTIFICATIONS_DIR = '{}/identifications-{}'.format(EXPERIMENT_DIR, precursor_definition_method)
     IDENTIFICATIONS_FILE = '{}/exp-{}-identifications-{}.pkl'.format(IDENTIFICATIONS_DIR, experiment_name, precursor_definition_method)
@@ -145,7 +145,7 @@ def task_render_mgf_recalibrated():
     FEATURES_DIR = '{}/features-{}'.format(EXPERIMENT_DIR, precursor_definition_method)
     FEATURES_FILE = '{}/exp-{}-run-{}-features-{}-recalibrated.pkl'.format(FEATURES_DIR, experiment_name, run_name, precursor_definition_method)
     # command
-    cmd = 'python -u render-features-as-mgf.py -eb {experiment_base} -en {experiment_name} -rn {run_name} -pdm {precursor_definition_method} -ns -recal'.format(experiment_base=experiment_base_dir, experiment_name=experiment_name, run_name=run_name, precursor_definition_method=precursor_definition_method)
+    cmd = 'python -u render-features-as-mgf.py -eb {experiment_base} -en {experiment_name} -rn {run_name} -pdm {precursor_definition_method} -recal'.format(experiment_base=experiment_base_dir, experiment_name=experiment_name, run_name=run_name, precursor_definition_method=precursor_definition_method)
     # output
     MGF_DIR = "{}/mgf-{}".format(EXPERIMENT_DIR, precursor_definition_method)
     MGF_FILE = '{}/exp-{}-run-{}-features-{}-recalibrated.mgf'.format(MGF_DIR, experiment_name, run_name, precursor_definition_method)
@@ -179,7 +179,7 @@ def task_identify_searched_features_recalibrated():
     # input
     comet_output = '{experiment_base}/comet-output-pasef-recalibrated/{run_name}.comet.log.txt'.format(experiment_base=EXPERIMENT_DIR, run_name=run_name)
     # cmd
-    cmd = 'python -u identify-searched-features.py -eb {experiment_base} -en {experiment_name} -ini {INI_FILE} -ff {fasta_name} -pdm {precursor_definition_method} -ns -recal'.format(experiment_base=experiment_base_dir, experiment_name=experiment_name, INI_FILE=ini_file, fasta_name=fasta_file_name, precursor_definition_method=precursor_definition_method)
+    cmd = 'python -u identify-searched-features.py -eb {experiment_base} -en {experiment_name} -ini {INI_FILE} -ff {fasta_name} -pdm {precursor_definition_method} -recal'.format(experiment_base=experiment_base_dir, experiment_name=experiment_name, INI_FILE=ini_file, fasta_name=fasta_file_name, precursor_definition_method=precursor_definition_method)
     # output
     IDENTIFICATIONS_DIR = '{}/identifications-{}'.format(EXPERIMENT_DIR, precursor_definition_method)
     IDENTIFICATIONS_FILE = '{}/exp-{}-identifications-{}-recalibrated.pkl'.format(IDENTIFICATIONS_DIR, experiment_name, precursor_definition_method)
