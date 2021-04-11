@@ -11,7 +11,7 @@ import shutil
 import sys
 
 # collate the feature attributes for MGF rendering
-def collate_spectra_for_feature(feature_d, mz_name, run_name):
+def collate_spectra_for_feature(feature_d, run_name):
     # sort the fragment ions by increasing m/z
     fragment_ions_df = pd.DataFrame(json.loads(feature_d['fragment_ions_l']))
     fragment_ions_df.sort_values(by=['singly_protonated_mass'], ascending=True, inplace=True)
@@ -23,7 +23,7 @@ def collate_spectra_for_feature(feature_d, mz_name, run_name):
     params = {}
     params["TITLE"] = "RawFile: {} Charge: {} FeatureIntensity: {} Feature#: {} RtApex: {} Precursor: {}".format(run_name, int(feature_d['charge']), int(feature_d['feature_intensity']), int(feature_d['feature_id']), round(feature_d['rt_apex'],2), int(feature_d['precursor_cuboid_id']))
     params["INSTRUMENT"] = "ESI-QUAD-TOF"
-    params["PEPMASS"] = "{} {}".format(round(feature_d[mz_name],6), int(feature_d['feature_intensity']))
+    params["PEPMASS"] = "{} {}".format(round(feature_d['monoisotopic_mz'],6), int(feature_d['feature_intensity']))
     params["CHARGE"] = "{}+".format(int(feature_d['charge']))
     params["RTINSECONDS"] = "{}".format(round(feature_d['rt_apex'],2))
     params["SCANS"] = "{}".format(int(feature_d['feature_id']))
@@ -39,7 +39,6 @@ parser.add_argument('-en','--experiment_name', type=str, help='Name of the exper
 parser.add_argument('-rn','--run_name', type=str, help='Name of the run.', required=True)
 parser.add_argument('-pdm','--precursor_definition_method', type=str, choices=['pasef','3did'], help='The method used to define the precursor cuboids.', required=True)
 parser.add_argument('-pid', '--precursor_id', type=int, help='Only process this precursor ID.', required=False)
-parser.add_argument('-ns','--use_unsaturated_points_for_mz', action='store_true', help='Use the mono m/z calculated with only non-saturated points.')
 parser.add_argument('-recal','--recalibration_mode', action='store_true', help='Use the recalibrated features.')
 args = parser.parse_args()
 
@@ -58,10 +57,6 @@ MGF_DIR = "{}/mgf-{}".format(EXPERIMENT_DIR, args.precursor_definition_method)
 # handle whether or not this is for recalibrated features
 if not args.recalibration_mode:
     FEATURES_FILE = '{}/exp-{}-run-{}-features-{}-dedup.pkl'.format(FEATURES_DIR, args.experiment_name, args.run_name, args.precursor_definition_method)
-    if args.use_unsaturated_points_for_mz:
-        monoisotopic_mz_column_name = 'mono_mz_without_saturated_points'
-    else:
-        monoisotopic_mz_column_name = 'monoisotopic_mz'
     # output MGF
     MGF_FILE = '{}/exp-{}-run-{}-features-{}.mgf'.format(MGF_DIR, args.experiment_name, args.run_name, args.precursor_definition_method)
 else:
@@ -89,12 +84,9 @@ if not os.path.exists(MGF_DIR):
 # associate the spectra with each feature found for this precursor
 associations = []
 for row in features_df.itertuples():
-    if (not args.use_unsaturated_points_for_mz) or (args.use_unsaturated_points_for_mz and (row.mono_mz_without_saturated_points > 0)):
-        # collate them for the MGF
-        spectrum = collate_spectra_for_feature(feature_d=row._asdict(), mz_name=monoisotopic_mz_column_name, run_name=args.run_name)
-        associations.append(spectrum)
-    else:
-        print('skipping feature_id {} because its mono m/z without saturated points was zero'.format(row.feature_id))
+    # collate them for the MGF
+    spectrum = collate_spectra_for_feature(feature_d=row._asdict(), run_name=args.run_name)
+    associations.append(spectrum)
 
 # generate the MGF for all the features
 print("writing {} entries to {}".format(len(associations), MGF_FILE))

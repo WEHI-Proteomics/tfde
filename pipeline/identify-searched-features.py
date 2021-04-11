@@ -26,7 +26,6 @@ parser.add_argument('-ff','--fasta_file_name', type=str, default='./otf-peak-det
 parser.add_argument('-pe','--protein_enzyme', type=str, default='trypsin', choices=['no_enzyme','elastase','pepsin','proteinasek','thermolysin','trypsinp','chymotrypsin','lys-n','lys-c','arg-c','asp-n','glu-c','trypsin'], help='Enzyme used for digestion. Passed to percolator.', required=False)
 parser.add_argument('-pdm','--precursor_definition_method', type=str, choices=['pasef','3did'], help='The method used to define the precursor cuboids.', required=True)
 parser.add_argument('-ini','--ini_file', type=str, default='./otf-peak-detect/pipeline/pasef-process-short-gradient.ini', help='Path to the config file.', required=False)
-parser.add_argument('-ns','--use_unsaturated_points_for_mz', action='store_true', help='Use the mono m/z calculated with only non-saturated points.')
 parser.add_argument('-recal','--recalibration_mode', action='store_true', help='Use the recalibrated Comet output.')
 args = parser.parse_args()
 
@@ -47,14 +46,9 @@ if not os.path.exists(EXPERIMENT_DIR):
 if not args.recalibration_mode:
     COMET_OUTPUT_DIR = "{}/comet-output-{}".format(EXPERIMENT_DIR, args.precursor_definition_method)
     PERCOLATOR_OUTPUT_DIR = "{}/percolator-output-{}".format(EXPERIMENT_DIR, args.precursor_definition_method)
-    if args.use_unsaturated_points_for_mz:
-        monoisotopic_mz_column_name = 'mono_mz_without_saturated_points'
-    else:
-        monoisotopic_mz_column_name = 'monoisotopic_mz'
 else:
     COMET_OUTPUT_DIR = "{}/comet-output-{}-recalibrated".format(EXPERIMENT_DIR, args.precursor_definition_method)
     PERCOLATOR_OUTPUT_DIR = "{}/percolator-output-{}-recalibrated".format(EXPERIMENT_DIR, args.precursor_definition_method)
-    monoisotopic_mz_column_name = 'recalibrated_monoisotopic_mz'
 
 # check the comet directory
 if not os.path.exists(COMET_OUTPUT_DIR):
@@ -134,7 +128,7 @@ identifications_df = pd.merge(features_df, percolator_df, how='left', left_on=['
 identifications_df.dropna(subset=['sequence'], inplace=True)
 
 # add the mass of cysteine carbamidomethylation to the theoretical peptide mass from percolator, for the fixed modification of carbamidomethyl
-identifications_df['observed_monoisotopic_mass'] = (identifications_df[monoisotopic_mz_column_name] * identifications_df.charge) - (PROTON_MASS * identifications_df.charge)
+identifications_df['observed_monoisotopic_mass'] = (identifications_df.monoisotopic_mz * identifications_df.charge) - (PROTON_MASS * identifications_df.charge)
 identifications_df['theoretical_peptide_mass'] = identifications_df['peptide mass'] + (identifications_df.sequence.str.count('C') * ADD_C_CYSTEINE_DA)
 
 # now we can calculate the difference between the feature's monoisotopic mass and the theoretical peptide mass that is calculated from the 

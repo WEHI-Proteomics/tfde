@@ -138,9 +138,7 @@ def peak_ratio(monoisotopic_mass, peak_number, number_of_sulphur):
     return ratio
 
 # determine the mono peak apex and extent in CCS and RT and calculate isotopic peak intensities
-def determine_mono_characteristics(feature_d, precursor_cuboid_d, raw_points_df):
-    envelope = json.loads(feature_d['envelope'])
-    monoisotopic_mass = feature_d['monoisotopic_mass']
+def determine_mono_characteristics(envelope, raw_points_df):
 
     # determine the raw points that belong to the mono peak
     mono_mz = envelope[0][0]
@@ -217,11 +215,7 @@ def determine_mono_characteristics(feature_d, precursor_cuboid_d, raw_points_df)
         # constrain the mono points to the RT extent
         mono_points_df = mono_points_df[(mono_points_df.retention_time_secs >= rt_lower) & (mono_points_df.retention_time_secs <= rt_upper)]
 
-        # now that we have the full extent of the feature in RT, recalculate the feature m/z to gain the most mass accuracy (without points in saturation)
-        mono_points_without_saturation_df = mono_points_df[(mono_points_df.intensity < SATURATION_INTENSITY)]
-        monoisotopic_mz_without_saturated_points = intensity_weighted_centroid(mono_points_without_saturation_df.intensity.to_numpy(), mono_points_without_saturation_df.mz.to_numpy())
-
-        # constrain the raw points to the CCS and RT extent of the monoisotopic peak
+        # for the whole feature, constrain the raw points to the CCS and RT extent of the monoisotopic peak
         mono_ccs_rt_extent_df = raw_points_df[(raw_points_df.scan >= scan_lower) & (raw_points_df.scan <= scan_upper) & (raw_points_df.retention_time_secs >= rt_lower) & (raw_points_df.retention_time_secs <= rt_upper)]
 
         # calculate the isotope intensities from the constrained raw points
@@ -236,6 +230,10 @@ def determine_mono_characteristics(feature_d, precursor_cuboid_d, raw_points_df)
             saturated = (df.intensity.max() > SATURATION_INTENSITY)
             isotopes_l.append({'mz':mz, 'mz_lower':mz_lower, 'mz_upper':mz_upper, 'intensity':df.intensity.sum(), 'saturated':saturated})
         isotopes_df = pd.DataFrame(isotopes_l)
+
+        # recalculate the mono m/z to gain the most mass accuracy (without points in saturation)
+        mono_points_without_saturation_df = mono_points_df[(mono_points_df.intensity < SATURATION_INTENSITY)]
+        monoisotopic_mz_without_saturated_points = intensity_weighted_centroid(mono_points_without_saturation_df.intensity.to_numpy(), mono_points_without_saturation_df.mz.to_numpy())
 
         # set the summed intensity to be the default adjusted intensity for all isotopes
         isotopes_df['inferred_intensity'] = isotopes_df.intensity
@@ -269,18 +267,23 @@ def determine_mono_characteristics(feature_d, precursor_cuboid_d, raw_points_df)
 
         # package the result
         result_d = {}
-        result_d['mz_apex'] = mono_mz
+        result_d['mz_apex_without_saturation_correction'] = mono_mz
+        result_d['mz_apex_with_saturation_correction'] = monoisotopic_mz_without_saturated_points
         result_d['mz_lower'] = mz_lower
         result_d['mz_upper'] = mz_upper
-        result_d['mono_mz_without_saturated_points'] = monoisotopic_mz_without_saturated_points
+
         result_d['scan_apex'] = scan_apex
         result_d['scan_lower'] = scan_lower
         result_d['scan_upper'] = scan_upper
+
         result_d['rt_apex'] = rt_apex
         result_d['rt_lower'] = rt_lower
         result_d['rt_upper'] = rt_upper
-        result_d['mono_intensity_from_raw_points'] = isotopes_df.iloc[0].inferred_intensity if isotopes_df.iloc[0].inferred else isotopes_df.iloc[0].intensity
+
+        result_d['mono_intensity_without_saturation_correction'] = isotopes_df.iloc[0].intensity
+        result_d['mono_intensity_with_saturation_correction'] = isotopes_df.iloc[0].inferred_intensity
         result_d['mono_intensity_adjustment_outcome'] = outcome
+
         result_d['isotopic_peaks'] = isotopes_df.to_dict('records')
         result_d['scan_df'] = scan_df.to_dict('records')
         result_d['rt_df'] = rt_df.to_dict('records')
@@ -389,29 +392,26 @@ def detect_features(precursor_cuboid_d, converted_db_name, visualise):
         feature_l = []
         for idx,row in enumerate(deconvolution_features_df.itertuples()):
             feature_d = {}
-            # from deconvolution for this feature
-            feature_d['monoisotopic_mz'] = row.mono_mz
-            feature_d['charge'] = row.charge
-            feature_d['monoisotopic_mass'] = (feature_d['monoisotopic_mz'] * feature_d['charge']) - (PROTON_MASS * feature_d['charge'])
-            feature_d['feature_intensity'] = row.intensity
-            feature_d['envelope_mono_peak_mz'] = row.envelope[0][0]
-            feature_d['envelope_mono_peak_intensity'] = row.envelope[0][1]
-            feature_d['envelope'] = json.dumps([tuple(e) for e in row.envelope])
-            feature_d['isotope_count'] = len(row.envelope)
-            feature_d['deconvolution_score'] = row.score
-            mono_characteristics_d = determine_mono_characteristics(feature_d=feature_d, precursor_cuboid_d=precursor_cuboid_d, raw_points_df=wide_ms1_points_df)
+            mono_characteristics_d = determine_mono_characteristics(envelope=row.envelope, raw_points_df=wide_ms1_points_df)
             if mono_characteristics_d is not None:
                 # add the characteristics to the feature dictionary
                 feature_d = {**feature_d, **mono_characteristics_d}
-            # from the precursor cuboid
-            feature_d['precursor_cuboid_id'] = precursor_cuboid_d['precursor_cuboid_id']
-            # resolve the feature's fragment ions
-            fragment_ions_l = resolve_fragment_ions(feature_d, ms2_points_df)
-            feature_d['fragment_ions_l'] = json.dumps(fragment_ions_l)
-            # assign a unique identifier to this feature
-            feature_d['feature_id'] = generate_feature_id(precursor_cuboid_d['precursor_cuboid_id'], idx+1)
-            # add it to the list
-            feature_l.append(feature_d)
+                feature_d['monoisotopic_mz'] = mono_characteristics_d['mz_apex_with_saturation_correction'] if args.correct_for_saturation else mono_characteristics_d['mz_apex_without_saturation_correction']
+                feature_d['charge'] = row.charge
+                feature_d['monoisotopic_mass'] = (feature_d['monoisotopic_mz'] * feature_d['charge']) - (PROTON_MASS * feature_d['charge'])
+                feature_d['feature_intensity'] = mono_characteristics_d['mono_intensity_with_saturation_correction'] if args.correct_for_saturation else mono_characteristics_d['mono_intensity_without_saturation_correction']
+                feature_d['envelope'] = json.dumps([tuple(e) for e in row.envelope])
+                feature_d['isotope_count'] = len(row.envelope)
+                feature_d['deconvolution_score'] = row.score
+                # from the precursor cuboid
+                feature_d['precursor_cuboid_id'] = precursor_cuboid_d['precursor_cuboid_id']
+                # resolve the feature's fragment ions
+                fragment_ions_l = resolve_fragment_ions(feature_d, ms2_points_df)
+                feature_d['fragment_ions_l'] = json.dumps(fragment_ions_l)
+                # assign a unique identifier to this feature
+                feature_d['feature_id'] = generate_feature_id(precursor_cuboid_d['precursor_cuboid_id'], idx+1)
+                # add it to the list
+                feature_l.append(feature_d)
         features_df = pd.DataFrame(feature_l)
     else:
         deconvolution_features_df = pd.DataFrame()
@@ -494,6 +494,7 @@ parser.add_argument('-ini','--ini_file', type=str, default='./otf-peak-detect/pi
 parser.add_argument('-pid', '--precursor_id', type=int, help='Only process this precursor ID.', required=False)
 parser.add_argument('-rm','--ray_mode', type=str, choices=['local','cluster'], help='The Ray mode to use.', required=True)
 parser.add_argument('-pc','--proportion_of_cores_to_use', type=float, default=0.9, help='Proportion of the machine\'s cores to use for this program.', required=False)
+parser.add_argument('-cs','--correct_for_saturation', action='store_true', help='Correct for saturation when calculating monoisotopic m/z and intensity.')
 parser.add_argument('-fmdw','--filter_by_mass_defect', action='store_true', help='Filter fragment ions by mass defect windows.')
 parser.add_argument('-drd','--do_not_remove_duplicates', action='store_true', help='Do not remove duplicated features.')
 args = parser.parse_args()
