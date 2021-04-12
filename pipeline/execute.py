@@ -1,3 +1,5 @@
+from doit import get_var
+
 # This is the set of tasks to take a raw instrument database and create a list of peptides
 
 experiment_base_dir = '/media/big-ssd/experiments'
@@ -9,6 +11,8 @@ precursor_definition_method = 'pasef'
 
 EXPERIMENT_DIR = "{}/{}".format(experiment_base_dir, experiment_name)
 
+config = {"rt_lower": get_var('rl', 1650)}
+print(config)
 
 ####################
 # raw conversion (TO BE ADDED)
