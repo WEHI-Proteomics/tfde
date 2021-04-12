@@ -136,6 +136,11 @@ with open(IDENTIFICATIONS_FILE, 'rb') as handle:
 idents_df = idents_df[(idents_df['percolator q-value'] <= MAXIMUM_Q_VALUE_FOR_RECAL_TRAINING_SET)]
 print('loaded {} identifications with q-value lower than {} from {}'.format(len(idents_df), MAXIMUM_Q_VALUE_FOR_RECAL_TRAINING_SET, IDENTIFICATIONS_FILE))
 
+# check there are some to use
+if len(idents_df) == 0:
+    print("No identifications are available for the training set")
+    sys.exit(1)
+
 # load the features for recalibration
 FEATURES_DIR = '{}/features-{}'.format(EXPERIMENT_DIR, args.precursor_definition_method)
 feature_files = glob.glob("{}/exp-{}-run-*-features-{}-dedup.pkl".format(FEATURES_DIR, args.experiment_name, args.precursor_definition_method))
