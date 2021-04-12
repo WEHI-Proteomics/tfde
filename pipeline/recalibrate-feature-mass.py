@@ -62,7 +62,7 @@ def adjust_features(run_name, idents_for_training_df, run_features_df):
     print("R-squared for training set: {}, test set: {}".format(round(train_score,2), round(test_score,2)))
 
     # use the trained model to predict the mass error for all the detected features
-    X = run_features_df[['mono_mz_without_saturated_points','scan_apex','rt_apex','feature_intensity']].to_numpy()
+    X = run_features_df[['monoisotopic_mz','scan_apex','rt_apex','feature_intensity']].to_numpy()
     y = best_estimator.predict(X)
 
     # collate the recalibrated feature attributes
