@@ -143,7 +143,7 @@ def peak_ratio(monoisotopic_mass, peak_number, number_of_sulphur):
     return ratio
 
 # determine the mono peak apex and extent in CCS and RT and calculate isotopic peak intensities
-def determine_mono_characteristics(envelope, raw_points_df):
+def determine_mono_characteristics(envelope, monoisotopic_mass, raw_points_df):
 
     # determine the raw points that belong to the mono peak
     mono_mz = envelope[0][0]
@@ -151,7 +151,6 @@ def determine_mono_characteristics(envelope, raw_points_df):
     mz_lower = mono_mz - mz_delta
     mz_upper = mono_mz + mz_delta
     mono_points_df = raw_points_df[(raw_points_df.mz >= mz_lower) & (raw_points_df.mz <= mz_upper)]
-    calculate_monoisotopic_mass_from_mz(mono_mz, charge)
 
     # determine the peak's extent in CCS and RT
     if len(mono_points_df) > 0:
