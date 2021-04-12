@@ -17,6 +17,11 @@ def run_process(process):
     if exit_status != 0:
         print('command had an exit status of {}'.format(exit_status))
 
+# calculate the monoisotopic mass    
+def calculate_monoisotopic_mass_from_mz(monoisotopic_mz, charge):
+    monoisotopic_mass = (monoisotopic_mz * charge) - (PROTON_MASS * charge)
+    return monoisotopic_mass
+
 
 ################################
 parser = argparse.ArgumentParser(description='Re-rank the collection of PSMs from Comet using the Percolator algorithm.')
@@ -46,9 +51,13 @@ if not os.path.exists(EXPERIMENT_DIR):
 if not args.recalibration_mode:
     COMET_OUTPUT_DIR = "{}/comet-output-{}".format(EXPERIMENT_DIR, args.precursor_definition_method)
     PERCOLATOR_OUTPUT_DIR = "{}/percolator-output-{}".format(EXPERIMENT_DIR, args.precursor_definition_method)
+    # the monoisotopic m/z to use
+    monoisotopic_mz_column_name = 'monoisotopic_mz'
 else:
     COMET_OUTPUT_DIR = "{}/comet-output-{}-recalibrated".format(EXPERIMENT_DIR, args.precursor_definition_method)
     PERCOLATOR_OUTPUT_DIR = "{}/percolator-output-{}-recalibrated".format(EXPERIMENT_DIR, args.precursor_definition_method)
+    # the monoisotopic m/z to use
+    monoisotopic_mz_column_name = 'recalibrated_monoisotopic_mz'
 
 # check the comet directory
 if not os.path.exists(COMET_OUTPUT_DIR):
@@ -128,7 +137,7 @@ identifications_df = pd.merge(features_df, percolator_df, how='left', left_on=['
 identifications_df.dropna(subset=['sequence'], inplace=True)
 
 # add the mass of cysteine carbamidomethylation to the theoretical peptide mass from percolator, for the fixed modification of carbamidomethyl
-identifications_df['observed_monoisotopic_mass'] = (identifications_df.monoisotopic_mz * identifications_df.charge) - (PROTON_MASS * identifications_df.charge)
+identifications_df['observed_monoisotopic_mass'] = calculate_monoisotopic_mass_from_mz(identifications_df[monoisotopic_mz_column_name], identifications_df.charge)
 identifications_df['theoretical_peptide_mass'] = identifications_df['peptide mass'] + (identifications_df.sequence.str.count('C') * ADD_C_CYSTEINE_DA)
 
 # now we can calculate the difference between the feature's monoisotopic mass and the theoretical peptide mass that is calculated from the 
