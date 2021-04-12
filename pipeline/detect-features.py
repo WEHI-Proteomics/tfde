@@ -417,8 +417,6 @@ def detect_features(precursor_cuboid_d, converted_db_name, visualise):
                 feature_d['feature_id'] = generate_feature_id(precursor_cuboid_d['precursor_cuboid_id'], idx+1)
                 # add it to the list
                 feature_l.append(feature_d)
-                # debug
-                print('mono mass from deconv: {}, from raw: {}, diff: {}'.format(row.neutral_mass, feature_d['monoisotopic_mass'], row.neutral_mass-feature_d['monoisotopic_mass']))
         features_df = pd.DataFrame(feature_l)
     else:
         deconvolution_features_df = pd.DataFrame()
