@@ -19,13 +19,13 @@ config = {
     }
 
 # correct for saturation
-if config['correct_for_saturation'] == 'true'
+if config['correct_for_saturation'] == 'true':
     config['correct_for_saturation'] = '-cs'
 else:
     config['correct_for_saturation'] = ''
 
 # filter by mass defect windows
-if config['filter_by_mass_defect'] == 'true'
+if config['filter_by_mass_defect'] == 'true':
     config['filter_by_mass_defect'] = '-fmdw'
 else:
     config['filter_by_mass_defect'] = ''
