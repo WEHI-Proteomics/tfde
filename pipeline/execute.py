@@ -1,3 +1,5 @@
+import argparse
+
 # This is the set of tasks to take a raw instrument database and create a list of peptides
 
 experiment_base_dir = '/media/big-ssd/experiments'
@@ -8,6 +10,17 @@ fasta_file_name = '../fasta/Human_Yeast_Ecoli.fasta'
 precursor_definition_method = 'pasef'
 
 EXPERIMENT_DIR = "{}/{}".format(experiment_base_dir, experiment_name)
+
+parser = argparse.ArgumentParser(description='Detect the features in a run\'s precursor cuboids.')
+parser.add_argument('-rl','--rt_lower', type=int, default='1650', help='Lower limit for retention time.', required=False)
+parser.add_argument('-ru','--rt_upper', type=int, default='2200', help='Upper limit for retention time.', required=False)
+args = parser.parse_args()
+
+# Print the arguments for the log
+info = []
+for arg in vars(args):
+    info.append((arg, getattr(args, arg)))
+print(info)
 
 
 ####################
@@ -43,7 +56,7 @@ def task_detect_features():
     CUBOIDS_DIR = "{}/precursor-cuboids-{}".format(EXPERIMENT_DIR, precursor_definition_method)
     CUBOIDS_FILE = '{}/exp-{}-run-{}-precursor-cuboids-{}.pkl'.format(CUBOIDS_DIR, experiment_name, run_name, precursor_definition_method)
     # command
-    cmd = 'python -u detect-features.py -eb {experiment_base} -en {experiment_name} -rn {run_name} -ini {INI_FILE} -rm cluster -pdm {precursor_definition_method} -fmdw'.format(experiment_base=experiment_base_dir, experiment_name=experiment_name, run_name=run_name, INI_FILE=ini_file, precursor_definition_method=precursor_definition_method)
+    cmd = 'python -u detect-features.py -eb {experiment_base} -en {experiment_name} -rn {run_name} -ini {INI_FILE} -rm cluster -pdm {precursor_definition_method} -rl {rl} -ru {ru} -fmdw'.format(experiment_base=experiment_base_dir, experiment_name=experiment_name, run_name=run_name, INI_FILE=ini_file, precursor_definition_method=precursor_definition_method, rl=args.rt_lower, ru=args.rt_upper)
     # output
     FEATURES_DIR = "{}/features-{}".format(EXPERIMENT_DIR, precursor_definition_method)
     FEATURES_FILE = '{}/exp-{}-run-{}-features-{}.pkl'.format(FEATURES_DIR, experiment_name, run_name, precursor_definition_method)
