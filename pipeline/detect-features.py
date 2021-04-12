@@ -76,7 +76,12 @@ def calculate_peak_delta(mz):
     sigma = delta_m / 2.35482  # std dev is FWHM / 2.35482. See https://en.wikipedia.org/wiki/Full_width_at_half_maximum
     peak_delta = 3 * sigma  # 99.7% of values fall within +/- 3 sigma
     return peak_delta
-    
+
+# calculate the monoisotopic mass    
+def calculate_monoisotopic_mass_from_mz(monoisotopic_mz, charge):
+    monoisotopic_mass = (monoisotopic_mz * charge) - (PROTON_MASS * charge)
+    return monoisotopic_mass
+
 # Find the ratio of H(peak_number)/H(peak_number-1) for peak_number=1..6
 # peak_number = 0 refers to the monoisotopic peak
 # number_of_sulphur = number of sulphur atoms in the molecule
@@ -146,6 +151,7 @@ def determine_mono_characteristics(envelope, raw_points_df):
     mz_lower = mono_mz - mz_delta
     mz_upper = mono_mz + mz_delta
     mono_points_df = raw_points_df[(raw_points_df.mz >= mz_lower) & (raw_points_df.mz <= mz_upper)]
+    calculate_monoisotopic_mass_from_mz(mono_mz, charge)
 
     # determine the peak's extent in CCS and RT
     if len(mono_points_df) > 0:
@@ -392,13 +398,13 @@ def detect_features(precursor_cuboid_d, converted_db_name, visualise):
         feature_l = []
         for idx,row in enumerate(deconvolution_features_df.itertuples()):
             feature_d = {}
-            mono_characteristics_d = determine_mono_characteristics(envelope=row.envelope, raw_points_df=wide_ms1_points_df)
+            mono_characteristics_d = determine_mono_characteristics(envelope=row.envelope, monoisotopic_mass=row.neutral_mass, raw_points_df=wide_ms1_points_df)
             if mono_characteristics_d is not None:
                 # add the characteristics to the feature dictionary
                 feature_d = {**feature_d, **mono_characteristics_d}
                 feature_d['monoisotopic_mz'] = mono_characteristics_d['mz_apex_with_saturation_correction'] if args.correct_for_saturation else mono_characteristics_d['mz_apex_without_saturation_correction']
                 feature_d['charge'] = row.charge
-                feature_d['monoisotopic_mass'] = (feature_d['monoisotopic_mz'] * feature_d['charge']) - (PROTON_MASS * feature_d['charge'])
+                feature_d['monoisotopic_mass'] = calculate_monoisotopic_mass_from_mz(monoisotopic_mz=feature_d['monoisotopic_mz'], charge=feature_d['charge'])
                 feature_d['feature_intensity'] = mono_characteristics_d['mono_intensity_with_saturation_correction'] if args.correct_for_saturation else mono_characteristics_d['mono_intensity_without_saturation_correction']
                 feature_d['envelope'] = json.dumps([tuple(e) for e in row.envelope])
                 feature_d['isotope_count'] = len(row.envelope)
@@ -412,6 +418,8 @@ def detect_features(precursor_cuboid_d, converted_db_name, visualise):
                 feature_d['feature_id'] = generate_feature_id(precursor_cuboid_d['precursor_cuboid_id'], idx+1)
                 # add it to the list
                 feature_l.append(feature_d)
+                # debug
+                print('mono mass from deconv: {}, from raw: {}, diff: {}'.format(row.neutral_mass, feature_d['monoisotopic_mass'], row.neutral_mass-feature_d['monoisotopic_mass']))
         features_df = pd.DataFrame(feature_l)
     else:
         deconvolution_features_df = pd.DataFrame()
