@@ -578,7 +578,7 @@ precursor_cuboids_df = d['coords_df']
 if args.precursor_definition_method == 'pasef':
     rt_lower_column = 'wide_ms1_rt_lower'
     rt_upper_column = 'wide_ms1_rt_upper'
-else
+else:
     rt_lower_column = 'rt_lower'
     rt_upper_column = 'rt_upper'
 precursor_cuboids_df = precursor_cuboids_df[(precursor_cuboids_df[rt_lower_column] > args.rt_lower) & (precursor_cuboids_df[rt_upper_column] < args.rt_upper)]
