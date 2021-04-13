@@ -387,11 +387,14 @@ def detect_features(precursor_cuboid_d, converted_db_name, visualise):
             deconvolution_features_df = high_quality_df
         else:
             deconvolution_features_df = min_quality_df.loc[min_quality_df.score.idxmax()].to_frame().T
-        
-        # load the ms2 data for the precursor
-        db_conn = sqlite3.connect(converted_db_name)
-        ms2_points_df = pd.read_sql_query("select frame_id,mz,scan,intensity,retention_time_secs from frames where frame_type == {} and retention_time_secs >= {} and retention_time_secs <= {} and scan >= {} and scan <= {}".format(FRAME_TYPE_MS2, precursor_cuboid_d['ms2_rt_lower'], precursor_cuboid_d['ms2_rt_upper'], precursor_cuboid_d['scan_lower'], precursor_cuboid_d['scan_upper']), db_conn)
-        db_conn.close()
+
+        if args.precursor_definition_method != '3did':  # ms2 is not yet implemented for 3DID
+            # load the ms2 data for the precursor
+            db_conn = sqlite3.connect(converted_db_name)
+            ms2_points_df = pd.read_sql_query("select frame_id,mz,scan,intensity,retention_time_secs from frames where frame_type == {} and retention_time_secs >= {} and retention_time_secs <= {} and scan >= {} and scan <= {}".format(FRAME_TYPE_MS2, precursor_cuboid_d['ms2_rt_lower'], precursor_cuboid_d['ms2_rt_upper'], precursor_cuboid_d['scan_lower'], precursor_cuboid_d['scan_upper']), db_conn)
+            db_conn.close()
+        else:
+            ms2_points_df = None
 
         # determine the feature attributes
         feature_l = []
@@ -411,7 +414,7 @@ def detect_features(precursor_cuboid_d, converted_db_name, visualise):
                 # from the precursor cuboid
                 feature_d['precursor_cuboid_id'] = precursor_cuboid_d['precursor_cuboid_id']
                 # resolve the feature's fragment ions
-                fragment_ions_l = resolve_fragment_ions(feature_d, ms2_points_df)
+                fragment_ions_l = resolve_fragment_ions(feature_d, ms2_points_df) if args.precursor_definition_method != '3did' else []
                 feature_d['fragment_ions_l'] = json.dumps(fragment_ions_l)
                 # assign a unique identifier to this feature
                 feature_d['feature_id'] = generate_feature_id(precursor_cuboid_d['precursor_cuboid_id'], idx+1)
