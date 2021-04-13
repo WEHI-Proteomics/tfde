@@ -243,11 +243,21 @@ def find_precursor_cuboids(segment_mz_lower, segment_mz_upper):
                     points_to_remove_l = raw_df[(raw_df.mz >= mz_lower) & (raw_df.mz <= mz_upper) & (raw_df.scan >= scan_lower) & (raw_df.scan <= scan_upper) & (raw_df.retention_time_secs >= rt_lower) & (raw_df.retention_time_secs <= rt_upper)].point_id.tolist()
 
                     # add this cuboid to the list
-                    precursor_coordinates_columns = ['mz_lower', 'mz_upper', 'scan_lower', 'scan_upper', 'rt_lower', 'rt_upper', 'anchor_point_intensity', 'anchor_point_mz', 'anchor_point_scan', 'anchor_point_retention_time_secs', 'anchor_point_frame_id', 'number_of_isotope_clusters', 'number_of_point_clusters_in_anchor_isotope_cluster']
-                    precursor_coordinates_values = [mz_lower, mz_upper, int(scan_lower), int(scan_upper), rt_lower, rt_upper, int(anchor_point_s.intensity), anchor_point_s.mz, int(anchor_point_s.scan), anchor_point_s.retention_time_secs, int(anchor_point_s.frame_id), int(number_of_isotope_clusters), int(number_of_point_clusters_in_anchor_isotope_cluster)]
-                    precursor_coordinates_d = {}
-                    for idx,c in enumerate(precursor_coordinates_columns):
-                        precursor_coordinates_d[c] = precursor_coordinates_values[idx]
+                    precursor_coordinates_d = {
+                        'mz_lower':mz_lower, 
+                        'mz_upper':mz_upper, 
+                        'scan_lower':int(scan_lower), 
+                        'scan_upper':int(scan_upper), 
+                        'rt_lower':rt_lower, 
+                        'rt_upper':rt_upper, 
+                        'anchor_point_intensity':int(anchor_point_s.intensity), 
+                        'anchor_point_mz':anchor_point_s.mz, 
+                        'anchor_point_scan':int(anchor_point_s.scan), 
+                        'anchor_point_retention_time_secs':anchor_point_s.retention_time_secs, 
+                        'anchor_point_frame_id':int(anchor_point_s.frame_id), 
+                        'number_of_isotope_clusters':int(number_of_isotope_clusters), 
+                        'number_of_point_clusters_in_anchor_isotope_cluster':int(number_of_point_clusters_in_anchor_isotope_cluster)
+                        }
                     precursor_cuboids_l.append(precursor_coordinates_d)
 
                     # print('.', end='', flush=True)
