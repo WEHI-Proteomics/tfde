@@ -224,8 +224,15 @@ def task_make_copies():
     source_features_dir = '{}/features-{}'.format(EXPERIMENT_DIR, precursor_definition_method)
     features_cp_cmd = 'cp -r {} {}'.format(source_features_dir, target_features_dir)
 
+    # copy identifications
+    target_identifications_dir = '{}/identifications-{}-cs-{}-fmdw-{}/'.format(expanduser("~"), precursor_definition_method, config['correct_for_saturation'], config['filter_by_mass_defect'])
+    rm_identifications_cp_cmd = 'rm -rf {}'.format(target_identifications_dir)
+
+    source_identifications_dir = '{}/identifications-{}'.format(EXPERIMENT_DIR, precursor_definition_method)
+    identifications_cp_cmd = 'cp -r {} {}'.format(source_identifications_dir, target_identifications_dir)
+
     return {
         'task_dep': ['identify_searched_features_recalibrated'],
-        'actions': [rm_features_cp_cmd, features_cp_cmd],
+        'actions': [rm_features_cp_cmd, features_cp_cmd, rm_identifications_cp_cmd, identifications_cp_cmd],
         'verbosity': 2
     }
