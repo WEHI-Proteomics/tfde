@@ -16,6 +16,7 @@ config = {
     'rt_upper': get_var('ru', 2200),
     'correct_for_saturation': get_var('cs', 'true'),
     'filter_by_mass_defect': get_var('fmdw', 'true'),
+    'proportion_of_cores_to_use': get_var('pc', 0.8)
     }
 
 # correct for saturation
@@ -63,7 +64,7 @@ def task_detect_features():
     CUBOIDS_DIR = "{}/precursor-cuboids-{}".format(EXPERIMENT_DIR, precursor_definition_method)
     CUBOIDS_FILE = '{}/exp-{}-run-{}-precursor-cuboids-{}.pkl'.format(CUBOIDS_DIR, experiment_name, run_name, precursor_definition_method)
     # command
-    cmd = 'python -u detect-features.py -eb {experiment_base} -en {experiment_name} -rn {run_name} -ini {INI_FILE} -rm cluster -pdm {precursor_definition_method} -rl {rl} -ru {ru} {cs} {fmdw}'.format(experiment_base=experiment_base_dir, experiment_name=experiment_name, run_name=run_name, INI_FILE=ini_file, precursor_definition_method=precursor_definition_method, rl=int(config['rt_lower']), ru=int(config['rt_upper']), cs=config['correct_for_saturation'], fmdw=config['filter_by_mass_defect'])
+    cmd = 'python -u detect-features.py -eb {experiment_base} -en {experiment_name} -rn {run_name} -ini {INI_FILE} -rm cluster -pc {proportion_of_cores_to_use} -pdm {precursor_definition_method} -rl {rl} -ru {ru} {cs} {fmdw}'.format(experiment_base=experiment_base_dir, experiment_name=experiment_name, run_name=run_name, INI_FILE=ini_file, proportion_of_cores_to_use=config['proportion_of_cores_to_use'], precursor_definition_method=precursor_definition_method, rl=int(config['rt_lower']), ru=int(config['rt_upper']), cs=config['correct_for_saturation'], fmdw=config['filter_by_mass_defect'])
     # output
     FEATURES_DIR = "{}/features-{}".format(EXPERIMENT_DIR, precursor_definition_method)
     FEATURES_FILE = '{}/exp-{}-run-{}-features-{}.pkl'.format(FEATURES_DIR, experiment_name, run_name, precursor_definition_method)
