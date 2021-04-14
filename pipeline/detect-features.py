@@ -407,7 +407,7 @@ def detect_features(precursor_cuboid_d, converted_db_name, visualise):
                 feature_d['monoisotopic_mz'] = mono_characteristics_d['mz_apex_with_saturation_correction'] if args.correct_for_saturation else mono_characteristics_d['mz_apex_without_saturation_correction']
                 feature_d['charge'] = row.charge
                 feature_d['monoisotopic_mass'] = calculate_monoisotopic_mass_from_mz(monoisotopic_mz=feature_d['monoisotopic_mz'], charge=feature_d['charge'])
-                feature_d['feature_intensity'] = mono_characteristics_d['mono_intensity_with_saturation_correction'] if args.correct_for_saturation else mono_characteristics_d['mono_intensity_without_saturation_correction']
+                feature_d['feature_intensity'] = mono_characteristics_d['mono_intensity_with_saturation_correction'] if (args.correct_for_saturation and (mono_characteristics_d['mono_intensity_with_saturation_correction'] > mono_characteristics_d['mono_intensity_without_saturation_correction'])) else mono_characteristics_d['mono_intensity_without_saturation_correction']
                 feature_d['envelope'] = json.dumps([tuple(e) for e in row.envelope])
                 feature_d['isotope_count'] = len(row.envelope)
                 feature_d['deconvolution_score'] = row.score
