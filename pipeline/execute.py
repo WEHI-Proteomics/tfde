@@ -19,6 +19,8 @@ config = {
     'proportion_of_cores_to_use': get_var('pc', 0.8)
     }
 
+print(config)
+
 # correct for saturation
 if config['correct_for_saturation'] == 'true':
     config['correct_for_saturation'] = '-cs'
