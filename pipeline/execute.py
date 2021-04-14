@@ -1,4 +1,5 @@
 from doit import get_var
+from os.path import expanduser
 
 # This is the set of tasks to take a raw instrument database and create a list of peptides
 
@@ -212,5 +213,19 @@ def task_identify_searched_features_recalibrated():
         'actions': [cmd],
         'targets': [IDENTIFICATIONS_FILE],
         'clean': True,
+        'verbosity': 2
+    }
+
+def task_make_copies():
+    # copy features
+    target_features_dir = '{}/features-{}-cs-{}-fmdw-{}/'.format(expanduser("~"), precursor_definition_method, config['correct_for_saturation'], config['filter_by_mass_defect'])
+    rm_features_cp_cmd = 'rm -rf {}'.format(target_features_dir)
+
+    source_features_dir = '{}/features-{}'.format(EXPERIMENT_DIR, precursor_definition_method)
+    features_cp_cmd = 'cp -r {} {}'.format(source_features_dir, target_features_dir)
+
+    return {
+        'task_dep': ['identify_searched_features_recalibrated'],
+        'actions': [rm_features_cp_cmd, features_cp_cmd],
         'verbosity': 2
     }
