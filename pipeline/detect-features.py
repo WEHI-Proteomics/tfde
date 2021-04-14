@@ -148,9 +148,9 @@ def determine_mono_characteristics(envelope, monoisotopic_mass, raw_points_df):
     # determine the raw points that belong to the mono peak
     mono_mz = envelope[0][0]
     mz_delta = calculate_peak_delta(mz=mono_mz)
-    mz_lower = mono_mz - mz_delta
-    mz_upper = mono_mz + mz_delta
-    mono_points_df = raw_points_df[(raw_points_df.mz >= mz_lower) & (raw_points_df.mz <= mz_upper)]
+    mono_mz_lower = mono_mz - mz_delta
+    mono_mz_upper = mono_mz + mz_delta
+    mono_points_df = raw_points_df[(raw_points_df.mz >= mono_mz_lower) & (raw_points_df.mz <= mono_mz_upper)]
 
     # determine the peak's extent in CCS and RT
     if len(mono_points_df) > 0:
@@ -226,14 +226,14 @@ def determine_mono_characteristics(envelope, monoisotopic_mass, raw_points_df):
         # calculate the isotope intensities from the constrained raw points
         isotopes_l = []
         for idx,isotope in enumerate(envelope):
-            mz = isotope[0]
-            intensity = isotope[1]
-            mz_delta = calculate_peak_delta(mz)
-            mz_lower = mz - mz_delta
-            mz_upper = mz + mz_delta
-            df = mono_ccs_rt_extent_df[(mono_ccs_rt_extent_df.mz >= mz_lower) & (mono_ccs_rt_extent_df.mz <= mz_upper)]
+            iso_mz = isotope[0]
+            iso_intensity = isotope[1]
+            iso_mz_delta = calculate_peak_delta(iso_mz)
+            iso_mz_lower = iso_mz - iso_mz_delta
+            iso_mz_upper = iso_mz + iso_mz_delta
+            df = mono_ccs_rt_extent_df[(mono_ccs_rt_extent_df.mz >= iso_mz_lower) & (mono_ccs_rt_extent_df.mz <= iso_mz_upper)]
             saturated = (df.intensity.max() > SATURATION_INTENSITY)
-            isotopes_l.append({'mz':mz, 'mz_lower':mz_lower, 'mz_upper':mz_upper, 'intensity':df.intensity.sum(), 'saturated':saturated})
+            isotopes_l.append({'mz':iso_mz, 'mz_lower':iso_mz_lower, 'mz_upper':iso_mz_upper, 'intensity':df.intensity.sum(), 'saturated':saturated})
         isotopes_df = pd.DataFrame(isotopes_l)
 
         # recalculate the mono m/z to gain the most mass accuracy (without points in saturation)
@@ -274,8 +274,8 @@ def determine_mono_characteristics(envelope, monoisotopic_mass, raw_points_df):
         result_d = {}
         result_d['mz_apex_without_saturation_correction'] = mono_mz
         result_d['mz_apex_with_saturation_correction'] = monoisotopic_mz_without_saturated_points
-        result_d['mz_lower'] = mz_lower
-        result_d['mz_upper'] = mz_upper
+        result_d['mz_lower'] = mono_mz_lower
+        result_d['mz_upper'] = mono_mz_upper
 
         result_d['scan_apex'] = scan_apex
         result_d['scan_lower'] = scan_lower
