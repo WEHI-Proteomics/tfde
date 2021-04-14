@@ -13,7 +13,7 @@ EXPERIMENT_DIR = "{}/{}".format(experiment_base_dir, experiment_name)
 
 config = {
     'rt_lower': get_var('rl', 1650),
-    'rt_upper': get_var('ru', 2000),
+    'rt_upper': get_var('ru', 2200),
     'correct_for_saturation': get_var('cs', 'true'),
     'filter_by_mass_defect': get_var('fmdw', 'true'),
     }
