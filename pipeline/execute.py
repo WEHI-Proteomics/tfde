@@ -229,9 +229,10 @@ def task_make_copies():
     target_directory_name = ''
 
     def set_up_target_dir():
+        nonlocal target_directory_name
         # set up copy directory
         d = datetime.datetime.now()
-        nonlocal target_directory_name = '{}/{}-results-cs-{}-fmdw-{}-{}'.format(expanduser("~"), experiment_name, config['correct_for_saturation'], config['filter_by_mass_defect'], d.strftime("%Y-%m-%d-%H-%M-%S"))
+        target_directory_name = '{}/{}-results-cs-{}-fmdw-{}-{}'.format(expanduser("~"), experiment_name, config['correct_for_saturation'], config['filter_by_mass_defect'], d.strftime("%Y-%m-%d-%H-%M-%S"))
         if os.path.exists(target_directory_name):
             shutil.rmtree(target_directory_name)
         os.makedirs(target_directory_name)
