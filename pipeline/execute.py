@@ -246,12 +246,14 @@ def task_make_copies():
         # copy features
         source_features_dir = '{}/features-{}'.format(EXPERIMENT_DIR, precursor_definition_method)
         features_cp_cmd = 'cp -r {}/ {}/'.format(source_features_dir, target_directory_name)
+        print(features_cp_cmd)
         return features_cp_cmd
 
     def create_idents_cmd_string():
         # copy identifications
         source_identifications_dir = '{}/identifications-{}'.format(EXPERIMENT_DIR, precursor_definition_method)
         identifications_cp_cmd = 'cp -r {}/ {}/'.format(source_identifications_dir, target_directory_name)
+        print(identifications_cp_cmd)
         return identifications_cp_cmd
 
     # input
