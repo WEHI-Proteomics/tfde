@@ -239,8 +239,10 @@ def task_make_copies():
     source_identifications_dir = '{}/identifications-{}'.format(EXPERIMENT_DIR, precursor_definition_method)
     identifications_cp_cmd = 'cp -r {} {}'.format(source_identifications_dir, target_directory_name)
 
+    IDENTIFICATIONS_RECAL_FILE = '{}/exp-{}-identifications-{}-recalibrated.pkl'.format(source_identifications_dir, experiment_name, precursor_definition_method)
+
     return {
-        'task_dep': ['identify_searched_features_recalibrated'],
+        'file_dep': [IDENTIFICATIONS_RECAL_FILE],
         'actions': [features_cp_cmd, identifications_cp_cmd],
         'verbosity': 2
     }
