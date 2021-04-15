@@ -1,4 +1,5 @@
 from doit import get_var
+from doit.action import CmdAction
 from os.path import expanduser
 import datetime
 import time
