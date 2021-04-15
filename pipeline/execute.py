@@ -233,16 +233,17 @@ def task_make_copies():
 
     # copy features
     source_features_dir = '{}/features-{}'.format(EXPERIMENT_DIR, precursor_definition_method)
-    features_cp_cmd = 'cp -r {} {}'.format(source_features_dir, target_directory_name)
+    features_cp_cmd = 'cp -r {}/ {}/'.format(source_features_dir, target_directory_name)
 
     # copy identifications
     source_identifications_dir = '{}/identifications-{}'.format(EXPERIMENT_DIR, precursor_definition_method)
-    identifications_cp_cmd = 'cp -r {} {}'.format(source_identifications_dir, target_directory_name)
+    identifications_cp_cmd = 'cp -r {}/ {}/'.format(source_identifications_dir, target_directory_name)
 
     IDENTIFICATIONS_RECAL_FILE = '{}/exp-{}-identifications-{}-recalibrated.pkl'.format(source_identifications_dir, experiment_name, precursor_definition_method)
 
     return {
         'file_dep': [IDENTIFICATIONS_RECAL_FILE],
         'actions': [features_cp_cmd, identifications_cp_cmd],
+        'targets': [target_directory_name],
         'verbosity': 2
     }
