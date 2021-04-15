@@ -1,5 +1,6 @@
 from doit import get_var
 from os.path import expanduser
+import datetime
 
 # This is the set of tasks to take a raw instrument database and create a list of peptides
 
@@ -217,19 +218,18 @@ def task_identify_searched_features_recalibrated():
     }
 
 def task_make_copies():
-    # copy features
-    target_features_dir = '{}/features-{}-cs-{}-fmdw-{}/'.format(expanduser("~"), precursor_definition_method, config['correct_for_saturation'], config['filter_by_mass_defect'])
-    rm_features_cp_cmd = 'rm -rf {}'.format(target_features_dir)
+    # set up copy directory
+    d = datetime.datetime.now()
+    target_directory_name = '{}/{}-results-cs-{}-fmdw-{}-{}'.format(expanduser("~"), experiment_name, config['correct_for_saturation'], config['filter_by_mass_defect'], d.strftime("%Y-%m-%d-%H-%M-%S"))
+    print('copying results to {}'.format(target_directory_name))
 
+    # copy features
     source_features_dir = '{}/features-{}'.format(EXPERIMENT_DIR, precursor_definition_method)
-    features_cp_cmd = 'cp -r {} {}'.format(source_features_dir, target_features_dir)
+    features_cp_cmd = 'cp -r {} {}'.format(source_features_dir, target_directory_name)
 
     # copy identifications
-    target_identifications_dir = '{}/identifications-{}-cs-{}-fmdw-{}/'.format(expanduser("~"), precursor_definition_method, config['correct_for_saturation'], config['filter_by_mass_defect'])
-    rm_identifications_cp_cmd = 'rm -rf {}'.format(target_identifications_dir)
-
     source_identifications_dir = '{}/identifications-{}'.format(EXPERIMENT_DIR, precursor_definition_method)
-    identifications_cp_cmd = 'cp -r {} {}'.format(source_identifications_dir, target_identifications_dir)
+    identifications_cp_cmd = 'cp -r {} {}'.format(source_identifications_dir, target_directory_name)
 
     return {
         'task_dep': ['identify_searched_features_recalibrated'],
