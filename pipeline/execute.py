@@ -1,6 +1,7 @@
 from doit import get_var
 from os.path import expanduser
 import datetime
+import time
 
 # This is the set of tasks to take a raw instrument database and create a list of peptides
 
@@ -34,6 +35,10 @@ if config['filter_by_mass_defect'] == 'true':
     config['fmdw_flag'] = '-fmdw'
 else:
     config['fmdw_flag'] = ''
+
+start_run = time.time()
+
+
 
 ####################
 # raw conversion (TO BE ADDED)
@@ -218,6 +223,9 @@ def task_identify_searched_features_recalibrated():
     }
 
 def task_make_copies():
+    stop_run = time.time()
+    print("total running time ({}): {} seconds".format(config, round(stop_run-start_run,1)))
+
     # set up copy directory
     d = datetime.datetime.now()
     target_directory_name = '{}/{}-results-cs-{}-fmdw-{}-{}'.format(expanduser("~"), experiment_name, config['correct_for_saturation'], config['filter_by_mass_defect'], d.strftime("%Y-%m-%d-%H-%M-%S"))
@@ -233,6 +241,6 @@ def task_make_copies():
 
     return {
         'task_dep': ['identify_searched_features_recalibrated'],
-        'actions': [rm_features_cp_cmd, features_cp_cmd, rm_identifications_cp_cmd, identifications_cp_cmd],
+        'actions': [features_cp_cmd, identifications_cp_cmd],
         'verbosity': 2
     }
