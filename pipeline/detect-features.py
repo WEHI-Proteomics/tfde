@@ -143,10 +143,9 @@ def peak_ratio(monoisotopic_mass, peak_number, number_of_sulphur):
     return ratio
 
 # determine the mono peak apex and extent in CCS and RT and calculate isotopic peak intensities
-def determine_mono_characteristics(envelope, monoisotopic_mass, raw_points_df):
+def determine_mono_characteristics(mono_mz, envelope, monoisotopic_mass, raw_points_df):
 
     # determine the raw points that belong to the mono peak
-    mono_mz = envelope[0][0]
     mz_delta = calculate_peak_delta(mz=mono_mz)
     mono_mz_lower = mono_mz - mz_delta
     mono_mz_upper = mono_mz + mz_delta
@@ -316,7 +315,7 @@ def resolve_fragment_ions(feature_d, ms2_points_df):
     peaks_a = intensity_descent(peaks_a=raw_points_a, peak_delta=None)
     # deconvolute the spectra
     peaks_l = list(map(tuple, peaks_a))
-    maximum_neutral_mass = 1700*feature_d['charge']
+    maximum_neutral_mass = 1700*feature_d['charge']  # give the deconvolution a reasonable upper limit to search within
     deconvoluted_peaks, _ = deconvolute_peaks(peaks_l, use_quick_charge=True, averagine=averagine.peptide, charge_range=(1,feature_d['charge']), scorer=scoring.MSDeconVFitter(minimum_score=MIN_SCORE_MS2_DECONVOLUTION_FEATURE, mass_error_tolerance=0.1), error_tolerance=4e-5, truncate_after=0.8, retention_strategy=peak_retention_strategy.TopNRetentionStrategy(n_peaks=100, base_peak_coefficient=1e-6, max_mass=maximum_neutral_mass))
     # package the spectra as a list
     deconvoluted_peaks_l = []
@@ -400,7 +399,7 @@ def detect_features(precursor_cuboid_d, converted_db_name, visualise):
         feature_l = []
         for idx,row in enumerate(deconvolution_features_df.itertuples()):
             feature_d = {}
-            mono_characteristics_d = determine_mono_characteristics(envelope=row.envelope, monoisotopic_mass=row.neutral_mass, raw_points_df=wide_ms1_points_df)
+            mono_characteristics_d = determine_mono_characteristics(mono_mz=row.mono_mz, envelope=row.envelope, monoisotopic_mass=row.neutral_mass, raw_points_df=wide_ms1_points_df)
             if mono_characteristics_d is not None:
                 # add the characteristics to the feature dictionary
                 feature_d = {**feature_d, **mono_characteristics_d}
