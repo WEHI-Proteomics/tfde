@@ -252,7 +252,7 @@ def task_make_copies():
 
     # input
     IDENTIFICATIONS_DIR = '{}/identifications-{}'.format(EXPERIMENT_DIR, precursor_definition_method)
-    IDENTIFICATIONS_RECAL_FILE = '{}/exp-{}-identifications-{}-recalibrated.pkl'.format(source_identifications_dir, experiment_name, precursor_definition_method)
+    IDENTIFICATIONS_RECAL_FILE = '{}/exp-{}-identifications-{}-recalibrated.pkl'.format(IDENTIFICATIONS_DIR, experiment_name, precursor_definition_method)
 
     return {
         # 'file_dep': [IDENTIFICATIONS_RECAL_FILE],
