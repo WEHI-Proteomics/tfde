@@ -2,6 +2,8 @@ from doit import get_var
 from os.path import expanduser
 import datetime
 import time
+import shutil
+import os
 
 # This is the set of tasks to take a raw instrument database and create a list of peptides
 
@@ -223,27 +225,37 @@ def task_identify_searched_features_recalibrated():
     }
 
 def task_make_copies():
-    stop_run = time.time()
-    print("total running time ({}): {} seconds".format(config, round(stop_run-start_run,1)))
 
-    # set up copy directory
-    d = datetime.datetime.now()
-    target_directory_name = '{}/{}-results-cs-{}-fmdw-{}-{}'.format(expanduser("~"), experiment_name, config['correct_for_saturation'], config['filter_by_mass_defect'], d.strftime("%Y-%m-%d-%H-%M-%S"))
-    print('copying results to {}'.format(target_directory_name))
+    def finish_up():
+        stop_run = time.time()
+        print("total running time ({}): {} seconds".format(config, round(stop_run-start_run,1)))
 
-    # copy features
-    source_features_dir = '{}/features-{}'.format(EXPERIMENT_DIR, precursor_definition_method)
-    features_cp_cmd = 'cp -r {}/ {}/'.format(source_features_dir, target_directory_name)
+    def create_cmd_string():
+        # set up copy directory
+        d = datetime.datetime.now()
+        target_directory_name = '{}/{}-results-cs-{}-fmdw-{}-{}'.format(expanduser("~"), experiment_name, config['correct_for_saturation'], config['filter_by_mass_defect'], d.strftime("%Y-%m-%d-%H-%M-%S"))
+        if os.path.exists(target_directory_name):
+            shutil.rmtree(target_directory_name)
+        os.makedirs(target_directory_name)
 
-    # copy identifications
-    source_identifications_dir = '{}/identifications-{}'.format(EXPERIMENT_DIR, precursor_definition_method)
-    identifications_cp_cmd = 'cp -r {}/ {}/'.format(source_identifications_dir, target_directory_name)
+        print('copying results to {}'.format(target_directory_name))
 
+        # copy features
+        source_features_dir = '{}/features-{}'.format(EXPERIMENT_DIR, precursor_definition_method)
+        features_cp_cmd = 'cp -r {}/ {}/'.format(source_features_dir, target_directory_name)
+
+        # copy identifications
+        source_identifications_dir = '{}/identifications-{}'.format(EXPERIMENT_DIR, precursor_definition_method)
+        identifications_cp_cmd = 'cp -r {}/ {}/'.format(source_identifications_dir, target_directory_name)
+
+        return '{} && {}'.format(features_cp_cmd, identifications_cp_cmd)
+
+    # input
+    IDENTIFICATIONS_DIR = '{}/identifications-{}'.format(EXPERIMENT_DIR, precursor_definition_method)
     IDENTIFICATIONS_RECAL_FILE = '{}/exp-{}-identifications-{}-recalibrated.pkl'.format(source_identifications_dir, experiment_name, precursor_definition_method)
 
     return {
-        'file_dep': [IDENTIFICATIONS_RECAL_FILE],
-        'actions': [features_cp_cmd, identifications_cp_cmd],
-        'targets': [target_directory_name],
+        # 'file_dep': [IDENTIFICATIONS_RECAL_FILE],
+        'actions': [CmdAction(create_cmd_string), finish_up],
         'verbosity': 2
     }
