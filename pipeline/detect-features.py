@@ -399,7 +399,7 @@ def detect_features(precursor_cuboid_d, converted_db_name, visualise):
         feature_l = []
         for idx,row in enumerate(deconvolution_features_df.itertuples()):
             feature_d = {}
-            mono_characteristics_d = determine_mono_characteristics(mono_mz=row.mono_mz, envelope=row.envelope, monoisotopic_mass=row.neutral_mass, raw_points_df=wide_ms1_points_df)
+            mono_characteristics_d = determine_mono_characteristics(mono_mz=row.envelope[0][0], envelope=row.envelope, monoisotopic_mass=row.neutral_mass, raw_points_df=wide_ms1_points_df)
             if mono_characteristics_d is not None:
                 # add the characteristics to the feature dictionary
                 feature_d = {**feature_d, **mono_characteristics_d}
