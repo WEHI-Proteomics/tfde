@@ -246,10 +246,16 @@ def find_precursor_cuboids(segment_mz_lower, segment_mz_upper):
                     precursor_coordinates_d = {
                         'mz_lower':mz_lower, 
                         'mz_upper':mz_upper, 
-                        'scan_lower':int(scan_lower), 
+                        'wide_mz_lower':mz_lower - (CARBON_MASS_DIFFERENCE / 1), # just in case we missed the monoisotopic
+                        'wide_mz_upper':mz_upper, 
+                        'scan_lower':int(scan_lower), # same because we've already resolved its extent
                         'scan_upper':int(scan_upper), 
+                        'wide_scan_lower':int(scan_lower), 
+                        'wide_scan_upper':int(scan_upper), 
                         'rt_lower':rt_lower, 
                         'rt_upper':rt_upper, 
+                        'wide_rt_lower':rt_lower, # same because we've already resolved its extent
+                        'wide_rt_upper':rt_upper, 
                         'anchor_point_intensity':int(anchor_point_s.intensity), 
                         'anchor_point_mz':anchor_point_s.mz, 
                         'anchor_point_scan':int(anchor_point_s.scan), 

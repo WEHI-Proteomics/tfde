@@ -475,16 +475,16 @@ def get_common_cuboid_definition_from_3did(precursor_cuboid_row):
     d['precursor_cuboid_id'] = precursor_cuboid_row.precursor_cuboid_id  # a unique identifier for the precursor cuboid
     d['mz_lower'] = precursor_cuboid_row.mz_lower
     d['mz_upper'] = precursor_cuboid_row.mz_upper
-    d['wide_mz_lower'] = precursor_cuboid_row.mz_lower
-    d['wide_mz_upper'] = precursor_cuboid_row.mz_upper
+    d['wide_mz_lower'] = precursor_cuboid_row.wide_mz_lower
+    d['wide_mz_upper'] = precursor_cuboid_row.wide_mz_upper
     d['scan_lower'] = precursor_cuboid_row.scan_lower
     d['scan_upper'] = precursor_cuboid_row.scan_upper
-    d['wide_scan_lower'] = precursor_cuboid_row.scan_lower
-    d['wide_scan_upper'] = precursor_cuboid_row.scan_upper
+    d['wide_scan_lower'] = precursor_cuboid_row.wide_scan_lower
+    d['wide_scan_upper'] = precursor_cuboid_row.wide_scan_upper
     d['ms1_rt_lower'] = precursor_cuboid_row.rt_lower
     d['ms1_rt_upper'] = precursor_cuboid_row.rt_upper
-    d['wide_ms1_rt_lower'] = precursor_cuboid_row.rt_lower
-    d['wide_ms1_rt_upper'] = precursor_cuboid_row.rt_upper
+    d['wide_ms1_rt_lower'] = precursor_cuboid_row.wide_rt_lower
+    d['wide_ms1_rt_upper'] = precursor_cuboid_row.wide_rt_upper
     d['ms2_rt_lower'] = None
     d['ms2_rt_upper'] = None
     return d
