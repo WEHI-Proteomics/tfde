@@ -259,7 +259,7 @@ def task_make_copies():
     IDENTIFICATIONS_RECAL_FILE = '{}/exp-{}-identifications-{}-recalibrated.pkl'.format(IDENTIFICATIONS_DIR, experiment_name, precursor_definition_method)
 
     return {
-        # 'file_dep': [IDENTIFICATIONS_RECAL_FILE],
+        'file_dep': [IDENTIFICATIONS_RECAL_FILE],
         'actions': [set_up_target_dir, CmdAction(create_features_cmd_string), CmdAction(create_idents_cmd_string), finish_up],
         'verbosity': 2
     }
