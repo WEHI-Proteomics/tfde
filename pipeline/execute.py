@@ -64,7 +64,7 @@ def task_define_precursor_cuboids():
     CUBOIDS_FILE = '{}/exp-{}-run-{}-precursor-cuboids-{}.pkl'.format(CUBOIDS_DIR, experiment_name, run_name, precursor_definition_method)
 
     return {
-        'file_dep': ['define-precursor-cuboids-pasef.py',CONVERTED_DATABASE_NAME,ini_file],
+        'file_dep': [CONVERTED_DATABASE_NAME],
         'actions': [cmd],
         'targets': [CUBOIDS_FILE],
         'clean': True,
@@ -82,7 +82,7 @@ def task_detect_features():
     FEATURES_FILE = '{}/exp-{}-run-{}-features-{}.pkl'.format(FEATURES_DIR, experiment_name, run_name, precursor_definition_method)
 
     return {
-        'file_dep': ['detect-features.py',CUBOIDS_FILE,ini_file],
+        'file_dep': [CUBOIDS_FILE],
         'actions': [cmd],
         'targets': [FEATURES_FILE],
         'clean': True,
@@ -106,7 +106,7 @@ def task_render_mgf():
     MGF_FILE = '{}/exp-{}-run-{}-features-{}.mgf'.format(MGF_DIR, experiment_name, run_name, precursor_definition_method)
 
     return {
-        'file_dep': ['render-features-as-mgf.py',FEATURES_FILE,ini_file],
+        'file_dep': [FEATURES_FILE],
         'actions': [cmd],
         'targets': [MGF_FILE],
         'clean': True,
@@ -123,7 +123,7 @@ def task_search_mgf():
     comet_output = '{experiment_base}/comet-output-pasef/{run_name}.comet.log.txt'.format(experiment_base=EXPERIMENT_DIR, run_name=run_name)
 
     return {
-        'file_dep': ['search-mgf-against-sequence-db.py',MGF_FILE,ini_file,fasta_file_name],
+        'file_dep': [MGF_FILE],
         'actions': [cmd],
         'targets': [comet_output],
         'clean': True,
@@ -140,7 +140,7 @@ def task_identify_searched_features():
     IDENTIFICATIONS_FILE = '{}/exp-{}-identifications-{}.pkl'.format(IDENTIFICATIONS_DIR, experiment_name, precursor_definition_method)
 
     return {
-        'file_dep': ['identify-searched-features.py',comet_output,ini_file,fasta_file_name],
+        'file_dep': [comet_output],
         'actions': [cmd],
         'targets': [IDENTIFICATIONS_FILE],
         'clean': True,
@@ -162,7 +162,7 @@ def task_mass_recalibration():
     RECAL_FEATURES_FILE = '{}/exp-{}-run-{}-features-{}-recalibrated.pkl'.format(FEATURES_DIR, experiment_name, run_name, precursor_definition_method)
 
     return {
-        'file_dep': ['recalibrate-feature-mass.py',IDENTIFICATIONS_FILE,ini_file],
+        'file_dep': [IDENTIFICATIONS_FILE],
         'actions': [cmd],
         'targets': [RECAL_FEATURES_FILE],
         'clean': True,
@@ -184,7 +184,7 @@ def task_render_mgf_recalibrated():
     MGF_FILE = '{}/exp-{}-run-{}-features-{}-recalibrated.mgf'.format(MGF_DIR, experiment_name, run_name, precursor_definition_method)
 
     return {
-        'file_dep': ['render-features-as-mgf.py',FEATURES_FILE,ini_file],
+        'file_dep': [FEATURES_FILE],
         'actions': [cmd],
         'targets': [MGF_FILE],
         'clean': True,
@@ -201,7 +201,7 @@ def task_search_mgf_recalibrated():
     comet_output = '{experiment_base}/comet-output-pasef-recalibrated/{run_name}.comet.log.txt'.format(experiment_base=EXPERIMENT_DIR, run_name=run_name)
 
     return {
-        'file_dep': ['search-mgf-against-sequence-db.py',MGF_FILE,ini_file,fasta_file_name],
+        'file_dep': [MGF_FILE],
         'actions': [cmd],
         'targets': [comet_output],
         'clean': True,
@@ -218,7 +218,7 @@ def task_identify_searched_features_recalibrated():
     IDENTIFICATIONS_FILE = '{}/exp-{}-identifications-{}-recalibrated.pkl'.format(IDENTIFICATIONS_DIR, experiment_name, precursor_definition_method)
 
     return {
-        'file_dep': ['identify-searched-features.py',comet_output,ini_file,fasta_file_name],
+        'file_dep': [comet_output],
         'actions': [cmd],
         'targets': [IDENTIFICATIONS_FILE],
         'clean': True,
