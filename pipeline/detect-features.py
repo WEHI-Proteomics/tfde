@@ -174,14 +174,14 @@ def determine_mono_characteristics(mono_mz, envelope, monoisotopic_mass, raw_poi
         peak_x_l = []
         try:
             peak_idxs = peakutils.indexes(scan_df.filtered_intensity.values, thres=PEAKS_THRESHOLD_SCAN, min_dist=PEAKS_MIN_DIST_SCAN, thres_abs=False)
-            peak_x_l = scan_df.iloc[peak_idxs].x.to_list()
+            peak_x_l = scan_df.iloc[peak_idxs].scan.to_list()
         except:
             pass
         if len(peak_x_l) == 0:
             # if we couldn't find any peaks, take the maximum intensity point
-            peak_x_l = [scan_df.loc[scan_df.filtered_intensity.idxmax()].x]
+            peak_x_l = [scan_df.loc[scan_df.filtered_intensity.idxmax()].scan]
         # peaks_df should now contain the rows from flattened_points_df that represent the peaks
-        peaks_df = scan_df[scan_df.x.isin(peak_x_l)]
+        peaks_df = scan_df[scan_df.scan.isin(peak_x_l)]
 
         # find the closest peak to the cuboid midpoint
         cuboid_midpoint_scan = (scan_df.scan.max() - scan_df.scan.min()) / 2
@@ -223,14 +223,14 @@ def determine_mono_characteristics(mono_mz, envelope, monoisotopic_mass, raw_poi
         peak_x_l = []
         try:
             peak_idxs = peakutils.indexes(rt_df.filtered_intensity.values, thres=PEAKS_THRESHOLD_RT, min_dist=PEAKS_MIN_DIST_RT, thres_abs=False)
-            peak_x_l = rt_df.iloc[peak_idxs].x.to_list()
+            peak_x_l = rt_df.iloc[peak_idxs].retention_time_secs.to_list()
         except:
             pass
         if len(peak_x_l) == 0:
             # if we couldn't find any peaks, take the maximum intensity point
-            peak_x_l = [rt_df.loc[rt_df.filtered_intensity.idxmax()].x]
+            peak_x_l = [rt_df.loc[rt_df.filtered_intensity.idxmax()].retention_time_secs]
         # peaks_df should now contain the rows from flattened_points_df that represent the peaks
-        peaks_df = rt_df[rt_df.x.isin(peak_x_l)]
+        peaks_df = rt_df[rt_df.retention_time_secs.isin(peak_x_l)]
 
         # find the closest peak to the cuboid midpoint
         cuboid_midpoint_rt = (rt_df.retention_time_secs.max() - rt_df.retention_time_secs.min()) / 2
