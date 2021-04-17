@@ -181,7 +181,7 @@ def determine_mono_characteristics(mono_mz, envelope, monoisotopic_mass, raw_poi
             # if we couldn't find any peaks, take the maximum intensity point
             peak_x_l = [scan_df.loc[scan_df.filtered_intensity.idxmax()].scan]
         # peaks_df should now contain the rows from flattened_points_df that represent the peaks
-        peaks_df = scan_df[scan_df.scan.isin(peak_x_l)]
+        peaks_df = scan_df[scan_df.scan.isin(peak_x_l)].copy()
 
         # find the closest peak to the cuboid midpoint
         cuboid_midpoint_scan = (scan_df.scan.max() - scan_df.scan.min()) / 2
@@ -230,7 +230,7 @@ def determine_mono_characteristics(mono_mz, envelope, monoisotopic_mass, raw_poi
             # if we couldn't find any peaks, take the maximum intensity point
             peak_x_l = [rt_df.loc[rt_df.filtered_intensity.idxmax()].retention_time_secs]
         # peaks_df should now contain the rows from flattened_points_df that represent the peaks
-        peaks_df = rt_df[rt_df.retention_time_secs.isin(peak_x_l)]
+        peaks_df = rt_df[rt_df.retention_time_secs.isin(peak_x_l)].copy()
 
         # find the closest peak to the cuboid midpoint
         cuboid_midpoint_rt = (rt_df.retention_time_secs.max() - rt_df.retention_time_secs.min()) / 2
