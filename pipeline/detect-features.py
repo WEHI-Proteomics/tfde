@@ -234,7 +234,7 @@ def determine_mono_characteristics(mono_mz, envelope, monoisotopic_mass, raw_poi
 
         # find the closest peak to the cuboid midpoint
         cuboid_midpoint_rt = (rt_df.retention_time_secs.max() - rt_df.retention_time_secs.min()) / 2
-        peaks_df['delta'] = abs(peaks_df.scan - cuboid_midpoint_rt)
+        peaks_df['delta'] = abs(peaks_df.retention_time_secs - cuboid_midpoint_rt)
         peaks_df.sort_values(by=['delta'], ascending=True, inplace=True)
         rt_apex = peaks_df.iloc[0].retention_time_secs
 
