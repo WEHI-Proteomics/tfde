@@ -15,6 +15,7 @@ def run_process(process):
     exit_status = os.WEXITSTATUS(os.system(process))
     if exit_status != 0:
         print('command had an exit status of {}'.format(exit_status))
+    return exit_status
 
 
 ###########################
@@ -85,7 +86,9 @@ if not os.path.exists(COMET_OUTPUT_DIR):
 
 # run comet on it
 cmd = "{}/crux-3.2.Linux.x86_64/bin/crux comet --parameter-file {} --output-dir {} --fileroot \"{}\" {} {}".format(expanduser("~"), COMET_PARAM_FILE, COMET_OUTPUT_DIR, args.run_name, MGF_FILE, args.fasta_file_name)
-run_process(cmd)
+exit_status = run_process(cmd)
+if exit_status != 0:
+    sys.exit(1)
 
 stop_run = time.time()
 print("total running time ({}): {} seconds".format(parser.prog, round(stop_run-start_run,1)))
