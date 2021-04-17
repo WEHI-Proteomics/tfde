@@ -166,9 +166,8 @@ def determine_mono_characteristics(mono_mz, envelope, monoisotopic_mass, raw_poi
         scan_df['filtered_intensity'] = scan_df.intensity  # set the default
         try:
             scan_df['filtered_intensity'] = signal.savgol_filter(scan_df.intensity, window_length=find_filter_length(number_of_points=len(scan_df)), polyorder=SCAN_FILTER_POLY_ORDER)
-            filtered = True
         except:
-            filtered = False
+            pass
 
         # find the peak(s)
         peak_x_l = []
@@ -184,7 +183,7 @@ def determine_mono_characteristics(mono_mz, envelope, monoisotopic_mass, raw_poi
         peaks_df = scan_df[scan_df.scan.isin(peak_x_l)].copy()
 
         # find the closest peak to the cuboid midpoint
-        cuboid_midpoint_scan = (scan_df.scan.max() - scan_df.scan.min()) / 2
+        cuboid_midpoint_scan = scan_df.scan.min() + ((scan_df.scan.max() - scan_df.scan.min()) / 2)
         peaks_df['delta'] = abs(peaks_df.scan - cuboid_midpoint_scan)
         peaks_df.sort_values(by=['delta'], ascending=True, inplace=True)
         scan_apex = peaks_df.iloc[0].scan
@@ -215,9 +214,8 @@ def determine_mono_characteristics(mono_mz, envelope, monoisotopic_mass, raw_poi
         rt_df['filtered_intensity'] = rt_df.intensity  # set the default
         try:
             rt_df['filtered_intensity'] = signal.savgol_filter(rt_df.intensity, window_length=find_filter_length(number_of_points=len(rt_df)), polyorder=RT_FILTER_POLY_ORDER)
-            filtered = True
         except:
-            filtered = False
+            pass
 
         # find the peak(s)
         peak_x_l = []
@@ -233,7 +231,7 @@ def determine_mono_characteristics(mono_mz, envelope, monoisotopic_mass, raw_poi
         peaks_df = rt_df[rt_df.retention_time_secs.isin(peak_x_l)].copy()
 
         # find the closest peak to the cuboid midpoint
-        cuboid_midpoint_rt = (rt_df.retention_time_secs.max() - rt_df.retention_time_secs.min()) / 2
+        cuboid_midpoint_rt = rt_df.retention_time_secs.min() + ((rt_df.retention_time_secs.max() - rt_df.retention_time_secs.min()) / 2)
         peaks_df['delta'] = abs(peaks_df.retention_time_secs - cuboid_midpoint_rt)
         peaks_df.sort_values(by=['delta'], ascending=True, inplace=True)
         rt_apex = peaks_df.iloc[0].retention_time_secs
