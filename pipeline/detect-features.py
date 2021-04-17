@@ -19,13 +19,18 @@ import peakutils
 from scipy import signal
 import math
 
-# filter and peak detection parameters
+# peak and valley detection parameters
+PEAKS_THRESHOLD_RT = 0.5    # only consider peaks that are higher than this proportion of the normalised maximum
+PEAKS_THRESHOLD_SCAN = 0.5
+PEAKS_MIN_DIST_RT = 2.0     # seconds
+PEAKS_MIN_DIST_SCAN = 10.0  # scans
+
 VALLEYS_THRESHOLD_RT = 0.5    # only consider valleys that drop more than this proportion of the normalised maximum
 VALLEYS_THRESHOLD_SCAN = 0.5
-
 VALLEYS_MIN_DIST_RT = 2.0     # seconds
 VALLEYS_MIN_DIST_SCAN = 10.0  # scans
 
+# filter parameters
 SCAN_FILTER_POLY_ORDER = 5
 RT_FILTER_POLY_ORDER = 3
 
@@ -165,10 +170,26 @@ def determine_mono_characteristics(mono_mz, envelope, monoisotopic_mass, raw_poi
         except:
             filtered = False
 
-        # find the valleys nearest the cuboid's scan midpoint
-        cuboid_midpoint_scan = (scan_df.scan.max() - scan_df.scan.min()) / 2
+        # find the peak(s)
+        peak_x_l = []
+        try:
+            peak_idxs = peakutils.indexes(scan_df.filtered_intensity.values, thres=PEAKS_THRESHOLD_SCAN, min_dist=PEAKS_MIN_DIST_SCAN, thres_abs=False)
+            peak_x_l = scan_df.iloc[peak_idxs].x.to_list()
+        except:
+            pass
+        if len(peak_x_l) == 0:
+            # if we couldn't find any peaks, take the maximum intensity point
+            peak_x_l = [scan_df.loc[scan_df.filtered_intensity.idxmax()].x]
+        # peaks_df should now contain the rows from flattened_points_df that represent the peaks
+        peaks_df = scan_df[scan_df.x.isin(peak_x_l)]
 
-        # find the valleys nearest the anchor point
+        # find the closest peak to the cuboid midpoint
+        cuboid_midpoint_scan = (scan_df.scan.max() - scan_df.scan.min()) / 2
+        peaks_df['delta'] = abs(peaks_df.scan - cuboid_midpoint_scan)
+        peaks_df.sort_values(by=['delta'], ascending=True, inplace=True)
+        scan_apex = peaks_df.iloc[0].scan
+
+        # find the valleys nearest the scan apex
         valley_idxs = peakutils.indexes(-scan_df.filtered_intensity.values, thres=VALLEYS_THRESHOLD_SCAN, min_dist=VALLEYS_MIN_DIST_SCAN, thres_abs=False)
         valley_x_l = scan_df.iloc[valley_idxs].scan.to_list()
         valleys_df = scan_df[scan_df.scan.isin(valley_x_l)]
@@ -198,18 +219,34 @@ def determine_mono_characteristics(mono_mz, envelope, monoisotopic_mass, raw_poi
         except:
             filtered = False
 
-        # find the valleys nearest the cuboid's RT midpoint
-        cuboid_midpoint_rt = (rt_df.retention_time_secs.max() - rt_df.retention_time_secs.min()) / 2
+        # find the peak(s)
+        peak_x_l = []
+        try:
+            peak_idxs = peakutils.indexes(rt_df.filtered_intensity.values, thres=PEAKS_THRESHOLD_RT, min_dist=PEAKS_MIN_DIST_RT, thres_abs=False)
+            peak_x_l = rt_df.iloc[peak_idxs].x.to_list()
+        except:
+            pass
+        if len(peak_x_l) == 0:
+            # if we couldn't find any peaks, take the maximum intensity point
+            peak_x_l = [rt_df.loc[rt_df.filtered_intensity.idxmax()].x]
+        # peaks_df should now contain the rows from flattened_points_df that represent the peaks
+        peaks_df = rt_df[rt_df.x.isin(peak_x_l)]
 
-        # find the valleys nearest the anchor point
+        # find the closest peak to the cuboid midpoint
+        cuboid_midpoint_rt = (rt_df.retention_time_secs.max() - rt_df.retention_time_secs.min()) / 2
+        peaks_df['delta'] = abs(peaks_df.scan - cuboid_midpoint_rt)
+        peaks_df.sort_values(by=['delta'], ascending=True, inplace=True)
+        rt_apex = peaks_df.iloc[0].retention_time_secs
+
+        # find the valleys nearest the RT apex
         valley_idxs = peakutils.indexes(-rt_df.filtered_intensity.values, thres=VALLEYS_THRESHOLD_RT, min_dist=VALLEYS_MIN_DIST_RT, thres_abs=False)
         valley_x_l = rt_df.iloc[valley_idxs].retention_time_secs.to_list()
         valleys_df = rt_df[rt_df.retention_time_secs.isin(valley_x_l)]
 
-        upper_x = valleys_df[valleys_df.retention_time_secs > cuboid_midpoint_rt].retention_time_secs.min()
+        upper_x = valleys_df[valleys_df.retention_time_secs > rt_apex].retention_time_secs.min()
         if math.isnan(upper_x):
             upper_x = rt_df.retention_time_secs.max()
-        lower_x = valleys_df[valleys_df.retention_time_secs < cuboid_midpoint_rt].retention_time_secs.max()
+        lower_x = valleys_df[valleys_df.retention_time_secs < rt_apex].retention_time_secs.max()
         if math.isnan(lower_x):
             lower_x = rt_df.retention_time_secs.min()
 
