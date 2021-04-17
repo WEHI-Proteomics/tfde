@@ -194,10 +194,10 @@ def determine_mono_characteristics(mono_mz, envelope, monoisotopic_mass, raw_poi
         valley_x_l = scan_df.iloc[valley_idxs].scan.to_list()
         valleys_df = scan_df[scan_df.scan.isin(valley_x_l)]
 
-        upper_x = valleys_df[valleys_df.scan > cuboid_midpoint_scan].scan.min()
+        upper_x = valleys_df[valleys_df.scan > scan_apex].scan.min()
         if math.isnan(upper_x):
             upper_x = scan_df.scan.max()
-        lower_x = valleys_df[valleys_df.scan < cuboid_midpoint_scan].scan.max()
+        lower_x = valleys_df[valleys_df.scan < scan_apex].scan.max()
         if math.isnan(lower_x):
             lower_x = scan_df.scan.min()
 
