@@ -235,9 +235,9 @@ def find_precursor_cuboids(segment_mz_lower, segment_mz_upper):
                     visualise_d['isotope_cluster_rt_upper'] = rt_upper
 
                     # make sure the RT extent isn't too extreme
-                    if (rt_upper - rt_lower) > RT_BASE_PEAK_WIDTH:
-                        rt_lower = anchor_point_s.retention_time_secs - (RT_BASE_PEAK_WIDTH / 2)
-                        rt_upper = anchor_point_s.retention_time_secs + (RT_BASE_PEAK_WIDTH / 2)
+                    if (rt_upper - rt_lower) > (RT_BASE_PEAK_WIDTH * 2):
+                        rt_lower = anchor_point_s.retention_time_secs - RT_BASE_PEAK_WIDTH
+                        rt_upper = anchor_point_s.retention_time_secs + RT_BASE_PEAK_WIDTH
 
                     # get the point ids for the feature in 3D
                     points_to_remove_l = raw_df[(raw_df.mz >= mz_lower) & (raw_df.mz <= mz_upper) & (raw_df.scan >= scan_lower) & (raw_df.scan <= scan_upper) & (raw_df.retention_time_secs >= rt_lower) & (raw_df.retention_time_secs <= rt_upper)].point_id.tolist()
