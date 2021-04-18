@@ -625,10 +625,8 @@ print('loaded {} precursor cuboids within RT {}-{} from {}'.format(len(precursor
 if args.precursor_id is not None:
     precursor_cuboids_df = precursor_cuboids_df[(precursor_cuboids_df.precursor_cuboid_id == args.precursor_id)]
 
-if args.precursor_id is None:
-    # set up the output directory
-    if os.path.exists(FEATURES_DIR):
-        shutil.rmtree(FEATURES_DIR)
+# set up the output directory
+if not os.path.exists(FEATURES_DIR):
     os.makedirs(FEATURES_DIR)
 
 # set up Ray
