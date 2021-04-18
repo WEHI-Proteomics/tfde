@@ -11,8 +11,8 @@ import os
 experiment_base_dir = '/media/big-ssd/experiments'
 experiment_name = 'P3856'
 run_name = 'P3856_YHE211_1_Slot1-1_1_5104'
-ini_file = 'pasef-process-short-gradient.ini'
-fasta_file_name = '../fasta/Human_Yeast_Ecoli.fasta'
+ini_file = '{}/pasef-process-short-gradient.ini'.format(os.path.dirname(os.path.realpath(__file__)))
+fasta_file_name = '{}/../fasta/Human_Yeast_Ecoli.fasta'.format(os.path.dirname(os.path.realpath(__file__)))
 precursor_definition_method = 'pasef'
 
 EXPERIMENT_DIR = "{}/{}".format(experiment_base_dir, experiment_name)
