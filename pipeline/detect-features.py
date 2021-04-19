@@ -345,6 +345,7 @@ def generate_mass_defect_windows(mass_defect_window_da_min, mass_defect_window_d
 # resolve the fragment ions for this feature
 # returns a decharged peak list (neutral mass+proton mass, intensity)
 def resolve_fragment_ions(feature_d, ms2_points_df):
+    vis_d = {}
     # perform intensity descent to resolve peaks
     raw_points_a = ms2_points_df[['mz','intensity']].to_numpy()
     peaks_a = intensity_descent(peaks_a=raw_points_a, peak_delta=None)
@@ -360,6 +361,7 @@ def resolve_fragment_ions(feature_d, ms2_points_df):
         d['neutral_mass'] = round(peak.neutral_mass, 4)
         d['intensity'] = peak.intensity
         deconvoluted_peaks_l.append(d)
+    vis_d['before_fmdw'] = deconvoluted_peaks_l
 
     if args.filter_by_mass_defect:
         fragment_ions_df = pd.DataFrame(deconvoluted_peaks_l)
@@ -373,10 +375,14 @@ def resolve_fragment_ions(feature_d, ms2_points_df):
         filtered_fragment_ions_df.drop('bin', axis=1, inplace=True)
         deconvoluted_peaks_l = filtered_fragment_ions_df.to_dict('records')
 
+        vis_d['after_fmdw'] = deconvoluted_peaks_l
+
         # removed = len(fragment_ions_df) - len(filtered_fragment_ions_df)
         # print('removed {} fragment ions ({}%)'.format(removed, round(removed/len(fragment_ions_df)*100,1)))
+    else:
+        vis_d['after_fmdw'] = []
 
-    return deconvoluted_peaks_l
+    return {'deconvoluted_peaks_l':deconvoluted_peaks_l, 'vis_d':vis_d}
 
 # save visualisation data for later analysis of how feature detection works
 def save_visualisation(visualise_d):
@@ -448,8 +454,9 @@ def detect_features(precursor_cuboid_d, converted_db_name, visualise):
                 # from the precursor cuboid
                 feature_d['precursor_cuboid_id'] = precursor_cuboid_d['precursor_cuboid_id']
                 # resolve the feature's fragment ions
-                fragment_ions_l = resolve_fragment_ions(feature_d, ms2_points_df) if args.precursor_definition_method != '3did' else []
-                feature_d['fragment_ions_l'] = json.dumps(fragment_ions_l)
+                ms2_resolution_d = resolve_fragment_ions(feature_d, ms2_points_df)
+                feature_d['fragment_ions_l'] = json.dumps(ms2_resolution_d['deconvoluted_peaks_l']) if args.precursor_definition_method != '3did' else []
+                feature_d['fmdw_before_after_d'] = ms2_resolution_d['vis_d']
                 # assign a unique identifier to this feature
                 feature_d['feature_id'] = generate_feature_id(precursor_cuboid_d['precursor_cuboid_id'], idx+1)
                 # add it to the list
