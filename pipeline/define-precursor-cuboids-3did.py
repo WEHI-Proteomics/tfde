@@ -394,6 +394,7 @@ cfg.read(args.ini_file)
 FRAME_TYPE_MS1 = cfg.getint('common','FRAME_TYPE_MS1')
 MS1_PEAK_DELTA = cfg.getfloat('ms1','MS1_PEAK_DELTA')
 RT_BASE_PEAK_WIDTH = cfg.getfloat('common','RT_BASE_PEAK_WIDTH_SECS')
+CARBON_MASS_DIFFERENCE = cfg.getfloat('common','CARBON_MASS_DIFFERENCE')
 
 # set up the indexes
 print('setting up indexes on {}'.format(CONVERTED_DATABASE_NAME))
