@@ -39,6 +39,7 @@ def create_indexes(db_file_name):
     db_conn = sqlite3.connect(db_file_name)
     src_c = db_conn.cursor()
     src_c.execute("create index if not exists idx_extract_cuboids_1 on frames (frame_type,retention_time_secs,scan,mz)")
+    src_c.execute("create index if not exists idx_extract_cuboids_2 on frames (frame_type,frame_id,scan)")
     db_conn.close()
 
 # determine the maximum filter length for the number of points
@@ -431,7 +432,7 @@ def detect_features(precursor_cuboid_d, converted_db_name, visualise):
         if args.precursor_definition_method != '3did':  # ms2 is not yet implemented for 3DID
             # load the ms2 data for the precursor
             db_conn = sqlite3.connect(converted_db_name)
-            ms2_points_df = pd.read_sql_query("select frame_id,mz,scan,intensity,retention_time_secs from frames where frame_type == {} and retention_time_secs >= {} and retention_time_secs <= {} and scan >= {} and scan <= {}".format(FRAME_TYPE_MS2, precursor_cuboid_d['ms2_rt_lower'], precursor_cuboid_d['ms2_rt_upper'], precursor_cuboid_d['scan_lower'], precursor_cuboid_d['scan_upper']), db_conn)
+            ms2_points_df = pd.read_sql_query("select frame_id,mz,scan,intensity,retention_time_secs from frames where frame_type == {} and frame_id >= {} and frame_id <= {} and scan >= {} and scan <= {}".format(FRAME_TYPE_MS2, precursor_cuboid_d['ms2_frame_lower'], precursor_cuboid_d['ms2_frame_upper'], precursor_cuboid_d['scan_lower'], precursor_cuboid_d['scan_upper']), db_conn)
             db_conn.close()
         else:
             ms2_points_df = None
@@ -507,8 +508,8 @@ def get_common_cuboid_definition_from_pasef(precursor_cuboid_row):
     d['ms1_rt_upper'] = precursor_cuboid_row.fe_ms1_rt_upper
     d['wide_ms1_rt_lower'] = precursor_cuboid_row.wide_ms1_rt_lower
     d['wide_ms1_rt_upper'] = precursor_cuboid_row.wide_ms1_rt_upper
-    d['ms2_rt_lower'] = precursor_cuboid_row.fe_ms2_rt_lower
-    d['ms2_rt_upper'] = precursor_cuboid_row.fe_ms2_rt_upper
+    d['ms2_frame_lower'] = precursor_cuboid_row.fe_ms2_frame_lower
+    d['ms2_frame_upper'] = precursor_cuboid_row.fe_ms2_frame_upper
     return d
 
 # map the 3did cuboid coordinates to the common form
@@ -527,8 +528,8 @@ def get_common_cuboid_definition_from_3did(precursor_cuboid_row):
     d['ms1_rt_upper'] = precursor_cuboid_row.rt_upper
     d['wide_ms1_rt_lower'] = precursor_cuboid_row.wide_rt_lower
     d['wide_ms1_rt_upper'] = precursor_cuboid_row.wide_rt_upper
-    d['ms2_rt_lower'] = None
-    d['ms2_rt_upper'] = None
+    d['ms2_frame_lower'] = None
+    d['ms2_frame_upper'] = None
     return d
 
 ###################################
