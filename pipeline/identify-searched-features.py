@@ -131,7 +131,7 @@ for f in files_l:
     with open(f, 'rb') as handle:
         d = pickle.load(handle)
     df_l.append(d['features_df'])
-features_df = pd.concat(df_l, axis=0, sort=False)
+features_df = pd.concat(df_l, axis=0, sort=False, ignore_index=True)
 
 # merge the identifications with the features
 identifications_df = pd.merge(features_df, percolator_df, how='left', left_on=['run_name','feature_id'], right_on=['run_name','feature_id'])

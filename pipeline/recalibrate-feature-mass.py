@@ -148,7 +148,7 @@ features_l = []
 for f in feature_files:
     with open(f, 'rb') as handle:
         features_l.append(pickle.load(handle)['features_df'])
-features_df = pd.concat(features_l, axis=0, sort=False)
+features_df = pd.concat(features_l, axis=0, sort=False, ignore_index=True)
 print('loaded {} features from {} files for recalibration'.format(len(features_df), len(feature_files)))
 
 # set up Ray

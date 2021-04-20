@@ -656,7 +656,7 @@ elif args.precursor_definition_method == '3did':
 
 if args.precursor_id is None:
     # join the list of dataframes into a single dataframe
-    features_df = pd.concat(features_l, axis=0, sort=False)
+    features_df = pd.concat(features_l, axis=0, sort=False, ignore_index=True)
 
     # add the run name
     features_df['run_name'] = args.run_name
