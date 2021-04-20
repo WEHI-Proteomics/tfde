@@ -37,6 +37,9 @@ PIXELS_PER_SCAN = PIXELS_Y / (limits['SCAN_MAX'] - limits['SCAN_MIN'])
 minimum_pixel_intensity = 1
 maximum_pixel_intensity = 250
 
+# add a buffer around the edges
+MZ_BUFFER = 0.5
+SCAN_BUFFER = 2
 
 EXPERIMENT_NAME = 'P3856'
 EXPERIMENT_DIR = '/media/big-ssd/experiments/{}'.format(EXPERIMENT_NAME)
@@ -108,10 +111,6 @@ os.makedirs(TILES_BASE_DIR)
 features_df = pd.read_pickle(FEATURES_PASEF_FILE)['features_df']
 print('loaded {} features from {}'.format(len(features_df), FEATURES_PASEF_FILE))
 
-# add a buffer around the edges
-x_buffer = 5
-y_buffer = 5
-
 # load the font to use for labelling the overlays
 if os.path.isfile(UBUNTU_FONT_PATH):
     feature_label_font = ImageFont.truetype(UBUNTU_FONT_PATH, 10)
@@ -176,12 +175,12 @@ for group_name,group_df in pixel_intensity_df.groupby(['frame_id'], as_index=Fal
     for idx,feature in intersecting_features_df.iterrows():
         # get the coordinates for the bounding box
         envelope = json.loads(feature.envelope)
-        x0 = pixel_x_from_mz(envelope[0][0])
-        x1 = pixel_x_from_mz(envelope[-1][0])
-        y0 = pixel_y_from_scan(feature.scan_lower)
-        y1 = pixel_y_from_scan(feature.scan_upper)
+        x0 = pixel_x_from_mz(envelope[0][0] - MZ_BUFFER)
+        x1 = pixel_x_from_mz(envelope[-1][0] + MZ_BUFFER)
+        y0 = pixel_y_from_scan(feature.scan_lower - SCAN_BUFFER)
+        y1 = pixel_y_from_scan(feature.scan_upper + SCAN_BUFFER)
         # draw the bounding box
-        draw.rectangle(xy=[(x0-x_buffer, y0-y_buffer), (x1+x_buffer, y1+y_buffer)], fill=None, outline='deepskyblue')
+        draw.rectangle(xy=[(x0, y0), (x1, y1)], fill=None, outline='deepskyblue')
 
     # save the tile
     tile_file_name = '{}/tile-{}.png'.format(TILES_BASE_DIR, tile_id)
