@@ -9,15 +9,11 @@ import pickle
 
 ###################################
 parser = argparse.ArgumentParser(description='Remove duplicates of the features detected.')
-parser.add_argument('-eb','--experiment_base_dir', type=str, default='./experiments', help='Path to the experiments directory.', required=False)
-parser.add_argument('-en','--experiment_name', type=str, help='Name of the experiment.', required=True)
-parser.add_argument('-rn','--run_name', type=str, help='Name of the run.', required=True)
+parser.add_argument('-fn','--features_file_name', type=str, help='Name of the features file.', required=True)
+parser.add_argument('-ddfn','--dedup_features_file_name', type=str, help='Name of the de-duped features file.', required=True)
 parser.add_argument('-mz','--mz_tolerance_ppm', type=int, default='5', help='Tolerance for m/z.', required=False)
 parser.add_argument('-scan','--scan_tolerance', type=int, default='10', help='Tolerance for scan.', required=False)
 parser.add_argument('-rt','--rt_tolerance', type=int, default='5', help='Tolerance for retention time (seconds).', required=False)
-parser.add_argument('-rtl','--rt_lower', type=int, default='1650', help='The lower RT limit to de-dup.', required=False)
-parser.add_argument('-rtu','--rt_upper', type=int, default='2200', help='The upper RT limit to de-dup.', required=False)
-parser.add_argument('-fdm','--feature_detection_method', type=str, choices=['pasef','3did'], help='Which feature detection method to de-dup.', required=True)
 args = parser.parse_args()
 
 # Print the arguments for the log
@@ -28,10 +24,8 @@ print(info)
 
 start_run = time.time()
 
-EXPERIMENT_DIR = '{}/{}'.format(args.experiment_base_dir, args.experiment_name)
-FEATURES_DIR = '{}/features-{}'.format(EXPERIMENT_DIR, args.feature_detection_method)
-FEATURES_FILE = '{}/exp-{}-run-{}-features-{}.pkl'.format(FEATURES_DIR, args.experiment_name, args.run_name, args.feature_detection_method)
-FEATURES_DEDUP_FILE = '{}/exp-{}-run-{}-features-{}-dedup.pkl'.format(FEATURES_DIR, args.experiment_name, args.run_name, args.feature_detection_method)
+FEATURES_FILE = args.features_file_name
+FEATURES_DEDUP_FILE = args.dedup_features_file_name
 
 if not os.path.isfile(FEATURES_FILE):
     print("The features file is required but doesn't exist: {}".format(FEATURES_FILE))
