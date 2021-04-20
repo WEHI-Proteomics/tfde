@@ -455,9 +455,12 @@ def detect_features(precursor_cuboid_d, converted_db_name, visualise):
                 # from the precursor cuboid
                 feature_d['precursor_cuboid_id'] = precursor_cuboid_d['precursor_cuboid_id']
                 # resolve the feature's fragment ions
-                ms2_resolution_d = resolve_fragment_ions(feature_d, ms2_points_df)
-                feature_d['fragment_ions_l'] = json.dumps(ms2_resolution_d['deconvoluted_peaks_l']) if args.precursor_definition_method != '3did' else []
-                feature_d['fmdw_before_after_d'] = ms2_resolution_d['vis_d']
+                if args.precursor_definition_method != '3did':
+                    ms2_resolution_d = resolve_fragment_ions(feature_d, ms2_points_df)
+                    feature_d['fragment_ions_l'] = json.dumps(ms2_resolution_d['deconvoluted_peaks_l'])
+                    feature_d['fmdw_before_after_d'] = ms2_resolution_d['vis_d']
+                else:
+                    feature_d['fragment_ions_l'] = []
                 # assign a unique identifier to this feature
                 feature_d['feature_id'] = generate_feature_id(precursor_cuboid_d['precursor_cuboid_id'], idx+1)
                 # add it to the list
