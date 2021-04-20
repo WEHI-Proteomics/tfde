@@ -386,9 +386,9 @@ def resolve_fragment_ions(feature_d, ms2_points_df):
     return {'deconvoluted_peaks_l':deconvoluted_peaks_l, 'vis_d':vis_d}
 
 # save visualisation data for later analysis of how feature detection works
-def save_visualisation(visualise_d):
+def save_visualisation(visualise_d, method):
     precursor_cuboid_id = visualise_d['precursor_cuboid_d']['precursor_cuboid_id']
-    VIS_FILE = '{}/feature-detection-visualisation-{}.pkl'.format(expanduser("~"), precursor_cuboid_id)
+    VIS_FILE = '{}/feature-detection-{}-visualisation-{}.pkl'.format(expanduser("~"), method, precursor_cuboid_id)
     print("writing feature detection visualisation data to {}".format(VIS_FILE))
     with open(VIS_FILE, 'wb') as handle:
         pickle.dump(visualise_d, handle)
@@ -476,7 +476,7 @@ def detect_features(precursor_cuboid_d, converted_db_name, visualise):
             'deconvolution_features_df':deconvolution_features_df,
             'features_df':features_df
         }
-        save_visualisation(visualisation_d)
+        save_visualisation(visualisation_d, method=args.precursor_definition_method)
 
     # print("found {} features for precursor {}".format(len(features_df), precursor_cuboid_d['precursor_cuboid_id']))
     return features_df
