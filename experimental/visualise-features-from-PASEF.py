@@ -19,19 +19,19 @@ import sys
 # generate a tile for each frame, annotating intersecting features from the PASEF method
 
 
-cuboid_limits = {'MZ_MIN': 736.379085965834,
-                'MZ_MAX': 756.379085965834,
-                'SCAN_MIN': 344.0,
-                'SCAN_MAX': 844.0,
-                'RT_MIN': 1693.6626825839253,
-                'RT_MAX': 1723.6626825839253}
+limits = {'MZ_MIN': 736.379085965834,
+        'MZ_MAX': 756.379085965834,
+        'SCAN_MIN': 344.0,
+        'SCAN_MAX': 844.0,
+        'RT_MIN': 1693.6626825839253,
+        'RT_MAX': 1723.6626825839253}
 
 
 PIXELS_X = 800
 PIXELS_Y = 800
 
-PIXELS_PER_MZ = PIXELS_X / (cuboid_limits['MZ_MAX'] - cuboid_limits['MZ_MIN'])
-PIXELS_PER_SCAN = PIXELS_Y / (cuboid_limits['SCAN_MAX'] - cuboid_limits['SCAN_MIN'])
+PIXELS_PER_MZ = PIXELS_X / (limits['MZ_MAX'] - limits['MZ_MIN'])
+PIXELS_PER_SCAN = PIXELS_Y / (limits['SCAN_MAX'] - limits['SCAN_MIN'])
 
 minimum_pixel_intensity = 1
 maximum_pixel_intensity = 250
@@ -76,7 +76,7 @@ def pixel_y_from_scan(scan):
 # load the raw data for the region of interest
 print('loading the raw data from {}'.format(CONVERTED_DATABASE_NAME))
 db_conn = sqlite3.connect(CONVERTED_DATABASE_NAME)
-raw_df = pd.read_sql_query("select * from frames where frame_type == 0 and mz >= {} and mz <= {} and scan >= {} and scan <= {} and retention_time_secs >= {} and retention_time_secs <= {};".format(MZ_MIN, MZ_MAX, SCAN_MIN, SCAN_MAX, RT_MIN, RT_MAX), db_conn)
+raw_df = pd.read_sql_query("select * from frames where frame_type == 0 and mz >= {} and mz <= {} and scan >= {} and scan <= {} and retention_time_secs >= {} and retention_time_secs <= {};".format(limits['MZ_MIN'], limits['MZ_MAX'], limits['SCAN_MIN'], limits['SCAN_MAX'], limits['RT_MIN'], limits['RT_MAX']), db_conn)
 db_conn.close()
 
 raw_df['pixel_x'] = raw_df.apply(lambda row: pixel_x_from_mz(row.mz), axis=1)
