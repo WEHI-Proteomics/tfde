@@ -19,13 +19,12 @@ import sys
 # generate a tile for each frame, annotating intersecting features from the PASEF method
 
 
-cuboid_limits = 
-{'MZ_MIN': 736.379085965834,
- 'MZ_MAX': 756.379085965834,
- 'SCAN_MIN': 344.0,
- 'SCAN_MAX': 844.0,
- 'RT_MIN': 1693.6626825839253,
- 'RT_MAX': 1723.6626825839253}
+cuboid_limits = {'MZ_MIN': 736.379085965834,
+                'MZ_MAX': 756.379085965834,
+                'SCAN_MIN': 344.0,
+                'SCAN_MAX': 844.0,
+                'RT_MIN': 1693.6626825839253,
+                'RT_MAX': 1723.6626825839253}
 
 
 PIXELS_X = 800
