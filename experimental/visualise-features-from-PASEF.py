@@ -104,7 +104,7 @@ if os.path.exists(TILES_BASE_DIR):
 os.makedirs(TILES_BASE_DIR)
 
 # load the features
-features_df = pd.read_pickle(FEATURES_PASEF_FILE)
+features_df = pd.read_pickle(FEATURES_PASEF_FILE)['features_df']
 print('loaded {} features from {}'.format(len(features_df), FEATURES_PASEF_FILE))
 
 # add a buffer around the edges
