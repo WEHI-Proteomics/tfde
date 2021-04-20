@@ -140,8 +140,8 @@ for group_name,group_df in pixel_intensity_df.groupby(['frame_id'], as_index=Fal
 
     # draw the CCS markers
     ccs_marker_each = 50
-    range_l = round(SCAN_MIN / ccs_marker_each) * ccs_marker_each
-    range_u = round(SCAN_MAX / ccs_marker_each) * ccs_marker_each
+    range_l = round(limits['SCAN_MIN'] / ccs_marker_each) * ccs_marker_each
+    range_u = round(limits['SCAN_MAX'] / ccs_marker_each) * ccs_marker_each
     for marker_scan in np.arange(range_l,range_u+ccs_marker_each,ccs_marker_each):
         marker_y = pixel_y_from_scan(marker_scan)
         draw.text((10, marker_y-6), str(round(marker_scan)), font=feature_label_font, fill='lawngreen')
@@ -149,8 +149,8 @@ for group_name,group_df in pixel_intensity_df.groupby(['frame_id'], as_index=Fal
 
     # draw the m/z markers
     mz_marker_each = 1
-    range_l = round(MZ_MIN / mz_marker_each) * mz_marker_each
-    range_u = round(MZ_MAX / mz_marker_each) * mz_marker_each
+    range_l = round(limits['MZ_MIN'] / mz_marker_each) * mz_marker_each
+    range_u = round(limits['MZ_MAX'] / mz_marker_each) * mz_marker_each
     for marker_mz in np.arange(range_l,range_u+mz_marker_each,mz_marker_each):
         marker_x = pixel_x_from_mz(marker_mz)
         draw.text((marker_x-10, 8), str(round(marker_mz)), font=feature_label_font, fill='lawngreen')
