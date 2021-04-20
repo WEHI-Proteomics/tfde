@@ -66,11 +66,11 @@ UBUNTU_FONT_PATH = '/usr/share/fonts/truetype/liberation/LiberationSans-Regular.
 MACOS_FONT_PATH = '/Library/Fonts/Arial.ttf'
 
 def pixel_x_from_mz(mz):
-    pixel_x = int((mz - MZ_MIN) * PIXELS_PER_MZ)
+    pixel_x = int((mz - limits['MZ_MIN']) * PIXELS_PER_MZ)
     return pixel_x
 
 def pixel_y_from_scan(scan):
-    pixel_y = int((scan - SCAN_MIN) * PIXELS_PER_SCAN)
+    pixel_y = int((scan - limits['SCAN_MIN']) * PIXELS_PER_SCAN)
     return pixel_y
 
 # load the raw data for the region of interest
