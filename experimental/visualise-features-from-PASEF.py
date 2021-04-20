@@ -168,18 +168,16 @@ for group_name,group_df in pixel_intensity_df.groupby(['frame_id'], as_index=Fal
     # find the intersecting features for this tile; can be partial overlap in the m/z and scan dimensions
     intersecting_features_df = features_df[
                 (features_df.rt_lower <= tile_rt) & (features_df.rt_upper >= tile_rt) & 
-                ((features_df.mz_lower >= MZ_MIN) & (features_df.mz_lower <= MZ_MAX) | 
-                (features_df.mz_upper >= MZ_MIN) & (features_df.mz_upper <= MZ_MAX)) & 
-                ((features_df.scan_lower >= SCAN_MIN) & (features_df.scan_lower <= SCAN_MAX) |
-                (features_df.scan_upper >= SCAN_MIN) & (features_df.scan_upper <= SCAN_MAX))
+                (features_df.mz_apex >= limits['MZ_MIN']) & (features_df.mz_apex <= limits['MZ_MAX']) & 
+                (features_df.scan_apex >= limits['SCAN_MIN']) & (features_df.scan_apex <= limits['SCAN_MAX'])
                 ]
 
-    for idx,cuboid in intersecting_cuboids_df.iterrows():
+    for idx,feature in intersecting_features_df.iterrows():
         # get the coordinates for the bounding box
-        x0 = pixel_x_from_mz(cuboid.wide_mz_lower)
-        x1 = pixel_x_from_mz(cuboid.wide_mz_upper)
-        y0 = pixel_y_from_scan(cuboid.wide_scan_lower)
-        y1 = pixel_y_from_scan(cuboid.wide_scan_upper)
+        x0 = pixel_x_from_mz(feature.mz_lower)
+        x1 = pixel_x_from_mz(feature.mz_upper)
+        y0 = pixel_y_from_scan(feature.scan_lower)
+        y1 = pixel_y_from_scan(feature.scan_upper)
         # draw the bounding box
         draw.rectangle(xy=[(x0-x_buffer, y0-y_buffer), (x1+x_buffer, y1+y_buffer)], fill=None, outline='deepskyblue')
 
