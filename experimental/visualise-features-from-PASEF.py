@@ -38,8 +38,8 @@ minimum_pixel_intensity = 1
 maximum_pixel_intensity = 250
 
 # add a buffer around the edges
-MZ_BUFFER = 0.5
-SCAN_BUFFER = 2
+MZ_BUFFER = 0.2
+SCAN_BUFFER = 5
 
 EXPERIMENT_NAME = 'P3856'
 EXPERIMENT_DIR = '/media/big-ssd/experiments/{}'.format(EXPERIMENT_NAME)
