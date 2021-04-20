@@ -49,7 +49,7 @@ FEATURES_PASEF_FILE = '{}/exp-{}-run-{}-features-pasef-dedup.pkl'.format(FEATURE
 FEATURES_3DID_DIR = '{}/features-3did'.format(EXPERIMENT_DIR)
 FEATURES_3DID_FILE = '{}/exp-{}-run-{}-features-3did-dedup.pkl'.format(FEATURES_3DID_DIR, EXPERIMENT_NAME, RUN_NAME)
 
-TILES_BASE_DIR = '{}/precursor-cuboid-tiles-pasef'.format(expanduser('~'))
+TILES_BASE_DIR = '{}/feature-tiles-pasef'.format(expanduser('~'))
 
 
 if not os.path.isfile(CONVERTED_DATABASE_NAME):
