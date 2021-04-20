@@ -98,8 +98,6 @@ def process_precursor(frame_properties_df, precursor_id, precursor_group_df):
 
     fe_ms2_frame_lower = precursor_group_df.Frame.astype(int).min()               # only the ms2 frames associated with the precursor
     fe_ms2_frame_upper = precursor_group_df.Frame.astype(int).max()
-    fe_ms2_rt_lower = metadata_for_frame(frame_properties_df, fe_ms2_frame_lower)['retention_time_secs']
-    fe_ms2_rt_upper = metadata_for_frame(frame_properties_df, fe_ms2_frame_upper)['retention_time_secs']
 
     fe_ms1_frame_lower,_ = find_closest_ms1_frame_to_ms2_frame(frame_properties_df,fe_ms2_frame_lower)
     _,fe_ms1_frame_upper = find_closest_ms1_frame_to_ms2_frame(frame_properties_df,fe_ms2_frame_upper)
@@ -122,8 +120,8 @@ def process_precursor(frame_properties_df, precursor_id, precursor_group_df):
         'wide_scan_upper': int(wide_scan_upper),
         'fe_ms1_rt_lower': fe_ms1_rt_lower,
         'fe_ms1_rt_upper': fe_ms1_rt_upper,
-        'fe_ms2_rt_lower': fe_ms2_rt_lower,
-        'fe_ms2_rt_upper': fe_ms2_rt_upper,
+        'fe_ms2_frame_lower': fe_ms2_frame_lower,
+        'fe_ms2_frame_upper': fe_ms2_frame_upper,
         'wide_ms1_rt_lower': wide_ms1_rt_lower,
         'wide_ms1_rt_upper': wide_ms1_rt_upper,
         'number_of_windows': len(precursor_group_df)
