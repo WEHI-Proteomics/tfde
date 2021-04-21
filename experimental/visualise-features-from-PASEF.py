@@ -50,7 +50,7 @@ RUN_NAME = 'P3856_YHE211_1_Slot1-1_1_5104'
 CONVERTED_DATABASE_NAME = '/media/big-ssd/experiments/P3856/converted-databases/exp-P3856-run-{}-converted.sqlite'.format(RUN_NAME)
 
 IDENTS_PASEF_DIR = '{}/P3856-results-cs-true-fmdw-true-2021-04-21-05-43-13/identifications-pasef'.format(expanduser("~"))
-IDENTS_PASEF_FILE = '{}/exp-{}-identifications-pasef-recalibrated.pkl'.format(IDENTS_PASEF_DIR, experiment_name)
+IDENTS_PASEF_FILE = '{}/exp-{}-identifications-pasef-recalibrated.pkl'.format(IDENTS_PASEF_DIR, EXPERIMENT_NAME)
 
 FEATURES_3DID_DIR = '{}/features-3did'.format(EXPERIMENT_DIR)
 FEATURES_3DID_FILE = '{}/exp-{}-run-{}-features-3did-dedup.pkl'.format(FEATURES_3DID_DIR, EXPERIMENT_NAME, RUN_NAME)
