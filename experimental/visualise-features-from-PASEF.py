@@ -20,12 +20,14 @@ import sys
 
 
 # for focus on a particular feature
-limits = {'MZ_MIN': 741.379085965834,
- 'MZ_MAX': 751.379085965834,
- 'SCAN_MIN': 444.0,
- 'SCAN_MAX': 744.0,
- 'RT_MIN': 1693.6626825839253,
- 'RT_MAX': 1723.6626825839253}
+pasef_feature_id = 2490104
+
+limits = {'MZ_MIN': 853.414491842376,
+ 'MZ_MAX': 863.414491842376,
+ 'SCAN_MIN': 282.0,
+ 'SCAN_MAX': 582.0,
+ 'RT_MIN': 1891.6164580602874,
+ 'RT_MAX': 1921.6164580602874}
 
 
 PIXELS_X = 800
@@ -47,8 +49,8 @@ EXPERIMENT_DIR = '/media/big-ssd/experiments/{}'.format(EXPERIMENT_NAME)
 RUN_NAME = 'P3856_YHE211_1_Slot1-1_1_5104'
 CONVERTED_DATABASE_NAME = '/media/big-ssd/experiments/P3856/converted-databases/exp-P3856-run-{}-converted.sqlite'.format(RUN_NAME)
 
-FEATURES_PASEF_DIR = '{}/P3856-results-cs-true-fmdw-true-2021-04-19-15-44-52/features-pasef'.format(expanduser("~"))
-FEATURES_PASEF_FILE = '{}/exp-{}-run-{}-features-pasef-dedup-test.pkl'.format(FEATURES_PASEF_DIR, EXPERIMENT_NAME, RUN_NAME)
+IDENTS_PASEF_DIR = '{}/P3856-results-cs-true-fmdw-true-2021-04-21-05-43-13/identifications-pasef'.format(expanduser("~"))
+IDENTS_PASEF_FILE = '{}/exp-{}-identifications-pasef-recalibrated.pkl'.format(IDENTS_PASEF_DIR, experiment_name)
 
 FEATURES_3DID_DIR = '{}/features-3did'.format(EXPERIMENT_DIR)
 FEATURES_3DID_FILE = '{}/exp-{}-run-{}-features-3did-dedup.pkl'.format(FEATURES_3DID_DIR, EXPERIMENT_NAME, RUN_NAME)
@@ -60,8 +62,8 @@ if not os.path.isfile(CONVERTED_DATABASE_NAME):
     print('the converted database is required but is not present: {}'.format(CONVERTED_DATABASE_NAME))
     sys.exit(1)
 
-if not os.path.isfile(FEATURES_PASEF_FILE):
-    print('the features file is required but is not present: {}'.format(FEATURES_PASEF_FILE))
+if not os.path.isfile(IDENTS_PASEF_FILE):
+    print('the identifications file is required but is not present: {}'.format(IDENTS_PASEF_FILE))
     sys.exit(1)
 
 
@@ -166,11 +168,21 @@ for group_name,group_df in pixel_intensity_df.groupby(['frame_id'], as_index=Fal
     draw.text((PIXELS_X-info_box_x_inset, (2*space_per_line)+info_box_y_inset), '{} secs'.format(round(tile_rt,1)), font=feature_label_font, fill='lawngreen')
 
     # find the intersecting features for this tile; can be partial overlap in the m/z and scan dimensions
-    intersecting_features_df = features_df[
-                (features_df.rt_lower <= tile_rt) & (features_df.rt_upper >= tile_rt) & 
-                (features_df.monoisotopic_mz >= limits['MZ_MIN']) & (features_df.monoisotopic_mz <= limits['MZ_MAX']) & 
-                (features_df.scan_apex >= limits['SCAN_MIN']) & (features_df.scan_apex <= limits['SCAN_MAX'])
-                ]
+    if pasef_feature_id is not None:
+        # the selected feature
+        intersecting_features_df = features_df[
+                    (features_df.feature_id == pasef_feature_id) &
+                    (features_df.rt_lower <= tile_rt) & (features_df.rt_upper >= tile_rt) & 
+                    (features_df.monoisotopic_mz >= limits['MZ_MIN']) & (features_df.monoisotopic_mz <= limits['MZ_MAX']) & 
+                    (features_df.scan_apex >= limits['SCAN_MIN']) & (features_df.scan_apex <= limits['SCAN_MAX'])
+                    ]
+    else:
+        # any feature
+        intersecting_features_df = features_df[
+                    (features_df.rt_lower <= tile_rt) & (features_df.rt_upper >= tile_rt) & 
+                    (features_df.monoisotopic_mz >= limits['MZ_MIN']) & (features_df.monoisotopic_mz <= limits['MZ_MAX']) & 
+                    (features_df.scan_apex >= limits['SCAN_MIN']) & (features_df.scan_apex <= limits['SCAN_MAX'])
+                    ]
 
     for idx,feature in intersecting_features_df.iterrows():
         # get the coordinates for the bounding box
