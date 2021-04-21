@@ -110,8 +110,8 @@ if os.path.exists(TILES_BASE_DIR):
 os.makedirs(TILES_BASE_DIR)
 
 # load the features
-features_df = pd.read_pickle(IDENTS_PASEF_FILE)['features_df']
-print('loaded {} features from {}'.format(len(features_df), IDENTS_PASEF_FILE))
+features_df = pd.read_pickle(IDENTS_PASEF_FILE)['identifications_df']
+print('loaded {} identified features from {}'.format(len(features_df), IDENTS_PASEF_FILE))
 
 # load the font to use for labelling the overlays
 if os.path.isfile(UBUNTU_FONT_PATH):
