@@ -79,7 +79,7 @@ def task_detect_features():
     cmd = 'python -u detect-features.py -eb {experiment_base} -en {experiment_name} -rn {run_name} -ini {INI_FILE} -rm cluster -pc {proportion_of_cores_to_use} -pdm {precursor_definition_method} -rl {rl} -ru {ru} {cs} {fmdw}'.format(experiment_base=experiment_base_dir, experiment_name=experiment_name, run_name=run_name, INI_FILE=ini_file, proportion_of_cores_to_use=config['proportion_of_cores_to_use'], precursor_definition_method=precursor_definition_method, rl=int(config['rt_lower']), ru=int(config['rt_upper']), cs=config['cs_flag'], fmdw=config['fmdw_flag'])
     # output
     FEATURES_DIR = "{}/features-{}".format(EXPERIMENT_DIR, precursor_definition_method)
-    FEATURES_FILE = '{}/exp-{}-run-{}-features-{}.pkl'.format(FEATURES_DIR, experiment_name, run_name, precursor_definition_method)
+    FEATURES_FILE = '{}/exp-{}-run-{}-features-{}-dedup.pkl'.format(FEATURES_DIR, experiment_name, run_name, precursor_definition_method)
 
     return {
         'file_dep': [CUBOIDS_FILE],
@@ -98,7 +98,7 @@ def task_detect_features():
 def task_render_mgf():
     # input
     FEATURES_DIR = '{}/features-{}'.format(EXPERIMENT_DIR, precursor_definition_method)
-    FEATURES_FILE = '{}/exp-{}-run-{}-features-{}.pkl'.format(FEATURES_DIR, experiment_name, run_name, precursor_definition_method)
+    FEATURES_FILE = '{}/exp-{}-run-{}-features-{}-dedup.pkl'.format(FEATURES_DIR, experiment_name, run_name, precursor_definition_method)
     # command
     cmd = 'python -u render-features-as-mgf.py -eb {experiment_base} -en {experiment_name} -rn {run_name} -pdm {precursor_definition_method}'.format(experiment_base=experiment_base_dir, experiment_name=experiment_name, run_name=run_name, precursor_definition_method=precursor_definition_method)
     # output
