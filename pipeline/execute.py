@@ -245,14 +245,20 @@ def task_make_copies():
     def create_features_cmd_string():
         # copy features
         source_features_dir = '{}/features-{}'.format(EXPERIMENT_DIR, precursor_definition_method)
-        features_cp_cmd = 'cp -r {}/ {}/'.format(source_features_dir, target_directory_name)
-        return features_cp_cmd
+        cmd = 'cp -r {}/ {}/'.format(source_features_dir, target_directory_name)
+        return cmd
+
+    def create_mgfs_cmd_string():
+        # copy MGFs
+        source_features_dir = '{}/mgf-{}'.format(EXPERIMENT_DIR, precursor_definition_method)
+        cmd = 'cp -r {}/ {}/'.format(source_features_dir, target_directory_name)
+        return cmd
 
     def create_idents_cmd_string():
         # copy identifications
         source_identifications_dir = '{}/identifications-{}'.format(EXPERIMENT_DIR, precursor_definition_method)
-        identifications_cp_cmd = 'cp -r {}/ {}/'.format(source_identifications_dir, target_directory_name)
-        return identifications_cp_cmd
+        cmd = 'cp -r {}/ {}/'.format(source_identifications_dir, target_directory_name)
+        return cmd
 
     # input
     IDENTIFICATIONS_DIR = '{}/identifications-{}'.format(EXPERIMENT_DIR, precursor_definition_method)
@@ -260,6 +266,6 @@ def task_make_copies():
 
     return {
         'file_dep': [IDENTIFICATIONS_RECAL_FILE],
-        'actions': [set_up_target_dir, CmdAction(create_features_cmd_string), CmdAction(create_idents_cmd_string), finish_up],
+        'actions': [set_up_target_dir, CmdAction(create_features_cmd_string), CmdAction(create_mgfs_cmd_string), CmdAction(create_idents_cmd_string), finish_up],
         'verbosity': 2
     }
