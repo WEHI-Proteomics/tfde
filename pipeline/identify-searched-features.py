@@ -86,7 +86,13 @@ os.makedirs(PERCOLATOR_OUTPUT_DIR)
 
 # process all the Comet output files in the base directory
 PERCOLATOR_STDOUT_FILE_NAME = "{}/percolator-stdout.log".format(PERCOLATOR_OUTPUT_DIR)
-comet_output_file_list = glob.glob('{}/*.comet.target.pin'.format(COMET_OUTPUT_DIR))
+comet_output_file_list = glob.glob('{}/*.comet.pin'.format(COMET_OUTPUT_DIR))
+if len(comet_output_file_list) == 0:
+    print('found no comet input files in {}'.format(COMET_OUTPUT_DIR))
+    sys.exit(1)
+else:
+    print('found {} comet input files in {}'.format(len(comet_output_file_list), COMET_OUTPUT_DIR))
+
 comet_output_file_list_as_string = ' '.join(map(str, comet_output_file_list))
 cmd = "{}/crux-4.0.Linux.x86_64/bin/crux percolator --overwrite T --subset-max-train 1000000 --klammer F --maxiter 10 --output-dir {} --picked-protein {} --protein T --protein-enzyme {} --search-input auto --verbosity 30 --fileroot {} {} > {} 2>&1".format(expanduser("~"), PERCOLATOR_OUTPUT_DIR, args.fasta_file_name, args.protein_enzyme, args.experiment_name, comet_output_file_list_as_string, PERCOLATOR_STDOUT_FILE_NAME)
 exit_status = run_process(cmd)
