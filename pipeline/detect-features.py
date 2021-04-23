@@ -8,7 +8,6 @@ import json
 import multiprocessing as mp
 import ray
 import sqlite3
-import shutil
 from ms_deisotope import deconvolute_peaks, averagine, scoring
 from ms_deisotope.deconvolution import peak_retention_strategy
 import pickle
@@ -328,7 +327,7 @@ def determine_mono_characteristics(mono_mz, envelope, monoisotopic_mass, raw_poi
         result_d['scan_df'] = scan_df.to_dict('records')
         result_d['rt_df'] = rt_df.to_dict('records')
     else:
-        print('found no raw points where the mono peak should be: {}'.format(round(centre_mz,4)))
+        print('found no raw points where the mono peak should be: {}'.format(round(mono_mz,4)))
         result_d = None
     return result_d
 
