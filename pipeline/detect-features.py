@@ -351,8 +351,9 @@ def resolve_fragment_ions(feature_d, ms2_points_df):
     peaks_a = intensity_descent(peaks_a=raw_points_a, peak_delta=None)
     # deconvolute the spectra
     peaks_l = list(map(tuple, peaks_a))
-    maximum_neutral_mass = 1700*feature_d['charge']  # give the deconvolution a reasonable upper limit to search within
-    deconvoluted_peaks, _ = deconvolute_peaks(peaks_l, use_quick_charge=True, averagine=averagine.peptide, charge_range=(1,feature_d['charge']), scorer=scoring.MSDeconVFitter(minimum_score=MIN_SCORE_MS2_DECONVOLUTION_FEATURE, mass_error_tolerance=0.1), error_tolerance=4e-5, truncate_after=0.8, retention_strategy=peak_retention_strategy.TopNRetentionStrategy(n_peaks=100, base_peak_coefficient=1e-6, max_mass=maximum_neutral_mass))
+    # maximum_neutral_mass = 1700*feature_d['charge']  # give the deconvolution a reasonable upper limit to search within
+    # deconvoluted_peaks, _ = deconvolute_peaks(peaks_l, use_quick_charge=True, averagine=averagine.peptide, charge_range=(1,feature_d['charge']), scorer=scoring.MSDeconVFitter(minimum_score=MIN_SCORE_MS2_DECONVOLUTION_FEATURE, mass_error_tolerance=0.1), error_tolerance=4e-5, truncate_after=0.8, retention_strategy=peak_retention_strategy.TopNRetentionStrategy(n_peaks=100, base_peak_coefficient=1e-6, max_mass=maximum_neutral_mass))
+    deconvoluted_peaks, _ = deconvolute_peaks(peaks_l, use_quick_charge=True, averagine=averagine.peptide, scorer=scoring.PenalizedMSDeconVFitter(minimum_score=20., penalty_factor=3.0), truncate_after=0.95, ignore_below=0.0, charge_range=(1, 13))
     # package the spectra as a list
     deconvoluted_peaks_l = []
     for peak in deconvoluted_peaks:
