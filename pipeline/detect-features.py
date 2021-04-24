@@ -344,7 +344,7 @@ def generate_mass_defect_windows(mass_defect_window_da_min, mass_defect_window_d
 
 # resolve the fragment ions for this feature
 # returns a decharged peak list (neutral mass+proton mass, intensity)
-def resolve_fragment_ions(feature_d, ms2_points_df):
+def resolve_fragment_ions(feature_d, ms2_points_df, mass_defect_bins):
     vis_d = {}
     # perform intensity descent to resolve peaks
     raw_points_a = ms2_points_df[['mz','intensity']].to_numpy()
@@ -366,12 +366,7 @@ def resolve_fragment_ions(feature_d, ms2_points_df):
 
     if args.filter_by_mass_defect:
         fragment_ions_df = pd.DataFrame(deconvoluted_peaks_l)
-        # generate the mass defect windows
-        bins_l = generate_mass_defect_windows(int(fragment_ions_df.neutral_mass.min()), int(fragment_ions_df.neutral_mass.max()))
-
-        bins = pd.IntervalIndex.from_tuples(bins_l)
-        fragment_ions_df['bin'] = pd.cut(fragment_ions_df.neutral_mass, bins)
-
+        fragment_ions_df['bin'] = pd.cut(fragment_ions_df.neutral_mass, mass_defect_bins)
         filtered_fragment_ions_df = fragment_ions_df.dropna(subset = ['bin']).copy()
         filtered_fragment_ions_df.drop('bin', axis=1, inplace=True)
         deconvoluted_peaks_l = filtered_fragment_ions_df.to_dict('records')
@@ -395,7 +390,7 @@ def save_visualisation(visualise_d, method):
 
 # prepare the metadata and raw points for the feature detection
 @ray.remote
-def detect_features(precursor_cuboid_d, converted_db_name, visualise):
+def detect_features(precursor_cuboid_d, converted_db_name, mass_defect_bins, visualise):
     # load the raw points for this cuboid
     db_conn = sqlite3.connect(converted_db_name)
     wide_ms1_points_df = pd.read_sql_query("select frame_id,mz,scan,intensity,retention_time_secs from frames where frame_type == {} and retention_time_secs >= {} and retention_time_secs <= {} and scan >= {} and scan <= {} and mz >= {} and mz <= {}".format(FRAME_TYPE_MS1, precursor_cuboid_d['wide_ms1_rt_lower'], precursor_cuboid_d['wide_ms1_rt_upper'], precursor_cuboid_d['wide_scan_lower'], precursor_cuboid_d['wide_scan_upper'], precursor_cuboid_d['wide_mz_lower'], precursor_cuboid_d['wide_mz_upper']), db_conn)
@@ -457,7 +452,7 @@ def detect_features(precursor_cuboid_d, converted_db_name, visualise):
                 feature_d['precursor_cuboid_id'] = precursor_cuboid_d['precursor_cuboid_id']
                 # resolve the feature's fragment ions
                 if args.precursor_definition_method != '3did':
-                    ms2_resolution_d = resolve_fragment_ions(feature_d, ms2_points_df)
+                    ms2_resolution_d = resolve_fragment_ions(feature_d, ms2_points_df, mass_defect_bins)
                     feature_d['fragment_ions_l'] = json.dumps(ms2_resolution_d['deconvoluted_peaks_l'])
                     feature_d['fmdw_before_after_d'] = ms2_resolution_d['vis_d']
                 else:
@@ -650,11 +645,14 @@ if not ray.is_initialized():
     else:
         ray.init(local_mode=True)
 
+# generate the mass defect windows
+mass_defect_bins = pd.IntervalIndex.from_tuples(generate_mass_defect_windows(100, 8000))
+
 # find the features in each precursor cuboid
 if args.precursor_definition_method == 'pasef':
-    features_l = ray.get([detect_features.remote(precursor_cuboid_d=get_common_cuboid_definition_from_pasef(row), converted_db_name=CONVERTED_DATABASE_NAME, visualise=(args.precursor_id is not None)) for row in precursor_cuboids_df.itertuples()])
+    features_l = ray.get([detect_features.remote(precursor_cuboid_d=get_common_cuboid_definition_from_pasef(row), converted_db_name=CONVERTED_DATABASE_NAME, mass_defect_bins=mass_defect_bins, visualise=(args.precursor_id is not None)) for row in precursor_cuboids_df.itertuples()])
 elif args.precursor_definition_method == '3did':
-    features_l = ray.get([detect_features.remote(precursor_cuboid_d=get_common_cuboid_definition_from_3did(row), converted_db_name=CONVERTED_DATABASE_NAME, visualise=(args.precursor_id is not None)) for row in precursor_cuboids_df.itertuples()])
+    features_l = ray.get([detect_features.remote(precursor_cuboid_d=get_common_cuboid_definition_from_3did(row), converted_db_name=CONVERTED_DATABASE_NAME, mass_defect_bins=mass_defect_bins, visualise=(args.precursor_id is not None)) for row in precursor_cuboids_df.itertuples()])
 
 if args.precursor_id is None:
     # join the list of dataframes into a single dataframe
