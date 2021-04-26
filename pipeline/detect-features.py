@@ -408,11 +408,11 @@ def detect_features(precursor_cuboid_d, converted_db_name, mass_defect_bins, vis
     ms1_deconvoluted_peaks_l = []
     for peak_idx,peak in enumerate(deconvoluted_peaks):
         # discard a monoisotopic peak that has either of the first two peaks as placeholders (indicated by intensity of 1)
-        # if ((len(peak.envelope) >= 3) and (peak.envelope[0][1] > 1) and (peak.envelope[1][1] > 1)):
-        mono_peak_mz = peak.mz
-        mono_intensity = peak.intensity
-        second_peak_mz = peak.envelope[1][0]
-        ms1_deconvoluted_peaks_l.append((mono_peak_mz, second_peak_mz, mono_intensity, peak.score, peak.signal_to_noise, peak.charge, peak.envelope, peak.neutral_mass))
+        if ((len(peak.envelope) >= 3) and (peak.envelope[0][1] > 1) and (peak.envelope[1][1] > 1)):
+            mono_peak_mz = peak.mz
+            mono_intensity = peak.intensity
+            second_peak_mz = peak.envelope[1][0]
+            ms1_deconvoluted_peaks_l.append((mono_peak_mz, second_peak_mz, mono_intensity, peak.score, peak.signal_to_noise, peak.charge, peak.envelope, peak.neutral_mass))
     df = pd.DataFrame(ms1_deconvoluted_peaks_l, columns=['mono_mz','second_peak_mz','intensity','score','SN','charge','envelope','neutral_mass'])
     df.sort_values(by=['score'], ascending=False, inplace=True)
 
