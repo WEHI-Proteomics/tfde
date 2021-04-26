@@ -417,13 +417,14 @@ def detect_features(precursor_cuboid_d, converted_db_name, mass_defect_bins, vis
     df.sort_values(by=['score'], ascending=False, inplace=True)
 
     if len(df) > 0:
-        # if we have good quality features, let's take them all. Aim for a minimum number of good ones.
-        min_quality_df = df[(df.score >= MIN_SCORE_MS1_DECONVOLUTION_FEATURE)]
-        high_quality_df = df[(df.score >= QUALITY_MIN_SCORE_MS1_DECONVOLUTION_FEATURE)]
-        if len(high_quality_df) >= TARGET_NUMBER_OF_FEATURES_FOR_CUBOID:
-            deconvolution_features_df = high_quality_df
-        else:
-            deconvolution_features_df = min_quality_df.head(n=TARGET_NUMBER_OF_FEATURES_FOR_CUBOID)
+        # # if we have good quality features, let's take them all. Aim for a minimum number of good ones.
+        # min_quality_df = df[(df.score >= MIN_SCORE_MS1_DECONVOLUTION_FEATURE)]
+        # high_quality_df = df[(df.score >= QUALITY_MIN_SCORE_MS1_DECONVOLUTION_FEATURE)]
+        # if len(high_quality_df) >= TARGET_NUMBER_OF_FEATURES_FOR_CUBOID:
+        #     deconvolution_features_df = high_quality_df
+        # else:
+        #     deconvolution_features_df = min_quality_df.head(n=TARGET_NUMBER_OF_FEATURES_FOR_CUBOID)
+        deconvolution_features_df = df
 
         if args.precursor_definition_method != '3did':  # ms2 is not yet implemented for 3DID
             # load the ms2 data for the precursor
