@@ -106,7 +106,6 @@ if (len(features_df) > 2):
 
     number_of_dups = len(features_df)-len(dedup_df)
     print('removed {} duplicates ({}% of the original detections)'.format(number_of_dups, round(number_of_dups/len(features_df)*100)))
-    print('there are {} detected de-duplicated features'.format(len(dedup_df)))
 
     # remove the columns we added earlier
     dedup_df.drop(columns_to_drop_l, axis=1, inplace=True)
