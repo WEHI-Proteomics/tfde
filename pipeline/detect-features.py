@@ -539,7 +539,6 @@ parser.add_argument('-rm','--ray_mode', type=str, choices=['local','cluster'], h
 parser.add_argument('-pc','--proportion_of_cores_to_use', type=float, default=0.9, help='Proportion of the machine\'s cores to use for this program.', required=False)
 parser.add_argument('-cs','--correct_for_saturation', action='store_true', help='Correct for saturation when calculating monoisotopic m/z and intensity.')
 parser.add_argument('-fmdw','--filter_by_mass_defect', action='store_true', help='Filter fragment ions by mass defect windows.')
-parser.add_argument('-drd','--do_not_remove_duplicates', action='store_true', help='Do not remove duplicated features.')
 args = parser.parse_args()
 
 # Print the arguments for the log
@@ -589,9 +588,6 @@ QUALITY_MIN_SCORE_MS1_DECONVOLUTION_FEATURE = cfg.getfloat('ms1', 'QUALITY_MIN_S
 MIN_SCORE_MS2_DECONVOLUTION_FEATURE = cfg.getfloat('ms2', 'MIN_SCORE_MS2_DECONVOLUTION_FEATURE')
 FEATURE_DETECTION_MIN_CHARGE = cfg.getint('ms1', 'FEATURE_DETECTION_MIN_CHARGE')
 FEATURE_DETECTION_MAX_CHARGE = cfg.getint('ms1', 'FEATURE_DETECTION_MAX_CHARGE')
-DUP_MZ_TOLERANCE_PPM = cfg.getint('ms1', 'DUP_MZ_TOLERANCE_PPM')
-DUP_SCAN_TOLERANCE = cfg.getint('ms1', 'DUP_SCAN_TOLERANCE')
-DUP_RT_TOLERANCE = cfg.getint('ms1', 'DUP_RT_TOLERANCE')
 SATURATION_INTENSITY = cfg.getint('common', 'SATURATION_INTENSITY')
 TARGET_NUMBER_OF_FEATURES_FOR_CUBOID = cfg.getint('ms1', 'TARGET_NUMBER_OF_FEATURES_FOR_CUBOID')
 
@@ -648,81 +644,20 @@ if args.precursor_definition_method == 'pasef':
 elif args.precursor_definition_method == '3did':
     features_l = ray.get([detect_features.remote(precursor_cuboid_d=get_common_cuboid_definition_from_3did(row), converted_db_name=CONVERTED_DATABASE_NAME, mass_defect_bins=mass_defect_bins, visualise=(args.precursor_id is not None)) for row in precursor_cuboids_df.itertuples()])
 
-if args.precursor_id is None:
-    # join the list of dataframes into a single dataframe
-    features_df = pd.concat(features_l, axis=0, sort=False, ignore_index=True)
+# join the list of dataframes into a single dataframe
+features_df = pd.concat(features_l, axis=0, sort=False, ignore_index=True)
 
-    # add the run name
-    features_df['run_name'] = args.run_name
+# add the run name
+features_df['run_name'] = args.run_name
 
-    # write out all the features
-    print("writing {} features to {}".format(len(features_df), FEATURES_FILE))
-    info.append(('total_running_time',round(time.time()-start_run,1)))
-    info.append(('processor',parser.prog))
-    info.append(('processed', time.ctime()))
-    content_d = {'features_df':features_df, 'metadata':info}
-    with open(FEATURES_FILE, 'wb') as handle:
-        pickle.dump(content_d, handle)
-
-    # de-dup the features
-    dedup_start_run = time.time()
-    if (len(features_df) > 2) and (not args.do_not_remove_duplicates):
-        print('removing duplicates from {}'.format(FEATURES_FILE))
-
-        # set up dup definitions
-        MZ_TOLERANCE_PERCENT = DUP_MZ_TOLERANCE_PPM * 10**-4
-        features_df['dup_mz'] = features_df['monoisotopic_mz']  # shorthand to reduce verbosity
-        features_df['dup_mz_ppm_tolerance'] = features_df.dup_mz * MZ_TOLERANCE_PERCENT / 100
-        features_df['dup_mz_lower'] = features_df.dup_mz - features_df.dup_mz_ppm_tolerance
-        features_df['dup_mz_upper'] = features_df.dup_mz + features_df.dup_mz_ppm_tolerance
-        features_df['dup_scan_lower'] = features_df.scan_apex - DUP_SCAN_TOLERANCE
-        features_df['dup_scan_upper'] = features_df.scan_apex + DUP_SCAN_TOLERANCE
-        features_df['dup_rt_lower'] = features_df.rt_apex - DUP_RT_TOLERANCE
-        features_df['dup_rt_upper'] = features_df.rt_apex + DUP_RT_TOLERANCE
-
-        # remove these after we're finished
-        columns_to_drop_l = []
-        columns_to_drop_l.append('dup_mz')
-        columns_to_drop_l.append('dup_mz_ppm_tolerance')
-        columns_to_drop_l.append('dup_mz_lower')
-        columns_to_drop_l.append('dup_mz_upper')
-        columns_to_drop_l.append('dup_scan_lower')
-        columns_to_drop_l.append('dup_scan_upper')
-        columns_to_drop_l.append('dup_rt_lower')
-        columns_to_drop_l.append('dup_rt_upper')
-
-        # sort by decreasing deconvolution score
-        features_df.sort_values(by=['deconvolution_score'], ascending=False, inplace=True)
-
-        # see if any detections have a duplicate - if so, keep the first one
-        keep_l = []
-        for row in features_df.itertuples():
-            dup_df = features_df[(features_df.dup_mz > row.dup_mz_lower) & (features_df.dup_mz < row.dup_mz_upper) & (features_df.scan_apex > row.dup_scan_lower) & (features_df.scan_apex < row.dup_scan_upper) & (features_df.rt_apex > row.dup_rt_lower) & (features_df.rt_apex < row.dup_rt_upper)].copy()
-            # group the dups by charge
-            for group_name,group_df in dup_df.groupby(['charge'], as_index=False):
-                keep_l.append(group_df.iloc[0].feature_id)
-
-        # remove any features that are not in the keep list
-        dedup_df = features_df[features_df.feature_id.isin(keep_l)].copy()
-
-        number_of_dups = len(features_df)-len(dedup_df)
-        print('removed {} duplicates ({}% of the original detections)'.format(number_of_dups, round(number_of_dups/len(features_df)*100)))
-        print('there are {} detected de-duplicated features'.format(len(dedup_df)))
-
-        # remove the columns we added earlier
-        dedup_df.drop(columns_to_drop_l, axis=1, inplace=True)
-    else:
-        # nothing to de-dup
-        dedup_df = features_df
-
-    FEATURES_DEDUP_FILE = '{}/exp-{}-run-{}-features-{}-dedup.pkl'.format(FEATURES_DIR, args.experiment_name, args.run_name, args.precursor_definition_method)
-
-    # write out all the features
-    print("writing {} de-duped features to {}".format(len(dedup_df), FEATURES_DEDUP_FILE))
-    info.append(('dedup_running_time',round(time.time()-dedup_start_run,1)))
-    content_d = {'features_df':dedup_df, 'metadata':info}
-    with open(FEATURES_DEDUP_FILE, 'wb') as handle:
-        pickle.dump(content_d, handle)
+# write out all the features
+print("writing {} features to {}".format(len(features_df), FEATURES_FILE))
+info.append(('total_running_time',round(time.time()-start_run,1)))
+info.append(('processor',parser.prog))
+info.append(('processed', time.ctime()))
+content_d = {'features_df':features_df, 'metadata':info}
+with open(FEATURES_FILE, 'wb') as handle:
+    pickle.dump(content_d, handle)
 
 stop_run = time.time()
 print("total running time ({}): {} seconds".format(parser.prog, round(stop_run-start_run,1)))
