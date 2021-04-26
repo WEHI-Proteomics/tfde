@@ -89,6 +89,23 @@ def task_detect_features():
         'verbosity': 2
     }
 
+def task_remove_duplicate_features():
+    # input
+    FEATURES_DIR = "{}/features-{}".format(EXPERIMENT_DIR, precursor_definition_method)
+    FEATURES_FILE = '{}/exp-{}-run-{}-features-{}.pkl'.format(FEATURES_DIR, experiment_name, run_name, precursor_definition_method)
+    # command
+    cmd = 'python -u remove-duplicate-features.py -eb {experiment_base} -en {experiment_name} -rn {run_name} -ini {INI_FILE} -pdm {precursor_definition_method}'.format(experiment_base=experiment_base_dir, experiment_name=experiment_name, run_name=run_name, INI_FILE=ini_file, precursor_definition_method=precursor_definition_method)
+    # output
+    FEATURES_DEDUP_FILE = '{}/exp-{}-run-{}-features-{}-dedup.pkl'.format(FEATURES_DIR, experiment_name, run_name, precursor_definition_method)
+
+    return {
+        'file_dep': [FEATURES_FILE],
+        'actions': [cmd],
+        'targets': [FEATURES_DEDUP_FILE],
+        'clean': True,
+        'verbosity': 2
+    }
+
 
 
 ####################
