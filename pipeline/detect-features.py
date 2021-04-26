@@ -402,7 +402,7 @@ def detect_features(precursor_cuboid_d, converted_db_name, mass_defect_bins, vis
 
     # deconvolution - see https://mobiusklein.github.io/ms_deisotope/docs/_build/html/deconvolution/deconvolution.html
     ms1_peaks_l = list(map(tuple, peaks_a))
-    deconvoluted_peaks, _priority_targets = deconvolute_peaks(ms1_peaks_l, averagine=averagine.peptide, truncate_after=0.95)
+    deconvoluted_peaks, _priority_targets = deconvolute_peaks(ms1_peaks_l, use_quick_charge=True, averagine=averagine.peptide, truncate_after=0.95)
 
     # collect features from deconvolution
     ms1_deconvoluted_peaks_l = []
