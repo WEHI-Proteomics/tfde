@@ -402,7 +402,7 @@ def detect_features(precursor_cuboid_d, converted_db_name, mass_defect_bins, vis
 
     # deconvolution - see https://mobiusklein.github.io/ms_deisotope/docs/_build/html/deconvolution/deconvolution.html
     ms1_peaks_l = list(map(tuple, peaks_a))
-    deconvoluted_peaks, _priority_targets = deconvolute_peaks(ms1_peaks_l, use_quick_charge=True, averagine=averagine.peptide, charge_range=(FEATURE_DETECTION_MIN_CHARGE,FEATURE_DETECTION_MAX_CHARGE), truncate_after=0.95)
+    deconvoluted_peaks, _priority_targets = deconvolute_peaks(ms1_peaks_l, use_quick_charge=True, averagine=averagine.peptide, truncate_after=0.95)
 
     # collect features from deconvolution
     ms1_deconvoluted_peaks_l = []
@@ -417,14 +417,8 @@ def detect_features(precursor_cuboid_d, converted_db_name, mass_defect_bins, vis
     df.sort_values(by=['score'], ascending=False, inplace=True)
 
     if len(df) > 0:
-        # # if we have good quality features, let's take them all. Aim for a minimum number of good ones.
-        # min_quality_df = df[(df.score >= MIN_SCORE_MS1_DECONVOLUTION_FEATURE)]
-        # high_quality_df = df[(df.score >= QUALITY_MIN_SCORE_MS1_DECONVOLUTION_FEATURE)]
-        # if len(high_quality_df) >= TARGET_NUMBER_OF_FEATURES_FOR_CUBOID:
-        #     deconvolution_features_df = high_quality_df
-        # else:
-        #     deconvolution_features_df = min_quality_df.head(n=TARGET_NUMBER_OF_FEATURES_FOR_CUBOID)
-        deconvolution_features_df = df
+        # take the top N scoring features
+        deconvolution_features_df = df.head(n=TARGET_NUMBER_OF_FEATURES_FOR_CUBOID)
 
         if args.precursor_definition_method != '3did':  # ms2 is not yet implemented for 3DID
             # load the ms2 data for the precursor
