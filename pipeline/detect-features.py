@@ -691,14 +691,14 @@ if args.precursor_id is None:
         columns_to_drop_l.append('dup_rt_lower')
         columns_to_drop_l.append('dup_rt_upper')
 
-        # sort by decreasing intensity
-        features_df.sort_values(by=['feature_intensity'], ascending=False, inplace=True)
+        # sort by decreasing deconvolution score
+        features_df.sort_values(by=['deconvolution_score'], ascending=False, inplace=True)
 
-        # see if any detections have a duplicate - if so, find the dup with the highest intensity (i.e. the first in the group) and keep it
+        # see if any detections have a duplicate - if so, keep the first one
         keep_l = []
         for row in features_df.itertuples():
             dup_df = features_df[(features_df.dup_mz > row.dup_mz_lower) & (features_df.dup_mz < row.dup_mz_upper) & (features_df.scan_apex > row.dup_scan_lower) & (features_df.scan_apex < row.dup_scan_upper) & (features_df.rt_apex > row.dup_rt_lower) & (features_df.rt_apex < row.dup_rt_upper)].copy()
-            # group the dups by charge - take the most intense for each charge
+            # group the dups by charge
             for group_name,group_df in dup_df.groupby(['charge'], as_index=False):
                 keep_l.append(group_df.iloc[0].feature_id)
 
