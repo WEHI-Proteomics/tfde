@@ -68,8 +68,6 @@ with open(FEATURES_FILE, 'rb') as handle:
 
 # de-dup the features
 if (len(features_df) > 2):
-    print('removing duplicates from {}'.format(FEATURES_FILE))
-
     # set up dup definitions
     MZ_TOLERANCE_PERCENT = DUP_MZ_TOLERANCE_PPM * 10**-4
     features_df['dup_mz'] = features_df['monoisotopic_mz']  # shorthand to reduce verbosity
