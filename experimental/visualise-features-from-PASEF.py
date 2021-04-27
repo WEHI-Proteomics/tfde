@@ -1,33 +1,54 @@
 import pandas as pd
 import numpy as np
-from matplotlib import colors, cm, text, pyplot as plt
-import matplotlib.patches as patches
+from matplotlib import colors, pyplot as plt
 import os
-import time
-from cmcrameri import cm
 from PIL import Image, ImageFont, ImageDraw, ImageEnhance
-from cmcrameri import cm
 import sqlite3
-import glob
-import tempfile
-import zipfile
 import json
 import shutil
 from os.path import expanduser
 import sys
+import pickle
 
-# generate a tile for each frame, annotating intersecting features from the PASEF method
+# generate a tile for each frame around a selected feature from the PASEF method
 
+MAXIMUM_Q_VALUE = 0.01
 
 # for focus on a particular feature
-pasef_feature_id = 2490104
+pasef_feature_id = 3272105
 
-limits = {'MZ_MIN': 853.414491842376,
- 'MZ_MAX': 863.414491842376,
- 'SCAN_MIN': 282.0,
- 'SCAN_MAX': 582.0,
- 'RT_MIN': 1891.6164580602874,
- 'RT_MAX': 1921.6164580602874}
+# visualisation offsets from the feature apexes
+VIS_MZ_OFFSET_LOWER = 5
+VIS_MZ_OFFSET_UPPER = 5
+VIS_SCAN_OFFSET_LOWER = 150
+VIS_SCAN_OFFSET_UPPER = 150
+VIS_RT_OFFSET_LOWER = 15
+VIS_RT_OFFSET_UPPER = 15
+
+
+
+experiment_name = 'P3856'
+feature_detection_method = 'pasef'
+
+IDENTIFICATIONS_DIR = '{}/P3856-results-cs-true-fmdw-true-2021-04-26-21-16-43/identifications-pasef'.format(expanduser("~"))
+IDENTIFICATIONS_FILE = '{}/exp-{}-identifications-{}-recalibrated.pkl'.format(IDENTIFICATIONS_DIR, experiment_name, feature_detection_method)
+
+# load the identifications
+with open(IDENTIFICATIONS_FILE, 'rb') as handle:
+    d = pickle.load(handle)
+identifications_df = d['identifications_df']
+# identifications_df = identifications_df[(identifications_df['percolator q-value'] <= MAXIMUM_Q_VALUE)]
+
+selected_feature = identifications_df[(identifications_df.feature_id == pasef_feature_id)].iloc[0]
+
+limits = {
+'MZ_MIN': selected_feature.monoisotopic_mz - VIS_MZ_OFFSET_LOWER,
+'MZ_MAX': selected_feature.monoisotopic_mz + VIS_MZ_OFFSET_UPPER,
+'SCAN_MIN': selected_feature.scan_apex - VIS_SCAN_OFFSET_LOWER,
+'SCAN_MAX': selected_feature.scan_apex + VIS_SCAN_OFFSET_UPPER,
+'RT_MIN': selected_feature.rt_apex - VIS_RT_OFFSET_LOWER,
+'RT_MAX': selected_feature.rt_apex + VIS_RT_OFFSET_UPPER
+}
 
 
 PIXELS_X = 800
@@ -39,21 +60,15 @@ PIXELS_PER_SCAN = PIXELS_Y / (limits['SCAN_MAX'] - limits['SCAN_MIN'])
 minimum_pixel_intensity = 1
 maximum_pixel_intensity = 250
 
-# add a buffer around the edges
-MZ_BUFFER = 0.2
-SCAN_BUFFER = 5
+# add a buffer around the edges of the bounding box
+BB_MZ_BUFFER = 0.2
+BB_SCAN_BUFFER = 5
 
 EXPERIMENT_NAME = 'P3856'
 EXPERIMENT_DIR = '/media/big-ssd/experiments/{}'.format(EXPERIMENT_NAME)
 
 RUN_NAME = 'P3856_YHE211_1_Slot1-1_1_5104'
 CONVERTED_DATABASE_NAME = '/media/big-ssd/experiments/P3856/converted-databases/exp-P3856-run-{}-converted.sqlite'.format(RUN_NAME)
-
-IDENTS_PASEF_DIR = '{}/P3856-results-cs-true-fmdw-true-2021-04-21-05-43-13/identifications-pasef'.format(expanduser("~"))
-IDENTS_PASEF_FILE = '{}/exp-{}-identifications-pasef-recalibrated.pkl'.format(IDENTS_PASEF_DIR, EXPERIMENT_NAME)
-
-FEATURES_3DID_DIR = '{}/features-3did'.format(EXPERIMENT_DIR)
-FEATURES_3DID_FILE = '{}/exp-{}-run-{}-features-3did-dedup.pkl'.format(FEATURES_3DID_DIR, EXPERIMENT_NAME, RUN_NAME)
 
 TILES_BASE_DIR = '{}/feature-tiles-pasef'.format(expanduser('~'))
 
@@ -108,10 +123,6 @@ pixel_intensity_df = pd.merge(pixel_intensity_df, colours_df, how='left', left_o
 if os.path.exists(TILES_BASE_DIR):
     shutil.rmtree(TILES_BASE_DIR)
 os.makedirs(TILES_BASE_DIR)
-
-# load the features
-features_df = pd.read_pickle(IDENTS_PASEF_FILE)['identifications_df']
-print('loaded {} identified features from {}'.format(len(features_df), IDENTS_PASEF_FILE))
 
 # load the font to use for labelling the overlays
 if os.path.isfile(UBUNTU_FONT_PATH):
@@ -187,10 +198,10 @@ for group_name,group_df in pixel_intensity_df.groupby(['frame_id'], as_index=Fal
     for idx,feature in intersecting_features_df.iterrows():
         # get the coordinates for the bounding box
         envelope = json.loads(feature.envelope)
-        x0 = pixel_x_from_mz(envelope[0][0] - MZ_BUFFER)
-        x1 = pixel_x_from_mz(envelope[-1][0] + MZ_BUFFER)
-        y0 = pixel_y_from_scan(feature.scan_lower - SCAN_BUFFER)
-        y1 = pixel_y_from_scan(feature.scan_upper + SCAN_BUFFER)
+        x0 = pixel_x_from_mz(envelope[0][0] - BB_MZ_BUFFER)
+        x1 = pixel_x_from_mz(envelope[-1][0] + BB_MZ_BUFFER)
+        y0 = pixel_y_from_scan(feature.scan_lower - BB_SCAN_BUFFER)
+        y1 = pixel_y_from_scan(feature.scan_upper + BB_SCAN_BUFFER)
         # draw the bounding box
         draw.rectangle(xy=[(x0, y0), (x1, y1)], fill=None, outline='deepskyblue')
 
