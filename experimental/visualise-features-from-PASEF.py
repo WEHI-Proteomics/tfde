@@ -50,6 +50,7 @@ limits = {
 'RT_MAX': selected_feature.rt_apex + VIS_RT_OFFSET_UPPER
 }
 
+print('coordinates for comparison:\n{}'.format(limits))
 
 PIXELS_X = 800
 PIXELS_Y = 800
