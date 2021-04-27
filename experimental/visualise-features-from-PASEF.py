@@ -200,6 +200,9 @@ for group_name,group_df in pixel_intensity_df.groupby(['frame_id'], as_index=Fal
         y1 = pixel_y_from_scan(feature.scan_upper + BB_SCAN_BUFFER)
         # draw the bounding box
         draw.rectangle(xy=[(x0, y0), (x1, y1)], fill=None, outline='deepskyblue')
+        # draw the bounding box label
+        draw.text((x0, y0-(2*space_per_line)), 'feature {}'.format(selected_feature.feature_id), font=feature_label_font, fill='lawngreen')
+        draw.text((x0, y0-(1*space_per_line)), '{}, {}+'.format(selected_feature.sequence, selected_feature.charge), font=feature_label_font, fill='lawngreen')
 
     # save the tile
     tile_file_name = '{}/tile-{}.png'.format(TILES_BASE_DIR, tile_id)
