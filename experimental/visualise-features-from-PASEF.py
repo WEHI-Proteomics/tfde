@@ -77,10 +77,6 @@ if not os.path.isfile(CONVERTED_DATABASE_NAME):
     print('the converted database is required but is not present: {}'.format(CONVERTED_DATABASE_NAME))
     sys.exit(1)
 
-if not os.path.isfile(IDENTS_PASEF_FILE):
-    print('the identifications file is required but is not present: {}'.format(IDENTS_PASEF_FILE))
-    sys.exit(1)
-
 
 # font paths for overlay labels
 UBUNTU_FONT_PATH = '/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf'
