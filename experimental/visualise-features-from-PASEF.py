@@ -26,9 +26,10 @@ VIS_RT_OFFSET_LOWER = 15
 VIS_RT_OFFSET_UPPER = 15
 
 
-
 experiment_name = 'P3856'
 feature_detection_method = 'pasef'
+run_name = 'P3856_YHE211_1_Slot1-1_1_5104'
+
 
 IDENTIFICATIONS_DIR = '{}/P3856-results-cs-true-fmdw-true-2021-04-26-21-16-43/identifications-pasef'.format(expanduser("~"))
 IDENTIFICATIONS_FILE = '{}/exp-{}-identifications-{}-recalibrated.pkl'.format(IDENTIFICATIONS_DIR, experiment_name, feature_detection_method)
@@ -37,7 +38,6 @@ IDENTIFICATIONS_FILE = '{}/exp-{}-identifications-{}-recalibrated.pkl'.format(ID
 with open(IDENTIFICATIONS_FILE, 'rb') as handle:
     d = pickle.load(handle)
 identifications_df = d['identifications_df']
-# identifications_df = identifications_df[(identifications_df['percolator q-value'] <= MAXIMUM_Q_VALUE)]
 
 selected_feature = identifications_df[(identifications_df.feature_id == pasef_feature_id)].iloc[0]
 
@@ -65,10 +65,7 @@ maximum_pixel_intensity = 250
 BB_MZ_BUFFER = 0.2
 BB_SCAN_BUFFER = 5
 
-EXPERIMENT_NAME = 'P3856'
-EXPERIMENT_DIR = '/media/big-ssd/experiments/{}'.format(EXPERIMENT_NAME)
-
-RUN_NAME = 'P3856_YHE211_1_Slot1-1_1_5104'
+EXPERIMENT_DIR = '/media/big-ssd/experiments/{}'.format(experiment_name)
 CONVERTED_DATABASE_NAME = '/media/big-ssd/experiments/P3856/converted-databases/exp-P3856-run-{}-converted.sqlite'.format(RUN_NAME)
 
 TILES_BASE_DIR = '{}/feature-tiles-pasef'.format(expanduser('~'))
