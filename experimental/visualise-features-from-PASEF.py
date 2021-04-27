@@ -177,18 +177,18 @@ for group_name,group_df in pixel_intensity_df.groupby(['frame_id'], as_index=Fal
     # find the intersecting features for this tile; can be partial overlap in the m/z and scan dimensions
     if pasef_feature_id is not None:
         # the selected feature
-        intersecting_features_df = features_df[
-                    (features_df.feature_id == pasef_feature_id) &
-                    (features_df.rt_lower <= tile_rt) & (features_df.rt_upper >= tile_rt) & 
-                    (features_df.monoisotopic_mz >= limits['MZ_MIN']) & (features_df.monoisotopic_mz <= limits['MZ_MAX']) & 
-                    (features_df.scan_apex >= limits['SCAN_MIN']) & (features_df.scan_apex <= limits['SCAN_MAX'])
+        intersecting_features_df = identifications_df[
+                    (identifications_df.feature_id == pasef_feature_id) &
+                    (identifications_df.rt_lower <= tile_rt) & (identifications_df.rt_upper >= tile_rt) & 
+                    (identifications_df.monoisotopic_mz >= limits['MZ_MIN']) & (identifications_df.monoisotopic_mz <= limits['MZ_MAX']) & 
+                    (identifications_df.scan_apex >= limits['SCAN_MIN']) & (identifications_df.scan_apex <= limits['SCAN_MAX'])
                     ]
     else:
         # any feature
-        intersecting_features_df = features_df[
-                    (features_df.rt_lower <= tile_rt) & (features_df.rt_upper >= tile_rt) & 
-                    (features_df.monoisotopic_mz >= limits['MZ_MIN']) & (features_df.monoisotopic_mz <= limits['MZ_MAX']) & 
-                    (features_df.scan_apex >= limits['SCAN_MIN']) & (features_df.scan_apex <= limits['SCAN_MAX'])
+        intersecting_features_df = identifications_df[
+                    (identifications_df.rt_lower <= tile_rt) & (identifications_df.rt_upper >= tile_rt) & 
+                    (identifications_df.monoisotopic_mz >= limits['MZ_MIN']) & (identifications_df.monoisotopic_mz <= limits['MZ_MAX']) & 
+                    (identifications_df.scan_apex >= limits['SCAN_MIN']) & (identifications_df.scan_apex <= limits['SCAN_MAX'])
                     ]
 
     for idx,feature in intersecting_features_df.iterrows():
