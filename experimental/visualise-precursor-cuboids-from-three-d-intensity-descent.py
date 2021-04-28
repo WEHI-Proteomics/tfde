@@ -5,6 +5,7 @@ import os
 from PIL import Image, ImageFont, ImageDraw, ImageEnhance
 import shutil
 import sqlite3
+import sys
 
 # generate a tile for each frame, annotating intersecting precursor cuboids
 
