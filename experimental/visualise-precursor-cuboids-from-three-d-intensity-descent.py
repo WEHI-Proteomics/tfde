@@ -97,7 +97,9 @@ os.makedirs(TILES_BASE_DIR)
 
 # load the precursor cuboids
 print('loading the precursor cuboids from {}'.format(CUBOIDS_FILE))
-precursor_cuboids_df = pd.read_pickle(CUBOIDS_FILE)['coords_df']
+d = pd.read_pickle(CUBOIDS_FILE)
+precursor_cuboids_df = d['coords_df']
+print('cuboid metadata: {}'.format(d['metadata']))
 
 # add a buffer around the edges
 x_buffer = 5
