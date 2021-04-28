@@ -1,10 +1,7 @@
 import pandas as pd
 import numpy as np
-from matplotlib import colors, cm, text, pyplot as plt
-import matplotlib.patches as patches
+from matplotlib import colors, pyplot as plt
 import os
-import time
-from cmcrameri import cm
 from PIL import Image, ImageFont, ImageDraw, ImageEnhance
 import shutil
 from cmcrameri import cm
