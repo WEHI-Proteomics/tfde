@@ -46,7 +46,7 @@ if not os.path.isfile(CONVERTED_DATABASE_NAME):
     sys.exit(1)
 
 CUBOIDS_DIR = "{}/precursor-cuboids-3did".format(EXPERIMENT_DIR)
-CUBOIDS_FILE = '{}/exp-{}-run-{}-mz-100-1700-precursor-cuboids.pkl'.format(CUBOIDS_DIR, experiment_name, run_name)
+CUBOIDS_FILE = '{}/exp-{}-run-{}-precursor-cuboids-3did.pkl'.format(CUBOIDS_DIR, experiment_name, run_name)
 
 # frame types for PASEF mode
 FRAME_TYPE_MS1 = 0
