@@ -7,6 +7,7 @@ import shutil
 import sqlite3
 import sys
 from os.path import expanduser
+import json
 
 # generate a tile for each frame, annotating intersecting precursor cuboids
 
@@ -22,6 +23,10 @@ PIXELS_PER_SCAN = PIXELS_Y / (limits['SCAN_MAX'] - limits['SCAN_MIN'])
 
 minimum_pixel_intensity = 1
 maximum_pixel_intensity = 250
+
+# add a buffer around the edges of the bounding box
+BB_MZ_BUFFER = 0.2
+BB_SCAN_BUFFER = 5
 
 TILES_BASE_DIR = '{}/feature-tiles-3did'.format(expanduser('~'))
 
@@ -165,15 +170,15 @@ for group_name,group_df in pixel_intensity_df.groupby(['frame_id'], as_index=Fal
                 ]
 
     for idx,feature in intersecting_features_df.iterrows():
-        # get the coordinates for the bounding box
-        x0 = pixel_x_from_mz(feature.mz_lower)
-        x1 = pixel_x_from_mz(feature.mz_upper)
-        y0 = pixel_y_from_scan(feature.scan_lower)
-        y1 = pixel_y_from_scan(feature.scan_upper)
+        envelope = json.loads(feature.envelope)
+        x0 = pixel_x_from_mz(envelope[0][0] - BB_MZ_BUFFER)
+        x1 = pixel_x_from_mz(envelope[-1][0] + BB_MZ_BUFFER)
+        y0 = pixel_y_from_scan(feature.scan_lower - BB_SCAN_BUFFER)
+        y1 = pixel_y_from_scan(feature.scan_upper + BB_SCAN_BUFFER)
         # draw the bounding box
-        draw.rectangle(xy=[(x0-x_buffer, y0-y_buffer), (x1+x_buffer, y1+y_buffer)], fill=None, outline='deepskyblue')
+        draw.rectangle(xy=[(x0, y0), (x1, y1)], fill=None, outline='deepskyblue')
         # draw the bounding box label
-        draw.text((x0, y0-(1*space_per_line)), 'feature {}'.format(feature.feature_id), font=feature_label_font, fill='lawngreen')
+        draw.text((x0, y0-(2*space_per_line)), 'feature {}'.format(feature.feature_id), font=feature_label_font, fill='lawngreen')
 
     # save the tile
     tile_file_name = '{}/tile-{}.png'.format(TILES_BASE_DIR, tile_id)
