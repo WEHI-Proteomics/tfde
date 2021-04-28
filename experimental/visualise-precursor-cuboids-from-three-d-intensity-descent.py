@@ -6,6 +6,7 @@ from PIL import Image, ImageFont, ImageDraw, ImageEnhance
 import shutil
 import sqlite3
 import sys
+from os.path import expanduser
 
 # generate a tile for each frame, annotating intersecting precursor cuboids
 
@@ -26,10 +27,10 @@ PIXELS_PER_SCAN = PIXELS_Y / (SCAN_MAX - SCAN_MIN)
 minimum_pixel_intensity = 1
 maximum_pixel_intensity = 250
 
-TILES_BASE_DIR = '/home/ubuntu/precursor-cuboid-3did-tiles'
+TILES_BASE_DIR = '{}/precursor-cuboid-3did-tiles'.format(expanduser('~'))
 
 # check the experiment directory exists
-experiment_base_dir = '/data2/experiments'
+experiment_base_dir = '/media/big-ssd/experiments'
 experiment_name = 'P3856'
 run_name = 'P3856_YHE211_1_Slot1-1_1_5104'
 
