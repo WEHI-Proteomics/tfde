@@ -467,6 +467,7 @@ def detect_features(precursor_cuboid_d, converted_db_name, mass_defect_bins, vis
         visualisation_d = {
             'precursor_cuboid_d':precursor_cuboid_d,
             'wide_ms1_points_df':wide_ms1_points_df,
+            'fe_ms1_points_df':fe_ms1_points_df,
             'peaks_after_intensity_descent':peaks_a,
             'deconvolution_features_df':deconvolution_features_df,
             'features_df':features_df
