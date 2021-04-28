@@ -148,22 +148,14 @@ def peak_ratio(monoisotopic_mass, peak_number, number_of_sulphur):
     return ratio
 
 # determine the mono peak apex and extent in CCS and RT and calculate isotopic peak intensities
-def determine_mono_characteristics(mono_mz, envelope, monoisotopic_mass, fe_ms1_points_df, cuboid_points_df):
+def determine_mono_characteristics(envelope, mono_mz_lower, mono_mz_upper, monoisotopic_mass, cuboid_points_df):
 
     # determine the raw points that belong to the mono peak
     # we use the wider cuboid points because we want to discover the apex and extent in CCS and RT
-    mz_delta = calculate_peak_delta(mz=mono_mz)
-    mono_mz_lower = mono_mz - mz_delta
-    mono_mz_upper = mono_mz + mz_delta
     mono_points_df = cuboid_points_df[(cuboid_points_df.mz >= mono_mz_lower) & (cuboid_points_df.mz <= mono_mz_upper)]
 
     # determine the peak's extent in CCS and RT
     if len(mono_points_df) > 0:
-        # recalculate the mono m/z to gain the most mass accuracy (without points in saturation)
-        # for the unsaturated m/z calculation we use fe_ms1_points_df because we used it for deconvolution; it has already been constrained to the fragmentation event in the RT and CCS dimensions
-        mono_points_without_saturation_df = fe_ms1_points_df[(fe_ms1_points_df.intensity < SATURATION_INTENSITY) & (fe_ms1_points_df.mz >= mono_mz_lower) & (fe_ms1_points_df.mz <= mono_mz_upper)]
-        monoisotopic_mz_without_saturated_points = intensity_weighted_centroid(mono_points_without_saturation_df.intensity.to_numpy(), mono_points_without_saturation_df.mz.to_numpy())
-
         # collapsing the monoisotopic's summed points onto the mobility dimension
         scan_df = mono_points_df.groupby(['scan'], as_index=False).intensity.sum()
         scan_df.sort_values(by=['scan'], ascending=True, inplace=True)
@@ -308,10 +300,6 @@ def determine_mono_characteristics(mono_mz, envelope, monoisotopic_mass, fe_ms1_
 
         # package the result
         result_d = {}
-        result_d['mz_apex_without_saturation_correction'] = mono_mz
-        result_d['mz_apex_with_saturation_correction'] = monoisotopic_mz_without_saturated_points
-        result_d['mz_lower'] = mono_mz_lower
-        result_d['mz_upper'] = mono_mz_upper
 
         result_d['scan_apex'] = scan_apex
         result_d['scan_lower'] = scan_lower
@@ -399,6 +387,9 @@ def detect_features(precursor_cuboid_d, converted_db_name, mass_defect_bins, vis
 
     # for deconvolution, constrain the CCS and RT dimensions to the fragmentation event
     fe_ms1_points_df = wide_ms1_points_df[(wide_ms1_points_df.retention_time_secs >= precursor_cuboid_d['ms1_rt_lower']) & (wide_ms1_points_df.retention_time_secs <= precursor_cuboid_d['ms1_rt_upper']) & (wide_ms1_points_df.scan >= precursor_cuboid_d['scan_lower']) & (wide_ms1_points_df.scan <= precursor_cuboid_d['scan_upper'])]
+    if args.correct_for_saturation:
+        # remove points in saturation
+        fe_ms1_points_df = fe_ms1_points_df[(fe_ms1_points_df.intensity <= SATURATION_INTENSITY)]
 
     # intensity descent
     raw_points_a = fe_ms1_points_df[['mz','intensity']].to_numpy()
@@ -436,11 +427,17 @@ def detect_features(precursor_cuboid_d, converted_db_name, mass_defect_bins, vis
         feature_l = []
         for idx,row in enumerate(deconvolution_features_df.itertuples()):
             feature_d = {}
-            mono_characteristics_d = determine_mono_characteristics(mono_mz=row.envelope[0][0], envelope=row.envelope, monoisotopic_mass=row.neutral_mass, fe_ms1_points_df=fe_ms1_points_df, cuboid_points_df=wide_ms1_points_df)
+            envelope_mono_mz = row.envelope[0][0]
+            mz_delta = calculate_peak_delta(mz=envelope_mono_mz)
+            mono_mz_lower = envelope_mono_mz - mz_delta
+            mono_mz_upper = envelope_mono_mz + mz_delta
+            feature_d['mono_mz_lower'] = mono_mz_lower
+            feature_d['mono_mz_upper'] = mono_mz_upper
+            mono_characteristics_d = determine_mono_characteristics(envelope=row.envelope, mono_mz_lower=mono_mz_lower, mono_mz_upper=mono_mz_upper, monoisotopic_mass=row.neutral_mass, cuboid_points_df=wide_ms1_points_df)
             if mono_characteristics_d is not None:
                 # add the characteristics to the feature dictionary
                 feature_d = {**feature_d, **mono_characteristics_d}
-                feature_d['monoisotopic_mz'] = mono_characteristics_d['mz_apex_with_saturation_correction'] if args.correct_for_saturation else mono_characteristics_d['mz_apex_without_saturation_correction']
+                feature_d['monoisotopic_mz'] = row.mono_mz
                 feature_d['charge'] = row.charge
                 feature_d['monoisotopic_mass'] = calculate_monoisotopic_mass_from_mz(monoisotopic_mz=feature_d['monoisotopic_mz'], charge=feature_d['charge'])
                 feature_d['feature_intensity'] = mono_characteristics_d['mono_intensity_with_saturation_correction'] if (args.correct_for_saturation and (mono_characteristics_d['mono_intensity_with_saturation_correction'] > mono_characteristics_d['mono_intensity_without_saturation_correction'])) else mono_characteristics_d['mono_intensity_without_saturation_correction']
