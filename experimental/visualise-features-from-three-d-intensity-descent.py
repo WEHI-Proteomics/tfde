@@ -31,7 +31,7 @@ BB_SCAN_BUFFER = 5
 TILES_BASE_DIR = '{}/feature-tiles-3did'.format(expanduser('~'))
 
 experiment_name = 'P3856'
-feature_detection_method = 'pasef'
+feature_detection_method = '3did'
 run_name = 'P3856_YHE211_1_Slot1-1_1_5104'
 
 EXPERIMENT_DIR = '/media/big-ssd/experiments/{}'.format(experiment_name)
@@ -179,6 +179,7 @@ for group_name,group_df in pixel_intensity_df.groupby(['frame_id'], as_index=Fal
         draw.rectangle(xy=[(x0, y0), (x1, y1)], fill=None, outline='deepskyblue')
         # draw the bounding box label
         draw.text((x0, y0-(2*space_per_line)), 'feature {}'.format(feature.feature_id), font=feature_label_font, fill='lawngreen')
+        draw.text((x0, y0-(1*space_per_line)), 'charge {}+'.format(feature.charge), font=feature_label_font, fill='lawngreen')
 
     # save the tile
     tile_file_name = '{}/tile-{}.png'.format(TILES_BASE_DIR, tile_id)
