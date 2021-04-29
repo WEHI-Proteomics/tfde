@@ -13,7 +13,7 @@ OVERLAY_B_BASE_DIR = '{}/feature-tiles-3did'.format(BASE_DIR)
 
 overlay_A_files_l = sorted(glob.glob('{}/*.png'.format(OVERLAY_A_BASE_DIR)), key=lambda x: ( int(x.split('tile-')[1].split('.png')[0]) ))
 overlay_B_files_l = sorted(glob.glob('{}/*.png'.format(OVERLAY_B_BASE_DIR)), key=lambda x: ( int(x.split('tile-')[1].split('.png')[0]) ))
-print('found {} tiles in {}, and {} tiles in {}'.format(len(overlay_A_files_l), OVERLAY_A_BASE_DIR, len(overlay_B_files_l), OVERLAY_B_BASE_DIR)
+print('found {} tiles in {}, and {} tiles in {}'.format(len(overlay_A_files_l), OVERLAY_A_BASE_DIR, len(overlay_B_files_l), OVERLAY_B_BASE_DIR))
 
 # check the composite tiles directory - the composites will be put in the tile list A directory
 COMPOSITE_TILE_BASE_DIR = '{}/composite-tiles'.format(BASE_DIR)
