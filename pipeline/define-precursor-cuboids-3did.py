@@ -9,7 +9,6 @@ import time
 import argparse
 import ray
 import sqlite3
-import shutil
 import sys
 import multiprocessing as mp
 import pickle
@@ -115,9 +114,8 @@ def find_precursor_cuboids(segment_mz_lower, segment_mz_upper):
             scan_df['filtered_intensity'] = scan_df.intensity  # set the default
             try:
                 scan_df['filtered_intensity'] = signal.savgol_filter(scan_df.intensity, window_length=find_filter_length(number_of_points=len(scan_df)), polyorder=SCAN_FILTER_POLY_ORDER)
-                filtered = True
             except:
-                filtered = False
+                pass
             visualise_d['scan_df'] = scan_df
 
             # find the valleys nearest the anchor point
@@ -211,9 +209,8 @@ def find_precursor_cuboids(segment_mz_lower, segment_mz_upper):
                     rt_df['filtered_intensity'] = rt_df.intensity  # set the default
                     try:
                         rt_df['filtered_intensity'] = signal.savgol_filter(rt_df.intensity, window_length=find_filter_length(number_of_points=len(rt_df)), polyorder=RT_FILTER_POLY_ORDER)
-                        filtered = True
                     except:
-                        filtered = False
+                        pass
                     visualise_d['rt_df'] = rt_df
 
                     # find the valleys nearest the anchor point
