@@ -15,7 +15,7 @@ import pickle
 MAXIMUM_Q_VALUE = 0.01
 
 # for focus on a particular feature
-pasef_feature_id = 3272105
+pasef_feature_id = 2850902
 
 # visualisation offsets from the feature apexes
 VIS_MZ_OFFSET_LOWER = 5
@@ -31,7 +31,7 @@ feature_detection_method = 'pasef'
 run_name = 'P3856_YHE211_1_Slot1-1_1_5104'
 
 
-IDENTIFICATIONS_DIR = '{}/P3856-results-cs-true-fmdw-true-2021-04-26-21-16-43/identifications-pasef'.format(expanduser("~"))
+IDENTIFICATIONS_DIR = '{}/P3856-results-cs-false-fmdw-true-2021-04-28-22-33-56/identifications-pasef'.format(expanduser("~"))
 IDENTIFICATIONS_FILE = '{}/exp-{}-identifications-{}-recalibrated.pkl'.format(IDENTIFICATIONS_DIR, experiment_name, feature_detection_method)
 
 # load the identifications
