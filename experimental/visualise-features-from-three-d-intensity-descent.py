@@ -12,7 +12,7 @@ import json
 # generate a tile for each frame, annotating intersecting precursor cuboids
 
 # coordinates from visualise-features-from_PASEF.py
-limits = {'MZ_MIN': 1032.899250540357, 'MZ_MAX': 1042.899250540357, 'SCAN_MIN': 158.0, 'SCAN_MAX': 458.0, 'RT_MIN': 2001.6888691201073, 'RT_MAX': 2031.6888691201073}
+limits = {'MZ_MIN': 841.925345535139, 'MZ_MAX': 851.925345535139, 'SCAN_MIN': 297.0, 'SCAN_MAX': 597.0, 'RT_MIN': 1942.4204511126354, 'RT_MAX': 1972.4204511126354}
 
 
 PIXELS_X = 800
