@@ -66,7 +66,7 @@ BB_MZ_BUFFER = 0.2
 BB_SCAN_BUFFER = 5
 
 EXPERIMENT_DIR = '/media/big-ssd/experiments/{}'.format(experiment_name)
-CONVERTED_DATABASE_NAME = '/media/big-ssd/experiments/P3856/converted-databases/exp-P3856-run-{}-converted.sqlite'.format(RUN_NAME)
+CONVERTED_DATABASE_NAME = '/media/big-ssd/experiments/P3856/converted-databases/exp-P3856-run-{}-converted.sqlite'.format(run_name)
 
 TILES_BASE_DIR = '{}/feature-tiles-pasef'.format(expanduser('~'))
 
