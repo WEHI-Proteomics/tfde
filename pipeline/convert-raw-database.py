@@ -120,7 +120,7 @@ parser.add_argument('-en','--experiment_name', type=str, help='Name of the exper
 parser.add_argument('-rn','--run_name', type=str, help='Name of the run.', required=True)
 parser.add_argument('-rdd','--raw_database_directory', type=str, help='The full path to the directory (i.e. the \'.d\' path) of the raw database.', required=True)
 parser.add_argument('-nfb','--number_of_frames_in_batch', type=int, default=5000, help='The number of frames in a batch.', required=False)
-parser.add_argument('-ini','--ini_file', type=str, default='./open-path/pda/pasef-process-short-gradient.ini', help='Path to the config file.', required=False)
+parser.add_argument('-ini','--ini_file', type=str, default='./pipeline/pasef-process-short-gradient.ini', help='Path to the config file.', required=False)
 parser.add_argument('-ssm', '--small_set_mode', type=bool, help='A small subset of the data for testing purposes.', default=False)
 args = parser.parse_args()
 
