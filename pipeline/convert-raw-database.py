@@ -96,19 +96,25 @@ def load_raw_points(frame_lower, frame_upper):
         frame_type = int(frame_info['MsMsType'])
         number_of_scans = int(frame_info['NumScans'])
 
+        # set up one_over_k0 and voltage values for each scan
+        scan_number_arr = np.arange(number_of_scans, dtype=np.float64)
+        one_over_k0_arr = td.scanNumToOneOverK0(frame_id, scan_number_arr)
+        voltage_arr = td.scanNumToVoltage(frame_id, scan_number_arr)
+
         # read the points from the scan lines
         frame_points = []
-        for scan in td.readScans(frame_id=frame_id, scan_begin=0, scan_end=number_of_scans):
+        for scan_idx,scan in enumerate(td.readScans(frame_id=frame_id, scan_begin=0, scan_end=number_of_scans)):
             index = np.array(scan[0], dtype=np.float64)
             mz_values = td.indexToMz(frame_id, index)
             intensity_values = scan[1]
-            one_over_k0 = td.scanNumToOneOverK0(frame_id, scan)
-            voltage = td.scanNumToVoltage(frame_id, scan)
+            scan_number = scan_idx
+            one_over_k0 = one_over_k0_arr[scan_idx]
+            voltage = voltage_arr[scan_idx]
             number_of_points_on_scan = len(mz_values)
             for i in range(0, number_of_points_on_scan):   # step through the readings (i.e. points) on this scan line
                 mz_value = float(mz_values[i])
                 intensity = int(intensity_values[i])
-                frame_points.append({'frame_id':frame_id, 'frame_type':frame_type, 'mz_value':mz_value, 'scan':scan, 'intensity':intensity, 'retention_time_secs':retention_time_secs, 'one_over_k0':one_over_k0, 'voltage':voltage})
+                frame_points.append({'frame_id':frame_id, 'frame_type':frame_type, 'mz_value':mz_value, 'scan':scan_number, 'intensity':intensity, 'retention_time_secs':retention_time_secs, 'one_over_k0':one_over_k0, 'voltage':voltage})
     points_df = pd.DataFrame(frame_points)
     return points_df
 
@@ -193,7 +199,7 @@ print("loading the raw points")
 max_frame_id = frames_properties_df.Id.max()
 print("max_frame_id: {}".format(max_frame_id))
 if args.small_set_mode:
-    max_frame_id = 100
+    max_frame_id = 10
 for frame_lower in range(1, max_frame_id, args.number_of_frames_in_batch):
     frame_upper = frame_lower + args.number_of_frames_in_batch - 1
     print("processing frames {} to {}".format(frame_lower, frame_upper))
