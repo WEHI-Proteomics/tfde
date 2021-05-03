@@ -96,19 +96,14 @@ def load_raw_points(frame_lower, frame_upper):
         frame_type = int(frame_info['MsMsType'])
         number_of_scans = int(frame_info['NumScans'])
 
-        # determine the 1/k0 and voltage values for each scan
-        scan_number_axis = np.arange(number_of_scans, dtype=np.float64)
-        ook0_axis = td.scanNumToOneOverK0(frame_id, scan_number_axis)
-        voltage_axis = td.scanNumToVoltage(frame_id, scan_number_axis)
-
         # read the points from the scan lines
         frame_points = []
         for scan in td.readScans(frame_id=frame_id, scan_begin=0, scan_end=number_of_scans):
             index = np.array(scan[0], dtype=np.float64)
             mz_values = td.indexToMz(frame_id, index)
             intensity_values = scan[1]
-            one_over_k0 = ook0_axis[scan]
-            voltage = voltage_axis[scan]
+            one_over_k0 = td.scanNumToOneOverK0(frame_id, scan)
+            voltage = td.scanNumToVoltage(frame_id, scan)
             number_of_points_on_scan = len(mz_values)
             for i in range(0, number_of_points_on_scan):   # step through the readings (i.e. points) on this scan line
                 mz_value = float(mz_values[i])
