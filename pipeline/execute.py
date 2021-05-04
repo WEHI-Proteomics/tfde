@@ -253,10 +253,9 @@ def task_make_copies():
         nonlocal target_directory_name
         # set up copy directory
         d = datetime.datetime.now()
-        target_directory_name = '{}/{}-results-cs-{}-fmdw-{}-{}'.format(expanduser("~"), config['experiment_name'], config['correct_for_saturation'], config['filter_by_mass_defect'], d.strftime("%Y-%m-%d-%H-%M-%S"))
-        if os.path.exists(target_directory_name):
-            shutil.rmtree(target_directory_name)
-        os.makedirs(target_directory_name)
+        target_directory_name = '{}/results-{}/{}-results-cs-{}-fmdw-{}-{}'.format(expanduser("~"), config['experiment_name'], config['experiment_name'], config['correct_for_saturation'], config['filter_by_mass_defect'], d.strftime("%Y-%m-%d-%H-%M-%S"))
+        if not os.path.exists(target_directory_name):
+            os.makedirs(target_directory_name)
         print('copying results to {}'.format(target_directory_name))
 
     def finish_up():
