@@ -114,7 +114,7 @@ def load_raw_points(frame_lower, frame_upper):
             for i in range(0, number_of_points_on_scan):   # step through the readings (i.e. points) on this scan line
                 mz_value = float(mz_values[i])
                 intensity = int(intensity_values[i])
-                frame_points.append({'frame_id':frame_id, 'frame_type':frame_type, 'mz_value':mz_value, 'scan':scan_number, 'intensity':intensity, 'retention_time_secs':retention_time_secs, 'one_over_k0':one_over_k0, 'voltage':voltage})
+                frame_points.append({'frame_id':frame_id, 'frame_type':frame_type, 'mz':mz_value, 'scan':scan_number, 'intensity':intensity, 'retention_time_secs':retention_time_secs, 'one_over_k0':one_over_k0, 'voltage':voltage})
     points_df = pd.DataFrame(frame_points)
     return points_df
 
