@@ -5,6 +5,7 @@ import datetime
 import time
 import shutil
 import os
+import sys
 
 # This is the set of tasks to take a raw instrument database and create a list of peptides
 
@@ -15,8 +16,8 @@ fasta_file_name = '{}/../fasta/Human_Yeast_Ecoli.fasta'.format(os.path.dirname(o
 # the function get_var() gets the named argument from the command line as a string; if it's not present it uses the specified default
 config = {
     'experiment_base_dir': get_var('eb', '/media/big-ssd/experiments'),
-    'experiment_name': get_var('en', 'none'),
-    'run_name': get_var('rn', 'none'),
+    'experiment_name': get_var('en', None),
+    'run_name': get_var('rn', None),
     'fasta_name': get_var('ff', fasta_file_name),
     'ini_file': get_var('ini', ini_file),
     'precursor_definition_method': get_var('pdm', 'pasef'),
@@ -27,7 +28,11 @@ config = {
     'proportion_of_cores_to_use': get_var('pc', 0.8)
     }
 
-print(config)
+if (config['experiment_name'] is None) or (config['run_name'] is None):
+    print('must specify the experiment name (en=) and the run name (rn=)')
+    sys.exit(1)
+
+print('execution arguments: {}'.format(config))
 
 # correct for saturation
 if config['correct_for_saturation'] == 'true':
