@@ -653,6 +653,7 @@ features_df = pd.concat(features_l, axis=0, sort=False, ignore_index=True)
 
 # check we got something
 if len(features_df) == 0:
+    print('no features were found')
     sys.exit(1)
 
 # add the run name
