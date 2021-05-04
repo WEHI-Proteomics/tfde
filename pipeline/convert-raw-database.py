@@ -50,30 +50,6 @@ def load_frame_properties(database_name):
     print("loaded {} frame_properties from {}".format(len(frames_properties_df), database_name))
     return frames_properties_df
 
-# find the closest lower ms1 frame_id, and the closest upper ms1 frame_id
-def find_closest_ms1_frame_to_rt(retention_time_secs):
-    # find the frame ids within this range of RT
-    df = frames_properties_df[(frames_properties_df.Time > retention_time_secs) & (frames_properties_df.MsMsType == FRAME_TYPE_MS1)]
-    if len(df) > 0:
-        closest_ms1_frame_above_rt = df.Id.min()
-    else:
-        # couldn't find an ms1 frame above this RT, so just use the last one
-        closest_ms1_frame_above_rt = frames_properties_df[(frames_properties_df.MsMsType == FRAME_TYPE_MS1)].Id.max()
-    df = frames_properties_df[(frames_properties_df.Time < retention_time_secs) & (frames_properties_df.MsMsType == FRAME_TYPE_MS1)]
-    if len(df) > 0:
-        closest_ms1_frame_below_rt = df.Id.max()
-    else:
-        # couldn't find an ms1 frame below this RT, so just use the first one
-        closest_ms1_frame_below_rt = frames_properties_df[(frames_properties_df.MsMsType == FRAME_TYPE_MS1)].Id.min()
-    return (closest_ms1_frame_below_rt, closest_ms1_frame_above_rt)
-
-# find all the frame ids of a specified type within the range of RT
-def frames_in_rt_range(frame_type, rt_lower, rt_upper):
-    lower_frame_id, _ = find_closest_ms1_frame_to_rt(rt_lower)
-    _, upper_frame_id = find_closest_ms1_frame_to_rt(rt_upper)
-    frames_l = frames_properties_df[(frames_properties_df.MsMsType == frame_type) & (frames_properties_df.Id >= lower_frame_id) & (frames_properties_df.Id <= upper_frame_id)].Id.astype(int).tolist()
-    return frames_l
-
 # load the raw points within the given frame and scan range
 def load_raw_points(frame_lower, frame_upper):
     # check parameter ranges
@@ -88,7 +64,6 @@ def load_raw_points(frame_lower, frame_upper):
     td = timsdata.TimsData(args.raw_database_directory)
 
     # read the raw points in the specified frame range
-    points = []
     for frame_id in range(frame_lower, frame_upper+1):
         # find the metadata for this frame
         frame_info = frames_properties_df[(frames_properties_df.Id == frame_id)].iloc[0]
@@ -125,7 +100,6 @@ parser.add_argument('-eb','--experiment_base_dir', type=str, default='./experime
 parser.add_argument('-en','--experiment_name', type=str, help='Name of the experiment.', required=True)
 parser.add_argument('-rn','--run_name', type=str, help='Name of the run.', required=True)
 parser.add_argument('-rdd','--raw_database_directory', type=str, help='The full path to the directory (i.e. the \'.d\' path) of the raw database.', required=True)
-parser.add_argument('-nfb','--number_of_frames_in_batch', type=int, default=100000, help='The number of frames in a batch.', required=False)
 parser.add_argument('-ini','--ini_file', type=str, default='./otf-peak-detect/pipeline/pasef-process-short-gradient.ini', help='Path to the config file.', required=False)
 parser.add_argument('-ssm', '--small_set_mode', action='store_true', help='A small subset of the data for testing purposes.')
 args = parser.parse_args()
@@ -200,13 +174,15 @@ max_frame_id = frames_properties_df.Id.max()
 print("max_frame_id: {}".format(max_frame_id))
 if args.small_set_mode:
     max_frame_id = 10
-for frame_lower in range(1, max_frame_id, args.number_of_frames_in_batch):
-    frame_upper = frame_lower + args.number_of_frames_in_batch - 1
-    print("processing frames {} to {}".format(frame_lower, frame_upper))
-    points_df = load_raw_points(frame_lower=frame_lower, frame_upper=frame_upper)
-    db_conn = sqlite3.connect(RUN_DB_NAME)
-    points_df.to_sql(name='frames', con=db_conn, if_exists='append', index=False)
-    db_conn.close()
+
+frame_lower = 1 
+frame_upper = max_frame_id
+
+print("processing frames {} to {}".format(frame_lower, frame_upper))
+points_df = load_raw_points(frame_lower=frame_lower, frame_upper=frame_upper)
+db_conn = sqlite3.connect(RUN_DB_NAME)
+points_df.to_sql(name='frames', con=db_conn, if_exists='replace', index=False)
+db_conn.close()
 
 stop_run = time.time()
 print("total running time ({}): {} seconds".format(parser.prog, round(stop_run-start_run,1)))
