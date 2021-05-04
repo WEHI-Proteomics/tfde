@@ -18,7 +18,7 @@ config = {
     'experiment_base_dir': get_var('eb', '/media/big-ssd/experiments'),
     'experiment_name': get_var('en', None),
     'run_name': get_var('rn', None),
-    'fasta_name': get_var('ff', fasta_file_name),
+    'fasta_file_name': get_var('ff', fasta_file_name),
     'ini_file': get_var('ini', ini_file),
     'precursor_definition_method': get_var('pdm', 'pasef'),
     'rt_lower': get_var('rl', 1650),
