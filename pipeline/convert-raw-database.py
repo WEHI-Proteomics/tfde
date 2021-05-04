@@ -101,6 +101,7 @@ parser.add_argument('-en','--experiment_name', type=str, help='Name of the exper
 parser.add_argument('-rn','--run_name', type=str, help='Name of the run.', required=True)
 parser.add_argument('-rdd','--raw_database_directory', type=str, help='The full path to the directory (i.e. the \'.d\' path) of the raw database.', required=True)
 parser.add_argument('-ini','--ini_file', type=str, default='./otf-peak-detect/pipeline/pasef-process-short-gradient.ini', help='Path to the config file.', required=False)
+parser.add_argument('-nfb','--number_of_frames_in_batch', type=int, default=2000, help='The number of frames in a batch.', required=False)
 parser.add_argument('-ssm', '--small_set_mode', action='store_true', help='A small subset of the data for testing purposes.')
 args = parser.parse_args()
 
@@ -171,18 +172,19 @@ db_conn.close()
 # copy the frames
 print("loading the raw points")
 max_frame_id = frames_properties_df.Id.max()
-print("max_frame_id: {}".format(max_frame_id))
+
 if args.small_set_mode:
     max_frame_id = 10
 
-frame_lower = 1 
-frame_upper = max_frame_id
+print("max_frame_id: {}".format(max_frame_id))
 
-print("processing frames {} to {}".format(frame_lower, frame_upper))
-points_df = load_raw_points(frame_lower=frame_lower, frame_upper=frame_upper)
-db_conn = sqlite3.connect(RUN_DB_NAME)
-points_df.to_sql(name='frames', con=db_conn, if_exists='replace', index=False)
-db_conn.close()
+for frame_lower in range(1, max_frame_id, args.number_of_frames_in_batch):
+    frame_upper = frame_lower + args.number_of_frames_in_batch - 1
+    print("processing frames {} to {}".format(frame_lower, frame_upper))
+    points_df = load_raw_points(frame_lower=frame_lower, frame_upper=frame_upper)
+    db_conn = sqlite3.connect(RUN_DB_NAME)
+    points_df.to_sql(name='frames', con=db_conn, if_exists='append', index=False)
+    db_conn.close()
 
 stop_run = time.time()
 print("total running time ({}): {} seconds".format(parser.prog, round(stop_run-start_run,1)))
