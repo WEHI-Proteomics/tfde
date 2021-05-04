@@ -64,6 +64,7 @@ def load_raw_points(frame_lower, frame_upper):
     td = timsdata.TimsData(args.raw_database_directory)
 
     # read the raw points in the specified frame range
+    frame_points = []
     for frame_id in range(frame_lower, frame_upper+1):
         # find the metadata for this frame
         frame_info = frames_properties_df[(frames_properties_df.Id == frame_id)].iloc[0]
@@ -77,7 +78,6 @@ def load_raw_points(frame_lower, frame_upper):
         voltage_arr = td.scanNumToVoltage(frame_id, scan_number_arr)
 
         # read the points from the scan lines
-        frame_points = []
         for scan_idx,scan in enumerate(td.readScans(frame_id=frame_id, scan_begin=0, scan_end=number_of_scans)):
             index = np.array(scan[0], dtype=np.float64)
             mz_values = td.indexToMz(frame_id, index)
