@@ -28,7 +28,7 @@ def point_metric(r1, r2):
     # scan_1 = r1[1]
     # mz_2 = r2[0]
     # scan_2 = r2[1]
-    return 0.5 if ((np.abs(r1[0] - r2[0]) <= 0.1) and (np.abs(r1[1] - r2[1]) <= 5)) else 10
+    return 0.5 if ((abs(r1[0] - r2[0]) <= 0.1) and (abs(r1[1] - r2[1]) <= 5)) else 10
 
 # a distance metric for isotopes within a series
 def isotope_metric(r1, r2):
