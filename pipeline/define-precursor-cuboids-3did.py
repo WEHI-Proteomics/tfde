@@ -24,15 +24,11 @@ def create_indexes(db_file_name):
 
 # a distance metric for points within an isotope
 def point_metric(r1, r2):
-    mz_1 = r1[0]
-    scan_1 = r1[1]
-    mz_2 = r2[0]
-    scan_2 = r2[1]
-    if (abs(mz_1 - mz_2) <= 0.1) and (abs(scan_1 - scan_2) <= 5):
-        result = 0.5
-    else:
-        result = 10
-    return result
+    # mz_1 = r1[0]
+    # scan_1 = r1[1]
+    # mz_2 = r2[0]
+    # scan_2 = r2[1]
+    return 0.5 if ((np.abs(r1[0] - r2[0]) <= 0.1) and (np.abs(r1[1] - r2[1]) <= 5)) else 10
 
 # a distance metric for isotopes within a series
 def isotope_metric(r1, r2):
