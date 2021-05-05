@@ -65,7 +65,8 @@ def scan_coords_for_single_charge_region(mz_lower, mz_upper):
     return {'scan_for_mz_lower':scan_for_mz_lower, 'scan_for_mz_upper':scan_for_mz_upper}
 
 # process a segment of this run's data, and return a list of precursor cuboids
-@ray.remote
+# @ray.remote
+@profile
 def find_precursor_cuboids(segment_mz_lower, segment_mz_upper):
     isotope_cluster_retries = 0
     point_cluster_retries = 0
@@ -405,12 +406,12 @@ if not os.path.exists(CUBOIDS_DIR):
 CUBOIDS_FILE = '{}/exp-{}-run-{}-precursor-cuboids-3did.pkl'.format(CUBOIDS_DIR, args.experiment_name, args.run_name)
 
 # set up Ray
-print("setting up Ray")
-if not ray.is_initialized():
-    if args.ray_mode == "cluster":
-        ray.init(num_cpus=number_of_workers())
-    else:
-        ray.init(local_mode=True)
+# print("setting up Ray")
+# if not ray.is_initialized():
+#     if args.ray_mode == "cluster":
+#         ray.init(num_cpus=number_of_workers())
+#     else:
+#         ray.init(local_mode=True)
 
 # calculate the segments
 mz_range = args.mz_upper - args.mz_lower
@@ -418,7 +419,8 @@ NUMBER_OF_MZ_SEGMENTS = (mz_range // args.mz_width_per_segment) + (mz_range % ar
 
 # find the precursors
 print('finding precursor cuboids')
-cuboids_l = ray.get([find_precursor_cuboids.remote(segment_mz_lower=args.mz_lower+(i*args.mz_width_per_segment), segment_mz_upper=args.mz_lower+(i*args.mz_width_per_segment)+args.mz_width_per_segment) for i in range(NUMBER_OF_MZ_SEGMENTS)])
+# cuboids_l = ray.get([find_precursor_cuboids.remote(segment_mz_lower=args.mz_lower+(i*args.mz_width_per_segment), segment_mz_upper=args.mz_lower+(i*args.mz_width_per_segment)+args.mz_width_per_segment) for i in range(NUMBER_OF_MZ_SEGMENTS)])
+cuboids_l = [find_precursor_cuboids(segment_mz_lower=args.mz_lower+(i*args.mz_width_per_segment), segment_mz_upper=args.mz_lower+(i*args.mz_width_per_segment)+args.mz_width_per_segment) for i in range(NUMBER_OF_MZ_SEGMENTS)]
 cuboids_l = [item for sublist in cuboids_l for item in sublist]  # cuboids_l is a list of lists, so we need to flatten it
 
 # assign each cuboid a unique identifier
