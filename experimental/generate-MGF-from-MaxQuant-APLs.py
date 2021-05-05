@@ -29,6 +29,7 @@ def collate_spectra_for_feature(ms1_d, ms2_df):
 parser = argparse.ArgumentParser(description='Convert the APL files from MaxQuant to an MGF for each run.')
 parser.add_argument('-mqc','--maxquant_combined_dir', type=str, help='Path to the MaxQuant combined directory.', required=True)
 parser.add_argument('-mgf','--mgf_dir', type=str, help='Path to the MGF output directory.', required=True)
+parser.add_argument('-v','--visualise', action='store_true', help='Generate data for visualisation of MaxQuant features as rendered in the MGFs.')
 args = parser.parse_args()
 
 # Print the arguments for the log
@@ -121,10 +122,11 @@ for group_name,group_df in allpeptides_df.groupby('Raw file'):
     if os.path.isfile(mgf_file_name):
         os.remove(mgf_file_name)
     f = mgf.write(output=mgf_file_name, spectra=mgf_spectra)
-    # save the visualisation DF
-    print("saving visualisation DF: {}".format(df_file_name))
-    vis_df = pd.DataFrame(visualisation_l)
-    vis_df.to_pickle(df_file_name)
+    if args.visualise:
+        # save the visualisation DF
+        print("saving visualisation DF: {}".format(df_file_name))
+        vis_df = pd.DataFrame(visualisation_l)
+        vis_df.to_pickle(df_file_name)
 
 stop_run = time.time()
 print("total running time ({}): {} seconds".format(parser.prog, round(stop_run-start_run,1)))
