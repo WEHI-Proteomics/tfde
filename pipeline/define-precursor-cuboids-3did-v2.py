@@ -56,7 +56,6 @@ def find_filter_length(number_of_points):
 
 # process a segment of this run's data, and return a list of precursor cuboids
 # @ray.remote
-@profile
 def find_precursor_cuboids(segment_mz_lower, segment_mz_upper):
     isotope_cluster_retries = 0
     point_cluster_retries = 0
