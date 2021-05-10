@@ -64,8 +64,6 @@ def frame_id_for_rt(voxel_df, rt):
 # process a segment of this run's data, and return a list of precursor cuboids
 # @ray.remote
 def find_precursor_cuboids(segment_mz_lower, segment_mz_upper):
-    isotope_cluster_retries = 0
-    point_cluster_retries = 0
     precursor_cuboids_l = []
 
     # load the raw points for this m/z segment
