@@ -87,7 +87,6 @@ def find_precursor_cuboids(segment_mz_lower, segment_mz_upper):
         summary_df.sort_values(by=['intensity'], ascending=False, inplace=True)
 
         for row in summary_df.itertuples():
-            print('processing voxel with summed intensity: {}'.format(row.intensity))
             # get the raw points for this voxel
             voxel_mz_lower = row.mz_bin.left
             voxel_mz_upper = row.mz_bin.right
@@ -308,7 +307,7 @@ def find_precursor_cuboids(segment_mz_lower, segment_mz_upper):
                     if point_cluster_retries >= MAX_POINT_CLUSTER_RETRIES:
                         break
             else:
-                print('empty voxel')
+                print('*', end='', flush=True)
 
     # return what we found in this segment
     print('found {} cuboids for mz={} to {}'.format(len(precursor_cuboids_l), segment_mz_lower, segment_mz_upper))
