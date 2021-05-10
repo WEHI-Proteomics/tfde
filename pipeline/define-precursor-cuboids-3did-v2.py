@@ -193,7 +193,7 @@ def find_precursor_cuboids(segment_mz_lower, segment_mz_upper):
                 # if we have at least one isotope series, and the anchor point is in one of them, carry on...
                 if (number_of_isotope_clusters > 0) and (anchor_point_isotope_cluster >= 0):
                     candidate_region_df = pd.merge(candidate_region_df, centroids_df[['cluster','isotope_cluster']], how='left', left_on=['cluster'], right_on=['cluster'])
-                    candidate_region_df.fillna(value=-1, inplace=True)
+                    candidate_region_df.replace(to_replace=np.nan, value=-1, inplace=True)
                     candidate_region_df.isotope_cluster = candidate_region_df.isotope_cluster.astype(int)
                     visualise_d['candidate_region_with_isotope_series_clusters_df'] = candidate_region_df
 
