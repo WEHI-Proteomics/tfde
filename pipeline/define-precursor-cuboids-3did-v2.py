@@ -144,8 +144,9 @@ def find_precursor_cuboids(segment_mz_lower, segment_mz_upper):
                 candidate_region_2d_df.isotope_cluster = candidate_region_2d_df.isotope_cluster.astype(int)
                 candidate_region_2d_df = candidate_region_2d_df[(candidate_region_2d_df.isotope_cluster >= 0)]
 
-                if len(candidate_region_2d_df.isotope_cluster.unique()) > 0:
-                    print('|{}|'.format(len(candidate_region_2d_df)), end='', flush=True)
+                number_of_isotope_series = len(candidate_region_2d_df.isotope_cluster.unique())
+                if number_of_isotope_series > 0:
+                    print('|{}|'.format(number_of_isotope_series), end='', flush=True)
 
                 # each isotopic series is a candidate precursor cuboid for feature detection
                 for group_name,group_df in candidate_region_2d_df.groupby('isotope_cluster'):
