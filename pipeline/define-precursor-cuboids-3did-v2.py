@@ -153,7 +153,8 @@ def find_precursor_cuboids(segment_mz_lower, segment_mz_upper):
                 region_2d_df = pd.merge(region_2d_df, isotope_centroids_df[['cluster','isotope_cluster']], how='left', left_on=['cluster'], right_on=['cluster'])
                 region_2d_df.replace(to_replace=np.nan, value=-1, inplace=True)
                 region_2d_df.isotope_cluster = region_2d_df.isotope_cluster.astype(int)
-                visualisation_d['region_2d_df'] = region_2d_df
+
+                visualisation_d['region_2d_df'] = region_2d_df.to_dict('records')
 
                 # only consider the points that are part of an isotope series
                 region_2d_df = region_2d_df[(region_2d_df.isotope_cluster >= 0)]
@@ -203,7 +204,7 @@ def find_precursor_cuboids(segment_mz_lower, segment_mz_upper):
                     cuboid_rt_lower = lower_x
                     cuboid_rt_upper = upper_x
 
-                    visualisation_d['rt_df'] = rt_df
+                    visualisation_d['rt_df'] = rt_df.to_dict('records')
 
                     # make sure the RT extent isn't too extreme
                     if (cuboid_rt_upper - cuboid_rt_lower) > (RT_BASE_PEAK_WIDTH * 2):
@@ -225,8 +226,10 @@ def find_precursor_cuboids(segment_mz_lower, segment_mz_upper):
                         'wide_rt_lower':cuboid_rt_lower, # same because we've already resolved its extent
                         'wide_rt_upper':cuboid_rt_upper
                         }
+
                     if args.visualise:
                         precursor_coordinates_d['visualisation_d'] = visualisation_d
+                        
                     precursor_cuboids_l.append(precursor_coordinates_d)
             else:
                 print('-', end='', flush=True)
