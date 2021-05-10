@@ -54,6 +54,13 @@ def find_filter_length(number_of_points):
     filter_lengths = [51,11,5]  # must be a positive odd number, greater than the polynomial order, and less than the number of points to be filtered
     return filter_lengths[next(x[0] for x in enumerate(filter_lengths) if x[1] < number_of_points)]
 
+# find the closest frame id for a point in time
+def frame_id_for_rt(voxel_df, rt):
+    df = voxel_df.copy()
+    df['rt_delta'] = abs(voxel_df.retention_time_secs - rt)
+    df.sort_values(by=['rt_delta'], ascending=True, inplace=True)
+    return df.iloc[0].frame_id
+
 # process a segment of this run's data, and return a list of precursor cuboids
 # @ray.remote
 def find_precursor_cuboids(segment_mz_lower, segment_mz_upper):
@@ -86,236 +93,123 @@ def find_precursor_cuboids(segment_mz_lower, segment_mz_upper):
         summary_df.dropna(subset = ['intensity'], inplace=True)
         summary_df.sort_values(by=['intensity'], ascending=False, inplace=True)
 
+        # process each voxel by decreasing intensity
         for row in summary_df.itertuples():
-            # get the raw points for this voxel
+            # get the attributes of this voxel
             voxel_mz_lower = row.mz_bin.left
             voxel_mz_upper = row.mz_bin.right
+            voxel_mz_midpoint = row.mz_bin.mid
             voxel_scan_lower = row.scan_bin.left
             voxel_scan_upper = row.scan_bin.right
+            voxel_scan_midpoint = row.scan_bin.mid
             voxel_rt_lower = row.rt_bin.left
             voxel_rt_upper = row.rt_bin.right
+            voxel_rt_midpoint = row.rt_bin.mid
             voxel_df = raw_df[(raw_df.mz >= voxel_mz_lower) & (raw_df.mz <= voxel_mz_upper) & (raw_df.scan >= voxel_scan_lower) & (raw_df.scan <= voxel_scan_upper) & (raw_df.retention_time_secs >= voxel_rt_lower) & (raw_df.retention_time_secs <= voxel_rt_upper)]
+            voxel_rt_midpoint_frame_id = frame_id_for_rt(voxel_df, voxel_rt_midpoint)
 
-            if len(voxel_df) > 0:
-                # find the anchor point for the voxel
-                anchor_point_s = voxel_df.loc[voxel_df.intensity.idxmax()]
+            # define the search area in the m/z and scan dimensions
+            mz_lower = voxel_mz_midpoint - ANCHOR_POINT_MZ_LOWER_OFFSET
+            mz_upper = voxel_mz_midpoint + ANCHOR_POINT_MZ_UPPER_OFFSET
+            scan_lower = voxel_scan_midpoint - ANCHOR_POINT_SCAN_LOWER_OFFSET
+            scan_upper = voxel_scan_midpoint + ANCHOR_POINT_SCAN_UPPER_OFFSET
 
-                # define the search area in the m/z and scan dimensions
-                mz_lower = anchor_point_s.mz - ANCHOR_POINT_MZ_LOWER_OFFSET
-                mz_upper = anchor_point_s.mz + ANCHOR_POINT_MZ_UPPER_OFFSET
-                scan_lower = anchor_point_s.scan - ANCHOR_POINT_SCAN_LOWER_OFFSET
-                scan_upper = anchor_point_s.scan + ANCHOR_POINT_SCAN_UPPER_OFFSET
+            # constrain the raw points to the search area for this voxel
+            candidate_region_2d_df = raw_df[(raw_df.frame_id == voxel_rt_midpoint_frame_id) & (raw_df.mz >= mz_lower) & (raw_df.mz <= mz_upper) & (raw_df.scan >= scan_lower) & (raw_df.scan <= scan_upper)].copy()
 
-                # constrain the raw points to the search area for this anchor point
-                candidate_region_df = raw_df[(raw_df.intensity >= INTENSITY_THRESHOLD) & (raw_df.frame_id == anchor_point_s.frame_id) & (raw_df.mz >= mz_lower) & (raw_df.mz <= mz_upper) & (raw_df.scan >= scan_lower) & (raw_df.scan <= scan_upper)].copy()
-                visualise_d = {}
-                visualise_d['anchor_point_s'] = anchor_point_s
-                visualise_d['initial_candidate_region_df'] = candidate_region_df
+            # segment the raw data to reveal the isotopes in the feature
+            X = candidate_region_2d_df[['mz','scan']].values
+            dbscan = DBSCAN(eps=1, min_samples=3, metric=point_metric)
+            clusters = dbscan.fit_predict(X)
+            candidate_region_2d_df['cluster'] = clusters
 
-                peak_mz_lower = anchor_point_s.mz-MS1_PEAK_DELTA
-                peak_mz_upper = anchor_point_s.mz+MS1_PEAK_DELTA
-                visualise_d['peak_mz_lower'] = peak_mz_lower
-                visualise_d['peak_mz_upper'] = peak_mz_upper
+            # find the centroid of each point cluster
+            centroids_l = []
+            for group_name,group_df in candidate_region_2d_df.groupby('cluster'):
+                if group_name >= 0:
+                    mz_centroid = peakutils.centroid(group_df.mz, group_df.intensity)
+                    scan_centroid = peakutils.centroid(group_df.scan, group_df.intensity)
+                    centroids_l.append((group_name, mz_centroid, scan_centroid))
+            centroids_df = pd.DataFrame(centroids_l, columns=['cluster','mz','scan'])
 
-                # constrain the points to the anchor point's m/z
-                peak_df = candidate_region_df[(candidate_region_df.mz >= peak_mz_lower) & (candidate_region_df.mz <= peak_mz_upper)]
-
-                # find the extent of the anchor point's peak in the mobility dimension
-                scan_df = peak_df.groupby(['scan'], as_index=False).intensity.sum()
-                scan_df.sort_values(by=['scan'], ascending=True, inplace=True)
-
-                # apply a smoothing filter to the points
-                scan_df['filtered_intensity'] = scan_df.intensity  # set the default
-                try:
-                    scan_df['filtered_intensity'] = signal.savgol_filter(scan_df.intensity, window_length=find_filter_length(number_of_points=len(scan_df)), polyorder=SCAN_FILTER_POLY_ORDER)
-                except:
-                    pass
-                visualise_d['scan_df'] = scan_df
-
-                # find the valleys nearest the anchor point
-                valley_idxs = peakutils.indexes(-scan_df.filtered_intensity.values, thres=VALLEYS_THRESHOLD_SCAN, min_dist=VALLEYS_MIN_DIST_SCAN, thres_abs=False)
-                valley_x_l = scan_df.iloc[valley_idxs].scan.to_list()
-                valleys_df = scan_df[scan_df.scan.isin(valley_x_l)]
-                visualise_d['scan_valleys_df'] = valleys_df
-
-                upper_x = valleys_df[valleys_df.scan > anchor_point_s.scan].scan.min()
-                if math.isnan(upper_x):
-                    upper_x = scan_df.scan.max()
-                lower_x = valleys_df[valleys_df.scan < anchor_point_s.scan].scan.max()
-                if math.isnan(lower_x):
-                    lower_x = scan_df.scan.min()
-
-                scan_lower = lower_x
-                scan_upper = upper_x
-                visualise_d['scan_lower'] = scan_lower
-                visualise_d['scan_upper'] = scan_upper
-
-                # trim the candidate region to account for the selected peak in mobility
-                candidate_region_df = candidate_region_df[(candidate_region_df.scan >= scan_lower) & (candidate_region_df.scan <= scan_upper)].copy()
-
-                # segment the raw data to reveal the isotopes in the feature
-                X = candidate_region_df[['mz','scan']].values
-
-                # cluster the points
-                dbscan = DBSCAN(eps=1, min_samples=3, metric=point_metric)
+            if len(centroids_df) > 0:
+                # cluster the centroids into isotopic series
+                X = centroids_df[['mz','scan']].values
+                dbscan = DBSCAN(eps=1, min_samples=2, metric=isotope_metric)  # minimum isotopes to form a series
                 clusters = dbscan.fit_predict(X)
-                candidate_region_df['cluster'] = clusters
-                visualise_d['candidate_region_with_isotope_clusters_df'] = candidate_region_df
+                centroids_df['isotope_cluster'] = clusters
 
-                number_of_point_clusters = len(candidate_region_df[candidate_region_df.cluster >= 0].cluster.unique())
-                if (number_of_point_clusters > 0):
-                    anchor_point_cluster = candidate_region_df[candidate_region_df.point_id == anchor_point_s.point_id].iloc[0].cluster
+                candidate_region_2d_df = pd.merge(candidate_region_2d_df, centroids_df[['cluster','isotope_cluster']], how='left', left_on=['cluster'], right_on=['cluster'])
+                candidate_region_2d_df.replace(to_replace=np.nan, value=-1, inplace=True)
+                candidate_region_2d_df.isotope_cluster = candidate_region_2d_df.isotope_cluster.astype(int)
 
-                    # if we have more than one point clusters, and the anchor point is in one of them, carry on...
-                    if (anchor_point_cluster >= 0):
-                        # collect the points that are in the same point cluster as the anchor point
-                        anchor_point_cluster_points_df = candidate_region_df[candidate_region_df.cluster == anchor_point_cluster]
-                        # calculate the cluster centroids
-                        centroids_l = []
-                        for group_name,group_df in candidate_region_df.groupby(['cluster'], as_index=False):
-                            if group_name >= 0:
-                                mz_centroid = peakutils.centroid(group_df.mz, group_df.intensity)
-                                scan_centroid = peakutils.centroid(group_df.scan, group_df.intensity)
-                                centroids_l.append((group_name, mz_centroid, scan_centroid))
-                        centroids_df = pd.DataFrame(centroids_l, columns=['cluster','mz','scan'])
+                # each isotopic series is a candidate precursor cuboid for feature detection
+                for group_name,group_df in candidate_region_2d_df.groupby('isotope_cluster'):
+                    # get the extent of the isotope cluster in m/z and mobility
+                    mz_lower = group_df.mz.min()
+                    mz_upper = group_df.mz.max()
+                    scan_lower = group_df.scan.min()
+                    scan_upper = group_df.scan.max()
 
-                        X = centroids_df[['mz','scan']].values
+                    rt_lower = voxel_rt_midpoint - RT_BASE_PEAK_WIDTH
+                    rt_upper = voxel_rt_midpoint + RT_BASE_PEAK_WIDTH
 
-                        # cluster the isotopes into series
-                        dbscan = DBSCAN(eps=1, min_samples=2, metric=isotope_metric)  # minimum isotopes to form a series
-                        clusters = dbscan.fit_predict(X)
-                        centroids_df['isotope_cluster'] = clusters
-                        visualise_d['centroids_df'] = centroids_df
+                    # get the points
+                    candidate_region_3d_df = raw_df[(raw_df.mz >= mz_lower) & (raw_df.mz <= mz_upper) & (raw_df.scan >= scan_lower) & (raw_df.scan <= scan_upper) & (raw_df.retention_time_secs >= rt_lower) & (raw_df.retention_time_secs <= rt_upper)].copy()
 
-                        number_of_isotope_clusters = len(centroids_df[centroids_df.isotope_cluster >= 0].isotope_cluster.unique())
+                    # find the extent of the peak in the RT dimension
+                    rt_df = candidate_region_3d_df.groupby(['retention_time_secs'], as_index=False).intensity.sum()
+                    rt_df.sort_values(by=['retention_time_secs'], ascending=True, inplace=True)
 
-                        if (number_of_isotope_clusters > 0):
-                            anchor_point_isotope_cluster = centroids_df[(centroids_df.cluster == anchor_point_cluster)].iloc[0].isotope_cluster
+                    # filter the points
+                    rt_df['filtered_intensity'] = rt_df.intensity  # set the default
+                    try:
+                        rt_df['filtered_intensity'] = signal.savgol_filter(rt_df.intensity, window_length=find_filter_length(number_of_points=len(rt_df)), polyorder=RT_FILTER_POLY_ORDER)
+                    except:
+                        pass
 
-                            # if we have at least one isotope series, and the anchor point is in one of them, carry on...
-                            if (anchor_point_isotope_cluster >= 0):
-                                candidate_region_df = pd.merge(candidate_region_df, centroids_df[['cluster','isotope_cluster']], how='left', left_on=['cluster'], right_on=['cluster'])
-                                candidate_region_df.replace(to_replace=np.nan, value=-1, inplace=True)
-                                candidate_region_df.isotope_cluster = candidate_region_df.isotope_cluster.astype(int)
-                                visualise_d['candidate_region_with_isotope_series_clusters_df'] = candidate_region_df
+                    # find the valleys nearest the anchor point
+                    valley_idxs = peakutils.indexes(-rt_df.filtered_intensity.values, thres=VALLEYS_THRESHOLD_RT, min_dist=VALLEYS_MIN_DIST_RT, thres_abs=False)
+                    valley_x_l = rt_df.iloc[valley_idxs].retention_time_secs.to_list()
+                    valleys_df = rt_df[rt_df.retention_time_secs.isin(valley_x_l)]
 
-                                # estimate the number of isotopes in the feature
-                                number_of_point_clusters_in_anchor_isotope_cluster = len(centroids_df[(centroids_df.isotope_cluster == anchor_point_isotope_cluster)])
+                    upper_x = valleys_df[valleys_df.retention_time_secs > voxel_rt_midpoint].retention_time_secs.min()
+                    if math.isnan(upper_x):
+                        upper_x = rt_df.retention_time_secs.max()
+                    lower_x = valleys_df[valleys_df.retention_time_secs < voxel_rt_midpoint].retention_time_secs.max()
+                    if math.isnan(lower_x):
+                        lower_x = rt_df.retention_time_secs.min()
 
-                                # we now have the 2D extent of the feature - take that extent through time and see if we can cluster the centroids in time
+                    rt_lower = lower_x
+                    rt_upper = upper_x
 
-                                # get the extent of the isotope cluster in m/z and mobility
-                                points_in_cluster_df = candidate_region_df[(candidate_region_df.isotope_cluster == anchor_point_isotope_cluster)]
-                                mz_lower = points_in_cluster_df.mz.min()
-                                mz_upper = points_in_cluster_df.mz.max()
-                                scan_lower = points_in_cluster_df.scan.min()
-                                scan_upper = points_in_cluster_df.scan.max()
-                                visualise_d['isotope_cluster_mz_lower'] = mz_lower
-                                visualise_d['isotope_cluster_mz_upper'] = mz_upper
-                                visualise_d['isotope_cluster_scan_lower'] = scan_lower
-                                visualise_d['isotope_cluster_scan_upper'] = scan_upper
+                    # make sure the RT extent isn't too extreme
+                    if (rt_upper - rt_lower) > (RT_BASE_PEAK_WIDTH * 2):
+                        rt_lower = voxel_rt_midpoint - RT_BASE_PEAK_WIDTH
+                        rt_upper = voxel_rt_midpoint + RT_BASE_PEAK_WIDTH
 
-                                # determine the feature's extent in RT by looking at the anchor point's peak
-                                ap_raw_points_in_rt_df = raw_df[(raw_df.mz >= anchor_point_cluster_points_df.mz.min()) & (raw_df.mz <= anchor_point_cluster_points_df.mz.max()) & (raw_df.scan >= anchor_point_cluster_points_df.scan.min()) & (raw_df.scan <= anchor_point_cluster_points_df.scan.max()) & (raw_df.retention_time_secs >= anchor_point_s.retention_time_secs-RT_BASE_PEAK_WIDTH) & (raw_df.retention_time_secs <= anchor_point_s.retention_time_secs+RT_BASE_PEAK_WIDTH)]
-                                rt_df = ap_raw_points_in_rt_df.groupby(['frame_id','retention_time_secs'], as_index=False).intensity.sum()
-                                rt_df.sort_values(by=['retention_time_secs'], ascending=True, inplace=True)
+                    # get the point ids for the feature in 3D
+                    points_to_remove_l = raw_df[(raw_df.mz >= mz_lower) & (raw_df.mz <= mz_upper) & (raw_df.scan >= scan_lower) & (raw_df.scan <= scan_upper) & (raw_df.retention_time_secs >= rt_lower) & (raw_df.retention_time_secs <= rt_upper)].point_id.tolist()
 
-                                # filter the points
-                                rt_df['filtered_intensity'] = rt_df.intensity  # set the default
-                                try:
-                                    rt_df['filtered_intensity'] = signal.savgol_filter(rt_df.intensity, window_length=find_filter_length(number_of_points=len(rt_df)), polyorder=RT_FILTER_POLY_ORDER)
-                                except:
-                                    pass
-                                visualise_d['rt_df'] = rt_df
+                    # add this cuboid to the list
+                    precursor_coordinates_d = {
+                        'mz_lower':mz_lower, 
+                        'mz_upper':mz_upper, 
+                        'wide_mz_lower':mz_lower - (CARBON_MASS_DIFFERENCE / 1), # just in case we missed the monoisotopic
+                        'wide_mz_upper':mz_upper, 
+                        'scan_lower':int(scan_lower),
+                        'scan_upper':int(scan_upper), 
+                        'wide_scan_lower':int(scan_lower), # same because we've already resolved its extent
+                        'wide_scan_upper':int(scan_upper), 
+                        'rt_lower':rt_lower, 
+                        'rt_upper':rt_upper, 
+                        'wide_rt_lower':rt_lower, # same because we've already resolved its extent
+                        'wide_rt_upper':rt_upper
+                        }
+                    precursor_cuboids_l.append(precursor_coordinates_d)
 
-                                # find the valleys nearest the anchor point
-                                valley_idxs = peakutils.indexes(-rt_df.filtered_intensity.values, thres=VALLEYS_THRESHOLD_RT, min_dist=VALLEYS_MIN_DIST_RT, thres_abs=False)
-                                valley_x_l = rt_df.iloc[valley_idxs].retention_time_secs.to_list()
-                                valleys_df = rt_df[rt_df.retention_time_secs.isin(valley_x_l)]
-                                visualise_d['rt_valleys_df'] = valleys_df
-
-                                upper_x = valleys_df[valleys_df.retention_time_secs > anchor_point_s.retention_time_secs].retention_time_secs.min()
-                                if math.isnan(upper_x):
-                                    upper_x = rt_df.retention_time_secs.max()
-                                lower_x = valleys_df[valleys_df.retention_time_secs < anchor_point_s.retention_time_secs].retention_time_secs.max()
-                                if math.isnan(lower_x):
-                                    lower_x = rt_df.retention_time_secs.min()
-
-                                rt_lower = lower_x
-                                rt_upper = upper_x
-                                visualise_d['isotope_cluster_rt_lower'] = rt_lower
-                                visualise_d['isotope_cluster_rt_upper'] = rt_upper
-
-                                # make sure the RT extent isn't too extreme
-                                if (rt_upper - rt_lower) > (RT_BASE_PEAK_WIDTH * 2):
-                                    rt_lower = anchor_point_s.retention_time_secs - RT_BASE_PEAK_WIDTH
-                                    rt_upper = anchor_point_s.retention_time_secs + RT_BASE_PEAK_WIDTH
-
-                                # get the point ids for the feature in 3D
-                                points_to_remove_l = raw_df[(raw_df.mz >= mz_lower) & (raw_df.mz <= mz_upper) & (raw_df.scan >= scan_lower) & (raw_df.scan <= scan_upper) & (raw_df.retention_time_secs >= rt_lower) & (raw_df.retention_time_secs <= rt_upper)].point_id.tolist()
-
-                                # add this cuboid to the list
-                                precursor_coordinates_d = {
-                                    'mz_lower':mz_lower, 
-                                    'mz_upper':mz_upper, 
-                                    'wide_mz_lower':mz_lower - (CARBON_MASS_DIFFERENCE / 1), # just in case we missed the monoisotopic
-                                    'wide_mz_upper':mz_upper, 
-                                    'scan_lower':int(scan_lower), # same because we've already resolved its extent
-                                    'scan_upper':int(scan_upper), 
-                                    'wide_scan_lower':int(scan_lower), 
-                                    'wide_scan_upper':int(scan_upper), 
-                                    'rt_lower':rt_lower, 
-                                    'rt_upper':rt_upper, 
-                                    'wide_rt_lower':rt_lower, # same because we've already resolved its extent
-                                    'wide_rt_upper':rt_upper, 
-                                    'anchor_point_intensity':int(anchor_point_s.intensity), 
-                                    'anchor_point_mz':anchor_point_s.mz, 
-                                    'anchor_point_scan':int(anchor_point_s.scan), 
-                                    'anchor_point_retention_time_secs':anchor_point_s.retention_time_secs, 
-                                    'anchor_point_frame_id':int(anchor_point_s.frame_id), 
-                                    'number_of_isotope_clusters':int(number_of_isotope_clusters), 
-                                    'number_of_point_clusters_in_anchor_isotope_cluster':int(number_of_point_clusters_in_anchor_isotope_cluster)
-                                    }
-                                precursor_cuboids_l.append(precursor_coordinates_d)
-
-                                print('.', end='', flush=True)
-                                isotope_cluster_retries = 0
-
-                                # remove the points we've used for this feature so we don't use them for another
-                                raw_df.drop(points_to_remove_l, inplace=True)
-
-                                if args.visualise:
-                                    # save the visualisation info
-                                    with open('visualise-three-d-{}.pkl'.format(int(anchor_point_s.intensity)), 'wb') as f:
-                                        pickle.dump(visualise_d, f)
-                            else:
-                                # we could not form an isotopic series
-                                print('_', end='', flush=True)
-                                isotope_cluster_retries += 1
-                                if isotope_cluster_retries >= MAX_ISOTOPE_CLUSTER_RETRIES:
-                                    print('max isotope cluster retries reached for mz={} to {}'.format(segment_mz_lower, segment_mz_upper))
-                                    break
-                        else:
-                            # we could not form an isotopic series
-                            print('_', end='', flush=True)
-                            isotope_cluster_retries += 1
-                            if isotope_cluster_retries >= MAX_ISOTOPE_CLUSTER_RETRIES:
-                                print('max isotope cluster retries reached for mz={} to {}'.format(segment_mz_lower, segment_mz_upper))
-                                break
-                    else:
-                        # the anchor point is not within a point cluster
-                        print('x', end='', flush=True)
-                        point_cluster_retries += 1
-                        if point_cluster_retries >= MAX_POINT_CLUSTER_RETRIES:
-                            break
-                else:
-                    # could not form a point cluster
-                    print('x', end='', flush=True)
-                    point_cluster_retries += 1
-                    if point_cluster_retries >= MAX_POINT_CLUSTER_RETRIES:
-                        break
-            else:
-                print('*', end='', flush=True)
+                    # remove the points we've used for this feature so we don't use them for another
+                    raw_df.drop(points_to_remove_l, inplace=True)
 
     # return what we found in this segment
     print('found {} cuboids for mz={} to {}'.format(len(precursor_cuboids_l), segment_mz_lower, segment_mz_upper))
@@ -329,12 +223,6 @@ ANCHOR_POINT_MZ_UPPER_OFFSET = 3.0   # six isotopes for charge-2 plus a little b
 
 ANCHOR_POINT_SCAN_LOWER_OFFSET = 100
 ANCHOR_POINT_SCAN_UPPER_OFFSET = 100
-
-INTENSITY_THRESHOLD = 10
-PROCESSED_INTENSITY_INDICATOR = -1
-
-MAX_ISOTOPE_CLUSTER_RETRIES = 1000
-MAX_POINT_CLUSTER_RETRIES = 10
 
 # filter and peak detection parameters
 VALLEYS_THRESHOLD_RT = 0.5    # only consider valleys that drop more than this proportion of the normalised maximum
