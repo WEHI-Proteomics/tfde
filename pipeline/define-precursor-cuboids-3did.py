@@ -208,7 +208,7 @@ def find_precursor_cuboids(segment_mz_lower, segment_mz_upper):
                         rt_df['filtered_intensity'] = signal.savgol_filter(rt_df.intensity, window_length=find_filter_length(number_of_points=len(rt_df)), polyorder=RT_FILTER_POLY_ORDER)
                     except:
                         pass
-                    visualise_d['rt_df'] = rt_df
+                    visualise_d['rt_df'] = rt_df.to_dict('records')
 
                     # find the valleys nearest the anchor point
                     valley_idxs = peakutils.indexes(-rt_df.filtered_intensity.values, thres=VALLEYS_THRESHOLD_RT, min_dist=VALLEYS_MIN_DIST_RT, thres_abs=False)
