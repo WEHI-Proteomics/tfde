@@ -142,6 +142,10 @@ def find_precursor_cuboids(segment_mz_lower, segment_mz_upper):
                 candidate_region_2d_df = pd.merge(candidate_region_2d_df, centroids_df[['cluster','isotope_cluster']], how='left', left_on=['cluster'], right_on=['cluster'])
                 candidate_region_2d_df.replace(to_replace=np.nan, value=-1, inplace=True)
                 candidate_region_2d_df.isotope_cluster = candidate_region_2d_df.isotope_cluster.astype(int)
+                candidate_region_2d_df = candidate_region_2d_df[(candidate_region_2d_df.isotope_cluster >= 0)]
+
+                if len(candidate_region_2d_df) > 0:
+                    print('|{}|'.format(len(candidate_region_2d_df)), end='', flush=True)
 
                 # each isotopic series is a candidate precursor cuboid for feature detection
                 for group_name,group_df in candidate_region_2d_df.groupby('isotope_cluster'):
@@ -204,7 +208,8 @@ def find_precursor_cuboids(segment_mz_lower, segment_mz_upper):
                         'wide_rt_upper':rt_upper
                         }
                     precursor_cuboids_l.append(precursor_coordinates_d)
-
+            else:
+                print('-', end='', flush=True)
     # return what we found in this segment
     print('found {} cuboids for mz={} to {}'.format(len(precursor_cuboids_l), segment_mz_lower, segment_mz_upper))
     return precursor_cuboids_l
