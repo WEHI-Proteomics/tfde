@@ -225,7 +225,7 @@ def find_precursor_cuboids(segment_mz_lower, segment_mz_upper):
                         'wide_rt_lower':cuboid_rt_lower, # same because we've already resolved its extent
                         'wide_rt_upper':cuboid_rt_upper
                         }
-                    if args.visualisation:
+                    if args.visualise:
                         precursor_coordinates_d['visualisation_d'] = visualisation_d
                     precursor_cuboids_l.append(precursor_coordinates_d)
             else:
