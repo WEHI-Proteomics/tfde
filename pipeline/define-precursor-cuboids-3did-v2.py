@@ -173,10 +173,6 @@ def find_precursor_cuboids(segment_mz_lower, segment_mz_upper):
                 # only consider the points that are part of an isotope series
                 region_2d_df = region_2d_df[(region_2d_df.isotope_cluster >= 0)]
 
-                number_of_isotope_series = len(region_2d_df.isotope_cluster.unique())
-                if number_of_isotope_series > 0:
-                    print('|{}|'.format(number_of_isotope_series), end='', flush=True)
-
                 # each isotopic series is a candidate precursor cuboid for feature detection
                 for group_name,group_df in region_2d_df.groupby('isotope_cluster'):
                     # get the extent of the isotope cluster in m/z and mobility
@@ -242,6 +238,7 @@ def find_precursor_cuboids(segment_mz_lower, segment_mz_upper):
                             precursor_coordinates_d['visualisation_d'] = visualisation_d
                             
                         precursor_cuboids_l.append(precursor_coordinates_d)
+                        print('+', end='', flush=True)
             else:
                 print('-', end='', flush=True)
     # return what we found in this segment
