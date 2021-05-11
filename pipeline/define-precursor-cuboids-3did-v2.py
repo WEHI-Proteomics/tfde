@@ -68,7 +68,7 @@ def scan_coords_for_single_charge_region(mz_lower, mz_upper):
     return {'scan_for_mz_lower':scan_for_mz_lower, 'scan_for_mz_upper':scan_for_mz_upper}
 
 # process a segment of this run's data, and return a list of precursor cuboids
-# @ray.remote
+@ray.remote
 def find_precursor_cuboids(segment_mz_lower, segment_mz_upper):
     precursor_cuboids_l = []
 
@@ -238,11 +238,11 @@ def find_precursor_cuboids(segment_mz_lower, segment_mz_upper):
                             precursor_coordinates_d['visualisation_d'] = visualisation_d
                             
                         precursor_cuboids_l.append(precursor_coordinates_d)
-                        print('+', end='', flush=True)
+                        # print('+', end='', flush=True)
 
             else:
                 # if we couldn't form an isotope around this voxel, it's time to stop
-                print('-', end='', flush=True)
+                # print('-', end='', flush=True)
                 break
 
     # return what we found in this segment
@@ -337,12 +337,12 @@ if not os.path.exists(CUBOIDS_DIR):
 CUBOIDS_FILE = '{}/exp-{}-run-{}-precursor-cuboids-3did.pkl'.format(CUBOIDS_DIR, args.experiment_name, args.run_name)
 
 # set up Ray
-# print("setting up Ray")
-# if not ray.is_initialized():
-#     if args.ray_mode == "cluster":
-#         ray.init(num_cpus=number_of_workers())
-#     else:
-#         ray.init(local_mode=True)
+print("setting up Ray")
+if not ray.is_initialized():
+    if args.ray_mode == "cluster":
+        ray.init(num_cpus=number_of_workers())
+    else:
+        ray.init(local_mode=True)
 
 # calculate the segments
 mz_range = args.mz_upper - args.mz_lower
