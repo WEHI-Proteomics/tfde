@@ -111,13 +111,14 @@ def find_precursor_cuboids(segment_mz_lower, segment_mz_upper):
 
             # keep information aside for debugging
             visualisation_d = {}
+            visualisation_d['voxel'] = {'voxel_mz_lower':voxel_mz_lower, 'voxel_mz_upper':voxel_mz_upper, 'voxel_scan_lower':voxel_scan_lower, 'voxel_scan_upper':voxel_scan_upper, 'voxel_rt_lower':voxel_rt_lower, 'voxel_rt_upper':voxel_rt_upper, 'voxel_rt_midpoint_frame_id':voxel_rt_midpoint_frame_id}
 
             # define the search area in the m/z and scan dimensions
             region_mz_lower = voxel_mz_midpoint - ANCHOR_POINT_MZ_LOWER_OFFSET
             region_mz_upper = voxel_mz_midpoint + ANCHOR_POINT_MZ_UPPER_OFFSET
             region_scan_lower = voxel_scan_midpoint - ANCHOR_POINT_SCAN_LOWER_OFFSET
             region_scan_upper = voxel_scan_midpoint + ANCHOR_POINT_SCAN_UPPER_OFFSET
-            visualisation_d['region_2d'] = {'region_mz_lower':region_mz_lower, 'region_mz_upper':region_mz_upper, 'region_scan_lower':region_scan_lower, 'region_scan_upper':region_scan_upper, 'voxel_rt_midpoint_frame_id':voxel_rt_midpoint_frame_id}
+            visualisation_d['region_2d'] = {'region_mz_lower':region_mz_lower, 'region_mz_upper':region_mz_upper, 'region_scan_lower':region_scan_lower, 'region_scan_upper':region_scan_upper}
 
             # constrain the raw points to the search area for this voxel
             region_2d_df = raw_df[(raw_df.frame_id == voxel_rt_midpoint_frame_id) & (raw_df.mz >= region_mz_lower) & (raw_df.mz <= region_mz_upper) & (raw_df.scan >= region_scan_lower) & (raw_df.scan <= region_scan_upper)].copy()
