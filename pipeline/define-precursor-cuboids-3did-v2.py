@@ -174,6 +174,7 @@ def find_precursor_cuboids(segment_mz_lower, segment_mz_upper):
                 region_2d_df = region_2d_df[(region_2d_df.isotope_cluster >= 0)]
 
                 # each isotopic series is a candidate precursor cuboid for feature detection
+                number_of_isotope_series_from_voxel = 0
                 for group_name,group_df in region_2d_df.groupby('isotope_cluster'):
                     # get the extent of the isotope cluster in m/z and mobility
                     cuboid_mz_lower = group_df.mz.min()
@@ -234,15 +235,25 @@ def find_precursor_cuboids(segment_mz_lower, segment_mz_upper):
                             'wide_rt_upper':cuboid_rt_upper
                             }
 
+                        number_of_isotope_series_from_voxel += 1
+
                         if args.visualise:
                             precursor_coordinates_d['visualisation_d'] = visualisation_d
                             
                         precursor_cuboids_l.append(precursor_coordinates_d)
                         print('+', end='', flush=True)
+
+                # if we couldn't form an isotope series around this voxel, it's time to stop
+                if number_of_isotope_series_from_voxel == 0:
+                    print('.', end='', flush=True)
+                    break
             else:
+                # if we couldn't form an isotope around this voxel, it's time to stop
                 print('-', end='', flush=True)
+                break
+
     # return what we found in this segment
-    print('found {} cuboids for mz={} to {}'.format(len(precursor_cuboids_l), segment_mz_lower, segment_mz_upper))
+    print('\nfound {} cuboids for mz={} to {}'.format(len(precursor_cuboids_l), segment_mz_lower, segment_mz_upper))
     return precursor_cuboids_l
 
 
