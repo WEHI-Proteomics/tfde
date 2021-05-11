@@ -116,11 +116,14 @@ def find_precursor_cuboids(segment_mz_lower, segment_mz_upper):
             voxel_rt_upper = row.rt_bin.right
             voxel_rt_midpoint = row.rt_bin.mid
             voxel_df = raw_df[(raw_df.mz >= voxel_mz_lower) & (raw_df.mz <= voxel_mz_upper) & (raw_df.scan >= voxel_scan_lower) & (raw_df.scan <= voxel_scan_upper) & (raw_df.retention_time_secs >= voxel_rt_lower) & (raw_df.retention_time_secs <= voxel_rt_upper)]
-            voxel_rt_midpoint_frame_id = frame_id_for_rt(voxel_df, voxel_rt_midpoint)
+
+            # find the frame ID of the voxel's highpoint
+            voxel_rt_df = voxel_df.groupby(['frame_id'], as_index=False).intensity.sum()
+            voxel_rt_highpoint_frame_id = voxel_rt_df.loc[voxel_rt_df.intensity.idxmax()].frame_id
 
             # keep information aside for debugging
             visualisation_d = {}
-            visualisation_d['voxel'] = {'voxel_mz_lower':voxel_mz_lower, 'voxel_mz_upper':voxel_mz_upper, 'voxel_scan_lower':voxel_scan_lower, 'voxel_scan_upper':voxel_scan_upper, 'voxel_rt_lower':voxel_rt_lower, 'voxel_rt_upper':voxel_rt_upper, 'voxel_rt_midpoint_frame_id':voxel_rt_midpoint_frame_id}
+            visualisation_d['voxel'] = {'voxel_mz_lower':voxel_mz_lower, 'voxel_mz_upper':voxel_mz_upper, 'voxel_scan_lower':voxel_scan_lower, 'voxel_scan_upper':voxel_scan_upper, 'voxel_rt_lower':voxel_rt_lower, 'voxel_rt_upper':voxel_rt_upper, 'voxel_rt_highpoint_frame_id':voxel_rt_highpoint_frame_id}
 
             # define the search area in the m/z and scan dimensions
             region_mz_lower = voxel_mz_midpoint - ANCHOR_POINT_MZ_LOWER_OFFSET
@@ -130,7 +133,7 @@ def find_precursor_cuboids(segment_mz_lower, segment_mz_upper):
             visualisation_d['region_2d'] = {'region_mz_lower':region_mz_lower, 'region_mz_upper':region_mz_upper, 'region_scan_lower':region_scan_lower, 'region_scan_upper':region_scan_upper}
 
             # constrain the raw points to the search area for this voxel
-            region_2d_df = raw_df[(raw_df.frame_id == voxel_rt_midpoint_frame_id) & (raw_df.mz >= region_mz_lower) & (raw_df.mz <= region_mz_upper) & (raw_df.scan >= region_scan_lower) & (raw_df.scan <= region_scan_upper)].copy()
+            region_2d_df = raw_df[(raw_df.frame_id == voxel_rt_highpoint_frame_id) & (raw_df.mz >= region_mz_lower) & (raw_df.mz <= region_mz_upper) & (raw_df.scan >= region_scan_lower) & (raw_df.scan <= region_scan_upper)].copy()
 
             # segment the raw data to reveal the isotopes in the feature
             X = region_2d_df[['mz','scan']].values
