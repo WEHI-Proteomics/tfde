@@ -67,7 +67,7 @@ def task_define_precursor_cuboids():
     # input
     CONVERTED_DATABASE_NAME = "{}/converted-databases/exp-{}-run-{}-converted.sqlite".format(EXPERIMENT_DIR, config['experiment_name'], config['run_name'])
     # command
-    cmd = 'python -u define-precursor-cuboids-pasef.py -eb {experiment_base} -en {experiment_name} -rn {run_name} -ini {INI_FILE} -rm cluster'.format(experiment_base=config['experiment_base_dir'], experiment_name=config['experiment_name'], run_name=config['run_name'], INI_FILE=config['ini_file'])
+    cmd = 'python -u define-precursor-cuboids-pasef.py -eb {experiment_base} -en {experiment_name} -rn {run_name} -ini {INI_FILE} -rl {rl} -ru {ru} -rm cluster'.format(experiment_base=config['experiment_base_dir'], experiment_name=config['experiment_name'], run_name=config['run_name'], INI_FILE=config['ini_file'], rl=int(config['rt_lower']), ru=int(config['rt_upper']))
     # output
     CUBOIDS_DIR = '{}/precursor-cuboids-{}'.format(EXPERIMENT_DIR, config['precursor_definition_method'])
     CUBOIDS_FILE = '{}/exp-{}-run-{}-precursor-cuboids-{}.pkl'.format(CUBOIDS_DIR, config['experiment_name'], config['run_name'], config['precursor_definition_method'])
