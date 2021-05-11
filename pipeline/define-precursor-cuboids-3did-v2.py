@@ -119,11 +119,12 @@ def find_precursor_cuboids(segment_mz_lower, segment_mz_upper):
 
             # find the frame ID of the voxel's highpoint
             voxel_rt_df = voxel_df.groupby(['frame_id'], as_index=False).intensity.sum()
+            voxel_rt_highpoint = voxel_rt_df.loc[voxel_rt_df.intensity.idxmax()].retention_time_secs
             voxel_rt_highpoint_frame_id = voxel_rt_df.loc[voxel_rt_df.intensity.idxmax()].frame_id
 
             # keep information aside for debugging
             visualisation_d = {}
-            visualisation_d['voxel'] = {'voxel_mz_lower':voxel_mz_lower, 'voxel_mz_upper':voxel_mz_upper, 'voxel_scan_lower':voxel_scan_lower, 'voxel_scan_upper':voxel_scan_upper, 'voxel_rt_lower':voxel_rt_lower, 'voxel_rt_upper':voxel_rt_upper, 'voxel_rt_highpoint_frame_id':voxel_rt_highpoint_frame_id}
+            visualisation_d['voxel'] = {'voxel_mz_lower':voxel_mz_lower, 'voxel_mz_upper':voxel_mz_upper, 'voxel_scan_lower':voxel_scan_lower, 'voxel_scan_upper':voxel_scan_upper, 'voxel_rt_lower':voxel_rt_lower, 'voxel_rt_upper':voxel_rt_upper, 'voxel_rt_highpoint':voxel_rt_highpoint, 'voxel_rt_highpoint_frame_id':voxel_rt_highpoint_frame_id}
 
             # define the search area in the m/z and scan dimensions
             region_mz_lower = voxel_mz_midpoint - ANCHOR_POINT_MZ_LOWER_OFFSET
@@ -201,15 +202,15 @@ def find_precursor_cuboids(segment_mz_lower, segment_mz_upper):
                     except:
                         pass
 
-                    # find the valleys nearest the anchor point
+                    # find the valleys nearest the highpoint
                     valley_idxs = peakutils.indexes(-rt_df.filtered_intensity.values, thres=VALLEYS_THRESHOLD_RT, min_dist=VALLEYS_MIN_DIST_RT, thres_abs=False)
                     valley_x_l = rt_df.iloc[valley_idxs].retention_time_secs.to_list()
                     valleys_df = rt_df[rt_df.retention_time_secs.isin(valley_x_l)]
 
-                    upper_x = valleys_df[valleys_df.retention_time_secs > voxel_rt_midpoint].retention_time_secs.min()
+                    upper_x = valleys_df[valleys_df.retention_time_secs > voxel_rt_highpoint].retention_time_secs.min()
                     if math.isnan(upper_x):
                         upper_x = rt_df.retention_time_secs.max()
-                    lower_x = valleys_df[valleys_df.retention_time_secs < voxel_rt_midpoint].retention_time_secs.max()
+                    lower_x = valleys_df[valleys_df.retention_time_secs < voxel_rt_highpoint].retention_time_secs.max()
                     if math.isnan(lower_x):
                         lower_x = rt_df.retention_time_secs.min()
 
@@ -221,8 +222,8 @@ def find_precursor_cuboids(segment_mz_lower, segment_mz_upper):
 
                     # make sure the RT extent isn't too extreme
                     if (cuboid_rt_upper - cuboid_rt_lower) > (RT_BASE_PEAK_WIDTH * 2):
-                        cuboid_rt_lower = voxel_rt_midpoint - RT_BASE_PEAK_WIDTH
-                        cuboid_rt_upper = voxel_rt_midpoint + RT_BASE_PEAK_WIDTH
+                        cuboid_rt_lower = voxel_rt_highpoint - RT_BASE_PEAK_WIDTH
+                        cuboid_rt_upper = voxel_rt_highpoint + RT_BASE_PEAK_WIDTH
 
                     # add this cuboid to the list
                     precursor_coordinates_d = {
