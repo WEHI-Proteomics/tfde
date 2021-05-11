@@ -185,66 +185,63 @@ def find_precursor_cuboids(segment_mz_lower, segment_mz_upper):
                     cuboid_scan_lower = group_df.scan.min()
                     cuboid_scan_upper = group_df.scan.max()
 
-                    region_rt_lower = voxel_rt_midpoint - RT_BASE_PEAK_WIDTH
-                    region_rt_upper = voxel_rt_midpoint + RT_BASE_PEAK_WIDTH
+                    # only handle isotope series that contain the voxel; other voxels will pick up the other features
+                    if (voxel_mz_midpoint >= cuboid_mz_lower) and (voxel_mz_midpoint <= cuboid_mz_upper) and (voxel_scan_midpoint >= cuboid_scan_lower) and (voxel_scan_midpoint <= cuboid_scan_upper):
+                        region_rt_lower = voxel_rt_highpoint - RT_BASE_PEAK_WIDTH
+                        region_rt_upper = voxel_rt_highpoint + RT_BASE_PEAK_WIDTH
 
-                    # get the points
-                    region_3d_df = raw_df[(raw_df.mz >= cuboid_mz_lower) & (raw_df.mz <= cuboid_mz_upper) & (raw_df.scan >= cuboid_scan_lower) & (raw_df.scan <= cuboid_scan_upper) & (raw_df.retention_time_secs >= region_rt_lower) & (raw_df.retention_time_secs <= region_rt_upper)].copy()
+                        # get the points
+                        region_3d_df = raw_df[(raw_df.mz >= cuboid_mz_lower) & (raw_df.mz <= cuboid_mz_upper) & (raw_df.scan >= cuboid_scan_lower) & (raw_df.scan <= cuboid_scan_upper) & (raw_df.retention_time_secs >= region_rt_lower) & (raw_df.retention_time_secs <= region_rt_upper)].copy()
 
-                    # find the extent of the peak in the RT dimension
-                    rt_df = region_3d_df.groupby(['retention_time_secs'], as_index=False).intensity.sum()
-                    rt_df.sort_values(by=['retention_time_secs'], ascending=True, inplace=True)
+                        # find the extent of the peak in the RT dimension
+                        rt_df = region_3d_df.groupby(['retention_time_secs'], as_index=False).intensity.sum()
+                        rt_df.sort_values(by=['retention_time_secs'], ascending=True, inplace=True)
 
-                    # filter the points
-                    rt_df['filtered_intensity'] = rt_df.intensity  # set the default
-                    try:
-                        rt_df['filtered_intensity'] = signal.savgol_filter(rt_df.intensity, window_length=find_filter_length(number_of_points=len(rt_df)), polyorder=RT_FILTER_POLY_ORDER)
-                    except:
-                        pass
+                        # filter the points
+                        rt_df['filtered_intensity'] = rt_df.intensity  # set the default
+                        try:
+                            rt_df['filtered_intensity'] = signal.savgol_filter(rt_df.intensity, window_length=find_filter_length(number_of_points=len(rt_df)), polyorder=RT_FILTER_POLY_ORDER)
+                        except:
+                            pass
 
-                    # find the valleys nearest the highpoint
-                    valley_idxs = peakutils.indexes(-rt_df.filtered_intensity.values, thres=VALLEYS_THRESHOLD_RT, min_dist=VALLEYS_MIN_DIST_RT, thres_abs=False)
-                    valley_x_l = rt_df.iloc[valley_idxs].retention_time_secs.to_list()
-                    valleys_df = rt_df[rt_df.retention_time_secs.isin(valley_x_l)]
+                        # find the valleys nearest the highpoint
+                        valley_idxs = peakutils.indexes(-rt_df.filtered_intensity.values, thres=VALLEYS_THRESHOLD_RT, min_dist=VALLEYS_MIN_DIST_RT, thres_abs=False)
+                        valley_x_l = rt_df.iloc[valley_idxs].retention_time_secs.to_list()
+                        valleys_df = rt_df[rt_df.retention_time_secs.isin(valley_x_l)]
 
-                    upper_x = valleys_df[valleys_df.retention_time_secs > voxel_rt_highpoint].retention_time_secs.min()
-                    if math.isnan(upper_x):
-                        upper_x = rt_df.retention_time_secs.max()
-                    lower_x = valleys_df[valleys_df.retention_time_secs < voxel_rt_highpoint].retention_time_secs.max()
-                    if math.isnan(lower_x):
-                        lower_x = rt_df.retention_time_secs.min()
+                        upper_x = valleys_df[valleys_df.retention_time_secs > voxel_rt_highpoint].retention_time_secs.min()
+                        if math.isnan(upper_x):
+                            upper_x = rt_df.retention_time_secs.max()
+                        lower_x = valleys_df[valleys_df.retention_time_secs < voxel_rt_highpoint].retention_time_secs.max()
+                        if math.isnan(lower_x):
+                            lower_x = rt_df.retention_time_secs.min()
 
-                    # the extent of the precursor cuboid in RT
-                    cuboid_rt_lower = lower_x
-                    cuboid_rt_upper = upper_x
+                        # the extent of the precursor cuboid in RT
+                        cuboid_rt_lower = lower_x
+                        cuboid_rt_upper = upper_x
 
-                    visualisation_d['rt_df'] = rt_df.to_dict('records')
+                        visualisation_d['rt_df'] = rt_df.to_dict('records')
 
-                    # make sure the RT extent isn't too extreme
-                    if (cuboid_rt_upper - cuboid_rt_lower) > (RT_BASE_PEAK_WIDTH * 2):
-                        cuboid_rt_lower = voxel_rt_highpoint - RT_BASE_PEAK_WIDTH
-                        cuboid_rt_upper = voxel_rt_highpoint + RT_BASE_PEAK_WIDTH
+                        # add this cuboid to the list
+                        precursor_coordinates_d = {
+                            'mz_lower':cuboid_mz_lower, 
+                            'mz_upper':cuboid_mz_upper, 
+                            'wide_mz_lower':cuboid_mz_lower - (CARBON_MASS_DIFFERENCE / 1), # just in case we missed the monoisotopic
+                            'wide_mz_upper':cuboid_mz_upper, 
+                            'scan_lower':int(cuboid_scan_lower),
+                            'scan_upper':int(cuboid_scan_upper), 
+                            'wide_scan_lower':int(cuboid_scan_lower), # same because we've already resolved its extent
+                            'wide_scan_upper':int(cuboid_scan_upper), 
+                            'rt_lower':cuboid_rt_lower, 
+                            'rt_upper':cuboid_rt_upper, 
+                            'wide_rt_lower':cuboid_rt_lower, # same because we've already resolved its extent
+                            'wide_rt_upper':cuboid_rt_upper
+                            }
 
-                    # add this cuboid to the list
-                    precursor_coordinates_d = {
-                        'mz_lower':cuboid_mz_lower, 
-                        'mz_upper':cuboid_mz_upper, 
-                        'wide_mz_lower':cuboid_mz_lower - (CARBON_MASS_DIFFERENCE / 1), # just in case we missed the monoisotopic
-                        'wide_mz_upper':cuboid_mz_upper, 
-                        'scan_lower':int(cuboid_scan_lower),
-                        'scan_upper':int(cuboid_scan_upper), 
-                        'wide_scan_lower':int(cuboid_scan_lower), # same because we've already resolved its extent
-                        'wide_scan_upper':int(cuboid_scan_upper), 
-                        'rt_lower':cuboid_rt_lower, 
-                        'rt_upper':cuboid_rt_upper, 
-                        'wide_rt_lower':cuboid_rt_lower, # same because we've already resolved its extent
-                        'wide_rt_upper':cuboid_rt_upper
-                        }
-
-                    if args.visualise:
-                        precursor_coordinates_d['visualisation_d'] = visualisation_d
-                        
-                    precursor_cuboids_l.append(precursor_coordinates_d)
+                        if args.visualise:
+                            precursor_coordinates_d['visualisation_d'] = visualisation_d
+                            
+                        precursor_cuboids_l.append(precursor_coordinates_d)
             else:
                 print('-', end='', flush=True)
     # return what we found in this segment
