@@ -243,8 +243,8 @@ def find_precursor_cuboids(segment_mz_lower, segment_mz_upper):
 ANCHOR_POINT_MZ_LOWER_OFFSET = 0.6   # one isotope for charge-2 plus a little bit more
 ANCHOR_POINT_MZ_UPPER_OFFSET = 3.0   # six isotopes for charge-2 plus a little bit more
 
-ANCHOR_POINT_SCAN_LOWER_OFFSET = 100
-ANCHOR_POINT_SCAN_UPPER_OFFSET = 100
+ANCHOR_POINT_SCAN_LOWER_OFFSET = 40  # twice the base peak width
+ANCHOR_POINT_SCAN_UPPER_OFFSET = 40
 
 # filter and peak detection parameters
 VALLEYS_THRESHOLD_RT = 0.5    # only consider valleys that drop more than this proportion of the normalised maximum
@@ -258,7 +258,7 @@ RT_FILTER_POLY_ORDER = 3
 
 # bin sizes
 RT_BIN_SIZE = 5
-SCAN_BIN_SIZE = 20
+SCAN_BIN_SIZE = 10
 MZ_BIN_SIZE = 0.1
 
 
