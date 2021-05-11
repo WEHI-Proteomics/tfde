@@ -101,7 +101,7 @@ def find_precursor_cuboids(segment_mz_lower, segment_mz_upper):
         summary_df.sort_values(by=['intensity'], ascending=False, inplace=True)
 
         if args.visualise:
-            summary_df = summary_df.head(n=100).sample(n=1)
+            summary_df = summary_df.head(n=1000).sample(n=1)
 
         # process each voxel by decreasing intensity
         for row in summary_df.itertuples():
@@ -118,7 +118,7 @@ def find_precursor_cuboids(segment_mz_lower, segment_mz_upper):
             voxel_df = raw_df[(raw_df.mz >= voxel_mz_lower) & (raw_df.mz <= voxel_mz_upper) & (raw_df.scan >= voxel_scan_lower) & (raw_df.scan <= voxel_scan_upper) & (raw_df.retention_time_secs >= voxel_rt_lower) & (raw_df.retention_time_secs <= voxel_rt_upper)]
 
             # find the frame ID of the voxel's highpoint
-            voxel_rt_df = voxel_df.groupby(['frame_id'], as_index=False).intensity.sum()
+            voxel_rt_df = voxel_df.groupby(['frame_id','retention_time_secs'], as_index=False).intensity.sum()
             voxel_rt_highpoint = voxel_rt_df.loc[voxel_rt_df.intensity.idxmax()].retention_time_secs
             voxel_rt_highpoint_frame_id = voxel_rt_df.loc[voxel_rt_df.intensity.idxmax()].frame_id
 
