@@ -61,14 +61,23 @@ def frame_id_for_rt(voxel_df, rt):
     df.sort_values(by=['rt_delta'], ascending=True, inplace=True)
     return df.iloc[0].frame_id
 
+# define a straight line to exclude the charge-1 cloud
+def scan_coords_for_single_charge_region(mz_lower, mz_upper):
+    scan_for_mz_lower = max(int(-1 * ((1.2 * mz_lower) - 1252)), 0)
+    scan_for_mz_upper = max(int(-1 * ((1.2 * mz_upper) - 1252)), 0)
+    return {'scan_for_mz_lower':scan_for_mz_lower, 'scan_for_mz_upper':scan_for_mz_upper}
+
 # process a segment of this run's data, and return a list of precursor cuboids
 # @ray.remote
 def find_precursor_cuboids(segment_mz_lower, segment_mz_upper):
     precursor_cuboids_l = []
 
+    # find out where the charge-1 cloud ends and only include points below it (i.e. include points with a higher scan)
+    scan_limit = scan_coords_for_single_charge_region(mz_lower=segment_mz_lower, mz_upper=segment_mz_upper)['scan_for_mz_upper']
+
     # load the raw points for this m/z segment
     db_conn = sqlite3.connect(CONVERTED_DATABASE_NAME)
-    raw_df = pd.read_sql_query("select frame_id,mz,scan,intensity,retention_time_secs from frames where frame_type == {} and retention_time_secs >= {} and retention_time_secs <= {} and mz >= {} and mz <= {}".format(FRAME_TYPE_MS1, args.rt_lower, args.rt_upper, segment_mz_lower, segment_mz_upper), db_conn)
+    raw_df = pd.read_sql_query("select frame_id,mz,scan,intensity,retention_time_secs from frames where frame_type == {} and retention_time_secs >= {} and retention_time_secs <= {} and scan >= {} and mz >= {} and mz <= {}".format(FRAME_TYPE_MS1, args.rt_lower, args.rt_upper, scan_limit, segment_mz_lower, segment_mz_upper), db_conn)
     db_conn.close()
 
     if len(raw_df) > 0:
