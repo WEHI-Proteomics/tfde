@@ -76,7 +76,7 @@ def task_define_precursor_cuboids():
         'file_dep': [CONVERTED_DATABASE_NAME],
         'actions': [cmd],
         'targets': [CUBOIDS_FILE],
-        'clean': True,
+        'clean': ['rm -rf {}'.format(CUBOIDS_DIR)],
         'verbosity': 2
     }
 
@@ -94,7 +94,7 @@ def task_detect_features():
         'file_dep': [CUBOIDS_FILE],
         'actions': [cmd],
         'targets': [FEATURES_FILE],
-        'clean': True,
+        'clean': ['rm -rf {}'.format(FEATURES_DIR)],
         'verbosity': 2
     }
 
@@ -111,7 +111,7 @@ def task_remove_duplicate_features():
         'file_dep': [FEATURES_FILE],
         'actions': [cmd],
         'targets': [FEATURES_DEDUP_FILE],
-        'clean': True,
+        'clean': ['rm -rf {}'.format(FEATURES_DIR)],
         'verbosity': 2
     }
 
@@ -135,7 +135,7 @@ def task_render_mgf():
         'file_dep': [FEATURES_FILE],
         'actions': [cmd],
         'targets': [MGF_FILE],
-        'clean': True,
+        'clean': ['rm -rf {}'.format(MGF_DIR)],
         'verbosity': 2
     }
 
@@ -152,7 +152,7 @@ def task_search_mgf():
         'file_dep': [MGF_FILE],
         'actions': [cmd],
         'targets': [comet_output],
-        'clean': True,
+        'clean': ['rm -rf {experiment_base}/comet-output-pasef'.format(experiment_base=EXPERIMENT_DIR)],
         'verbosity': 2
     }
 
@@ -169,7 +169,7 @@ def task_identify_searched_features():
         'file_dep': [comet_output],
         'actions': [cmd],
         'targets': [IDENTIFICATIONS_FILE],
-        'clean': True,
+        'clean': ['rm -rf {}'.format(IDENTIFICATIONS_DIR)],
         'verbosity': 2
     }
 
@@ -191,7 +191,7 @@ def task_mass_recalibration():
         'file_dep': [IDENTIFICATIONS_FILE],
         'actions': [cmd],
         'targets': [RECAL_FEATURES_FILE],
-        'clean': True,
+        'clean': ['rm -rf {}'.format(FEATURES_DIR)],
         'verbosity': 2
     }
 
@@ -213,7 +213,7 @@ def task_render_mgf_recalibrated():
         'file_dep': [FEATURES_FILE],
         'actions': [cmd],
         'targets': [MGF_FILE],
-        'clean': True,
+        'clean': ['rm -rf {}'.format(MGF_DIR)],
         'verbosity': 2
     }
 
@@ -230,7 +230,7 @@ def task_search_mgf_recalibrated():
         'file_dep': [MGF_FILE],
         'actions': [cmd],
         'targets': [comet_output],
-        'clean': True,
+        'clean': ['rm -rf {experiment_base}/comet-output-pasef-recalibrated'.format(experiment_base=EXPERIMENT_DIR)],
         'verbosity': 2
     }
 
@@ -247,7 +247,7 @@ def task_identify_searched_features_recalibrated():
         'file_dep': [comet_output],
         'actions': [cmd],
         'targets': [IDENTIFICATIONS_FILE],
-        'clean': True,
+        'clean': ['rm -rf {}'.format(IDENTIFICATIONS_DIR)],
         'verbosity': 2
     }
 
