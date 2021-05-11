@@ -246,7 +246,7 @@ def find_precursor_cuboids(segment_mz_lower, segment_mz_upper):
                 break
 
     # return what we found in this segment
-    print('\nfound {} cuboids for mz={} to {}'.format(len(precursor_cuboids_l), segment_mz_lower, segment_mz_upper))
+    print('found {} cuboids for mz={} to {}'.format(len(precursor_cuboids_l), segment_mz_lower, segment_mz_upper))
     return precursor_cuboids_l
 
 
