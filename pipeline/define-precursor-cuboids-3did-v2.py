@@ -92,7 +92,7 @@ def find_precursor_cuboids(segment_mz_lower, segment_mz_upper):
         summary_df.sort_values(by=['intensity'], ascending=False, inplace=True)
 
         if args.visualise:
-            summary_df = summary_df.sample(n=1)
+            summary_df = summary_df.head(n=100).sample(n=1)
 
         # process each voxel by decreasing intensity
         for row in summary_df.itertuples():
