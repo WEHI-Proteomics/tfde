@@ -169,7 +169,7 @@ def task_identify_searched_features():
         'file_dep': [comet_output],
         'actions': [cmd],
         'targets': [IDENTIFICATIONS_FILE],
-        'clean': ['rm -rf {}'.format(IDENTIFICATIONS_DIR)],
+        'clean': ['rm -rf {}'.format(IDENTIFICATIONS_DIR), 'rm -rf {experiment_base}/percolator-output-pasef'.format(experiment_base=EXPERIMENT_DIR)],
         'verbosity': 2
     }
 
@@ -247,7 +247,7 @@ def task_identify_searched_features_recalibrated():
         'file_dep': [comet_output],
         'actions': [cmd],
         'targets': [IDENTIFICATIONS_FILE],
-        'clean': ['rm -rf {}'.format(IDENTIFICATIONS_DIR)],
+        'clean': ['rm -rf {}'.format(IDENTIFICATIONS_DIR), 'rm -rf {experiment_base}/percolator-output-pasef-recalibrated'.format(experiment_base=EXPERIMENT_DIR)],
         'verbosity': 2
     }
 
