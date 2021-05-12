@@ -122,6 +122,10 @@ def find_precursor_cuboids(segment_mz_lower, segment_mz_upper):
             voxel_rt_highpoint = voxel_rt_df.loc[voxel_rt_df.intensity.idxmax()].retention_time_secs
             voxel_rt_highpoint_frame_id = voxel_rt_df.loc[voxel_rt_df.intensity.idxmax()].frame_id
 
+            # find the voxel's highpoint in CCS
+            voxel_scan_df = voxel_df.groupby(['scan'], as_index=False).intensity.sum()
+            voxel_scan_highpoint = voxel_scan_df.loc[voxel_scan_df.intensity.idxmax()].scan
+
             # keep information aside for debugging
             visualisation_d = {}
             visualisation_d['voxel'] = {'voxel_mz_lower':voxel_mz_lower, 'voxel_mz_upper':voxel_mz_upper, 'voxel_scan_lower':voxel_scan_lower, 'voxel_scan_upper':voxel_scan_upper, 'voxel_rt_lower':voxel_rt_lower, 'voxel_rt_upper':voxel_rt_upper, 'voxel_rt_highpoint':voxel_rt_highpoint, 'voxel_rt_highpoint_frame_id':voxel_rt_highpoint_frame_id}
@@ -224,9 +228,9 @@ def find_precursor_cuboids(segment_mz_lower, segment_mz_upper):
                             'mz_upper':cuboid_mz_upper, 
                             'wide_mz_lower':cuboid_mz_lower - (CARBON_MASS_DIFFERENCE / 1), # just in case we missed the monoisotopic
                             'wide_mz_upper':cuboid_mz_upper, 
-                            'scan_lower':int(cuboid_scan_lower),
-                            'scan_upper':int(cuboid_scan_upper), 
-                            'wide_scan_lower':int(cuboid_scan_lower), # same because we've already resolved its extent
+                            'scan_lower':max(int(voxel_scan_highpoint - SCAN_BASE_PEAK_WIDTH), int(cuboid_scan_lower)),  # so feature detection will focus on the voxel highpoint
+                            'scan_upper':min(int(voxel_scan_highpoint + SCAN_BASE_PEAK_WIDTH), int(cuboid_scan_upper)), 
+                            'wide_scan_lower':int(cuboid_scan_lower),
                             'wide_scan_upper':int(cuboid_scan_upper), 
                             'rt_lower':cuboid_rt_lower, 
                             'rt_upper':cuboid_rt_upper, 
@@ -323,6 +327,7 @@ cfg.read(args.ini_file)
 FRAME_TYPE_MS1 = cfg.getint('common','FRAME_TYPE_MS1')
 MS1_PEAK_DELTA = cfg.getfloat('ms1','MS1_PEAK_DELTA')
 RT_BASE_PEAK_WIDTH = cfg.getfloat('common','RT_BASE_PEAK_WIDTH_SECS')
+SCAN_BASE_PEAK_WIDTH = cfg.getfloat('common','SCAN_BASE_PEAK_WIDTH_SECS')
 CARBON_MASS_DIFFERENCE = cfg.getfloat('common','CARBON_MASS_DIFFERENCE')
 
 # set up the indexes
