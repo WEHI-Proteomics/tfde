@@ -42,6 +42,7 @@ def generate_estimator(X_train, X_test, y_train, y_test):
         best_params = rsearch.best_params_
         print(best_params)
     else:
+        print('fitting the estimator to the training data')
         # use the model parameters we found previously
         best_params = {'subsample': 0.6, 'n_estimators': 280, 'min_samples_split': 400, 'min_samples_leaf': 10, 'max_features': 'log2', 'max_depth': 11, 'loss': 'lad', 'learning_rate': 0.05}
         best_estimator = GradientBoostingRegressor(**best_params)
