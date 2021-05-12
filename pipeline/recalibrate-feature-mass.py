@@ -138,7 +138,7 @@ if not os.path.isfile(IDENTIFICATIONS_FILE):
 with open(IDENTIFICATIONS_FILE, 'rb') as handle:
     idents_df = pickle.load(handle)['identifications_df']
 idents_df = idents_df[(idents_df['percolator q-value'] <= MAXIMUM_Q_VALUE_FOR_RECAL_TRAINING_SET)]
-idents_df = idents_df[['run_name','monoisotopic_mz','scan_apex','rt_apex','feature_intensity']]
+idents_df = idents_df[['run_name','monoisotopic_mz','scan_apex','rt_apex','feature_intensity','mass_error']]
 print('loaded {} identifications with percolator q-value less than {} from {}'.format(len(idents_df), MAXIMUM_Q_VALUE_FOR_RECAL_TRAINING_SET, IDENTIFICATIONS_FILE))
 
 # check there are some to use
