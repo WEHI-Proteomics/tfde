@@ -48,6 +48,7 @@ def generate_estimator(X_train, X_test, y_train, y_test):
         best_estimator.fit(X_train, y_train)  # find the best fit within the parameter search space
 
     # calculate the estimator's score on the train and test sets
+    print('training data is fitted')
     train_score = best_estimator.score(X_train, y_train)
     test_score = best_estimator.score(X_test, y_test)
     print("R-squared for training set: {}, test set: {}".format(round(train_score,2), round(test_score,2)))
