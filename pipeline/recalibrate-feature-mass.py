@@ -19,12 +19,7 @@ import multiprocessing as mp
 def mono_mass_to_mono_mz(monoisotopic_mass, charge):
     return (monoisotopic_mass / charge) + PROTON_MASS
 
-# train a model on the features that gave the best identifications to predict the mass error, so we can predict the mass error for all the features 
-# detected (not just those with high quality identifications), and adjust their calculated mass to give zero mass error.
-@ray.remote
-def adjust_features(run_name, idents_for_training_df, run_features_df):
-    print("processing {} features for run {}".format(len(run_features_df), run_name))
-
+def generate_estimator(idents_for_training_df):
     X = idents_for_training_df[['monoisotopic_mz','scan_apex','rt_apex','feature_intensity']].to_numpy()
     y = idents_for_training_df[['mass_error']].to_numpy()[:,0]
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.1)
@@ -60,6 +55,15 @@ def adjust_features(run_name, idents_for_training_df, run_features_df):
     train_score = best_estimator.score(X_train, y_train)
     test_score = best_estimator.score(X_test, y_test)
     print("R-squared for training set: {}, test set: {}".format(round(train_score,2), round(test_score,2)))
+    return best_estimator
+
+# train a model on the features that gave the best identifications to predict the mass error, so we can predict the mass error for all the features 
+# detected (not just those with high quality identifications), and adjust their calculated mass to give zero mass error.
+@ray.remote
+def adjust_features(run_name, idents_for_training_df, run_features_df):
+    print("processing {} features for run {}".format(len(run_features_df), run_name))
+
+    best_estimator = generate_estimator(idents_for_training_df)
 
     # use the trained model to predict the mass error for all the detected features
     X = run_features_df[['monoisotopic_mz','scan_apex','rt_apex','feature_intensity']].to_numpy()
