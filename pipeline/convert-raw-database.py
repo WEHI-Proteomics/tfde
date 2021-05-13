@@ -179,7 +179,7 @@ if args.small_set_mode:
 print("max_frame_id: {}".format(max_frame_id))
 
 for frame_lower in range(1, max_frame_id, args.number_of_frames_in_batch):
-    frame_upper = frame_lower + args.number_of_frames_in_batch - 1
+    frame_upper = min(frame_lower + args.number_of_frames_in_batch - 1, max_frame_id)
     print("processing frames {} to {}".format(frame_lower, frame_upper))
     points_df = load_raw_points(frame_lower=frame_lower, frame_upper=frame_upper)
     db_conn = sqlite3.connect(RUN_DB_NAME)
