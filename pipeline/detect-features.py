@@ -258,14 +258,35 @@ def determine_mono_characteristics(envelope, mono_mz_lower, mono_mz_upper, monoi
         # calculate the isotope intensities from the constrained raw points
         isotopes_l = []
         for idx,isotope in enumerate(envelope):
+            # gather the points that belong to this isotope
             iso_mz = isotope[0]
             iso_intensity = isotope[1]
             iso_mz_delta = calculate_peak_delta(iso_mz)
             iso_mz_lower = iso_mz - iso_mz_delta
             iso_mz_upper = iso_mz + iso_mz_delta
-            df = mono_ccs_rt_extent_df[(mono_ccs_rt_extent_df.mz >= iso_mz_lower) & (mono_ccs_rt_extent_df.mz <= iso_mz_upper)]
-            saturated = (df.intensity.max() > SATURATION_INTENSITY)
-            isotopes_l.append({'mz':iso_mz, 'mz_lower':iso_mz_lower, 'mz_upper':iso_mz_upper, 'intensity':df.intensity.sum(), 'saturated':saturated})
+            isotope_df = mono_ccs_rt_extent_df[(mono_ccs_rt_extent_df.mz >= iso_mz_lower) & (mono_ccs_rt_extent_df.mz <= iso_mz_upper)]
+            # calculate the isotope's intensity
+            if len(isotope_df) > 0:
+                # find the intensity by summing the maximum point in the frame closest to the RT apex, and the frame maximums either side
+                frame_maximums_l = []
+                for frame_id,group_df in isotope_df.groupby('frame_id'):
+                    frame_maximums_l.append(group_df.loc[group_df.intensity.idxmax()])
+                frame_maximums_df = pd.DataFrame(frame_maximums_l)
+                frame_maximums_df.sort_values(by=['retention_time_secs'], ascending=True, inplace=True)
+                frame_maximums_df.reset_index(drop=True, inplace=True)
+                # find the index closest to the RT apex and the index either side
+                frame_maximums_df['rt_delta'] = np.abs(frame_maximums_df.retention_time_secs - rt_apex)
+                apex_idx = frame_maximums_df.rt_delta.idxmin()
+                apex_idx_minus_one = max(0, apex_idx-1)
+                apex_idx_plus_one = min(len(frame_maximums_df)-1, apex_idx+1)
+                # sum the maximum intensity and the max intensity of the frame either side in RT
+                summed_intensity = frame_maximums_df.loc[apex_idx_minus_one:apex_idx_plus_one].intensity.sum()
+                # are any of the three points in saturation?
+                isotope_in_saturation = (frame_maximums_df.loc[apex_idx_minus_one:apex_idx_plus_one].intensity.max() > SATURATION_INTENSITY)
+                # add the isotope to the list
+                isotopes_l.append({'mz':iso_mz, 'mz_lower':iso_mz_lower, 'mz_upper':iso_mz_upper, 'intensity':summed_intensity, 'saturated':isotope_in_saturation})
+            else:
+                break
         isotopes_df = pd.DataFrame(isotopes_l)
 
         # set the summed intensity to be the default adjusted intensity for all isotopes
