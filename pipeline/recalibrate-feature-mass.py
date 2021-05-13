@@ -71,11 +71,12 @@ def adjust_features(run_name, idents_for_training_df, run_features_df):
     y = best_estimator.predict(X)
 
     # collate the recalibrated feature attributes
-    run_features_df['predicted_mass_error'] = y
-    run_features_df['recalibrated_monoisotopic_mass'] = run_features_df.monoisotopic_mass - run_features_df.predicted_mass_error
-    run_features_df['recalibrated_monoisotopic_mz'] = run_features_df.apply(lambda row: mono_mass_to_mono_mz(row.recalibrated_monoisotopic_mass, row.charge), axis=1)
+    adjusted_df = run_features_df[['run_name','feature_id']]
+    adjusted_df['predicted_mass_error'] = y
+    adjusted_df['recalibrated_monoisotopic_mass'] = run_features_df.monoisotopic_mass - adjusted_df.predicted_mass_error
+    adjusted_df['recalibrated_monoisotopic_mz'] = adjusted_df.apply(lambda row: mono_mass_to_mono_mz(row.recalibrated_monoisotopic_mass, row.charge), axis=1)
 
-    return {'run_name':run_name, 'adjusted_features_df':run_features_df}
+    return adjusted_df
 
 # determine the number of workers based on the number of available cores and the proportion of the machine to be used
 def number_of_workers():
@@ -161,24 +162,27 @@ print('loaded {} features from {} files for recalibration'.format(len(features_d
 print("setting up Ray")
 if not ray.is_initialized():
     if args.ray_mode == "cluster":
-        ray.init(num_cpus=number_of_workers(), object_store_memory=5*10**9)
+        ray.init(num_cpus=number_of_workers())
     else:
         ray.init(local_mode=True)
 
 # for each run, produce a model that estimates the mass error from a feature's characteristics, and generate a revised feature file with adjusted mass, 
 # to get a smaller mass error on a second Comet search with tighter mass tolerance.
 print("training models and adjusting monoisotopic mass for each feature")
-adjusted_features_l = ray.get([adjust_features.remote(run_name=group_name, idents_for_training_df=group_df, run_features_df=features_df[features_df.run_name == group_name]) for group_name,group_df in idents_df.groupby('run_name')])
+adjusted_features_l = ray.get([adjust_features.remote(run_name=group_name, idents_for_training_df=group_df, run_features_df=features_df[features_df.run_name == group_name][['run_name','feature_id','monoisotopic_mz','scan_apex','rt_apex','feature_intensity']]) for group_name,group_df in idents_df.groupby('run_name')])
 
-# write out the recalibrated features
-for adj in adjusted_features_l:
-    RECAL_FEATURES_FILE = '{}/exp-{}-run-{}-features-{}-recalibrated.pkl'.format(FEATURES_DIR, args.experiment_name, adj['run_name'], args.precursor_definition_method)
-    recal_features_df = adj['adjusted_features_df']
+# join the list of dataframes into a single dataframe
+adjusted_features_df = pd.concat(adjusted_features_l, axis=0, sort=False, ignore_index=True)
+recal_features_df = pd.merge(features_df, adjusted_features_df, how='inner', left_on=['run_name','feature_id'], right_on=['run_name','feature_id'])
+
+# write out the recalibrated features, one file for each run
+for group_name,group_df in recal_features_df.groupby('run_name'):
+    RECAL_FEATURES_FILE = '{}/exp-{}-run-{}-features-{}-recalibrated.pkl'.format(FEATURES_DIR, args.experiment_name, group_name, args.precursor_definition_method)
     print("writing {} recalibrated features to {}".format(len(recal_features_df), RECAL_FEATURES_FILE))
     info.append(('total_running_time',round(time.time()-start_run,1)))
     info.append(('processor',parser.prog))
     info.append(('processed', time.ctime()))
-    content_d = {'features_df':recal_features_df, 'metadata':info}
+    content_d = {'features_df':group_df, 'metadata':info}
     with open(RECAL_FEATURES_FILE, 'wb') as handle:
         pickle.dump(content_d, handle)
 
