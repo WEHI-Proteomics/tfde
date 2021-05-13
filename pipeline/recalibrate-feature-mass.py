@@ -71,11 +71,12 @@ def adjust_features(run_name, idents_for_training_df, run_features_df):
     y = best_estimator.predict(X)
 
     # collate the recalibrated feature attributes
-    adjusted_df = run_features_df[['run_name','feature_id']]
-    adjusted_df['predicted_mass_error'] = y
-    adjusted_df['recalibrated_monoisotopic_mass'] = run_features_df.monoisotopic_mass - adjusted_df.predicted_mass_error
-    adjusted_df['recalibrated_monoisotopic_mz'] = adjusted_df.apply(lambda row: mono_mass_to_mono_mz(row.recalibrated_monoisotopic_mass, row.charge), axis=1)
+    run_features_df['predicted_mass_error'] = y
+    run_features_df['recalibrated_monoisotopic_mass'] = run_features_df.monoisotopic_mass - run_features_df.predicted_mass_error
+    run_features_df['recalibrated_monoisotopic_mz'] = run_features_df.apply(lambda row: mono_mass_to_mono_mz(row.recalibrated_monoisotopic_mass, row.charge), axis=1)
 
+    # just return the minimum to recombine
+    adjusted_df = run_features_df[['run_name','feature_id','predicted_mass_error','recalibrated_monoisotopic_mass','recalibrated_monoisotopic_mz']]
     return adjusted_df
 
 # determine the number of workers based on the number of available cores and the proportion of the machine to be used
@@ -169,7 +170,7 @@ if not ray.is_initialized():
 # for each run, produce a model that estimates the mass error from a feature's characteristics, and generate a revised feature file with adjusted mass, 
 # to get a smaller mass error on a second Comet search with tighter mass tolerance.
 print("training models and adjusting monoisotopic mass for each feature")
-adjusted_features_l = ray.get([adjust_features.remote(run_name=group_name, idents_for_training_df=group_df, run_features_df=features_df[features_df.run_name == group_name][['run_name','feature_id','monoisotopic_mz','scan_apex','rt_apex','feature_intensity']]) for group_name,group_df in idents_df.groupby('run_name')])
+adjusted_features_l = ray.get([adjust_features.remote(run_name=group_name, idents_for_training_df=group_df, run_features_df=features_df[features_df.run_name == group_name][['run_name','feature_id','monoisotopic_mass','monoisotopic_mz','scan_apex','rt_apex','feature_intensity']]) for group_name,group_df in idents_df.groupby('run_name')])
 
 # join the list of dataframes into a single dataframe
 adjusted_features_df = pd.concat(adjusted_features_l, axis=0, sort=False, ignore_index=True)
