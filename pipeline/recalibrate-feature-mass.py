@@ -161,7 +161,7 @@ print('loaded {} features from {} files for recalibration'.format(len(features_d
 print("setting up Ray")
 if not ray.is_initialized():
     if args.ray_mode == "cluster":
-        ray.init(num_cpus=number_of_workers(), object_store_memory=20*10**9)
+        ray.init(num_cpus=number_of_workers(), object_store_memory=10*10**9)
     else:
         ray.init(local_mode=True)
 
