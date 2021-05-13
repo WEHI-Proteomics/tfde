@@ -100,9 +100,6 @@ def find_precursor_cuboids(segment_mz_lower, segment_mz_upper):
         summary_df.dropna(subset = ['intensity'], inplace=True)
         summary_df.sort_values(by=['intensity'], ascending=False, inplace=True)
 
-        if args.visualise:
-            summary_df = summary_df.head(n=1000).sample(n=1)
-
         # process each voxel by decreasing intensity
         for row in summary_df.itertuples():
             # get the attributes of this voxel
@@ -327,7 +324,7 @@ cfg.read(args.ini_file)
 FRAME_TYPE_MS1 = cfg.getint('common','FRAME_TYPE_MS1')
 MS1_PEAK_DELTA = cfg.getfloat('ms1','MS1_PEAK_DELTA')
 RT_BASE_PEAK_WIDTH = cfg.getfloat('common','RT_BASE_PEAK_WIDTH_SECS')
-SCAN_BASE_PEAK_WIDTH = cfg.getfloat('common','SCAN_BASE_PEAK_WIDTH_SECS')
+SCAN_BASE_PEAK_WIDTH = cfg.getfloat('common','SCAN_BASE_PEAK_WIDTH')
 CARBON_MASS_DIFFERENCE = cfg.getfloat('common','CARBON_MASS_DIFFERENCE')
 
 # set up the indexes
