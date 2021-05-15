@@ -409,9 +409,6 @@ def detect_features(precursor_cuboid_d, converted_db_name, mass_defect_bins, vis
 
     # for deconvolution, constrain the CCS and RT dimensions to the fragmentation event
     fe_ms1_points_df = wide_ms1_points_df[(wide_ms1_points_df.retention_time_secs >= precursor_cuboid_d['ms1_rt_lower']) & (wide_ms1_points_df.retention_time_secs <= precursor_cuboid_d['ms1_rt_upper']) & (wide_ms1_points_df.scan >= precursor_cuboid_d['scan_lower']) & (wide_ms1_points_df.scan <= precursor_cuboid_d['scan_upper'])]
-    if args.correct_for_saturation:
-        # remove points in saturation
-        fe_ms1_points_df = fe_ms1_points_df[(fe_ms1_points_df.intensity <= SATURATION_INTENSITY)]
 
     # intensity descent
     raw_points_a = fe_ms1_points_df[['mz','intensity']].to_numpy()
