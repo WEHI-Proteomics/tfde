@@ -148,10 +148,7 @@ def peak_ratio(monoisotopic_mass, peak_number, number_of_sulphur):
     return ratio
 
 # determine the mono peak apex and extent in CCS and RT and calculate isotopic peak intensities
-def determine_mono_characteristics(mono_mz, charge, mono_mz_lower, mono_mz_upper, monoisotopic_mass, cuboid_points_df):
-
-    # the expected spacing between isotopes in the m/z dimension
-    expected_spacing_mz = CARBON_MASS_DIFFERENCE / charge
+def determine_mono_characteristics(envelope, mono_mz_lower, mono_mz_upper, monoisotopic_mass, cuboid_points_df):
 
     # determine the raw points that belong to the mono peak
     # we use the wider cuboid points because we want to discover the apex and extent in CCS and RT
@@ -260,9 +257,10 @@ def determine_mono_characteristics(mono_mz, charge, mono_mz_lower, mono_mz_upper
 
         # calculate the isotope intensities from the constrained raw points
         isotopes_l = []
-        for isotope_idx in range(TARGET_NUMBER_OF_ISOTOPES):
+        for idx,isotope in enumerate(envelope):
             # gather the points that belong to this isotope
-            iso_mz = mono_mz + (isotope_idx * expected_spacing_mz)
+            iso_mz = isotope[0]
+            iso_intensity = isotope[1]
             iso_mz_delta = calculate_peak_delta(iso_mz)
             iso_mz_lower = iso_mz - iso_mz_delta
             iso_mz_upper = iso_mz + iso_mz_delta
@@ -457,7 +455,7 @@ def detect_features(precursor_cuboid_d, converted_db_name, mass_defect_bins, vis
             mono_mz_upper = envelope_mono_mz + mz_delta
             feature_d['mono_mz_lower'] = mono_mz_lower
             feature_d['mono_mz_upper'] = mono_mz_upper
-            mono_characteristics_d = determine_mono_characteristics(mono_mz=envelope_mono_mz, charge=row.charge, mono_mz_lower=mono_mz_lower, mono_mz_upper=mono_mz_upper, monoisotopic_mass=row.neutral_mass, cuboid_points_df=wide_ms1_points_df)
+            mono_characteristics_d = determine_mono_characteristics(envelope=row.envelope, mono_mz_lower=mono_mz_lower, mono_mz_upper=mono_mz_upper, monoisotopic_mass=row.neutral_mass, cuboid_points_df=wide_ms1_points_df)
             if mono_characteristics_d is not None:
                 # add the characteristics to the feature dictionary
                 feature_d = {**feature_d, **mono_characteristics_d}
@@ -612,8 +610,6 @@ SCAN_BASE_PEAK_WIDTH = cfg.getint('common', 'SCAN_BASE_PEAK_WIDTH')
 INSTRUMENT_RESOLUTION = cfg.getfloat('common', 'INSTRUMENT_RESOLUTION')
 SATURATION_INTENSITY = cfg.getint('common', 'SATURATION_INTENSITY')
 TARGET_NUMBER_OF_FEATURES_FOR_CUBOID = cfg.getint('ms1', 'TARGET_NUMBER_OF_FEATURES_FOR_CUBOID')
-TARGET_NUMBER_OF_ISOTOPES = cfg.getint('ms1', 'TARGET_NUMBER_OF_ISOTOPES')
-CARBON_MASS_DIFFERENCE = cfg.getfloat('common', 'CARBON_MASS_DIFFERENCE')
 
 # input cuboids
 CUBOIDS_DIR = "{}/precursor-cuboids-{}".format(EXPERIMENT_DIR, args.precursor_definition_method)
