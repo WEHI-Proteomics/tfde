@@ -148,7 +148,7 @@ def peak_ratio(monoisotopic_mass, peak_number, number_of_sulphur):
     return ratio
 
 # determine the mono peak apex and extent in CCS and RT and calculate isotopic peak intensities
-def determine_mono_characteristics(envelope, mono_mz_lower, mono_mz_upper, monoisotopic_mass, cuboid_points_df):
+def determine_mono_characteristics(envelope, charge, mono_mz_lower, mono_mz_upper, monoisotopic_mass, cuboid_points_df):
 
     # determine the raw points that belong to the mono peak
     # we use the wider cuboid points because we want to discover the apex and extent in CCS and RT
@@ -289,8 +289,9 @@ def determine_mono_characteristics(envelope, mono_mz_lower, mono_mz_upper, monoi
                 break
         isotopes_df = pd.DataFrame(isotopes_l)
 
-        # set the summed intensity to be the default adjusted intensity for all isotopes
+        # set the summed intensity and m/z to be the default adjusted intensity for all isotopes
         isotopes_df['inferred_intensity'] = isotopes_df.intensity
+        isotopes_df['inferred_mz'] = isotopes_df.mz
         isotopes_df['inferred'] = False
 
         # if the mono is saturated and there are non-saturated isotopes to use as a reference...
@@ -300,6 +301,9 @@ def determine_mono_characteristics(envelope, mono_mz_lower, mono_mz_upper, monoi
             if (len(isotopes_df[isotopes_df.saturated == False]) > 0):
                 # find the first unsaturated isotope
                 unsaturated_idx = isotopes_df[(isotopes_df.saturated == False)].iloc[0].name
+
+                # the expected spacing between isotopes in the m/z dimension
+                expected_spacing_mz = CARBON_MASS_DIFFERENCE / charge
 
                 # using as a reference the most intense isotope that is not in saturation, derive the isotope intensities back to the monoisotopic
                 Hpn = isotopes_df.iloc[unsaturated_idx].intensity
@@ -314,6 +318,11 @@ def determine_mono_characteristics(envelope, mono_mz_lower, mono_mz_upper, monoi
                     else:
                         outcome = 'could_not_calculate_phr'
                         break
+
+                # using the unsaturated isotope as a reference, infer the monoisotopic m/z by counting back the expected isotope spacing
+                unsaturated_isotope_mz = isotopes_df.at[unsaturated_idx, 'mz']
+                for peak_idx in reversed(range(unsaturated_idx)):
+                    isotopes_df.at[peak_idx, 'inferred_mz'] = unsaturated_isotope_mz - ((unsaturated_idx - peak_idx) * expected_spacing_mz)
             else:
                 outcome = 'no_nonsaturated_isotopes'
         else:
@@ -333,6 +342,9 @@ def determine_mono_characteristics(envelope, mono_mz_lower, mono_mz_upper, monoi
         result_d['intensity_without_saturation_correction'] = isotopes_df.intensity.sum()
         result_d['intensity_with_saturation_correction'] = isotopes_df.inferred_intensity.sum()
         result_d['mono_intensity_adjustment_outcome'] = outcome
+
+        result_d['mono_mz_without_saturation_correction'] = isotopes_df.iloc[0].mz
+        result_d['mono_mz_with_saturation_correction'] = isotopes_df.iloc[0].inferred_mz
 
         result_d['isotopic_peaks'] = isotopes_df.to_dict('records')
         result_d['scan_df'] = scan_df.to_dict('records')
@@ -452,11 +464,11 @@ def detect_features(precursor_cuboid_d, converted_db_name, mass_defect_bins, vis
             mono_mz_upper = envelope_mono_mz + mz_delta
             feature_d['mono_mz_lower'] = mono_mz_lower
             feature_d['mono_mz_upper'] = mono_mz_upper
-            mono_characteristics_d = determine_mono_characteristics(envelope=row.envelope, mono_mz_lower=mono_mz_lower, mono_mz_upper=mono_mz_upper, monoisotopic_mass=row.neutral_mass, cuboid_points_df=wide_ms1_points_df)
+            mono_characteristics_d = determine_mono_characteristics(envelope=row.envelope, charge=row.charge, mono_mz_lower=mono_mz_lower, mono_mz_upper=mono_mz_upper, monoisotopic_mass=row.neutral_mass, cuboid_points_df=wide_ms1_points_df)
             if mono_characteristics_d is not None:
                 # add the characteristics to the feature dictionary
                 feature_d = {**feature_d, **mono_characteristics_d}
-                feature_d['monoisotopic_mz'] = row.mono_mz
+                feature_d['monoisotopic_mz'] = mono_characteristics_d['mono_mz_with_saturation_correction'] if args.correct_for_saturation else mono_characteristics_d['mono_mz_without_saturation_correction']
                 feature_d['charge'] = row.charge
                 feature_d['monoisotopic_mass'] = calculate_monoisotopic_mass_from_mz(monoisotopic_mz=feature_d['monoisotopic_mz'], charge=feature_d['charge'])
                 feature_d['feature_intensity'] = mono_characteristics_d['intensity_with_saturation_correction'] if (args.correct_for_saturation and (mono_characteristics_d['intensity_with_saturation_correction'] > mono_characteristics_d['intensity_without_saturation_correction'])) else mono_characteristics_d['intensity_without_saturation_correction']
@@ -607,6 +619,7 @@ SCAN_BASE_PEAK_WIDTH = cfg.getint('common', 'SCAN_BASE_PEAK_WIDTH')
 INSTRUMENT_RESOLUTION = cfg.getfloat('common', 'INSTRUMENT_RESOLUTION')
 SATURATION_INTENSITY = cfg.getint('common', 'SATURATION_INTENSITY')
 TARGET_NUMBER_OF_FEATURES_FOR_CUBOID = cfg.getint('ms1', 'TARGET_NUMBER_OF_FEATURES_FOR_CUBOID')
+CARBON_MASS_DIFFERENCE = cfg.getfloat('common', 'CARBON_MASS_DIFFERENCE')
 
 # input cuboids
 CUBOIDS_DIR = "{}/precursor-cuboids-{}".format(EXPERIMENT_DIR, args.precursor_definition_method)
