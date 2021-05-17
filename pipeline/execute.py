@@ -103,11 +103,11 @@ def task_remove_duplicate_features():
     FEATURES_DIR = "{}/features-{}".format(EXPERIMENT_DIR, config['precursor_definition_method'])
     FEATURES_FILE = '{}/exp-{}-run-{}-features-{}.pkl'.format(FEATURES_DIR, config['experiment_name'], config['run_name'], config['precursor_definition_method'])
     # command
-    # cmd = 'python -u remove-duplicate-features.py -eb {experiment_base} -en {experiment_name} -rn {run_name} -ini {INI_FILE} -pdm {precursor_definition_method}'.format(experiment_base=config['experiment_base_dir'], experiment_name=config['experiment_name'], run_name=config['run_name'], INI_FILE=config['ini_file'], precursor_definition_method=config['precursor_definition_method'])
+    cmd = 'python -u remove-duplicate-features.py -eb {experiment_base} -en {experiment_name} -rn {run_name} -ini {INI_FILE} -pdm {precursor_definition_method}'.format(experiment_base=config['experiment_base_dir'], experiment_name=config['experiment_name'], run_name=config['run_name'], INI_FILE=config['ini_file'], precursor_definition_method=config['precursor_definition_method'])
     # output
     FEATURES_DEDUP_FILE = '{}/exp-{}-run-{}-features-{}-dedup.pkl'.format(FEATURES_DIR, config['experiment_name'], config['run_name'], config['precursor_definition_method'])
-
-    cmd = 'cp {} {}'.format(FEATURES_FILE, FEATURES_DEDUP_FILE)
+    # pass-through command (no de-dup)
+    # cmd = 'cp {} {}'.format(FEATURES_FILE, FEATURES_DEDUP_FILE)
 
     return {
         'file_dep': [FEATURES_FILE],
