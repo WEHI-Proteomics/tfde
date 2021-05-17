@@ -28,10 +28,6 @@ config = {
     'proportion_of_cores_to_use': get_var('pc', 0.8)
     }
 
-if (config['experiment_name'] is None) or (config['run_name'] is None):
-    print('must specify the experiment name (en=) and the run name (rn=)')
-    sys.exit(1)
-
 print('execution arguments: {}'.format(config))
 
 # correct for saturation
