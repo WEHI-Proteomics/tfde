@@ -330,8 +330,8 @@ def determine_mono_characteristics(envelope, mono_mz_lower, mono_mz_upper, monoi
         result_d['rt_lower'] = rt_lower
         result_d['rt_upper'] = rt_upper
 
-        result_d['intensity_without_saturation_correction'] = isotopes_df.intensity.sum()
-        result_d['intensity_with_saturation_correction'] = isotopes_df.inferred_intensity.sum()
+        result_d['intensity_without_saturation_correction'] = isotopes_df.iloc[:3].intensity.sum()  # only take the first three isotopes for intensity, as the number of isotopes varies
+        result_d['intensity_with_saturation_correction'] = isotopes_df.iloc[:3].inferred_intensity.sum()
         result_d['mono_intensity_adjustment_outcome'] = outcome
 
         result_d['mono_mz'] = isotopes_df.iloc[0].mz
