@@ -334,7 +334,7 @@ def determine_mono_characteristics(envelope, mono_mz_lower, mono_mz_upper, monoi
         result_d['intensity_with_saturation_correction'] = isotopes_df.inferred_intensity.sum()
         result_d['mono_intensity_adjustment_outcome'] = outcome
 
-        result_d['mono_mz'] = isotopes_df.iloc[0].iso_mz
+        result_d['mono_mz'] = isotopes_df.iloc[0].mz
 
         result_d['isotopic_peaks'] = isotopes_df.to_dict('records')
         result_d['scan_df'] = scan_df.to_dict('records')
