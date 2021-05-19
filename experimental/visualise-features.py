@@ -8,11 +8,31 @@ import sqlite3
 import sys
 from os.path import expanduser
 import json
+import argparse
 
-# generate a tile for each frame, annotating intersecting precursor cuboids
+# generate a tile for each frame, annotating intersecting feature cuboids
 
-# coordinates from visualise-features-from_PASEF.py
-limits = {'MZ_MIN': 841.925345535139, 'MZ_MAX': 851.925345535139, 'SCAN_MIN': 297.0, 'SCAN_MAX': 597.0, 'RT_MIN': 1942.4204511126354, 'RT_MAX': 1972.4204511126354}
+###################################
+parser = argparse.ArgumentParser(description='Generate a tile for each frame, annotating intersecting feature cuboids.')
+parser.add_argument('-eb','--experiment_base_dir', type=str, default='./experiments', help='Path to the experiments directory.', required=False)
+parser.add_argument('-en','--experiment_name', type=str, help='Name of the experiment.', required=True)
+parser.add_argument('-rn','--run_name', type=str, help='Name of the run.', required=True)
+parser.add_argument('-pdm','--precursor_definition_method', type=str, choices=['pasef','3did'], help='The method used to define the precursor cuboids.', required=True)
+parser.add_argument('-rl','--rt_lower', type=int, default='1650', help='Lower limit for retention time.', required=False)
+parser.add_argument('-ru','--rt_upper', type=int, default='2200', help='Upper limit for retention time.', required=False)
+parser.add_argument('-ml','--mz_lower', type=int, default='100', help='Lower limit for m/z.', required=False)
+parser.add_argument('-mu','--mz_upper', type=int, default='1700', help='Upper limit for m/z.', required=False)
+parser.add_argument('-sl','--scan_lower', type=int, default='0', help='Lower limit for scan.', required=False)
+parser.add_argument('-su','--scan_upper', type=int, default='920', help='Upper limit for scan.', required=False)
+args = parser.parse_args()
+
+# Print the arguments for the log
+info = []
+for arg in vars(args):
+    info.append((arg, getattr(args, arg)))
+print(info)
+
+limits = {'MZ_MIN': args.mz_lower, 'MZ_MAX': args.mz_upper, 'SCAN_MIN': args.scan_lower, 'SCAN_MAX': args.scan_upper, 'RT_MIN': args.rt_lower, 'RT_MAX': args.rt_upper}
 
 
 PIXELS_X = 800
@@ -28,17 +48,13 @@ maximum_pixel_intensity = 250
 BB_MZ_BUFFER = 0.2
 BB_SCAN_BUFFER = 5
 
-TILES_BASE_DIR = '{}/feature-tiles-3did'.format(expanduser('~'))
+TILES_BASE_DIR = '{}/feature-tiles-{}'.format(expanduser('~'), args.precursor_definition_method)
 
-experiment_name = 'P3856'
-feature_detection_method = '3did'
-run_name = 'P3856_YHE211_1_Slot1-1_1_5104'
+EXPERIMENT_DIR = '/media/big-ssd/experiments/{}'.format(args.experiment_name)
+CONVERTED_DATABASE_NAME = '{}/converted-databases/exp-{}-run-{}-converted.sqlite'.format(EXPERIMENT_DIR, args.experiment_name, args.run_name)
 
-EXPERIMENT_DIR = '/media/big-ssd/experiments/{}'.format(experiment_name)
-CONVERTED_DATABASE_NAME = '/media/big-ssd/experiments/P3856/converted-databases/exp-P3856-run-{}-converted.sqlite'.format(run_name)
-
-FEATURES_3DID_DIR = '{}/features-3did'.format(EXPERIMENT_DIR)
-FEATURES_3DID_FILE = '{}/exp-{}-run-{}-features-3did-dedup.pkl'.format(FEATURES_3DID_DIR, experiment_name, run_name)
+FEATURES_DIR = '{}/features-{}'.format(EXPERIMENT_DIR, args.precursor_definition_method)
+FEATURES_FILE = '{}/exp-{}-run-{}-features-{}-dedup.pkl'.format(FEATURES_3DID_DIR, args.experiment_name, args.run_name, args.precursor_definition_method)
 
 
 if not os.path.exists(EXPERIMENT_DIR):
@@ -46,7 +62,6 @@ if not os.path.exists(EXPERIMENT_DIR):
     sys.exit(1)
 
 # check the converted databases directory exists
-CONVERTED_DATABASE_NAME = "{}/converted-databases/exp-{}-run-{}-converted.sqlite".format(EXPERIMENT_DIR, experiment_name, run_name)
 if not os.path.isfile(CONVERTED_DATABASE_NAME):
     print("The converted database is required but doesn't exist: {}".format(CONVERTED_DATABASE_NAME))
     sys.exit(1)
@@ -98,9 +113,9 @@ if os.path.exists(TILES_BASE_DIR):
     shutil.rmtree(TILES_BASE_DIR)
 os.makedirs(TILES_BASE_DIR)
 
-# load the precursor cuboids
-print('loading the features cuboids from {}'.format(FEATURES_3DID_FILE))
-features_df = pd.read_pickle(FEATURES_3DID_FILE)['features_df']
+# load the feature cuboids
+print('loading the features cuboids from {}'.format(FEATURES_FILE))
+features_df = pd.read_pickle(FEATURES_FILE)['features_df']
 
 # add a buffer around the edges
 x_buffer = 5
@@ -156,8 +171,8 @@ for group_name,group_df in pixel_intensity_df.groupby(['frame_id'], as_index=Fal
     info_box_y_inset = 24
     space_per_line = 12
     draw.rectangle(xy=[(PIXELS_X-info_box_x_inset, info_box_y_inset), (PIXELS_X, 3*space_per_line)], fill=(20,20,20), outline=None)
-    draw.text((PIXELS_X-info_box_x_inset, (0*space_per_line)+info_box_y_inset), '3D intensity descent', font=feature_label_font, fill='lawngreen')
-    draw.text((PIXELS_X-info_box_x_inset, (1*space_per_line)+info_box_y_inset), '{}'.format(run_name), font=feature_label_font, fill='lawngreen')
+    draw.text((PIXELS_X-info_box_x_inset, (0*space_per_line)+info_box_y_inset), args.precursor_definition_method, font=feature_label_font, fill='lawngreen')
+    draw.text((PIXELS_X-info_box_x_inset, (1*space_per_line)+info_box_y_inset), '{}'.format(args.run_name), font=feature_label_font, fill='lawngreen')
     draw.text((PIXELS_X-info_box_x_inset, (2*space_per_line)+info_box_y_inset), '{} secs'.format(round(tile_rt,1)), font=feature_label_font, fill='lawngreen')
 
     # find the intersecting precursor cuboids for this tile; can be partial overlap in the m/z and scan dimensions
