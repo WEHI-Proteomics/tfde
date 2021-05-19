@@ -6,7 +6,6 @@ from PIL import Image, ImageFont, ImageDraw, ImageEnhance
 import shutil
 import sqlite3
 import sys
-from os.path import expanduser
 import json
 import argparse
 
@@ -18,12 +17,13 @@ parser.add_argument('-eb','--experiment_base_dir', type=str, default='./experime
 parser.add_argument('-en','--experiment_name', type=str, help='Name of the experiment.', required=True)
 parser.add_argument('-rn','--run_name', type=str, help='Name of the run.', required=True)
 parser.add_argument('-pdm','--precursor_definition_method', type=str, choices=['pasef','3did'], help='The method used to define the precursor cuboids.', required=True)
-parser.add_argument('-rl','--rt_lower', type=int, default='1650', help='Lower limit for retention time.', required=False)
-parser.add_argument('-ru','--rt_upper', type=int, default='2200', help='Upper limit for retention time.', required=False)
-parser.add_argument('-ml','--mz_lower', type=int, default='100', help='Lower limit for m/z.', required=False)
-parser.add_argument('-mu','--mz_upper', type=int, default='1700', help='Upper limit for m/z.', required=False)
+parser.add_argument('-rl','--rt_lower', type=int, default='1620', help='Lower limit for retention time.', required=False)
+parser.add_argument('-ru','--rt_upper', type=int, default='1680', help='Upper limit for retention time.', required=False)
+parser.add_argument('-ml','--mz_lower', type=int, default='700', help='Lower limit for m/z.', required=False)
+parser.add_argument('-mu','--mz_upper', type=int, default='720', help='Upper limit for m/z.', required=False)
 parser.add_argument('-sl','--scan_lower', type=int, default='0', help='Lower limit for scan.', required=False)
 parser.add_argument('-su','--scan_upper', type=int, default='920', help='Upper limit for scan.', required=False)
+parser.add_argument('-tb','--tiles_base_dir', type=str, default='./tiles', help='Path to the output tiles directory.', required=False)
 args = parser.parse_args()
 
 # Print the arguments for the log
@@ -48,13 +48,13 @@ maximum_pixel_intensity = 250
 BB_MZ_BUFFER = 0.2
 BB_SCAN_BUFFER = 5
 
-TILES_BASE_DIR = '{}/feature-tiles-{}'.format(expanduser('~'), args.precursor_definition_method)
+TILES_BASE_DIR = '{}/feature-tiles-{}'.format(args.tiles_base_dir, args.precursor_definition_method)
 
-EXPERIMENT_DIR = '/media/big-ssd/experiments/{}'.format(args.experiment_name)
+EXPERIMENT_DIR = '{}/{}'.format(args.experiment_base_dir, args.experiment_name)
 CONVERTED_DATABASE_NAME = '{}/converted-databases/exp-{}-run-{}-converted.sqlite'.format(EXPERIMENT_DIR, args.experiment_name, args.run_name)
 
 FEATURES_DIR = '{}/features-{}'.format(EXPERIMENT_DIR, args.precursor_definition_method)
-FEATURES_FILE = '{}/exp-{}-run-{}-features-{}-dedup.pkl'.format(FEATURES_3DID_DIR, args.experiment_name, args.run_name, args.precursor_definition_method)
+FEATURES_FILE = '{}/exp-{}-run-{}-features-{}-dedup.pkl'.format(FEATURES_DIR, args.experiment_name, args.run_name, args.precursor_definition_method)
 
 
 if not os.path.exists(EXPERIMENT_DIR):
@@ -114,8 +114,8 @@ if os.path.exists(TILES_BASE_DIR):
 os.makedirs(TILES_BASE_DIR)
 
 # load the feature cuboids
-print('loading the features cuboids from {}'.format(FEATURES_FILE))
 features_df = pd.read_pickle(FEATURES_FILE)['features_df']
+print('loaded {} features cuboids from {}'.format(len(features_df), FEATURES_FILE))
 
 # add a buffer around the edges
 x_buffer = 5
@@ -196,7 +196,7 @@ for group_name,group_df in pixel_intensity_df.groupby(['frame_id'], as_index=Fal
         draw.text((x0, y0-(1*space_per_line)), 'charge {}+'.format(feature.charge), font=feature_label_font, fill='lawngreen')
 
     # save the tile
-    tile_file_name = '{}/tile-{}.png'.format(TILES_BASE_DIR, tile_id)
+    tile_file_name = '{}/tile-{:03d}.png'.format(TILES_BASE_DIR, tile_id)
     tile.save(tile_file_name)
     tile_id += 1
 
