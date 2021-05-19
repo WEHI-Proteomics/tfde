@@ -86,165 +86,180 @@ def find_precursor_cuboids(segment_mz_lower, segment_mz_upper):
         raw_df['point_id'] = raw_df.index
 
         # define bins
-        rt_bins = pd.interval_range(start=raw_df.retention_time_secs.min(), end=raw_df.retention_time_secs.max()+RT_BIN_SIZE, freq=RT_BIN_SIZE)
-        scan_bins = pd.interval_range(start=raw_df.scan.min(), end=raw_df.scan.max()+SCAN_BIN_SIZE, freq=SCAN_BIN_SIZE)
-        mz_bins = pd.interval_range(start=raw_df.mz.min(), end=raw_df.mz.max()+MZ_BIN_SIZE, freq=MZ_BIN_SIZE)
+        rt_bins = pd.interval_range(start=raw_df.retention_time_secs.min(), end=raw_df.retention_time_secs.max()+RT_BIN_SIZE, freq=RT_BIN_SIZE, closed='left')
+        scan_bins = pd.interval_range(start=raw_df.scan.min(), end=raw_df.scan.max()+SCAN_BIN_SIZE, freq=SCAN_BIN_SIZE, closed='left')
+        mz_bins = pd.interval_range(start=raw_df.mz.min(), end=raw_df.mz.max()+MZ_BIN_SIZE, freq=MZ_BIN_SIZE, closed='left')
 
         # assign raw points to their bins
         raw_df['rt_bin'] = pd.cut(raw_df.retention_time_secs, bins=rt_bins)
         raw_df['scan_bin'] = pd.cut(raw_df.scan, bins=scan_bins)
         raw_df['mz_bin'] = pd.cut(raw_df.mz, bins=mz_bins)
+        raw_df['bin_key'] = raw_df.apply(lambda row: (row.mz_bin, row.scan_bin, row.rt_bin), axis=1)
 
         # sum the intensities in each bin
-        summary_df = raw_df.groupby(['mz_bin','scan_bin','rt_bin'], as_index=False, sort=False).intensity.sum()
+        summary_df = raw_df.groupby(['bin_key'], as_index=False, sort=False).intensity.sum()
         summary_df.dropna(subset = ['intensity'], inplace=True)
         summary_df.sort_values(by=['intensity'], ascending=False, inplace=True)
 
+        # keep track of the keys of voxels that have been processed
+        voxels_processed = set()
+
         # process each voxel by decreasing intensity
         for row in summary_df.itertuples():
-            # get the attributes of this voxel
-            voxel_mz_lower = row.mz_bin.left
-            voxel_mz_upper = row.mz_bin.right
-            voxel_mz_midpoint = row.mz_bin.mid
-            voxel_scan_lower = row.scan_bin.left
-            voxel_scan_upper = row.scan_bin.right
-            voxel_scan_midpoint = row.scan_bin.mid
-            voxel_rt_lower = row.rt_bin.left
-            voxel_rt_upper = row.rt_bin.right
-            voxel_rt_midpoint = row.rt_bin.mid
-            voxel_df = raw_df[(raw_df.mz >= voxel_mz_lower) & (raw_df.mz <= voxel_mz_upper) & (raw_df.scan >= voxel_scan_lower) & (raw_df.scan <= voxel_scan_upper) & (raw_df.retention_time_secs >= voxel_rt_lower) & (raw_df.retention_time_secs <= voxel_rt_upper)]
+            # if this voxel hasn't been affected by an earlier one, process it
+            if row.bin_key not in voxels_processed:
+                # retrieve the bins from the voxel key
+                (mz_bin, scan_bin, rt_bin) = row.bin_key
 
-            # find the frame ID of the voxel's highpoint
-            voxel_rt_df = voxel_df.groupby(['frame_id','retention_time_secs'], as_index=False).intensity.sum()
-            voxel_rt_highpoint = voxel_rt_df.loc[voxel_rt_df.intensity.idxmax()].retention_time_secs
-            voxel_rt_highpoint_frame_id = voxel_rt_df.loc[voxel_rt_df.intensity.idxmax()].frame_id
+                # get the attributes of this voxel
+                voxel_mz_lower = mz_bin.left
+                voxel_mz_upper = mz_bin.right
+                voxel_mz_midpoint = mz_bin.mid
+                voxel_scan_lower = scan_bin.left
+                voxel_scan_upper = scan_bin.right
+                voxel_scan_midpoint = scan_bin.mid
+                voxel_rt_lower = rt_bin.left
+                voxel_rt_upper = rt_bin.right
+                voxel_rt_midpoint = rt_bin.mid
+                voxel_df = raw_df[(raw_df.mz >= voxel_mz_lower) & (raw_df.mz <= voxel_mz_upper) & (raw_df.scan >= voxel_scan_lower) & (raw_df.scan <= voxel_scan_upper) & (raw_df.retention_time_secs >= voxel_rt_lower) & (raw_df.retention_time_secs <= voxel_rt_upper)]
 
-            # find the voxel's highpoint in CCS
-            voxel_scan_df = voxel_df.groupby(['scan'], as_index=False).intensity.sum()
-            voxel_scan_highpoint = voxel_scan_df.loc[voxel_scan_df.intensity.idxmax()].scan
+                # find the frame ID of the voxel's highpoint
+                voxel_rt_df = voxel_df.groupby(['frame_id','retention_time_secs'], as_index=False).intensity.sum()
+                voxel_rt_highpoint = voxel_rt_df.loc[voxel_rt_df.intensity.idxmax()].retention_time_secs
+                voxel_rt_highpoint_frame_id = voxel_rt_df.loc[voxel_rt_df.intensity.idxmax()].frame_id
 
-            # keep information aside for debugging
-            visualisation_d = {}
-            visualisation_d['voxel'] = {'voxel_mz_lower':voxel_mz_lower, 'voxel_mz_upper':voxel_mz_upper, 'voxel_scan_lower':voxel_scan_lower, 'voxel_scan_upper':voxel_scan_upper, 'voxel_rt_lower':voxel_rt_lower, 'voxel_rt_upper':voxel_rt_upper, 'voxel_rt_highpoint':voxel_rt_highpoint, 'voxel_rt_highpoint_frame_id':voxel_rt_highpoint_frame_id}
+                # find the voxel's highpoint in CCS
+                voxel_scan_df = voxel_df.groupby(['scan'], as_index=False).intensity.sum()
+                voxel_scan_highpoint = voxel_scan_df.loc[voxel_scan_df.intensity.idxmax()].scan
 
-            # define the search area in the m/z and scan dimensions
-            region_mz_lower = voxel_mz_midpoint - ANCHOR_POINT_MZ_LOWER_OFFSET
-            region_mz_upper = voxel_mz_midpoint + ANCHOR_POINT_MZ_UPPER_OFFSET
-            region_scan_lower = voxel_scan_midpoint - ANCHOR_POINT_SCAN_LOWER_OFFSET
-            region_scan_upper = voxel_scan_midpoint + ANCHOR_POINT_SCAN_UPPER_OFFSET
-            visualisation_d['region_2d'] = {'region_mz_lower':region_mz_lower, 'region_mz_upper':region_mz_upper, 'region_scan_lower':region_scan_lower, 'region_scan_upper':region_scan_upper}
+                # keep information aside for debugging
+                visualisation_d = {}
+                visualisation_d['voxel'] = {'voxel_mz_lower':voxel_mz_lower, 'voxel_mz_upper':voxel_mz_upper, 'voxel_scan_lower':voxel_scan_lower, 'voxel_scan_upper':voxel_scan_upper, 'voxel_rt_lower':voxel_rt_lower, 'voxel_rt_upper':voxel_rt_upper, 'voxel_rt_highpoint':voxel_rt_highpoint, 'voxel_rt_highpoint_frame_id':voxel_rt_highpoint_frame_id}
 
-            # constrain the raw points to the search area for this voxel
-            region_2d_df = raw_df[(raw_df.frame_id == voxel_rt_highpoint_frame_id) & (raw_df.mz >= region_mz_lower) & (raw_df.mz <= region_mz_upper) & (raw_df.scan >= region_scan_lower) & (raw_df.scan <= region_scan_upper)].copy()
+                # define the search area in the m/z and scan dimensions
+                region_mz_lower = voxel_mz_midpoint - ANCHOR_POINT_MZ_LOWER_OFFSET
+                region_mz_upper = voxel_mz_midpoint + ANCHOR_POINT_MZ_UPPER_OFFSET
+                region_scan_lower = voxel_scan_midpoint - ANCHOR_POINT_SCAN_LOWER_OFFSET
+                region_scan_upper = voxel_scan_midpoint + ANCHOR_POINT_SCAN_UPPER_OFFSET
+                visualisation_d['region_2d'] = {'region_mz_lower':region_mz_lower, 'region_mz_upper':region_mz_upper, 'region_scan_lower':region_scan_lower, 'region_scan_upper':region_scan_upper}
 
-            # segment the raw data to reveal the isotopes in the feature
-            X = region_2d_df[['mz','scan']].values
-            dbscan = DBSCAN(eps=1, min_samples=3, metric=point_metric)
-            clusters = dbscan.fit_predict(X)
+                # constrain the raw points to the search area for this voxel
+                region_2d_df = raw_df[(raw_df.frame_id == voxel_rt_highpoint_frame_id) & (raw_df.mz >= region_mz_lower) & (raw_df.mz <= region_mz_upper) & (raw_df.scan >= region_scan_lower) & (raw_df.scan <= region_scan_upper)].copy()
 
-            # assign each point to a cluster (will be -1 it doesn't belong to a cluster)
-            region_2d_df['cluster'] = clusters
-
-            # find the centroid of each point cluster
-            isotope_centroids_l = []
-            for group_name,group_df in region_2d_df.groupby('cluster'):
-                if group_name >= 0:
-                    mz_centroid = peakutils.centroid(group_df.mz, group_df.intensity)
-                    scan_centroid = peakutils.centroid(group_df.scan, group_df.intensity)
-                    isotope_centroids_l.append((group_name, mz_centroid, scan_centroid))
-            isotope_centroids_df = pd.DataFrame(isotope_centroids_l, columns=['cluster','mz','scan'])
-
-            # if there's more than one isotope...
-            if len(isotope_centroids_df) > 0:
-                # cluster the centroids into isotopic series
-                X = isotope_centroids_df[['mz','scan']].values
-                dbscan = DBSCAN(eps=1, min_samples=2, metric=isotope_metric)  # minimum isotopes to form a series
+                # segment the raw data to reveal the isotopes in the feature
+                X = region_2d_df[['mz','scan']].values
+                dbscan = DBSCAN(eps=1, min_samples=3, metric=point_metric)
                 clusters = dbscan.fit_predict(X)
 
-                # assign each isotope to a cluster, which is a series of isotopes (will be -1 if it doesn't belong to a cluster)
-                isotope_centroids_df['isotope_cluster'] = clusters
+                # assign each point to a cluster (will be -1 it doesn't belong to a cluster)
+                region_2d_df['cluster'] = clusters
 
-                # assign each point in the 2D region to an isotope series
-                region_2d_df = pd.merge(region_2d_df, isotope_centroids_df[['cluster','isotope_cluster']], how='left', left_on=['cluster'], right_on=['cluster'])
-                region_2d_df.replace(to_replace=np.nan, value=-1, inplace=True)
-                region_2d_df.isotope_cluster = region_2d_df.isotope_cluster.astype(int)
+                # find the centroid of each point cluster
+                isotope_centroids_l = []
+                for group_name,group_df in region_2d_df.groupby('cluster'):
+                    if group_name >= 0:
+                        mz_centroid = peakutils.centroid(group_df.mz, group_df.intensity)
+                        scan_centroid = peakutils.centroid(group_df.scan, group_df.intensity)
+                        isotope_centroids_l.append((group_name, mz_centroid, scan_centroid))
+                isotope_centroids_df = pd.DataFrame(isotope_centroids_l, columns=['cluster','mz','scan'])
 
-                visualisation_d['region_2d_df'] = region_2d_df.to_dict('records')
+                # if there's more than one isotope...
+                if len(isotope_centroids_df) > 0:
+                    # cluster the centroids into isotopic series
+                    X = isotope_centroids_df[['mz','scan']].values
+                    dbscan = DBSCAN(eps=1, min_samples=2, metric=isotope_metric)  # minimum isotopes to form a series
+                    clusters = dbscan.fit_predict(X)
 
-                # only consider the points that are part of an isotope series
-                region_2d_df = region_2d_df[(region_2d_df.isotope_cluster >= 0)]
+                    # assign each isotope to a cluster, which is a series of isotopes (will be -1 if it doesn't belong to a cluster)
+                    isotope_centroids_df['isotope_cluster'] = clusters
 
-                # each isotopic series is a candidate precursor cuboid for feature detection
-                for group_name,group_df in region_2d_df.groupby('isotope_cluster'):
-                    # get the extent of the isotope cluster in m/z and mobility
-                    cuboid_mz_lower = group_df.mz.min()
-                    cuboid_mz_upper = group_df.mz.max()
-                    cuboid_scan_lower = group_df.scan.min()
-                    cuboid_scan_upper = group_df.scan.max()
+                    # assign each point in the 2D region to an isotope series
+                    region_2d_df = pd.merge(region_2d_df, isotope_centroids_df[['cluster','isotope_cluster']], how='left', left_on=['cluster'], right_on=['cluster'])
+                    region_2d_df.replace(to_replace=np.nan, value=-1, inplace=True)
+                    region_2d_df.isotope_cluster = region_2d_df.isotope_cluster.astype(int)
 
-                    # only handle isotope series that contain the voxel; other voxels will pick up the other features
-                    if (voxel_mz_midpoint >= cuboid_mz_lower) and (voxel_mz_midpoint <= cuboid_mz_upper) and (voxel_scan_midpoint >= cuboid_scan_lower) and (voxel_scan_midpoint <= cuboid_scan_upper):
-                        region_rt_lower = voxel_rt_highpoint - RT_BASE_PEAK_WIDTH
-                        region_rt_upper = voxel_rt_highpoint + RT_BASE_PEAK_WIDTH
+                    visualisation_d['region_2d_df'] = region_2d_df.to_dict('records')
 
-                        # get the points
-                        region_3d_df = raw_df[(raw_df.mz >= cuboid_mz_lower) & (raw_df.mz <= cuboid_mz_upper) & (raw_df.scan >= cuboid_scan_lower) & (raw_df.scan <= cuboid_scan_upper) & (raw_df.retention_time_secs >= region_rt_lower) & (raw_df.retention_time_secs <= region_rt_upper)].copy()
+                    # only consider the points that are part of an isotope series
+                    region_2d_df = region_2d_df[(region_2d_df.isotope_cluster >= 0)]
 
-                        # find the extent of the peak in the RT dimension
-                        rt_df = region_3d_df.groupby(['retention_time_secs'], as_index=False).intensity.sum()
-                        rt_df.sort_values(by=['retention_time_secs'], ascending=True, inplace=True)
+                    # each isotopic series is a candidate precursor cuboid for feature detection
+                    for group_name,group_df in region_2d_df.groupby('isotope_cluster'):
+                        # get the extent of the isotope cluster in m/z and mobility
+                        cuboid_mz_lower = group_df.mz.min()
+                        cuboid_mz_upper = group_df.mz.max()
+                        cuboid_scan_lower = group_df.scan.min()
+                        cuboid_scan_upper = group_df.scan.max()
 
-                        # filter the points
-                        rt_df['filtered_intensity'] = rt_df.intensity  # set the default
-                        try:
-                            rt_df['filtered_intensity'] = signal.savgol_filter(rt_df.intensity, window_length=find_filter_length(number_of_points=len(rt_df)), polyorder=RT_FILTER_POLY_ORDER)
-                        except:
-                            pass
+                        # only handle isotope series that contain the voxel; other voxels will pick up the other features
+                        if (voxel_mz_midpoint >= cuboid_mz_lower) and (voxel_mz_midpoint <= cuboid_mz_upper) and (voxel_scan_midpoint >= cuboid_scan_lower) and (voxel_scan_midpoint <= cuboid_scan_upper):
+                            region_rt_lower = voxel_rt_highpoint - RT_BASE_PEAK_WIDTH
+                            region_rt_upper = voxel_rt_highpoint + RT_BASE_PEAK_WIDTH
 
-                        # find the valleys nearest the highpoint
-                        valley_idxs = peakutils.indexes(-rt_df.filtered_intensity.values, thres=VALLEYS_THRESHOLD_RT, min_dist=VALLEYS_MIN_DIST_RT, thres_abs=False)
-                        valley_x_l = rt_df.iloc[valley_idxs].retention_time_secs.to_list()
-                        valleys_df = rt_df[rt_df.retention_time_secs.isin(valley_x_l)]
+                            # get the points
+                            region_3d_df = raw_df[(raw_df.mz >= cuboid_mz_lower) & (raw_df.mz <= cuboid_mz_upper) & (raw_df.scan >= cuboid_scan_lower) & (raw_df.scan <= cuboid_scan_upper) & (raw_df.retention_time_secs >= region_rt_lower) & (raw_df.retention_time_secs <= region_rt_upper)].copy()
 
-                        upper_x = valleys_df[valleys_df.retention_time_secs > voxel_rt_highpoint].retention_time_secs.min()
-                        if math.isnan(upper_x):
-                            upper_x = rt_df.retention_time_secs.max()
-                        lower_x = valleys_df[valleys_df.retention_time_secs < voxel_rt_highpoint].retention_time_secs.max()
-                        if math.isnan(lower_x):
-                            lower_x = rt_df.retention_time_secs.min()
+                            # find the extent of the peak in the RT dimension
+                            rt_df = region_3d_df.groupby(['retention_time_secs'], as_index=False).intensity.sum()
+                            rt_df.sort_values(by=['retention_time_secs'], ascending=True, inplace=True)
 
-                        # the extent of the precursor cuboid in RT
-                        cuboid_rt_lower = lower_x
-                        cuboid_rt_upper = upper_x
+                            # filter the points
+                            rt_df['filtered_intensity'] = rt_df.intensity  # set the default
+                            try:
+                                rt_df['filtered_intensity'] = signal.savgol_filter(rt_df.intensity, window_length=find_filter_length(number_of_points=len(rt_df)), polyorder=RT_FILTER_POLY_ORDER)
+                            except:
+                                pass
 
-                        visualisation_d['rt_df'] = rt_df.to_dict('records')
+                            # find the valleys nearest the highpoint
+                            valley_idxs = peakutils.indexes(-rt_df.filtered_intensity.values, thres=VALLEYS_THRESHOLD_RT, min_dist=VALLEYS_MIN_DIST_RT, thres_abs=False)
+                            valley_x_l = rt_df.iloc[valley_idxs].retention_time_secs.to_list()
+                            valleys_df = rt_df[rt_df.retention_time_secs.isin(valley_x_l)]
 
-                        # add this cuboid to the list
-                        precursor_coordinates_d = {
-                            'mz_lower':cuboid_mz_lower, 
-                            'mz_upper':cuboid_mz_upper, 
-                            'wide_mz_lower':cuboid_mz_lower - (CARBON_MASS_DIFFERENCE / 1), # just in case we missed the monoisotopic
-                            'wide_mz_upper':cuboid_mz_upper, 
-                            'scan_lower':max(int(voxel_scan_highpoint - SCAN_BASE_PEAK_WIDTH), int(cuboid_scan_lower)),  # so feature detection will focus on the voxel highpoint
-                            'scan_upper':min(int(voxel_scan_highpoint + SCAN_BASE_PEAK_WIDTH), int(cuboid_scan_upper)), 
-                            'wide_scan_lower':int(cuboid_scan_lower),
-                            'wide_scan_upper':int(cuboid_scan_upper), 
-                            'rt_lower':cuboid_rt_lower, 
-                            'rt_upper':cuboid_rt_upper, 
-                            'wide_rt_lower':cuboid_rt_lower, # same because we've already resolved its extent
-                            'wide_rt_upper':cuboid_rt_upper
-                            }
+                            upper_x = valleys_df[valleys_df.retention_time_secs > voxel_rt_highpoint].retention_time_secs.min()
+                            if math.isnan(upper_x):
+                                upper_x = rt_df.retention_time_secs.max()
+                            lower_x = valleys_df[valleys_df.retention_time_secs < voxel_rt_highpoint].retention_time_secs.max()
+                            if math.isnan(lower_x):
+                                lower_x = rt_df.retention_time_secs.min()
 
-                        if args.visualise:
-                            precursor_coordinates_d['visualisation_d'] = visualisation_d
-                            
-                        precursor_cuboids_l.append(precursor_coordinates_d)
-                        # print('+', end='', flush=True)
+                            # the extent of the precursor cuboid in RT
+                            cuboid_rt_lower = lower_x
+                            cuboid_rt_upper = upper_x
 
-            else:
-                # if we couldn't form an isotope around this voxel, it's time to stop
-                # print('-', end='', flush=True)
-                break
+                            visualisation_d['rt_df'] = rt_df.to_dict('records')
+
+                            # get the points for the feature in 3D
+                            region_3d_df = region_3d_df[(region_3d_df.retention_time_secs >= cuboid_rt_lower) & (region_3d_df.retention_time_secs <= cuboid_rt_upper)]
+
+                            # add the affected voxels to the processed set
+                            voxels_processed.update(set(region_3d_df.bin_key.unique()))
+
+                            # add this cuboid to the list
+                            precursor_coordinates_d = {
+                                'mz_lower':cuboid_mz_lower, 
+                                'mz_upper':cuboid_mz_upper, 
+                                'wide_mz_lower':cuboid_mz_lower - (CARBON_MASS_DIFFERENCE / 1), # just in case we missed the monoisotopic
+                                'wide_mz_upper':cuboid_mz_upper, 
+                                'scan_lower':max(int(voxel_scan_highpoint - SCAN_BASE_PEAK_WIDTH), int(cuboid_scan_lower)),  # so feature detection will focus on the voxel highpoint
+                                'scan_upper':min(int(voxel_scan_highpoint + SCAN_BASE_PEAK_WIDTH), int(cuboid_scan_upper)), 
+                                'wide_scan_lower':int(cuboid_scan_lower),
+                                'wide_scan_upper':int(cuboid_scan_upper), 
+                                'rt_lower':cuboid_rt_lower, 
+                                'rt_upper':cuboid_rt_upper, 
+                                'wide_rt_lower':cuboid_rt_lower, # same because we've already resolved its extent
+                                'wide_rt_upper':cuboid_rt_upper
+                                }
+
+                            if args.visualise:
+                                precursor_coordinates_d['visualisation_d'] = visualisation_d
+                                
+                            precursor_cuboids_l.append(precursor_coordinates_d)
+                            # print('+', end='', flush=True)
+
+                else:
+                    # if we couldn't form an isotope around this voxel, it's time to stop
+                    # print('-', end='', flush=True)
+                    break
 
     # return what we found in this segment
     print('found {} cuboids for mz={} to {}'.format(len(precursor_cuboids_l), segment_mz_lower, segment_mz_upper))
@@ -269,9 +284,9 @@ VALLEYS_MIN_DIST_SCAN = 10.0  # scans
 SCAN_FILTER_POLY_ORDER = 3
 RT_FILTER_POLY_ORDER = 3
 
-# bin sizes
-RT_BIN_SIZE = 5
-SCAN_BIN_SIZE = 20
+# bin sizes; RT and CCS are determined from half the mean base peak width
+RT_BIN_SIZE = 4
+SCAN_BIN_SIZE = 29
 MZ_BIN_SIZE = 0.1
 
 
