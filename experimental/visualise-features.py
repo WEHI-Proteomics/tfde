@@ -171,7 +171,7 @@ for group_name,group_df in pixel_intensity_df.groupby(['frame_id'], as_index=Fal
     info_box_y_inset = 24
     space_per_line = 12
     draw.rectangle(xy=[(PIXELS_X-info_box_x_inset, info_box_y_inset), (PIXELS_X, 3*space_per_line)], fill=(20,20,20), outline=None)
-    draw.text((PIXELS_X-info_box_x_inset, (0*space_per_line)+info_box_y_inset), args.precursor_definition_method, font=feature_label_font, fill='lawngreen')
+    draw.text((PIXELS_X-info_box_x_inset, (0*space_per_line)+info_box_y_inset), args.precursor_definition_method.upper(), font=feature_label_font, fill='lawngreen')
     draw.text((PIXELS_X-info_box_x_inset, (1*space_per_line)+info_box_y_inset), '{}'.format(args.run_name), font=feature_label_font, fill='lawngreen')
     draw.text((PIXELS_X-info_box_x_inset, (2*space_per_line)+info_box_y_inset), '{} secs'.format(round(tile_rt,1)), font=feature_label_font, fill='lawngreen')
 
