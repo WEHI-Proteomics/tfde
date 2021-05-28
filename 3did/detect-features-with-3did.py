@@ -261,7 +261,6 @@ def find_features(segment_mz_lower, segment_mz_upper):
         summary_df.rename(columns={'sum':'intensity', 'count':'point_count'}, inplace=True)
         summary_df.dropna(subset=['intensity'], inplace=True)
         summary_df.sort_values(by=['intensity'], ascending=False, inplace=True)
-        summary_df = summary_df[(summary_df.point_count >= RT_BIN_SIZE*10)]  # trim the voxels that don't have enough points to bother with
 
         # keep track of the keys of voxels that have been processed
         voxels_processed = set()
@@ -293,7 +292,6 @@ def find_features(segment_mz_lower, segment_mz_upper):
                 voxel_frame_df = voxel_df[(voxel_df.frame_id == voxel_rt_highpoint_frame_id)].copy()
                 points_a = voxel_frame_df[['mz','intensity']].to_numpy()
                 voxel_mz_centroid = intensity_weighted_centroid(points_a[:,1], points_a[:,0])
-                print('{} points in the voxel for this frame'.format(len(voxel_frame_df)))
 
                 # isolate the isotope's points in the m/z dimension; note the isotope may be offset so some of the points may be outside the voxel
                 iso_mz_delta = calculate_peak_delta(voxel_mz_centroid)
@@ -309,168 +307,172 @@ def find_features(segment_mz_lower, segment_mz_upper):
 
                 # find the mobility extent of the isotope in this frame
                 isotope_frame_df = raw_df[(raw_df.mz >= iso_mz_lower) & (raw_df.mz <= iso_mz_upper) & (raw_df.scan >= frame_region_scan_lower) & (raw_df.scan <= frame_region_scan_upper) & (raw_df.frame_id == voxel_rt_highpoint_frame_id)]
+                if len(isotope_frame_df) > 0:
+                    # collapsing the monoisotopic's summed points onto the mobility dimension
+                    scan_df = isotope_frame_df.groupby(['scan'], as_index=False).intensity.sum()
+                    scan_df.sort_values(by=['scan'], ascending=True, inplace=True)
 
-                # collapsing the monoisotopic's summed points onto the mobility dimension
-                scan_df = isotope_frame_df.groupby(['scan'], as_index=False).intensity.sum()
-                scan_df.sort_values(by=['scan'], ascending=True, inplace=True)
+                    # apply a smoothing filter to the points
+                    scan_df['filtered_intensity'] = scan_df.intensity  # set the default
+                    try:
+                        scan_df['filtered_intensity'] = signal.savgol_filter(scan_df.intensity, window_length=find_filter_length(number_of_points=len(scan_df)), polyorder=SCAN_FILTER_POLY_ORDER)
+                    except:
+                        pass
 
-                # apply a smoothing filter to the points
-                scan_df['filtered_intensity'] = scan_df.intensity  # set the default
-                try:
-                    scan_df['filtered_intensity'] = signal.savgol_filter(scan_df.intensity, window_length=find_filter_length(number_of_points=len(scan_df)), polyorder=SCAN_FILTER_POLY_ORDER)
-                except:
-                    pass
+                    # find the peak(s)
+                    peak_x_l = []
+                    try:
+                        peak_idxs = peakutils.indexes(scan_df.filtered_intensity.values, thres=PEAKS_THRESHOLD_SCAN, min_dist=PEAKS_MIN_DIST_SCAN, thres_abs=False)
+                        peak_x_l = scan_df.iloc[peak_idxs].scan.to_list()
+                    except:
+                        pass
+                    if len(peak_x_l) == 0:
+                        # if we couldn't find any peaks, take the maximum intensity point
+                        peak_x_l = [scan_df.loc[scan_df.filtered_intensity.idxmax()].scan]
+                    # peaks_df should now contain the rows from flattened_points_df that represent the peaks
+                    peaks_df = scan_df[scan_df.scan.isin(peak_x_l)].copy()
 
-                # find the peak(s)
-                peak_x_l = []
-                try:
-                    peak_idxs = peakutils.indexes(scan_df.filtered_intensity.values, thres=PEAKS_THRESHOLD_SCAN, min_dist=PEAKS_MIN_DIST_SCAN, thres_abs=False)
-                    peak_x_l = scan_df.iloc[peak_idxs].scan.to_list()
-                except:
-                    pass
-                if len(peak_x_l) == 0:
-                    # if we couldn't find any peaks, take the maximum intensity point
-                    peak_x_l = [scan_df.loc[scan_df.filtered_intensity.idxmax()].scan]
-                # peaks_df should now contain the rows from flattened_points_df that represent the peaks
-                peaks_df = scan_df[scan_df.scan.isin(peak_x_l)].copy()
+                    # find the closest peak to the voxel highpoint
+                    peaks_df['delta'] = abs(peaks_df.scan - voxel_scan_midpoint)
+                    peaks_df.sort_values(by=['delta'], ascending=True, inplace=True)
+                    scan_apex = peaks_df.iloc[0].scan
 
-                # find the closest peak to the voxel highpoint
-                peaks_df['delta'] = abs(peaks_df.scan - voxel_scan_midpoint)
-                peaks_df.sort_values(by=['delta'], ascending=True, inplace=True)
-                scan_apex = peaks_df.iloc[0].scan
+                    # find the valleys nearest the scan apex
+                    valley_idxs = peakutils.indexes(-scan_df.filtered_intensity.values, thres=VALLEYS_THRESHOLD_SCAN, min_dist=VALLEYS_MIN_DIST_SCAN, thres_abs=False)
+                    valley_x_l = scan_df.iloc[valley_idxs].scan.to_list()
+                    valleys_df = scan_df[scan_df.scan.isin(valley_x_l)]
 
-                # find the valleys nearest the scan apex
-                valley_idxs = peakutils.indexes(-scan_df.filtered_intensity.values, thres=VALLEYS_THRESHOLD_SCAN, min_dist=VALLEYS_MIN_DIST_SCAN, thres_abs=False)
-                valley_x_l = scan_df.iloc[valley_idxs].scan.to_list()
-                valleys_df = scan_df[scan_df.scan.isin(valley_x_l)]
+                    upper_x = valleys_df[valleys_df.scan > scan_apex].scan.min()
+                    if math.isnan(upper_x):
+                        upper_x = scan_df.scan.max()
+                    lower_x = valleys_df[valleys_df.scan < scan_apex].scan.max()
+                    if math.isnan(lower_x):
+                        lower_x = scan_df.scan.min()
 
-                upper_x = valleys_df[valleys_df.scan > scan_apex].scan.min()
-                if math.isnan(upper_x):
-                    upper_x = scan_df.scan.max()
-                lower_x = valleys_df[valleys_df.scan < scan_apex].scan.max()
-                if math.isnan(lower_x):
-                    lower_x = scan_df.scan.min()
+                    # mobility extent of the isotope
+                    iso_scan_lower = lower_x
+                    iso_scan_upper = upper_x
 
-                # mobility extent of the isotope
-                iso_scan_lower = lower_x
-                iso_scan_upper = upper_x
+                    # gather the isotope points constrained by m/z and CCS, and the peak search extent in RT
+                    region_rt_lower = voxel_rt_midpoint - RT_BASE_PEAK_WIDTH
+                    region_rt_upper = voxel_rt_midpoint + RT_BASE_PEAK_WIDTH
+                    isotope_points_df = raw_df[(raw_df.mz >= iso_mz_lower) & (raw_df.mz <= iso_mz_upper) & (raw_df.scan >= iso_scan_lower) & (raw_df.scan <= iso_scan_upper) & (raw_df.retention_time_secs >= region_rt_lower) & (raw_df.retention_time_secs <= region_rt_upper)]
 
-                # gather the isotope points constrained by m/z and CCS, and the peak search extent in RT
-                region_rt_lower = voxel_rt_midpoint - RT_BASE_PEAK_WIDTH
-                region_rt_upper = voxel_rt_midpoint + RT_BASE_PEAK_WIDTH
-                isotope_points_df = raw_df[(raw_df.mz >= iso_mz_lower) & (raw_df.mz <= iso_mz_upper) & (raw_df.scan >= iso_scan_lower) & (raw_df.scan <= iso_scan_upper) & (raw_df.retention_time_secs >= region_rt_lower) & (raw_df.retention_time_secs <= region_rt_upper)]
+                    # in the RT dimension, find the apex
+                    rt_df = isotope_points_df.groupby(['frame_id','retention_time_secs'], as_index=False).intensity.sum()
+                    rt_df.sort_values(by=['retention_time_secs'], ascending=True, inplace=True)
 
-                # in the RT dimension, find the apex
-                rt_df = isotope_points_df.groupby(['frame_id','retention_time_secs'], as_index=False).intensity.sum()
-                rt_df.sort_values(by=['retention_time_secs'], ascending=True, inplace=True)
+                    # filter the points
+                    rt_df['filtered_intensity'] = rt_df.intensity  # set the default
+                    try:
+                        rt_df['filtered_intensity'] = signal.savgol_filter(rt_df.intensity, window_length=find_filter_length(number_of_points=len(rt_df)), polyorder=RT_FILTER_POLY_ORDER)
+                    except:
+                        pass
 
-                # filter the points
-                rt_df['filtered_intensity'] = rt_df.intensity  # set the default
-                try:
-                    rt_df['filtered_intensity'] = signal.savgol_filter(rt_df.intensity, window_length=find_filter_length(number_of_points=len(rt_df)), polyorder=RT_FILTER_POLY_ORDER)
-                except:
-                    pass
+                    # find the peak(s)
+                    peak_x_l = []
+                    try:
+                        peak_idxs = peakutils.indexes(rt_df.filtered_intensity.values, thres=PEAKS_THRESHOLD_RT, min_dist=PEAKS_MIN_DIST_RT, thres_abs=False)
+                        peak_x_l = rt_df.iloc[peak_idxs].retention_time_secs.to_list()
+                    except:
+                        pass
+                    if len(peak_x_l) == 0:
+                        # if we couldn't find any peaks, take the maximum intensity point
+                        peak_x_l = [rt_df.loc[rt_df.filtered_intensity.idxmax()].retention_time_secs]
+                    # peaks_df should now contain the rows from flattened_points_df that represent the peaks
+                    peaks_df = rt_df[rt_df.retention_time_secs.isin(peak_x_l)].copy()
 
-                # find the peak(s)
-                peak_x_l = []
-                try:
-                    peak_idxs = peakutils.indexes(rt_df.filtered_intensity.values, thres=PEAKS_THRESHOLD_RT, min_dist=PEAKS_MIN_DIST_RT, thres_abs=False)
-                    peak_x_l = rt_df.iloc[peak_idxs].retention_time_secs.to_list()
-                except:
-                    pass
-                if len(peak_x_l) == 0:
-                    # if we couldn't find any peaks, take the maximum intensity point
-                    peak_x_l = [rt_df.loc[rt_df.filtered_intensity.idxmax()].retention_time_secs]
-                # peaks_df should now contain the rows from flattened_points_df that represent the peaks
-                peaks_df = rt_df[rt_df.retention_time_secs.isin(peak_x_l)].copy()
+                    # find the closest peak to the voxel highpoint
+                    peaks_df['delta'] = abs(peaks_df.retention_time_secs - voxel_rt_midpoint)
+                    peaks_df.sort_values(by=['delta'], ascending=True, inplace=True)
+                    rt_apex = peaks_df.iloc[0].retention_time_secs
 
-                # find the closest peak to the voxel highpoint
-                peaks_df['delta'] = abs(peaks_df.retention_time_secs - voxel_rt_midpoint)
-                peaks_df.sort_values(by=['delta'], ascending=True, inplace=True)
-                rt_apex = peaks_df.iloc[0].retention_time_secs
+                    # find the valleys nearest the RT apex
+                    valley_idxs = peakutils.indexes(-rt_df.filtered_intensity.values, thres=VALLEYS_THRESHOLD_RT, min_dist=VALLEYS_MIN_DIST_RT, thres_abs=False)
+                    valley_x_l = rt_df.iloc[valley_idxs].retention_time_secs.to_list()
+                    valleys_df = rt_df[rt_df.retention_time_secs.isin(valley_x_l)]
 
-                # find the valleys nearest the RT apex
-                valley_idxs = peakutils.indexes(-rt_df.filtered_intensity.values, thres=VALLEYS_THRESHOLD_RT, min_dist=VALLEYS_MIN_DIST_RT, thres_abs=False)
-                valley_x_l = rt_df.iloc[valley_idxs].retention_time_secs.to_list()
-                valleys_df = rt_df[rt_df.retention_time_secs.isin(valley_x_l)]
+                    upper_x = valleys_df[valleys_df.retention_time_secs > rt_apex].retention_time_secs.min()
+                    if math.isnan(upper_x):
+                        upper_x = rt_df.retention_time_secs.max()
+                    lower_x = valleys_df[valleys_df.retention_time_secs < rt_apex].retention_time_secs.max()
+                    if math.isnan(lower_x):
+                        lower_x = rt_df.retention_time_secs.min()
 
-                upper_x = valleys_df[valleys_df.retention_time_secs > rt_apex].retention_time_secs.min()
-                if math.isnan(upper_x):
-                    upper_x = rt_df.retention_time_secs.max()
-                lower_x = valleys_df[valleys_df.retention_time_secs < rt_apex].retention_time_secs.max()
-                if math.isnan(lower_x):
-                    lower_x = rt_df.retention_time_secs.min()
+                    # RT extent of the isotope
+                    iso_rt_lower = lower_x
+                    iso_rt_upper = upper_x
 
-                # RT extent of the isotope
-                iso_rt_lower = lower_x
-                iso_rt_upper = upper_x
+                    # we now have a definition of the voxel's isotope in m/z, scan, and RT. We need to extend that in the m/z dimension to catch all the isotopes for this feature
+                    region_mz_lower = voxel_mz_midpoint - ANCHOR_POINT_MZ_LOWER_OFFSET
+                    region_mz_upper = voxel_mz_midpoint + ANCHOR_POINT_MZ_UPPER_OFFSET
 
-                # we now have a definition of the voxel's isotope in m/z, scan, and RT. We need to extend that in the m/z dimension to catch all the isotopes for this feature
-                region_mz_lower = voxel_mz_midpoint - ANCHOR_POINT_MZ_LOWER_OFFSET
-                region_mz_upper = voxel_mz_midpoint + ANCHOR_POINT_MZ_UPPER_OFFSET
+                    # gather the raw points for the feature's 3D region
+                    feature_region_3d_extent_d = {'mz_lower':region_mz_lower, 'mz_upper':region_mz_upper, 'scan_lower':iso_scan_lower, 'scan_upper':iso_scan_upper, 'rt_lower':iso_rt_lower, 'rt_upper':iso_rt_upper}
+                    feature_region_3d_df = raw_df[(raw_df.mz >= region_mz_lower) & (raw_df.mz <= region_mz_upper) & (raw_df.scan >= iso_scan_lower) & (raw_df.scan <= iso_scan_upper) & (raw_df.retention_time_secs >= iso_rt_lower) & (raw_df.retention_time_secs <= iso_rt_upper)].copy()
 
-                # gather the raw points for the feature's 3D region
-                feature_region_3d_extent_d = {'mz_lower':region_mz_lower, 'mz_upper':region_mz_upper, 'scan_lower':iso_scan_lower, 'scan_upper':iso_scan_upper, 'rt_lower':iso_rt_lower, 'rt_upper':iso_rt_upper}
-                feature_region_3d_df = raw_df[(raw_df.mz >= region_mz_lower) & (raw_df.mz <= region_mz_upper) & (raw_df.scan >= iso_scan_lower) & (raw_df.scan <= iso_scan_upper) & (raw_df.retention_time_secs >= iso_rt_lower) & (raw_df.retention_time_secs <= iso_rt_upper)].copy()
+                    # intensity descent
+                    raw_points_a = feature_region_3d_df[['mz','intensity']].to_numpy()
+                    peaks_a = intensity_descent(peaks_a=raw_points_a, peak_delta=None)
 
-                # intensity descent
-                raw_points_a = feature_region_3d_df[['mz','intensity']].to_numpy()
-                peaks_a = intensity_descent(peaks_a=raw_points_a, peak_delta=None)
+                    # deconvolution - see https://mobiusklein.github.io/ms_deisotope/docs/_build/html/deconvolution/deconvolution.html
+                    ms1_peaks_l = list(map(tuple, peaks_a))
+                    deconvoluted_peaks, _priority_targets = deconvolute_peaks(ms1_peaks_l, use_quick_charge=True, averagine=averagine.peptide, truncate_after=0.95)
 
-                # deconvolution - see https://mobiusklein.github.io/ms_deisotope/docs/_build/html/deconvolution/deconvolution.html
-                ms1_peaks_l = list(map(tuple, peaks_a))
-                deconvoluted_peaks, _priority_targets = deconvolute_peaks(ms1_peaks_l, use_quick_charge=True, averagine=averagine.peptide, truncate_after=0.95)
+                    # collect features from deconvolution
+                    ms1_deconvoluted_peaks_l = []
+                    for peak_idx,peak in enumerate(deconvoluted_peaks):
+                        # discard a monoisotopic peak that has either of the first two peaks as placeholders (indicated by intensity of 1)
+                        if ((len(peak.envelope) >= 3) and (peak.envelope[0][1] > 1) and (peak.envelope[1][1] > 1)):
+                            mono_peak_mz = peak.mz
+                            mono_intensity = peak.intensity
+                            second_peak_mz = peak.envelope[1][0]
+                            ms1_deconvoluted_peaks_l.append((mono_peak_mz, second_peak_mz, mono_intensity, peak.score, peak.signal_to_noise, peak.charge, peak.envelope, peak.neutral_mass))
+                    df = pd.DataFrame(ms1_deconvoluted_peaks_l, columns=['mono_mz','second_peak_mz','intensity','score','SN','charge','envelope','neutral_mass'])
+                    df.sort_values(by=['score'], ascending=False, inplace=True)
 
-                # collect features from deconvolution
-                ms1_deconvoluted_peaks_l = []
-                for peak_idx,peak in enumerate(deconvoluted_peaks):
-                    # discard a monoisotopic peak that has either of the first two peaks as placeholders (indicated by intensity of 1)
-                    if ((len(peak.envelope) >= 3) and (peak.envelope[0][1] > 1) and (peak.envelope[1][1] > 1)):
-                        mono_peak_mz = peak.mz
-                        mono_intensity = peak.intensity
-                        second_peak_mz = peak.envelope[1][0]
-                        ms1_deconvoluted_peaks_l.append((mono_peak_mz, second_peak_mz, mono_intensity, peak.score, peak.signal_to_noise, peak.charge, peak.envelope, peak.neutral_mass))
-                df = pd.DataFrame(ms1_deconvoluted_peaks_l, columns=['mono_mz','second_peak_mz','intensity','score','SN','charge','envelope','neutral_mass'])
-                df.sort_values(by=['score'], ascending=False, inplace=True)
+                    if len(df) > 0:
+                        # take the top N scoring features
+                        deconvolution_features_df = df.head(n=TARGET_NUMBER_OF_FEATURES_FOR_CUBOID)
 
-                if len(df) > 0:
-                    # take the top N scoring features
-                    deconvolution_features_df = df.head(n=TARGET_NUMBER_OF_FEATURES_FOR_CUBOID)
+                        # determine the feature attributes
+                        feature_l = []
+                        for idx,row in enumerate(deconvolution_features_df.itertuples()):
+                            feature_d = {}
+                            envelope_mono_mz = row.envelope[0][0]
+                            mz_delta = calculate_peak_delta(mz=envelope_mono_mz)
+                            mono_mz_lower = envelope_mono_mz - mz_delta
+                            mono_mz_upper = envelope_mono_mz + mz_delta
+                            feature_d['mono_mz_lower'] = mono_mz_lower
+                            feature_d['mono_mz_upper'] = mono_mz_upper
+                            isotope_characteristics_d = determine_isotope_characteristics(envelope=row.envelope, rt_apex=rt_apex, monoisotopic_mass=row.neutral_mass, feature_region_3d_df=feature_region_3d_df)
+                            if isotope_characteristics_d is not None:
+                                # add the characteristics to the feature dictionary
+                                feature_d = {**feature_d, **isotope_characteristics_d}
+                                feature_d['monoisotopic_mz'] = isotope_characteristics_d['mono_mz']
+                                feature_d['charge'] = row.charge
+                                feature_d['monoisotopic_mass'] = calculate_monoisotopic_mass_from_mz(monoisotopic_mz=feature_d['monoisotopic_mz'], charge=feature_d['charge'])
+                                feature_d['feature_intensity'] = isotope_characteristics_d['intensity_with_saturation_correction'] if (isotope_characteristics_d['intensity_with_saturation_correction'] > isotope_characteristics_d['intensity_without_saturation_correction']) else isotope_characteristics_d['intensity_without_saturation_correction']
+                                feature_d['envelope'] = json.dumps([tuple(e) for e in row.envelope])
+                                feature_d['isotope_count'] = len(row.envelope)
+                                feature_d['deconvolution_score'] = row.score
+                                # record the feature region where we found this feature
+                                feature_d['feature_region_3d_extent'] = feature_region_3d_extent_d
+                                # record the voxel from where we derived the initial isotope
+                                feature_d['voxel_metadata_d'] = voxel_metadata_d
+                                # add it to the list
+                                feature_l.append(feature_d)
+                        features_df = pd.DataFrame(feature_l)
+                    else:
+                        deconvolution_features_df = pd.DataFrame()
+                        features_df = pd.DataFrame()
 
-                    # determine the feature attributes
-                    feature_l = []
-                    for idx,row in enumerate(deconvolution_features_df.itertuples()):
-                        feature_d = {}
-                        envelope_mono_mz = row.envelope[0][0]
-                        mz_delta = calculate_peak_delta(mz=envelope_mono_mz)
-                        mono_mz_lower = envelope_mono_mz - mz_delta
-                        mono_mz_upper = envelope_mono_mz + mz_delta
-                        feature_d['mono_mz_lower'] = mono_mz_lower
-                        feature_d['mono_mz_upper'] = mono_mz_upper
-                        isotope_characteristics_d = determine_isotope_characteristics(envelope=row.envelope, rt_apex=rt_apex, monoisotopic_mass=row.neutral_mass, feature_region_3d_df=feature_region_3d_df)
-                        if isotope_characteristics_d is not None:
-                            # add the characteristics to the feature dictionary
-                            feature_d = {**feature_d, **isotope_characteristics_d}
-                            feature_d['monoisotopic_mz'] = isotope_characteristics_d['mono_mz']
-                            feature_d['charge'] = row.charge
-                            feature_d['monoisotopic_mass'] = calculate_monoisotopic_mass_from_mz(monoisotopic_mz=feature_d['monoisotopic_mz'], charge=feature_d['charge'])
-                            feature_d['feature_intensity'] = isotope_characteristics_d['intensity_with_saturation_correction'] if (isotope_characteristics_d['intensity_with_saturation_correction'] > isotope_characteristics_d['intensity_without_saturation_correction']) else isotope_characteristics_d['intensity_without_saturation_correction']
-                            feature_d['envelope'] = json.dumps([tuple(e) for e in row.envelope])
-                            feature_d['isotope_count'] = len(row.envelope)
-                            feature_d['deconvolution_score'] = row.score
-                            # record the feature region where we found this feature
-                            feature_d['feature_region_3d_extent'] = feature_region_3d_extent_d
-                            # record the voxel from where we derived the initial isotope
-                            feature_d['voxel_metadata_d'] = voxel_metadata_d
-                            # add it to the list
-                            feature_l.append(feature_d)
-                    features_df = pd.DataFrame(feature_l)
+                    # add the voxels included in the feature's 3D region to the list of voxels already processed
+                    voxels_processed.update(set(feature_region_3d_df.bin_key.unique()))
                 else:
-                    deconvolution_features_df = pd.DataFrame()
-                    features_df = pd.DataFrame()
-
-                # add the voxels included in the feature's 3D region to the list of voxels already processed
-                voxels_processed.update(set(feature_region_3d_df.bin_key.unique()))
+                    # add the voxel to the list of voxels already processed
+                    voxels_processed.update(set([row.bin_key]))
+                    break
 
     return features_df
 
