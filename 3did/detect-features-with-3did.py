@@ -307,6 +307,7 @@ def find_features(segment_mz_lower, segment_mz_upper):
 
                 # find the mobility extent of the isotope in this frame
                 isotope_frame_df = raw_df[(raw_df.mz >= iso_mz_lower) & (raw_df.mz <= iso_mz_upper) & (raw_df.scan >= frame_region_scan_lower) & (raw_df.scan <= frame_region_scan_upper) & (raw_df.frame_id == voxel_rt_highpoint_frame_id)]
+                print('{} points in the isotope region for frame {}'.format(len(isotope_frame_df), voxel_rt_highpoint_frame_id))
                 if len(isotope_frame_df) > 0:
                     # collapsing the monoisotopic's summed points onto the mobility dimension
                     scan_df = isotope_frame_df.groupby(['scan'], as_index=False).intensity.sum()
