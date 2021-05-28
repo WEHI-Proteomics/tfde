@@ -567,7 +567,7 @@ create_indexes(db_file_name=CONVERTED_DATABASE_NAME)
 
 # output features
 FEATURES_DIR = "{}/features-3did".format(EXPERIMENT_DIR)
-FEATURES_FILE = '{}/exp-{}-run-{}-features.pkl'.format(FEATURES_DIR, args.experiment_name, args.run_name)
+FEATURES_FILE = '{}/exp-{}-run-{}-features-3did-dedup.pkl'.format(FEATURES_DIR, args.experiment_name, args.run_name)
 # set up the output directory
 if not os.path.exists(FEATURES_DIR):
     os.makedirs(FEATURES_DIR)
