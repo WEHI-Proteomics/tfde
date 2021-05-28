@@ -293,15 +293,18 @@ def find_features(segment_mz_lower, segment_mz_upper):
                 points_a = voxel_frame_df[['mz','intensity']].to_numpy()
                 voxel_mz_centroid = intensity_weighted_centroid(points_a[:,1], points_a[:,0])
 
-                # isolate the isotope's points in the m/z dimension
+                # isolate the isotope's points in the m/z dimension; note the isotope may be offset so some of the points may be outside the voxel
                 iso_mz_delta = calculate_peak_delta(voxel_mz_centroid)
                 iso_mz_lower = voxel_mz_centroid - iso_mz_delta
                 iso_mz_upper = voxel_mz_centroid + iso_mz_delta
-                isotope_frame_df = voxel_frame_df[(voxel_frame_df.mz >= iso_mz_lower) & (voxel_frame_df.mz <= iso_mz_upper)]
+                isotope_frame_df = raw_df[(raw_df.mz >= iso_mz_lower) & (raw_df.mz <= iso_mz_upper) & (raw_df.scan >= voxel_scan_lower) & (raw_df.scan <= voxel_scan_upper) & (raw_df.frame_id == voxel_rt_highpoint_frame_id)]
 
-                # find the voxel's highpoint for this frame
+                # find the voxel's highpoint for this frame in the mobility dimension
                 voxel_scan_df = isotope_frame_df.groupby(['scan'], as_index=False).intensity.sum()
                 voxel_scan_highpoint = voxel_scan_df.loc[voxel_scan_df.intensity.idxmax()].scan
+
+                # record information about the voxel and the isotope we derived from it
+                voxel_metadata_d = {'mz_lower':voxel_mz_lower, 'mz_upper':voxel_mz_upper, 'scan_lower':voxel_scan_lower, 'scan_upper':voxel_scan_upper, 'rt_lower':voxel_rt_lower, 'rt_upper':voxel_rt_upper, 'mz_centroid':voxel_mz_centroid, 'iso_mz_lower':iso_mz_lower, 'iso_mz_upper':iso_mz_upper, 'voxel_scan_highpoint':voxel_scan_highpoint, 'voxel_rt_highpoint_rt':voxel_rt_highpoint_rt, 'voxel_rt_highpoint_frame_id':voxel_rt_highpoint_frame_id}
 
                 # define the peak search area in the mobility dimension
                 frame_region_scan_lower = voxel_scan_highpoint - ANCHOR_POINT_SCAN_LOWER_OFFSET
@@ -460,6 +463,8 @@ def find_features(segment_mz_lower, segment_mz_upper):
                             feature_d['deconvolution_score'] = row.score
                             # record the feature region where we found this feature
                             feature_d['feature_region_3d_extent'] = feature_region_3d_extent_d
+                            # record the voxel from where we derived the initial isotope
+                            feature_d['voxel_metadata_d'] = voxel_metadata_d
                             # add it to the list
                             feature_l.append(feature_d)
                     features_df = pd.DataFrame(feature_l)
