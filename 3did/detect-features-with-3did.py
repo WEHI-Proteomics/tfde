@@ -258,9 +258,10 @@ def find_features(segment_mz_lower, segment_mz_upper):
 
         # sum the intensities in each bin
         summary_df = raw_df.groupby(['bin_key'], as_index=False, sort=False).intensity.agg(['sum','count']).reset_index()
-        summary_df.dropna(subset=['sum'], inplace=True)
-        summary_df.sort_values(by=['sum'], ascending=False, inplace=True)
-        summary_df = summary_df[(summary_df.count >= 10)]  # trim the voxels that don't have enough points to bother with
+        summary_df.rename(columns={'sum':'intensity', 'count':'point_count'}, inplace=True)
+        summary_df.dropna(subset=['intensity'], inplace=True)
+        summary_df.sort_values(by=['intensity'], ascending=False, inplace=True)
+        summary_df = summary_df[(summary_df.point_count >= 10)]  # trim the voxels that don't have enough points to bother with
 
         # keep track of the keys of voxels that have been processed
         voxels_processed = set()
