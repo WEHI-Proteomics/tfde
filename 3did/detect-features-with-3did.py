@@ -563,12 +563,12 @@ TARGET_NUMBER_OF_FEATURES_FOR_CUBOID = cfg.getint('ms1', 'TARGET_NUMBER_OF_FEATU
 print('setting up indexes on {}'.format(CONVERTED_DATABASE_NAME))
 create_indexes(db_file_name=CONVERTED_DATABASE_NAME)
 
-# set up the precursor cuboids
-CUBOIDS_DIR = '{}/precursor-cuboids-3did'.format(EXPERIMENT_DIR)
-if not os.path.exists(CUBOIDS_DIR):
-    os.makedirs(CUBOIDS_DIR)
-
-CUBOIDS_FILE = '{}/exp-{}-run-{}-precursor-cuboids-3did.pkl'.format(CUBOIDS_DIR, args.experiment_name, args.run_name)
+# output features
+FEATURES_DIR = "{}/features-3did".format(EXPERIMENT_DIR)
+FEATURES_FILE = '{}/exp-{}-run-{}-features.pkl'.format(FEATURES_DIR, args.experiment_name, args.run_name)
+# set up the output directory
+if not os.path.exists(FEATURES_DIR):
+    os.makedirs(FEATURES_DIR)
 
 # set up Ray
 print("setting up Ray")
@@ -593,12 +593,12 @@ features_df['feature_id'] = features_df.index
 
 # ... and save them in a file
 print()
-print('saving {} features to {}'.format(len(coords_df), CUBOIDS_FILE))
+print('saving {} features to {}'.format(len(features_df), FEATURES_FILE))
 info.append(('total_running_time',round(time.time()-start_run,1)))
 info.append(('processor',parser.prog))
 info.append(('processed', time.ctime()))
 content_d = {'features_df':features_df, 'metadata':info}
-with open(CUBOIDS_FILE, 'wb') as handle:
+with open(FEATURES_FILE, 'wb') as handle:
     pickle.dump(content_d, handle)
 
 stop_run = time.time()
