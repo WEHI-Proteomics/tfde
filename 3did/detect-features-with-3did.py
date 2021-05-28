@@ -304,12 +304,13 @@ def find_features(segment_mz_lower, segment_mz_upper):
                 voxel_df = raw_df[(raw_df.mz >= voxel_mz_lower) & (raw_df.mz <= voxel_mz_upper) & (raw_df.scan >= voxel_scan_lower) & (raw_df.scan <= voxel_scan_upper) & (raw_df.retention_time_secs >= voxel_rt_lower) & (raw_df.retention_time_secs <= voxel_rt_upper)]
 
                 # find the frame ID of the voxel's midpoint, because we want to segment isotopes in 2D initially
-                voxel_rt_midpoint_frame_id = find_closest_ms1_frame_to_rt(voxel_rt_midpoint, frame_properties_df)
+                (voxel_rt_midpoint_frame_id, _) = find_closest_ms1_frame_to_rt(voxel_rt_midpoint, frame_properties_df)
 
                 # find the voxel's mz intensity-weighted centroid
                 voxel_frame_df = voxel_df[(voxel_df.frame_id == voxel_rt_midpoint_frame_id)].copy()
                 points_a = voxel_frame_df[['mz','intensity']].to_numpy()
                 voxel_mz_centroid = intensity_weighted_centroid(points_a[:,1], points_a[:,0])
+                print('{} points in the voxel for this frame'.format(len(voxel_frame_df)))
 
                 # isolate the isotope's points in the m/z dimension; note the isotope may be offset so some of the points may be outside the voxel
                 iso_mz_delta = calculate_peak_delta(voxel_mz_centroid)
