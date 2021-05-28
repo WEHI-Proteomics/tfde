@@ -445,6 +445,15 @@ def find_features(segment_mz_lower, segment_mz_upper):
                             mono_mz_upper = envelope_mono_mz + mz_delta
                             feature_d['mono_mz_lower'] = mono_mz_lower
                             feature_d['mono_mz_upper'] = mono_mz_upper
+
+                            feature_d['scan_apex'] = scan_apex
+                            feature_d['scan_lower'] = iso_scan_lower
+                            feature_d['scan_upper'] = iso_scan_upper
+
+                            feature_d['rt_apex'] = rt_apex
+                            feature_d['rt_lower'] = iso_rt_lower
+                            feature_d['rt_upper'] = iso_rt_upper
+
                             isotope_characteristics_d = determine_isotope_characteristics(envelope=row.envelope, rt_apex=rt_apex, monoisotopic_mass=row.neutral_mass, feature_region_3d_df=feature_region_3d_df)
                             if isotope_characteristics_d is not None:
                                 # add the characteristics to the feature dictionary
