@@ -85,23 +85,6 @@ def intensity_descent(peaks_a, peak_delta=None):
             peaks_a = np.delete(peaks_a, peak_indexes, axis=0)
     return np.array(peaks_l)
 
-# find the closest lower ms1 frame_id, and the closest upper ms1 frame_id
-def find_closest_ms1_frame_to_rt(retention_time_secs, frames_properties_df):
-    # find the frame ids within this range of RT
-    df = frames_properties_df[(frames_properties_df.Time > retention_time_secs) & (frames_properties_df.MsMsType == FRAME_TYPE_MS1)]
-    if len(df) > 0:
-        closest_ms1_frame_above_rt = df.Id.min()
-    else:
-        # couldn't find an ms1 frame above this RT, so just use the last one
-        closest_ms1_frame_above_rt = frames_properties_df[(frames_properties_df.MsMsType == FRAME_TYPE_MS1)].Id.max()
-    df = frames_properties_df[(frames_properties_df.Time < retention_time_secs) & (frames_properties_df.MsMsType == FRAME_TYPE_MS1)]
-    if len(df) > 0:
-        closest_ms1_frame_below_rt = df.Id.max()
-    else:
-        # couldn't find an ms1 frame below this RT, so just use the first one
-        closest_ms1_frame_below_rt = frames_properties_df[(frames_properties_df.MsMsType == FRAME_TYPE_MS1)].Id.min()
-    return (closest_ms1_frame_below_rt, closest_ms1_frame_above_rt)
-
 # Find the ratio of H(peak_number)/H(peak_number-1) for peak_number=1..6
 # peak_number = 0 refers to the monoisotopic peak
 # number_of_sulphur = number of sulphur atoms in the molecule
@@ -255,7 +238,6 @@ def find_features(segment_mz_lower, segment_mz_upper):
     # load the raw points for this m/z segment
     db_conn = sqlite3.connect(CONVERTED_DATABASE_NAME)
     raw_df = pd.read_sql_query("select frame_id,mz,scan,intensity,retention_time_secs from frames where frame_type == {} and retention_time_secs >= {} and retention_time_secs <= {} and scan >= {} and mz >= {} and mz <= {}".format(FRAME_TYPE_MS1, args.rt_lower, args.rt_upper, scan_limit, segment_mz_lower, segment_mz_upper), db_conn)
-    frame_properties_df = pd.read_sql_query("select Id,Time,MsMsType from frame_properties order by Id ASC;", db_conn)
     db_conn.close()
 
     if len(raw_df) > 0:
@@ -279,7 +261,7 @@ def find_features(segment_mz_lower, segment_mz_upper):
         summary_df.rename(columns={'sum':'intensity', 'count':'point_count'}, inplace=True)
         summary_df.dropna(subset=['intensity'], inplace=True)
         summary_df.sort_values(by=['intensity'], ascending=False, inplace=True)
-        summary_df = summary_df[(summary_df.point_count >= 10)]  # trim the voxels that don't have enough points to bother with
+        summary_df = summary_df[(summary_df.point_count >= RT_BIN_SIZE*10)]  # trim the voxels that don't have enough points to bother with
 
         # keep track of the keys of voxels that have been processed
         voxels_processed = set()
@@ -303,11 +285,12 @@ def find_features(segment_mz_lower, segment_mz_upper):
                 voxel_rt_midpoint = rt_bin.mid
                 voxel_df = raw_df[(raw_df.mz >= voxel_mz_lower) & (raw_df.mz <= voxel_mz_upper) & (raw_df.scan >= voxel_scan_lower) & (raw_df.scan <= voxel_scan_upper) & (raw_df.retention_time_secs >= voxel_rt_lower) & (raw_df.retention_time_secs <= voxel_rt_upper)]
 
-                # find the frame ID of the voxel's midpoint, because we want to segment isotopes in 2D initially
-                (voxel_rt_midpoint_frame_id, _) = find_closest_ms1_frame_to_rt(voxel_rt_midpoint, frame_properties_df)
+                # find the most intense frame in the voxel
+                frame_summary_df = voxel_df.groupby(['frame_id'], as_index=False, sort=False).intensity.agg(['sum','count']).reset_index()
+                voxel_rt_highpoint_frame_id = int(frame_summary_df.loc[(frame_summary_df['sum'].idxmax())].frame_id)
 
                 # find the voxel's mz intensity-weighted centroid
-                voxel_frame_df = voxel_df[(voxel_df.frame_id == voxel_rt_midpoint_frame_id)].copy()
+                voxel_frame_df = voxel_df[(voxel_df.frame_id == voxel_rt_highpoint_frame_id)].copy()
                 points_a = voxel_frame_df[['mz','intensity']].to_numpy()
                 voxel_mz_centroid = intensity_weighted_centroid(points_a[:,1], points_a[:,0])
                 print('{} points in the voxel for this frame'.format(len(voxel_frame_df)))
@@ -322,10 +305,10 @@ def find_features(segment_mz_lower, segment_mz_upper):
                 frame_region_scan_upper = voxel_scan_midpoint + ANCHOR_POINT_SCAN_UPPER_OFFSET
 
                 # record information about the voxel and the isotope we derived from it
-                voxel_metadata_d = {'mz_lower':voxel_mz_lower, 'mz_upper':voxel_mz_upper, 'scan_lower':voxel_scan_lower, 'scan_upper':voxel_scan_upper, 'rt_lower':voxel_rt_lower, 'rt_upper':voxel_rt_upper, 'mz_centroid':voxel_mz_centroid, 'iso_mz_lower':iso_mz_lower, 'iso_mz_upper':iso_mz_upper, 'voxel_scan_highpoint':voxel_scan_midpoint, 'voxel_rt_highpoint_rt':voxel_rt_midpoint, 'voxel_rt_highpoint_frame_id':voxel_rt_midpoint_frame_id}
+                voxel_metadata_d = {'mz_lower':voxel_mz_lower, 'mz_upper':voxel_mz_upper, 'scan_lower':voxel_scan_lower, 'scan_upper':voxel_scan_upper, 'rt_lower':voxel_rt_lower, 'rt_upper':voxel_rt_upper, 'mz_centroid':voxel_mz_centroid, 'iso_mz_lower':iso_mz_lower, 'iso_mz_upper':iso_mz_upper, 'voxel_scan_midpoint':voxel_scan_midpoint, 'voxel_rt_midpoint':voxel_rt_midpoint, 'voxel_rt_highpoint_frame_id':voxel_rt_highpoint_frame_id}
 
                 # find the mobility extent of the isotope in this frame
-                isotope_frame_df = raw_df[(raw_df.mz >= iso_mz_lower) & (raw_df.mz <= iso_mz_upper) & (raw_df.scan >= frame_region_scan_lower) & (raw_df.scan <= frame_region_scan_upper) & (raw_df.frame_id == voxel_rt_midpoint_frame_id)]
+                isotope_frame_df = raw_df[(raw_df.mz >= iso_mz_lower) & (raw_df.mz <= iso_mz_upper) & (raw_df.scan >= frame_region_scan_lower) & (raw_df.scan <= frame_region_scan_upper) & (raw_df.frame_id == voxel_rt_highpoint_frame_id)]
 
                 # collapsing the monoisotopic's summed points onto the mobility dimension
                 scan_df = isotope_frame_df.groupby(['scan'], as_index=False).intensity.sum()
