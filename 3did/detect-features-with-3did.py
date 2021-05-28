@@ -231,6 +231,7 @@ def calculate_monoisotopic_mass_from_mz(monoisotopic_mz, charge):
 # process a segment of this run's data, and return a list of features
 @ray.remote
 def find_features(segment_mz_lower, segment_mz_upper):
+    features_l = []
 
     # find out where the charge-1 cloud ends and only include points below it (i.e. include points with a higher scan)
     scan_limit = scan_coords_for_single_charge_region(mz_lower=segment_mz_lower, mz_upper=segment_mz_upper)['scan_for_mz_upper']
@@ -307,7 +308,6 @@ def find_features(segment_mz_lower, segment_mz_upper):
 
                 # find the mobility extent of the isotope in this frame
                 isotope_frame_df = raw_df[(raw_df.mz >= iso_mz_lower) & (raw_df.mz <= iso_mz_upper) & (raw_df.scan >= frame_region_scan_lower) & (raw_df.scan <= frame_region_scan_upper) & (raw_df.frame_id == voxel_rt_highpoint_frame_id)]
-                print('{} points in the isotope region for frame {}'.format(len(isotope_frame_df), voxel_rt_highpoint_frame_id))
                 if len(isotope_frame_df) > 0:
                     # collapsing the monoisotopic's summed points onto the mobility dimension
                     scan_df = isotope_frame_df.groupby(['scan'], as_index=False).intensity.sum()
@@ -437,7 +437,6 @@ def find_features(segment_mz_lower, segment_mz_upper):
                         deconvolution_features_df = df.head(n=TARGET_NUMBER_OF_FEATURES_FOR_CUBOID)
 
                         # determine the feature attributes
-                        feature_l = []
                         for idx,row in enumerate(deconvolution_features_df.itertuples()):
                             feature_d = {}
                             envelope_mono_mz = row.envelope[0][0]
@@ -470,20 +469,17 @@ def find_features(segment_mz_lower, segment_mz_upper):
                                 feature_d['feature_region_3d_extent'] = feature_region_3d_extent_d
                                 # record the voxel from where we derived the initial isotope
                                 feature_d['voxel_metadata_d'] = voxel_metadata_d
+                                feature_d['scan_df'] = scan_df.to_dict('records')
+                                feature_d['rt_df'] = rt_df.to_dict('records')
                                 # add it to the list
-                                feature_l.append(feature_d)
-                        features_df = pd.DataFrame(feature_l)
-                    else:
-                        deconvolution_features_df = pd.DataFrame()
-                        features_df = pd.DataFrame()
+                                features_l.append(feature_d)
 
                     # add the voxels included in the feature's 3D region to the list of voxels already processed
                     voxels_processed.update(set(feature_region_3d_df.bin_key.unique()))
                 else:
-                    # add the voxel to the list of voxels already processed
-                    voxels_processed.update(set([row.bin_key]))
                     break
 
+    features_df = pd.DataFrame(features_l)
     return features_df
 
 
