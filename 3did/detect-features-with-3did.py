@@ -298,6 +298,7 @@ def find_features(segment_mz_lower, segment_mz_upper):
                 iso_mz_lower = voxel_mz_centroid - iso_mz_delta
                 iso_mz_upper = voxel_mz_centroid + iso_mz_delta
                 isotope_frame_df = raw_df[(raw_df.mz >= iso_mz_lower) & (raw_df.mz <= iso_mz_upper) & (raw_df.scan >= voxel_scan_lower) & (raw_df.scan <= voxel_scan_upper) & (raw_df.frame_id == voxel_rt_highpoint_frame_id)]
+                print(round(iso_mz_lower,4), round(iso_mz_upper,4), voxel_scan_lower, voxel_scan_upper, voxel_rt_highpoint_frame_id, len(isotope_frame_df))
 
                 # find the voxel's highpoint for this frame in the mobility dimension
                 voxel_scan_df = isotope_frame_df.groupby(['scan'], as_index=False).intensity.sum()
