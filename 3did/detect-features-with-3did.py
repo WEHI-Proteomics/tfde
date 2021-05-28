@@ -593,10 +593,10 @@ NUMBER_OF_MZ_SEGMENTS = (mz_range // args.mz_width_per_segment) + (mz_range % ar
 # find all the features
 print('finding features')
 features_l = ray.get([find_features.remote(segment_mz_lower=args.mz_lower+(i*args.mz_width_per_segment), segment_mz_upper=args.mz_lower+(i*args.mz_width_per_segment)+args.mz_width_per_segment) for i in range(NUMBER_OF_MZ_SEGMENTS)])
-features_l = [item for sublist in features_l for item in sublist]  # cuboids_l is a list of lists, so we need to flatten it
+# join the list of dataframes into a single dataframe
+features_df = pd.concat(features_l, axis=0, sort=False, ignore_index=True)
 
 # assign each feature a unique identifier
-features_df = pd.DataFrame(features_l)
 features_df['feature_id'] = features_df.index
 
 # ... and save them in a file
