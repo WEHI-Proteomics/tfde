@@ -257,17 +257,17 @@ def find_features(segment_mz_lower, segment_mz_upper):
         raw_df['bin_key'] = raw_df.apply(lambda row: (row.mz_bin, row.scan_bin, row.rt_bin), axis=1)
 
         # sum the intensities in each bin
-        summary_df = raw_df.groupby(['bin_key'], as_index=False, sort=False).intensity.sum()
-        summary_df.dropna(subset = ['intensity'], inplace=True)
-        summary_df.sort_values(by=['intensity'], ascending=False, inplace=True)
+        summary_df = raw_df.groupby(['bin_key'], as_index=False, sort=False).intensity.agg(['sum','count']).reset_index()
+        summary_df.dropna(subset=['sum'], inplace=True)
+        summary_df.sort_values(by=['sum'], ascending=False, inplace=True)
 
         # keep track of the keys of voxels that have been processed
         voxels_processed = set()
 
-        # process each voxel by decreasing intensity
-        for row in summary_df.itertuples():
+        # process each voxel by decreasing intensity while there are more than 10 points in the voxel
+        while (row.count >= 10):
             # if this voxel hasn't already been processed...
-            if row.bin_key not in voxels_processed:
+            if (row.bin_key not in voxels_processed):
                 # retrieve the bins from the voxel key
                 (mz_bin, scan_bin, rt_bin) = row.bin_key
 
@@ -286,7 +286,7 @@ def find_features(segment_mz_lower, segment_mz_upper):
                 # find the frame ID of the voxel's highpoint, because we want to segment isotopes in 2D initially
                 voxel_rt_df = voxel_df.groupby(['frame_id','retention_time_secs'], as_index=False).intensity.sum()
                 voxel_rt_highpoint_rt = voxel_rt_df.loc[voxel_rt_df.intensity.idxmax()].retention_time_secs
-                voxel_rt_highpoint_frame_id = voxel_rt_df.loc[voxel_rt_df.intensity.idxmax()].frame_id
+                voxel_rt_highpoint_frame_id = int(voxel_rt_df.loc[voxel_rt_df.intensity.idxmax()].frame_id)
 
                 # find the voxel's mz intensity-weighted centroid
                 voxel_frame_df = voxel_df[(voxel_df.frame_id == voxel_rt_highpoint_frame_id)].copy()
