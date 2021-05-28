@@ -434,7 +434,7 @@ def find_features(segment_mz_lower, segment_mz_upper):
 
                     if len(df) > 0:
                         # take the top N scoring features
-                        deconvolution_features_df = df.head(n=TARGET_NUMBER_OF_FEATURES_FOR_CUBOID)
+                        deconvolution_features_df = df.head(n=1)
 
                         # determine the feature attributes
                         for idx,row in enumerate(deconvolution_features_df.itertuples()):
