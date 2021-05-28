@@ -85,6 +85,23 @@ def intensity_descent(peaks_a, peak_delta=None):
             peaks_a = np.delete(peaks_a, peak_indexes, axis=0)
     return np.array(peaks_l)
 
+# find the closest lower ms1 frame_id, and the closest upper ms1 frame_id
+def find_closest_ms1_frame_to_rt(retention_time_secs, frames_properties_df):
+    # find the frame ids within this range of RT
+    df = frames_properties_df[(frames_properties_df.Time > retention_time_secs) & (frames_properties_df.MsMsType == FRAME_TYPE_MS1)]
+    if len(df) > 0:
+        closest_ms1_frame_above_rt = df.Id.min()
+    else:
+        # couldn't find an ms1 frame above this RT, so just use the last one
+        closest_ms1_frame_above_rt = frames_properties_df[(frames_properties_df.MsMsType == FRAME_TYPE_MS1)].Id.max()
+    df = frames_properties_df[(frames_properties_df.Time < retention_time_secs) & (frames_properties_df.MsMsType == FRAME_TYPE_MS1)]
+    if len(df) > 0:
+        closest_ms1_frame_below_rt = df.Id.max()
+    else:
+        # couldn't find an ms1 frame below this RT, so just use the first one
+        closest_ms1_frame_below_rt = frames_properties_df[(frames_properties_df.MsMsType == FRAME_TYPE_MS1)].Id.min()
+    return (closest_ms1_frame_below_rt, closest_ms1_frame_above_rt)
+
 # Find the ratio of H(peak_number)/H(peak_number-1) for peak_number=1..6
 # peak_number = 0 refers to the monoisotopic peak
 # number_of_sulphur = number of sulphur atoms in the molecule
@@ -238,6 +255,7 @@ def find_features(segment_mz_lower, segment_mz_upper):
     # load the raw points for this m/z segment
     db_conn = sqlite3.connect(CONVERTED_DATABASE_NAME)
     raw_df = pd.read_sql_query("select frame_id,mz,scan,intensity,retention_time_secs from frames where frame_type == {} and retention_time_secs >= {} and retention_time_secs <= {} and scan >= {} and mz >= {} and mz <= {}".format(FRAME_TYPE_MS1, args.rt_lower, args.rt_upper, scan_limit, segment_mz_lower, segment_mz_upper), db_conn)
+    frame_properties_df = pd.read_sql_query("select Id,Time,MsMsType from frame_properties order by Id ASC;", db_conn)
     db_conn.close()
 
     if len(raw_df) > 0:
@@ -285,13 +303,11 @@ def find_features(segment_mz_lower, segment_mz_upper):
                 voxel_rt_midpoint = rt_bin.mid
                 voxel_df = raw_df[(raw_df.mz >= voxel_mz_lower) & (raw_df.mz <= voxel_mz_upper) & (raw_df.scan >= voxel_scan_lower) & (raw_df.scan <= voxel_scan_upper) & (raw_df.retention_time_secs >= voxel_rt_lower) & (raw_df.retention_time_secs <= voxel_rt_upper)]
 
-                # find the frame ID of the voxel's highpoint, because we want to segment isotopes in 2D initially
-                voxel_rt_df = voxel_df.groupby(['frame_id','retention_time_secs'], as_index=False).intensity.sum()
-                voxel_rt_highpoint_rt = voxel_rt_df.loc[voxel_rt_df.intensity.idxmax()].retention_time_secs
-                voxel_rt_highpoint_frame_id = int(voxel_rt_df.loc[voxel_rt_df.intensity.idxmax()].frame_id)
+                # find the frame ID of the voxel's midpoint, because we want to segment isotopes in 2D initially
+                voxel_rt_midpoint_frame_id = find_closest_ms1_frame_to_rt(voxel_rt_midpoint, frame_properties_df)
 
                 # find the voxel's mz intensity-weighted centroid
-                voxel_frame_df = voxel_df[(voxel_df.frame_id == voxel_rt_highpoint_frame_id)].copy()
+                voxel_frame_df = voxel_df[(voxel_df.frame_id == voxel_rt_midpoint_frame_id)].copy()
                 points_a = voxel_frame_df[['mz','intensity']].to_numpy()
                 voxel_mz_centroid = intensity_weighted_centroid(points_a[:,1], points_a[:,0])
 
@@ -299,21 +315,16 @@ def find_features(segment_mz_lower, segment_mz_upper):
                 iso_mz_delta = calculate_peak_delta(voxel_mz_centroid)
                 iso_mz_lower = voxel_mz_centroid - iso_mz_delta
                 iso_mz_upper = voxel_mz_centroid + iso_mz_delta
-                isotope_frame_df = raw_df[(raw_df.mz >= iso_mz_lower) & (raw_df.mz <= iso_mz_upper) & (raw_df.scan >= voxel_scan_lower) & (raw_df.scan <= voxel_scan_upper) & (raw_df.frame_id == voxel_rt_highpoint_frame_id)]
-
-                # find the voxel's highpoint for this frame in the mobility dimension
-                voxel_scan_df = isotope_frame_df.groupby(['scan'], as_index=False).intensity.sum()
-                voxel_scan_highpoint = voxel_scan_df.loc[voxel_scan_df.intensity.idxmax()].scan
-
-                # record information about the voxel and the isotope we derived from it
-                voxel_metadata_d = {'mz_lower':voxel_mz_lower, 'mz_upper':voxel_mz_upper, 'scan_lower':voxel_scan_lower, 'scan_upper':voxel_scan_upper, 'rt_lower':voxel_rt_lower, 'rt_upper':voxel_rt_upper, 'mz_centroid':voxel_mz_centroid, 'iso_mz_lower':iso_mz_lower, 'iso_mz_upper':iso_mz_upper, 'voxel_scan_highpoint':voxel_scan_highpoint, 'voxel_rt_highpoint_rt':voxel_rt_highpoint_rt, 'voxel_rt_highpoint_frame_id':voxel_rt_highpoint_frame_id}
 
                 # define the peak search area in the mobility dimension
-                frame_region_scan_lower = voxel_scan_highpoint - ANCHOR_POINT_SCAN_LOWER_OFFSET
-                frame_region_scan_upper = voxel_scan_highpoint + ANCHOR_POINT_SCAN_UPPER_OFFSET
+                frame_region_scan_lower = voxel_scan_midpoint - ANCHOR_POINT_SCAN_LOWER_OFFSET
+                frame_region_scan_upper = voxel_scan_midpoint + ANCHOR_POINT_SCAN_UPPER_OFFSET
+
+                # record information about the voxel and the isotope we derived from it
+                voxel_metadata_d = {'mz_lower':voxel_mz_lower, 'mz_upper':voxel_mz_upper, 'scan_lower':voxel_scan_lower, 'scan_upper':voxel_scan_upper, 'rt_lower':voxel_rt_lower, 'rt_upper':voxel_rt_upper, 'mz_centroid':voxel_mz_centroid, 'iso_mz_lower':iso_mz_lower, 'iso_mz_upper':iso_mz_upper, 'voxel_scan_highpoint':voxel_scan_midpoint, 'voxel_rt_highpoint_rt':voxel_rt_midpoint, 'voxel_rt_highpoint_frame_id':voxel_rt_midpoint_frame_id}
 
                 # find the mobility extent of the isotope in this frame
-                isotope_frame_df = raw_df[(raw_df.mz >= iso_mz_lower) & (raw_df.mz <= iso_mz_upper) & (raw_df.scan >= frame_region_scan_lower) & (raw_df.scan <= frame_region_scan_upper) & (raw_df.frame_id == voxel_rt_highpoint_frame_id)]
+                isotope_frame_df = raw_df[(raw_df.mz >= iso_mz_lower) & (raw_df.mz <= iso_mz_upper) & (raw_df.scan >= frame_region_scan_lower) & (raw_df.scan <= frame_region_scan_upper) & (raw_df.frame_id == voxel_rt_midpoint_frame_id)]
 
                 # collapsing the monoisotopic's summed points onto the mobility dimension
                 scan_df = isotope_frame_df.groupby(['scan'], as_index=False).intensity.sum()
@@ -340,7 +351,7 @@ def find_features(segment_mz_lower, segment_mz_upper):
                 peaks_df = scan_df[scan_df.scan.isin(peak_x_l)].copy()
 
                 # find the closest peak to the voxel highpoint
-                peaks_df['delta'] = abs(peaks_df.scan - voxel_scan_highpoint)
+                peaks_df['delta'] = abs(peaks_df.scan - voxel_scan_midpoint)
                 peaks_df.sort_values(by=['delta'], ascending=True, inplace=True)
                 scan_apex = peaks_df.iloc[0].scan
 
@@ -361,8 +372,8 @@ def find_features(segment_mz_lower, segment_mz_upper):
                 iso_scan_upper = upper_x
 
                 # gather the isotope points constrained by m/z and CCS, and the peak search extent in RT
-                region_rt_lower = voxel_rt_highpoint_rt - RT_BASE_PEAK_WIDTH
-                region_rt_upper = voxel_rt_highpoint_rt + RT_BASE_PEAK_WIDTH
+                region_rt_lower = voxel_rt_midpoint - RT_BASE_PEAK_WIDTH
+                region_rt_upper = voxel_rt_midpoint + RT_BASE_PEAK_WIDTH
                 isotope_points_df = raw_df[(raw_df.mz >= iso_mz_lower) & (raw_df.mz <= iso_mz_upper) & (raw_df.scan >= iso_scan_lower) & (raw_df.scan <= iso_scan_upper) & (raw_df.retention_time_secs >= region_rt_lower) & (raw_df.retention_time_secs <= region_rt_upper)]
 
                 # in the RT dimension, find the apex
@@ -390,7 +401,7 @@ def find_features(segment_mz_lower, segment_mz_upper):
                 peaks_df = rt_df[rt_df.retention_time_secs.isin(peak_x_l)].copy()
 
                 # find the closest peak to the voxel highpoint
-                peaks_df['delta'] = abs(peaks_df.retention_time_secs - voxel_rt_highpoint_rt)
+                peaks_df['delta'] = abs(peaks_df.retention_time_secs - voxel_rt_midpoint)
                 peaks_df.sort_values(by=['delta'], ascending=True, inplace=True)
                 rt_apex = peaks_df.iloc[0].retention_time_secs
 
