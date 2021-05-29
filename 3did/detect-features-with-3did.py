@@ -238,9 +238,14 @@ def voxels_to_remove(points_df, voxels_df):
     df = df[(df.proportion >= 0.8)]  # add to the set of voxels to remove
     return set(df.bin_key)
 
+# generate a unique feature_id from the precursor id and the feature sequence number found for that precursor
+def generate_voxel_id(segment_id, voxel_sequence_number):
+    voxel_id = (segment_id * 1000) + voxel_sequence_number
+    return voxel_id
+
 # process a segment of this run's data, and return a list of features
 @ray.remote
-def find_features(segment_mz_lower, segment_mz_upper):
+def find_features(segment_mz_lower, segment_mz_upper, segment_id):
     features_l = []
 
     # find out where the charge-1 cloud ends and only include points below it (i.e. include points with a higher scan)
@@ -273,12 +278,13 @@ def find_features(segment_mz_lower, segment_mz_upper):
         summary_df.dropna(subset=['intensity'], inplace=True)
         summary_df = summary_df[(summary_df.intensity >= MINIMUM_VOXEL_INTENSITY)]
         summary_df.sort_values(by=['intensity'], ascending=False, inplace=True)
+        print('there are {} voxels for processing in segment {}'.format(len(summary_df), segment_id))
 
         # keep track of the keys of voxels that have been processed
         voxels_processed = set()
 
         # process each voxel by decreasing intensity
-        for row in summary_df.itertuples():
+        for voxel_idx,row in enumerate(summary_df.itertuples()):
             # if this voxel hasn't already been processed...
             if (row.bin_key not in voxels_processed):
                 # retrieve the bins from the voxel key
@@ -315,7 +321,9 @@ def find_features(segment_mz_lower, segment_mz_upper):
                 frame_region_scan_upper = voxel_scan_midpoint + ANCHOR_POINT_SCAN_UPPER_OFFSET
 
                 # record information about the voxel and the isotope we derived from it
-                voxel_metadata_d = {'mz_lower':voxel_mz_lower, 'mz_upper':voxel_mz_upper, 'scan_lower':voxel_scan_lower, 'scan_upper':voxel_scan_upper, 'rt_lower':voxel_rt_lower, 'rt_upper':voxel_rt_upper, 'mz_centroid':voxel_mz_centroid, 'iso_mz_lower':iso_mz_lower, 'iso_mz_upper':iso_mz_upper, 'voxel_scan_midpoint':voxel_scan_midpoint, 'voxel_rt_midpoint':voxel_rt_midpoint, 'voxel_rt_highpoint_frame_id':voxel_rt_highpoint_frame_id, 'frame_region_scan_lower':frame_region_scan_lower, 'frame_region_scan_upper':frame_region_scan_upper}
+                voxel_metadata_d = {'mz_lower':voxel_mz_lower, 'mz_upper':voxel_mz_upper, 'scan_lower':voxel_scan_lower, 'scan_upper':voxel_scan_upper, 'rt_lower':voxel_rt_lower, 'rt_upper':voxel_rt_upper, 'mz_centroid':voxel_mz_centroid, 
+                                    'iso_mz_lower':iso_mz_lower, 'iso_mz_upper':iso_mz_upper, 'voxel_scan_midpoint':voxel_scan_midpoint, 'voxel_rt_midpoint':voxel_rt_midpoint, 'voxel_rt_highpoint_frame_id':voxel_rt_highpoint_frame_id, 
+                                    'frame_region_scan_lower':frame_region_scan_lower, 'frame_region_scan_upper':frame_region_scan_upper, 'summed_intensity':row.intensity, 'point_count':row.point_count}
 
                 # find the mobility extent of the isotope in this frame
                 isotope_frame_df = raw_df[(raw_df.mz >= iso_mz_lower) & (raw_df.mz <= iso_mz_upper) & (raw_df.scan >= frame_region_scan_lower) & (raw_df.scan <= frame_region_scan_upper) & (raw_df.frame_id == voxel_rt_highpoint_frame_id)]
@@ -479,6 +487,7 @@ def find_features(segment_mz_lower, segment_mz_upper):
                                 # record the feature region where we found this feature
                                 feature_d['feature_region_3d_extent'] = feature_region_3d_extent_d
                                 # record the voxel from where we derived the initial isotope
+                                feature_d['voxel_id'] = generate_voxel_id(segment_id, voxel_idx+1)
                                 feature_d['voxel_metadata_d'] = voxel_metadata_d
                                 feature_d['scan_df'] = scan_df.to_dict('records')
                                 feature_d['rt_df'] = rt_df.to_dict('records')
@@ -493,7 +502,13 @@ def find_features(segment_mz_lower, segment_mz_upper):
 
                                 # add the voxels included in the feature's points to the list of voxels already processed
                                 voxels_processed.update(bin_key_set)
-
+                        print('.', end='', flush=True)
+                    else:
+                        print('f', end='', flush=True)
+                else:
+                    print('-', end='', flush=True)
+            else:
+                print('x', end='', flush=True)
     features_df = pd.DataFrame(features_l)
     return features_df
 
@@ -526,7 +541,7 @@ SCAN_BIN_SIZE = 10
 MZ_BIN_SIZE = 0.1
 
 MINIMUM_NUMBER_OF_POINTS_IN_BASE_PEAK = 10
-MINIMUM_VOXEL_INTENSITY = 500
+MINIMUM_VOXEL_INTENSITY = 5000
 
 #######################
 parser = argparse.ArgumentParser(description='Find all the features in a run with 3D intensity descent.')
@@ -609,7 +624,7 @@ NUMBER_OF_MZ_SEGMENTS = (mz_range // args.mz_width_per_segment) + (mz_range % ar
 
 # find all the features
 print('finding features')
-features_l = ray.get([find_features.remote(segment_mz_lower=args.mz_lower+(i*args.mz_width_per_segment), segment_mz_upper=args.mz_lower+(i*args.mz_width_per_segment)+args.mz_width_per_segment) for i in range(NUMBER_OF_MZ_SEGMENTS)])
+features_l = ray.get([find_features.remote(segment_mz_lower=args.mz_lower+(i*args.mz_width_per_segment), segment_mz_upper=args.mz_lower+(i*args.mz_width_per_segment)+args.mz_width_per_segment, segment_id=i+1) for i in range(NUMBER_OF_MZ_SEGMENTS)])
 
 # join the list of dataframes into a single dataframe
 features_df = pd.concat(features_l, axis=0, sort=False, ignore_index=True)
