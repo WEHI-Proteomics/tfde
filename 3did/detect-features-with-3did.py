@@ -477,7 +477,7 @@ def find_features(segment_mz_lower, segment_mz_upper, segment_id):
                             feature_d['rt_lower'] = iso_rt_lower
                             feature_d['rt_upper'] = iso_rt_upper
 
-                            isotope_characteristics_d = determine_isotope_characteristics(envelope=feature.envelope, rt_apex=rt_apex, monoisotopic_mass=row.neutral_mass, feature_region_3d_df=feature_region_3d_df)
+                            isotope_characteristics_d = determine_isotope_characteristics(envelope=feature.envelope, rt_apex=rt_apex, monoisotopic_mass=feature.neutral_mass, feature_region_3d_df=feature_region_3d_df)
                             if isotope_characteristics_d is not None:
                                 # add the characteristics to the feature dictionary
                                 feature_d = {**feature_d, **isotope_characteristics_d}
