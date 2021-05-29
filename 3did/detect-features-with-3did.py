@@ -228,6 +228,16 @@ def calculate_monoisotopic_mass_from_mz(monoisotopic_mz, charge):
     monoisotopic_mass = (monoisotopic_mz * charge) - (PROTON_MASS * charge)
     return monoisotopic_mass
 
+def voxels_to_remove(points_df, voxels_df):
+    # calculate the intensity contribution of the points to their voxel's intensity
+    df = points_df.groupby(['bin_key'], as_index=False, sort=False).intensity.agg(['sum','count']).reset_index()
+    df.rename(columns={'sum':'intensity', 'count':'point_count'}, inplace=True)
+    df = pd.merge(df, voxels_df, how='left', left_on=['bin_key'], right_on=['bin_key'], suffixes=['_feature','_voxel'])
+    df['proportion'] = df.intensity_feature / df.intensity_voxel
+    print(df)
+    df = df[(df.proportion > 0.5)]
+    return set(df.bin_key)
+
 # process a segment of this run's data, and return a list of features
 @ray.remote
 def find_features(segment_mz_lower, segment_mz_upper):
@@ -477,8 +487,11 @@ def find_features(segment_mz_lower, segment_mz_upper):
                                 # constrain the feature 3D region to the points included in the feature
                                 feature_points_df = feature_region_3d_df[(feature_region_3d_df.mz >= row.envelope[0][0]) & (feature_region_3d_df.mz <= row.envelope[-1][0]) & (feature_region_3d_df.scan >= feature_d['scan_lower']) & (feature_region_3d_df.scan <= feature_d['scan_upper']) & (feature_region_3d_df.retention_time_secs >= feature_d['rt_lower']) & (feature_region_3d_df.retention_time_secs <= feature_d['rt_upper'])]
 
+                                # add the points' voxel to the list of processed voxels if the proportion of their intensity is above a threshold
+                                bin_key_set = voxels_to_remove(points_df=feature_points_df, voxels_df=summary_df)
+
                                 # add the voxels included in the feature's points to the list of voxels already processed
-                                voxels_processed.update(set(feature_points_df.bin_key.unique()))
+                                voxels_processed.update(bin_key_set)
                 else:
                     break
 
