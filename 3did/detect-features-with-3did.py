@@ -146,7 +146,8 @@ def peak_ratio(monoisotopic_mass, peak_number, number_of_sulphur):
     return ratio
 
 # calculate the characteristics of the isotopes in the feature envelope
-def determine_isotope_characteristics(envelope, rt_apex, monoisotopic_mass, feature_region_3d_df):
+def determine_isotope_characteristics(envelope, rt_apex, monoisotopic_mass, feature_region_3d_df, summary_df):
+    voxels_processed = set()
     # calculate the isotope intensities from the constrained raw points
     isotopes_l = []
     for idx,isotope in enumerate(envelope):
@@ -159,6 +160,10 @@ def determine_isotope_characteristics(envelope, rt_apex, monoisotopic_mass, feat
         isotope_df = feature_region_3d_df[(feature_region_3d_df.mz >= iso_mz_lower) & (feature_region_3d_df.mz <= iso_mz_upper)]
         # calculate the isotope's intensity
         if len(isotope_df) > 0:
+            # record the voxels included by each isotope
+            voxel_ids_for_isotope = voxels_for_points(points_df=isotope_df, voxels_df=summary_df)
+            # add the voxels included in the feature's points to the list of voxels already processed
+            voxels_processed.update(set(voxel_ids_for_isotope))
             # find the intensity by summing the maximum point in the frame closest to the RT apex, and the frame maximums either side
             frame_maximums_l = []
             for frame_id,group_df in isotope_df.groupby('frame_id'):
@@ -221,6 +226,7 @@ def determine_isotope_characteristics(envelope, rt_apex, monoisotopic_mass, feat
     result_d['mono_mz'] = isotopes_df.iloc[0].mz
 
     result_d['isotopic_peaks'] = isotopes_df.to_dict('records')
+    result_d['voxels_processed'] = voxels_processed
     return result_d
 
 # calculate the monoisotopic mass    
@@ -228,14 +234,14 @@ def calculate_monoisotopic_mass_from_mz(monoisotopic_mz, charge):
     monoisotopic_mass = (monoisotopic_mz * charge) - (PROTON_MASS * charge)
     return monoisotopic_mass
 
-# determine the voxels to be removed
-def voxels_for_feature(points_df, voxels_df):
+# determine the voxels included by the raw points
+def voxels_for_points(points_df, voxels_df):
     # calculate the intensity contribution of the points to their voxel's intensity
     df = points_df.groupby(['bin_key'], as_index=False, sort=False).intensity.agg(['sum','count']).reset_index()
     df.rename(columns={'sum':'intensity', 'count':'point_count'}, inplace=True)
-    df = pd.merge(df, voxels_df, how='inner', left_on=['bin_key'], right_on=['bin_key'], suffixes=['_feature','_voxel'])
-    df['proportion'] = df.intensity_feature / df.intensity_voxel
-    # if the feature points comprise most of a voxel's intensity, we don't need to process that voxel later on
+    df = pd.merge(df, voxels_df, how='inner', left_on=['bin_key'], right_on=['bin_key'], suffixes=['_points','_voxel'])
+    df['proportion'] = df.intensity_points / df.intensity_voxel
+    # if the points comprise most of a voxel's intensity, we don't need to process that voxel later on
     df = df[(df.proportion >= 0.8)]
     return set(df.voxel_id.tolist())
 
@@ -477,7 +483,7 @@ def find_features(segment_mz_lower, segment_mz_upper, segment_id):
                             feature_d['rt_lower'] = iso_rt_lower
                             feature_d['rt_upper'] = iso_rt_upper
 
-                            isotope_characteristics_d = determine_isotope_characteristics(envelope=feature.envelope, rt_apex=rt_apex, monoisotopic_mass=feature.neutral_mass, feature_region_3d_df=feature_region_3d_df)
+                            isotope_characteristics_d = determine_isotope_characteristics(envelope=feature.envelope, rt_apex=rt_apex, monoisotopic_mass=feature.neutral_mass, feature_region_3d_df=feature_region_3d_df, summary_df=summary_df)
                             if isotope_characteristics_d is not None:
                                 # add the characteristics to the feature dictionary
                                 feature_d = {**feature_d, **isotope_characteristics_d}
@@ -498,14 +504,8 @@ def find_features(segment_mz_lower, segment_mz_upper, segment_id):
                                 # add it to the list
                                 features_l.append(feature_d)
 
-                                # constrain the feature 3D region to the points included in the feature
-                                feature_points_df = feature_region_3d_df[(feature_region_3d_df.mz >= feature.envelope[0][0]-0.1) & (feature_region_3d_df.mz <= feature.envelope[-1][0]+0.1) & (feature_region_3d_df.scan >= feature_d['scan_lower']) & (feature_region_3d_df.scan <= feature_d['scan_upper']) & (feature_region_3d_df.retention_time_secs >= feature_d['rt_lower']) & (feature_region_3d_df.retention_time_secs <= feature_d['rt_upper'])]
-
-                                # add the points' voxel to the list of processed voxels if the proportion of their intensity is above a threshold
-                                voxel_ids_for_feature = voxels_for_feature(points_df=feature_points_df, voxels_df=summary_df)
-
-                                # add the voxels included in the feature's points to the list of voxels already processed
-                                voxels_processed.update(set(voxel_ids_for_feature))
+                                # add the voxels included in the feature's isotopes to the list of voxels already processed
+                                voxels_processed.update(feature_d['voxels_processed'])
 
                         print('.', end='', flush=True)
                     else:
