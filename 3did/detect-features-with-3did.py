@@ -235,8 +235,8 @@ def voxels_to_remove(points_df, voxels_df):
     df.rename(columns={'sum':'intensity', 'count':'point_count'}, inplace=True)
     df = pd.merge(df, voxels_df, how='inner', left_on=['bin_key'], right_on=['bin_key'], suffixes=['_feature','_voxel'])
     df['proportion'] = df.intensity_feature / df.intensity_voxel
-    print(df.proportion.max(), df.proportion.min())
-    df = df[(df.proportion >= 0.8)]  # add to the set of voxels to remove
+    # if the feature points comprise most of a voxel's intensity, we don't need to process that voxel later on
+    df = df[(df.proportion >= 0.8)]
     return set(df.bin_key)
 
 # generate a unique feature_id from the precursor id and the feature sequence number found for that precursor
