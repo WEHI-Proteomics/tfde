@@ -211,10 +211,10 @@ for group_name,group_df in pixel_intensity_df.groupby(['frame_id'], as_index=Fal
         for idx,region in intersecting_regions_considered_df.iterrows():
             x0 = pixel_x_from_mz(region.mz_lower - BB_MZ_BUFFER)
             x1 = pixel_x_from_mz(region.mz_upper + BB_MZ_BUFFER)
-            y0 = pixel_y_from_scan(region.scan_lower - BB_SCAN_BUFFER)
-            y1 = pixel_y_from_scan(region.scan_upper + BB_SCAN_BUFFER)
+            y0 = pixel_y_from_scan(feature.scan_lower - BB_SCAN_BUFFER)
+            y1 = pixel_y_from_scan(feature.scan_upper + BB_SCAN_BUFFER)
             # draw the bounding box
-            draw.rectangle(xy=[(x0, y0), (x1, y1)], fill=None, outline='darkorange')
+            draw.rectangle(xy=[(x0, y0), (x1, y1)], fill=None, outline='firebrick')
 
     # save the tile
     tile_file_name = '{}/tile-{:03d}.png'.format(TILES_BASE_DIR, tile_id)
