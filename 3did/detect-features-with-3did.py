@@ -240,7 +240,7 @@ def voxels_to_remove(points_df, voxels_df):
 
 # generate a unique feature_id from the precursor id and the feature sequence number found for that precursor
 def generate_voxel_id(segment_id, voxel_sequence_number):
-    voxel_id = (segment_id * 1000) + voxel_sequence_number
+    voxel_id = (segment_id * 10000) + voxel_sequence_number
     return voxel_id
 
 # process a segment of this run's data, and return a list of features
