@@ -505,7 +505,7 @@ def find_features(segment_mz_lower, segment_mz_upper, segment_id):
 
                                 # add the voxels included in the feature's points to the list of voxels already processed
                                 voxels_processed.update(set(voxel_ids_for_feature))
-                                
+
                         print('.', end='', flush=True)
                     else:
                         print('f', end='', flush=True)
@@ -609,7 +609,7 @@ create_indexes(db_file_name=CONVERTED_DATABASE_NAME)
 
 # output features
 FEATURES_DIR = "{}/features-3did".format(EXPERIMENT_DIR)
-FEATURES_FILE = '{}/exp-{}-run-{}-features-3did-dedup.pkl'.format(FEATURES_DIR, args.experiment_name, args.run_name)
+FEATURES_FILE = '{}/exp-{}-run-{}-features-3did.pkl'.format(FEATURES_DIR, args.experiment_name, args.run_name)
 # set up the output directory
 if not os.path.exists(FEATURES_DIR):
     os.makedirs(FEATURES_DIR)
