@@ -546,7 +546,7 @@ SCAN_BIN_SIZE = 10
 MZ_BIN_SIZE = 0.1
 
 MINIMUM_NUMBER_OF_POINTS_IN_BASE_PEAK = 10
-MINIMUM_VOXEL_INTENSITY = 5000
+MINIMUM_VOXEL_INTENSITY = 100
 
 #######################
 parser = argparse.ArgumentParser(description='Find all the features in a run with 3D intensity descent.')
