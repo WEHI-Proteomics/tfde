@@ -230,13 +230,12 @@ def calculate_monoisotopic_mass_from_mz(monoisotopic_mz, charge):
 
 # determine the voxels to be removed
 def voxels_to_remove(points_df, voxels_df):
-    # # calculate the intensity contribution of the points to their voxel's intensity
-    # df = points_df.groupby(['bin_key'], as_index=False, sort=False).intensity.agg(['sum','count']).reset_index()
-    # df.rename(columns={'sum':'intensity', 'count':'point_count'}, inplace=True)
-    # df = pd.merge(df, voxels_df, how='left', left_on=['bin_key'], right_on=['bin_key'], suffixes=['_feature','_voxel'])
-    # df['proportion'] = df.intensity_feature / df.intensity_voxel
-    # df = df[(df.proportion >= 0.8)]  # add to the set of voxels to remove
-    df = points_df
+    # calculate the intensity contribution of the points to their voxel's intensity
+    df = points_df.groupby(['bin_key'], as_index=False, sort=False).intensity.agg(['sum','count']).reset_index()
+    df.rename(columns={'sum':'intensity', 'count':'point_count'}, inplace=True)
+    df = pd.merge(df, voxels_df, how='left', left_on=['bin_key'], right_on=['bin_key'], suffixes=['_feature','_voxel'])
+    df['proportion'] = df.intensity_feature / df.intensity_voxel
+    df = df[(df.proportion >= 0.8)]  # add to the set of voxels to remove
     return set(df.bin_key)
 
 # process a segment of this run's data, and return a list of features
@@ -494,8 +493,6 @@ def find_features(segment_mz_lower, segment_mz_upper):
 
                                 # add the voxels included in the feature's points to the list of voxels already processed
                                 voxels_processed.update(bin_key_set)
-                else:
-                    break
 
     features_df = pd.DataFrame(features_l)
     return features_df
