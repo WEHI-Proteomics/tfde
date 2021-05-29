@@ -235,14 +235,13 @@ def voxels_to_remove(points_df, voxels_df):
     df.rename(columns={'sum':'intensity', 'count':'point_count'}, inplace=True)
     df = pd.merge(df, voxels_df, how='left', left_on=['bin_key'], right_on=['bin_key'], suffixes=['_feature','_voxel'])
     df['proportion'] = df.intensity_feature / df.intensity_voxel
-    df = df[(df.proportion >= 0.6)]  # add to the set of voxels to remove
+    df = df[(df.proportion >= 0.8)]  # add to the set of voxels to remove
     return set(df.bin_key)
 
 # process a segment of this run's data, and return a list of features
 @ray.remote
 def find_features(segment_mz_lower, segment_mz_upper):
     features_l = []
-    regions_considered_l = []
 
     # find out where the charge-1 cloud ends and only include points below it (i.e. include points with a higher scan)
     scan_limit = scan_coords_for_single_charge_region(mz_lower=segment_mz_lower, mz_upper=segment_mz_upper)['scan_for_mz_upper']
@@ -494,14 +493,11 @@ def find_features(segment_mz_lower, segment_mz_upper):
 
                                 # add the voxels included in the feature's points to the list of voxels already processed
                                 voxels_processed.update(bin_key_set)
-                    else:
-                        regions_considered_l.append(feature_region_3d_extent_d)
                 else:
                     break
 
     features_df = pd.DataFrame(features_l)
-    regions_considered_df = pd.DataFrame(regions_considered_l)
-    return {'features_df':features_df, 'regions_considered_df':regions_considered_df}
+    return features_df
 
 
 # move these constants to the INI file
