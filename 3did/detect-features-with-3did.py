@@ -511,10 +511,7 @@ def find_features(segment_mz_lower, segment_mz_upper, segment_id):
                     else:
                         print('f', end='', flush=True)
                 else:
-                    print()
-                    print('could not form a base peak for voxel {} (intensity {}) - exiting'.format(voxel.voxel_id, voxel.intensity))
-                    # print('-', end='', flush=True)
-                    break
+                    print('-', end='', flush=True)
             else:
                 print('x', end='', flush=True)
     features_df = pd.DataFrame(features_l)
@@ -549,7 +546,7 @@ SCAN_BIN_SIZE = 10
 MZ_BIN_SIZE = 0.1
 
 MINIMUM_NUMBER_OF_POINTS_IN_BASE_PEAK = 10
-MINIMUM_VOXEL_INTENSITY = 1000
+MINIMUM_VOXEL_INTENSITY = 3000
 
 #######################
 parser = argparse.ArgumentParser(description='Find all the features in a run with 3D intensity descent.')
