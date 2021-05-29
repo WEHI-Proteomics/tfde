@@ -487,12 +487,11 @@ def find_features(segment_mz_lower, segment_mz_upper):
                                 # constrain the feature 3D region to the points included in the feature
                                 feature_points_df = feature_region_3d_df[(feature_region_3d_df.mz >= row.envelope[0][0]) & (feature_region_3d_df.mz <= row.envelope[-1][0]) & (feature_region_3d_df.scan >= feature_d['scan_lower']) & (feature_region_3d_df.scan <= feature_d['scan_upper']) & (feature_region_3d_df.retention_time_secs >= feature_d['rt_lower']) & (feature_region_3d_df.retention_time_secs <= feature_d['rt_upper'])]
 
-                                # add the points' voxel to the list of processed voxels if the proportion of their intensity is above a threshold
-                                bin_key_set = voxels_to_remove(points_df=feature_points_df, voxels_df=summary_df)
+                                # # add the points' voxel to the list of processed voxels if the proportion of their intensity is above a threshold
+                                # bin_key_set = voxels_to_remove(points_df=feature_points_df, voxels_df=summary_df)
 
-                                # add the voxels included in the feature's points to the list of voxels already processed
-                                voxels_processed.update(bin_key_set)
-                                print('{}% voxels processed'.format(round(len(voxels_processed)/len(summary_df)*100, 1)))
+                                # # add the voxels included in the feature's points to the list of voxels already processed
+                                # voxels_processed.update(bin_key_set)
                 else:
                     break
 
