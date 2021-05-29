@@ -114,8 +114,14 @@ if os.path.exists(TILES_BASE_DIR):
 os.makedirs(TILES_BASE_DIR)
 
 # load the feature cuboids
-features_df = pd.read_pickle(FEATURES_FILE)['features_df']
+d = pd.read_pickle(FEATURES_FILE)
+features_df = d['features_df']
 print('loaded {} features cuboids from {}'.format(len(features_df), FEATURES_FILE))
+
+if 'regions_considered_df' in d.keys():
+    regions_considered_df = d['regions_considered_df']
+else:
+    regions_considered_df = None
 
 # add a buffer around the edges
 x_buffer = 5
@@ -194,6 +200,21 @@ for group_name,group_df in pixel_intensity_df.groupby(['frame_id'], as_index=Fal
         # draw the bounding box label
         draw.text((x0, y0-(2*space_per_line)), 'feature {}'.format(feature.feature_id), font=feature_label_font, fill='lawngreen')
         draw.text((x0, y0-(1*space_per_line)), 'charge {}+'.format(feature.charge), font=feature_label_font, fill='lawngreen')
+
+    if regions_considered_df is not None:
+        intersecting_regions_considered_df = regions_considered_df[
+                    (regions_considered_df.rt_lower <= tile_rt) & (regions_considered_df.rt_upper >= tile_rt) & 
+                    (regions_considered_df.mz_lower >= limits['MZ_MIN']) & (regions_considered_df.mz_upper <= limits['MZ_MAX']) & 
+                    ((regions_considered_df.scan_lower >= limits['SCAN_MIN']) & (regions_considered_df.scan_lower <= limits['SCAN_MAX']) |
+                    (regions_considered_df.scan_upper >= limits['SCAN_MIN']) & (regions_considered_df.scan_upper <= limits['SCAN_MAX']))
+                    ]
+        for idx,region in intersecting_regions_considered_df.iterrows():
+            x0 = pixel_x_from_mz(region.mz_lower - BB_MZ_BUFFER)
+            x1 = pixel_x_from_mz(region.mz_upper + BB_MZ_BUFFER)
+            y0 = pixel_y_from_scan(feature.scan_lower - BB_SCAN_BUFFER)
+            y1 = pixel_y_from_scan(feature.scan_upper + BB_SCAN_BUFFER)
+            # draw the bounding box
+            draw.rectangle(xy=[(x0, y0), (x1, y1)], fill=None, outline='firebrick')
 
     # save the tile
     tile_file_name = '{}/tile-{:03d}.png'.format(TILES_BASE_DIR, tile_id)
