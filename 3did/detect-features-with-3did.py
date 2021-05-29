@@ -163,7 +163,7 @@ def determine_isotope_characteristics(envelope, rt_apex, monoisotopic_mass, feat
             # record the voxels included by each isotope
             voxel_ids_for_isotope = voxels_for_points(points_df=isotope_df, voxels_df=summary_df)
             # add the voxels included in the feature's points to the list of voxels already processed
-            voxels_processed.update(set(voxel_ids_for_isotope))
+            voxels_processed.update(voxel_ids_for_isotope)
             # find the intensity by summing the maximum point in the frame closest to the RT apex, and the frame maximums either side
             frame_maximums_l = []
             for frame_id,group_df in isotope_df.groupby('frame_id'):
