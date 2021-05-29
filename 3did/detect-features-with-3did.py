@@ -612,9 +612,9 @@ NUMBER_OF_MZ_SEGMENTS = (mz_range // args.mz_width_per_segment) + (mz_range % ar
 # find all the features
 print('finding features')
 features_l = ray.get([find_features.remote(segment_mz_lower=args.mz_lower+(i*args.mz_width_per_segment), segment_mz_upper=args.mz_lower+(i*args.mz_width_per_segment)+args.mz_width_per_segment) for i in range(NUMBER_OF_MZ_SEGMENTS)])
+
 # join the list of dataframes into a single dataframe
-features_df = pd.concat([f['features_df'] for f in features_l], axis=0, sort=False, ignore_index=True)
-regions_considered_df = pd.concat([f['regions_considered_df'] for f in features_l], axis=0, sort=False, ignore_index=True)
+features_df = pd.concat(features_l, axis=0, sort=False, ignore_index=True)
 
 # assign each feature a unique identifier
 features_df['feature_id'] = features_df.index
@@ -625,7 +625,7 @@ print('saving {} features to {}'.format(len(features_df), FEATURES_FILE))
 info.append(('total_running_time',round(time.time()-start_run,1)))
 info.append(('processor',parser.prog))
 info.append(('processed', time.ctime()))
-content_d = {'features_df':features_df, 'regions_considered_df':regions_considered_df, 'metadata':info}
+content_d = {'features_df':features_df, 'metadata':info}
 with open(FEATURES_FILE, 'wb') as handle:
     pickle.dump(content_d, handle)
 
