@@ -474,8 +474,11 @@ def find_features(segment_mz_lower, segment_mz_upper):
                                 # add it to the list
                                 features_l.append(feature_d)
 
-                    # add the voxels included in the feature's 3D region to the list of voxels already processed
-                    voxels_processed.update(set(feature_region_3d_df.bin_key.unique()))
+                                # constrain the feature 3D region to the points included in the feature
+                                feature_points_df = feature_region_3d_df[(feature_region_3d_df.mz >= row.envelope[0][0]) & (feature_region_3d_df.mz <= row.envelope[-1][0]) & (feature_region_3d_df.scan >= feature_d['scan_lower']) & (feature_region_3d_df.scan <= feature_d['scan_upper']) & (feature_region_3d_df.retention_time_secs >= feature_d['rt_lower']) & (feature_region_3d_df.retention_time_secs <= feature_d['rt_upper'])]
+
+                                # add the voxels included in the feature's points to the list of voxels already processed
+                                voxels_processed.update(set(feature_points_df.bin_key.unique()))
                 else:
                     break
 
