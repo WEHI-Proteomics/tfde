@@ -308,7 +308,7 @@ def find_features(segment_mz_lower, segment_mz_upper):
 
                 # find the mobility extent of the isotope in this frame
                 isotope_frame_df = raw_df[(raw_df.mz >= iso_mz_lower) & (raw_df.mz <= iso_mz_upper) & (raw_df.scan >= frame_region_scan_lower) & (raw_df.scan <= frame_region_scan_upper) & (raw_df.frame_id == voxel_rt_highpoint_frame_id)]
-                if len(isotope_frame_df) > 0:
+                if len(isotope_frame_df) >= MINIMUM_NUMBER_OF_POINTS_IN_BASE_PEAK:
                     # collapsing the monoisotopic's summed points onto the mobility dimension
                     scan_df = isotope_frame_df.groupby(['scan'], as_index=False).intensity.sum()
                     scan_df.sort_values(by=['scan'], ascending=True, inplace=True)
@@ -408,7 +408,7 @@ def find_features(segment_mz_lower, segment_mz_upper):
                     region_mz_lower = voxel_mz_midpoint - ANCHOR_POINT_MZ_LOWER_OFFSET
                     region_mz_upper = voxel_mz_midpoint + ANCHOR_POINT_MZ_UPPER_OFFSET
 
-                    # gather the raw points for the feature's 3D region
+                    # gather the raw points for the feature's 3D region (i.e. the region in which deconvolution will be performed)
                     feature_region_3d_extent_d = {'mz_lower':region_mz_lower, 'mz_upper':region_mz_upper, 'scan_lower':iso_scan_lower, 'scan_upper':iso_scan_upper, 'rt_lower':iso_rt_lower, 'rt_upper':iso_rt_upper}
                     feature_region_3d_df = raw_df[(raw_df.mz >= region_mz_lower) & (raw_df.mz <= region_mz_upper) & (raw_df.scan >= iso_scan_lower) & (raw_df.scan <= iso_scan_upper) & (raw_df.retention_time_secs >= iso_rt_lower) & (raw_df.retention_time_secs <= iso_rt_upper)].copy()
 
@@ -510,6 +510,7 @@ RT_BIN_SIZE = 4
 SCAN_BIN_SIZE = 29
 MZ_BIN_SIZE = 0.1
 
+MINIMUM_NUMBER_OF_POINTS_IN_BASE_PEAK = 10
 
 #######################
 parser = argparse.ArgumentParser(description='Find all the features in a run with 3D intensity descent.')
