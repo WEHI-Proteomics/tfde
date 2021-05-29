@@ -97,6 +97,7 @@ if (len(features_df) > 2):
     keep_l = []
     for row in features_df.itertuples():
         dup_df = features_df[(features_df.dup_mz > row.dup_mz_lower) & (features_df.dup_mz < row.dup_mz_upper) & (features_df.scan_apex > row.dup_scan_lower) & (features_df.scan_apex < row.dup_scan_upper) & (features_df.rt_apex > row.dup_rt_lower) & (features_df.rt_apex < row.dup_rt_upper)].copy()
+        print('{} are duplicates'.format(dup_df.feature_id.tolist()))
         # group the dups by charge
         for group_name,group_df in dup_df.groupby(['charge'], as_index=False):
             keep_l.append(group_df.iloc[0].feature_id)
