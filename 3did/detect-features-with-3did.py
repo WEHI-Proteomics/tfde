@@ -288,11 +288,11 @@ def find_features(segment_mz_lower, segment_mz_upper, segment_id):
         voxels_processed = set()
 
         # process each voxel by decreasing intensity
-        for voxel_idx,row in enumerate(summary_df.itertuples()):
+        for voxel_idx,voxel in enumerate(summary_df.itertuples()):
             # if this voxel hasn't already been processed...
-            if (row.voxel_id not in voxels_processed):
+            if (voxel.voxel_id not in voxels_processed):
                 # retrieve the bins from the voxel key
-                (mz_bin, scan_bin, rt_bin) = row.bin_key
+                (mz_bin, scan_bin, rt_bin) = voxel.bin_key
 
                 # get the attributes of this voxel
                 voxel_mz_lower = mz_bin.left
@@ -327,7 +327,7 @@ def find_features(segment_mz_lower, segment_mz_upper, segment_id):
                 # record information about the voxel and the isotope we derived from it
                 voxel_metadata_d = {'mz_lower':voxel_mz_lower, 'mz_upper':voxel_mz_upper, 'scan_lower':voxel_scan_lower, 'scan_upper':voxel_scan_upper, 'rt_lower':voxel_rt_lower, 'rt_upper':voxel_rt_upper, 'mz_centroid':voxel_mz_centroid, 
                                     'iso_mz_lower':iso_mz_lower, 'iso_mz_upper':iso_mz_upper, 'voxel_scan_midpoint':voxel_scan_midpoint, 'voxel_rt_midpoint':voxel_rt_midpoint, 'voxel_rt_highpoint_frame_id':voxel_rt_highpoint_frame_id, 
-                                    'frame_region_scan_lower':frame_region_scan_lower, 'frame_region_scan_upper':frame_region_scan_upper, 'summed_intensity':row.intensity, 'point_count':row.point_count}
+                                    'frame_region_scan_lower':frame_region_scan_lower, 'frame_region_scan_upper':frame_region_scan_upper, 'summed_intensity':voxel.intensity, 'point_count':voxel.point_count}
 
                 # find the mobility extent of the isotope in this frame
                 isotope_frame_df = raw_df[(raw_df.mz >= iso_mz_lower) & (raw_df.mz <= iso_mz_upper) & (raw_df.scan >= frame_region_scan_lower) & (raw_df.scan <= frame_region_scan_upper) & (raw_df.frame_id == voxel_rt_highpoint_frame_id)]
@@ -460,9 +460,9 @@ def find_features(segment_mz_lower, segment_mz_upper, segment_id):
                         deconvolution_features_df = df.head(n=1)
 
                         # determine the feature attributes
-                        for idx,row in enumerate(deconvolution_features_df.itertuples()):
+                        for idx,feature in enumerate(deconvolution_features_df.itertuples()):
                             feature_d = {}
-                            envelope_mono_mz = row.envelope[0][0]
+                            envelope_mono_mz = feature.envelope[0][0]
                             mz_delta = calculate_peak_delta(mz=envelope_mono_mz)
                             mono_mz_lower = envelope_mono_mz - mz_delta
                             mono_mz_upper = envelope_mono_mz + mz_delta
@@ -477,21 +477,21 @@ def find_features(segment_mz_lower, segment_mz_upper, segment_id):
                             feature_d['rt_lower'] = iso_rt_lower
                             feature_d['rt_upper'] = iso_rt_upper
 
-                            isotope_characteristics_d = determine_isotope_characteristics(envelope=row.envelope, rt_apex=rt_apex, monoisotopic_mass=row.neutral_mass, feature_region_3d_df=feature_region_3d_df)
+                            isotope_characteristics_d = determine_isotope_characteristics(envelope=feature.envelope, rt_apex=rt_apex, monoisotopic_mass=row.neutral_mass, feature_region_3d_df=feature_region_3d_df)
                             if isotope_characteristics_d is not None:
                                 # add the characteristics to the feature dictionary
                                 feature_d = {**feature_d, **isotope_characteristics_d}
                                 feature_d['monoisotopic_mz'] = isotope_characteristics_d['mono_mz']
-                                feature_d['charge'] = row.charge
+                                feature_d['charge'] = feature.charge
                                 feature_d['monoisotopic_mass'] = calculate_monoisotopic_mass_from_mz(monoisotopic_mz=feature_d['monoisotopic_mz'], charge=feature_d['charge'])
                                 feature_d['feature_intensity'] = isotope_characteristics_d['intensity_with_saturation_correction'] if (isotope_characteristics_d['intensity_with_saturation_correction'] > isotope_characteristics_d['intensity_without_saturation_correction']) else isotope_characteristics_d['intensity_without_saturation_correction']
-                                feature_d['envelope'] = json.dumps([tuple(e) for e in row.envelope])
-                                feature_d['isotope_count'] = len(row.envelope)
-                                feature_d['deconvolution_score'] = row.score
+                                feature_d['envelope'] = json.dumps([tuple(e) for e in feature.envelope])
+                                feature_d['isotope_count'] = len(feature.envelope)
+                                feature_d['deconvolution_score'] = feature.score
                                 # record the feature region where we found this feature
                                 feature_d['feature_region_3d_extent'] = feature_region_3d_extent_d
                                 # record the voxel from where we derived the initial isotope
-                                feature_d['voxel_id'] = row.voxel_id
+                                feature_d['voxel_id'] = voxel.voxel_id
                                 feature_d['voxel_metadata_d'] = voxel_metadata_d
                                 feature_d['scan_df'] = scan_df.to_dict('records')
                                 feature_d['rt_df'] = rt_df.to_dict('records')
@@ -499,7 +499,7 @@ def find_features(segment_mz_lower, segment_mz_upper, segment_id):
                                 features_l.append(feature_d)
 
                                 # constrain the feature 3D region to the points included in the feature
-                                feature_points_df = feature_region_3d_df[(feature_region_3d_df.mz >= row.envelope[0][0]-0.1) & (feature_region_3d_df.mz <= row.envelope[-1][0]+0.1) & (feature_region_3d_df.scan >= feature_d['scan_lower']) & (feature_region_3d_df.scan <= feature_d['scan_upper']) & (feature_region_3d_df.retention_time_secs >= feature_d['rt_lower']) & (feature_region_3d_df.retention_time_secs <= feature_d['rt_upper'])]
+                                feature_points_df = feature_region_3d_df[(feature_region_3d_df.mz >= feature.envelope[0][0]-0.1) & (feature_region_3d_df.mz <= feature.envelope[-1][0]+0.1) & (feature_region_3d_df.scan >= feature_d['scan_lower']) & (feature_region_3d_df.scan <= feature_d['scan_upper']) & (feature_region_3d_df.retention_time_secs >= feature_d['rt_lower']) & (feature_region_3d_df.retention_time_secs <= feature_d['rt_upper'])]
 
                                 # add the points' voxel to the list of processed voxels if the proportion of their intensity is above a threshold
                                 voxel_ids_for_feature = voxels_for_feature(points_df=feature_points_df, voxels_df=summary_df)
