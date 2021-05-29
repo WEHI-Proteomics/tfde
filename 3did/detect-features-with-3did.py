@@ -247,7 +247,7 @@ def voxels_for_points(points_df, voxels_df):
 
 # generate a unique feature_id from the precursor id and the feature sequence number found for that precursor
 def generate_voxel_id(segment_id, voxel_sequence_number):
-    voxel_id = (segment_id * 10000) + voxel_sequence_number
+    voxel_id = (segment_id * 1000000) + voxel_sequence_number
     return voxel_id
 
 # process a segment of this run's data, and return a list of features
@@ -546,7 +546,7 @@ SCAN_BIN_SIZE = 10
 MZ_BIN_SIZE = 0.1
 
 MINIMUM_NUMBER_OF_POINTS_IN_BASE_PEAK = 10
-MINIMUM_VOXEL_INTENSITY = 100
+MINIMUM_VOXEL_INTENSITY = 1000
 
 #######################
 parser = argparse.ArgumentParser(description='Find all the features in a run with 3D intensity descent.')
