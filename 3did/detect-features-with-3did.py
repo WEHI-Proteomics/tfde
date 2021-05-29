@@ -525,7 +525,7 @@ RT_FILTER_POLY_ORDER = 3
 
 # bin sizes; RT and CCS are determined from half the mean base peak width
 RT_BIN_SIZE = 4
-SCAN_BIN_SIZE = 29
+SCAN_BIN_SIZE = 10
 MZ_BIN_SIZE = 0.1
 
 MINIMUM_NUMBER_OF_POINTS_IN_BASE_PEAK = 10
