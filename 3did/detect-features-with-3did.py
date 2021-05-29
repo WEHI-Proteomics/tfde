@@ -491,6 +491,7 @@ def find_features(segment_mz_lower, segment_mz_upper, segment_id):
                                 # record the feature region where we found this feature
                                 feature_d['feature_region_3d_extent'] = feature_region_3d_extent_d
                                 # record the voxel from where we derived the initial isotope
+                                feature_d['voxel_id'] = row.voxel_id
                                 feature_d['voxel_metadata_d'] = voxel_metadata_d
                                 feature_d['scan_df'] = scan_df.to_dict('records')
                                 feature_d['rt_df'] = rt_df.to_dict('records')
