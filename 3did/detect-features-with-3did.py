@@ -270,6 +270,7 @@ def find_features(segment_mz_lower, segment_mz_upper):
         summary_df = raw_df.groupby(['bin_key'], as_index=False, sort=False).intensity.agg(['sum','count']).reset_index()
         summary_df.rename(columns={'sum':'intensity', 'count':'point_count'}, inplace=True)
         summary_df.dropna(subset=['intensity'], inplace=True)
+        summary_df = summary_df[(summary_df.intensity >= MINIMUM_VOXEL_INTENSITY)]
         summary_df.sort_values(by=['intensity'], ascending=False, inplace=True)
 
         # keep track of the keys of voxels that have been processed
@@ -527,6 +528,7 @@ SCAN_BIN_SIZE = 29
 MZ_BIN_SIZE = 0.1
 
 MINIMUM_NUMBER_OF_POINTS_IN_BASE_PEAK = 10
+MINIMUM_VOXEL_INTENSITY = 5000
 
 #######################
 parser = argparse.ArgumentParser(description='Find all the features in a run with 3D intensity descent.')
