@@ -490,6 +490,7 @@ def find_features(segment_mz_lower, segment_mz_upper):
 
                                 # add the points' voxel to the list of processed voxels if the proportion of their intensity is above a threshold
                                 bin_key_set = voxels_to_remove(points_df=feature_points_df, voxels_df=summary_df)
+                                print('removing {} voxels'.format(len(bin_key_set)))
 
                                 # add the voxels included in the feature's points to the list of voxels already processed
                                 voxels_processed.update(bin_key_set)
@@ -528,7 +529,7 @@ SCAN_BIN_SIZE = 29
 MZ_BIN_SIZE = 0.1
 
 MINIMUM_NUMBER_OF_POINTS_IN_BASE_PEAK = 10
-MINIMUM_VOXEL_INTENSITY = 5000
+MINIMUM_VOXEL_INTENSITY = 500
 
 #######################
 parser = argparse.ArgumentParser(description='Find all the features in a run with 3D intensity descent.')
