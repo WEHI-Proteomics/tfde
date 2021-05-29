@@ -511,7 +511,10 @@ def find_features(segment_mz_lower, segment_mz_upper, segment_id):
                     else:
                         print('f', end='', flush=True)
                 else:
-                    print('-', end='', flush=True)
+                    print()
+                    print('could not form a base peak for voxel {} (intensity {}) - exiting'.format(voxel.voxel_id, voxel.intensity))
+                    # print('-', end='', flush=True)
+                    break
             else:
                 print('x', end='', flush=True)
     features_df = pd.DataFrame(features_l)
