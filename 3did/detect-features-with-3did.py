@@ -471,7 +471,9 @@ def find_features(segment_mz_lower, segment_mz_upper, segment_id):
                             mono_peak_mz = peak.mz
                             mono_intensity = peak.intensity
                             second_peak_mz = peak.envelope[1][0]
-                            ms1_deconvoluted_peaks_l.append((mono_peak_mz, second_peak_mz, mono_intensity, peak.score, peak.signal_to_noise, peak.charge, peak.envelope, peak.neutral_mass))
+                            # an accepted feature must have its mono peak or base peak aligned with the voxel
+                            if (((mono_peak_mz >= iso_mz_lower) and (mono_peak_mz <= iso_mz_upper)) or ((second_peak_mz >= iso_mz_lower) and (second_peak_mz <= iso_mz_upper))):
+                                ms1_deconvoluted_peaks_l.append((mono_peak_mz, second_peak_mz, mono_intensity, peak.score, peak.signal_to_noise, peak.charge, peak.envelope, peak.neutral_mass))
                     df = pd.DataFrame(ms1_deconvoluted_peaks_l, columns=['mono_mz','second_peak_mz','intensity','score','SN','charge','envelope','neutral_mass'])
                     df.sort_values(by=['score'], ascending=False, inplace=True)
 
