@@ -474,13 +474,10 @@ def find_features(segment_mz_lower, segment_mz_upper, segment_id):
                             # an accepted feature must have its mono peak or base peak aligned with the voxel
                             if (((mono_peak_mz >= iso_mz_lower) and (mono_peak_mz <= iso_mz_upper)) or ((second_peak_mz >= iso_mz_lower) and (second_peak_mz <= iso_mz_upper))):
                                 ms1_deconvoluted_peaks_l.append((mono_peak_mz, second_peak_mz, mono_intensity, peak.score, peak.signal_to_noise, peak.charge, peak.envelope, peak.neutral_mass))
-                    df = pd.DataFrame(ms1_deconvoluted_peaks_l, columns=['mono_mz','second_peak_mz','intensity','score','SN','charge','envelope','neutral_mass'])
-                    df.sort_values(by=['score'], ascending=False, inplace=True)
+                    deconvolution_features_df = pd.DataFrame(ms1_deconvoluted_peaks_l, columns=['mono_mz','second_peak_mz','intensity','score','SN','charge','envelope','neutral_mass'])
+                    deconvolution_features_df.sort_values(by=['score'], ascending=False, inplace=True)
 
-                    if len(df) > 0:
-                        # take the top N scoring features
-                        deconvolution_features_df = df.head(n=1)
-
+                    if len(deconvolution_features_df) > 0:
                         # determine the feature attributes
                         for idx,feature in enumerate(deconvolution_features_df.itertuples()):
                             feature_d = {}
