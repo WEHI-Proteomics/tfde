@@ -161,7 +161,7 @@ def determine_isotope_characteristics(envelope, rt_apex, monoisotopic_mass, feat
         # calculate the isotope's intensity
         if len(isotope_df) > 0:
             # record the voxels included by each isotope
-            voxel_ids_for_isotope = voxels_for_points(points_df=isotope_df, voxels_df=summary_df)
+            voxel_ids_for_isotope = voxels_for_points(iso_mz=iso_mz, points_df=feature_region_3d_df, voxels_df=summary_df)
             # add the voxels included in the feature's points to the list of voxels already processed
             voxels_processed.update(voxel_ids_for_isotope)
             # find the intensity by summing the maximum point in the frame closest to the RT apex, and the frame maximums either side
@@ -235,9 +235,13 @@ def calculate_monoisotopic_mass_from_mz(monoisotopic_mz, charge):
     return monoisotopic_mass
 
 # determine the voxels included by the raw points
-def voxels_for_points(points_df, voxels_df):
+def voxels_for_points(iso_mz, points_df, voxels_df):
+    # gather the points using a wider definition to make sure we get them all
+    iso_mz_lower = iso_mz - MS1_PEAK_DELTA
+    iso_mz_upper = iso_mz + MS1_PEAK_DELTA
+    points_subset_df = points_df[(points_df.mz >= iso_mz_lower) & (points_df.mz <= iso_mz_upper)]
     # calculate the intensity contribution of the points to their voxel's intensity
-    df = points_df.groupby(['bin_key'], as_index=False, sort=False).intensity.agg(['sum','count']).reset_index()
+    df = points_subset_df.groupby(['bin_key'], as_index=False, sort=False).intensity.agg(['sum','count']).reset_index()
     df.rename(columns={'sum':'intensity', 'count':'point_count'}, inplace=True)
     df = pd.merge(df, voxels_df, how='inner', left_on=['bin_key'], right_on=['bin_key'], suffixes=['_points','_voxel'])
     df['proportion'] = df.intensity_points / df.intensity_voxel
