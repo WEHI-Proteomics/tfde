@@ -425,13 +425,23 @@ def find_features(segment_mz_lower, segment_mz_upper, segment_id):
                     upper_x = valleys_df[valleys_df.retention_time_secs > rt_apex].retention_time_secs.min()
                     if math.isnan(upper_x):
                         upper_x = rt_df.retention_time_secs.max()
+                        rt_upper_used_limit = True
+                    else:
+                        rt_upper_used_limit = False
                     lower_x = valleys_df[valleys_df.retention_time_secs < rt_apex].retention_time_secs.max()
                     if math.isnan(lower_x):
                         lower_x = rt_df.retention_time_secs.min()
+                        rt_lower_used_limit = True
+                    else:
+                        rt_lower_used_limit = False
 
                     # RT extent of the isotope
-                    iso_rt_lower = lower_x
-                    iso_rt_upper = upper_x
+                    if rt_upper_used_limit and rt_lower_used_limit:
+                        iso_rt_lower = rt_apex - (RT_BASE_PEAK_WIDTH / 2)
+                        iso_rt_upper = rt_apex + (RT_BASE_PEAK_WIDTH / 2)
+                    else:
+                        iso_rt_lower = lower_x
+                        iso_rt_upper = upper_x
 
                     # we now have a definition of the voxel's isotope in m/z, scan, and RT. We need to extend that in the m/z dimension to catch all the isotopes for this feature
                     region_mz_lower = voxel_mz_midpoint - ANCHOR_POINT_MZ_LOWER_OFFSET
