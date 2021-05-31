@@ -345,7 +345,7 @@ def find_features(segment_mz_lower, segment_mz_upper, segment_id):
                 #   2. a point is reachable if the distance is less than eps
                 #   3. we consider an isotope to be worthy of further analysis if has a cluster of at least MINIMUM_NUMBER_OF_POINTS_IN_BASE_PEAK points
                 X = isotope_frame_df[['mz','scan']].values
-                dbscan = DBSCAN(eps=2, min_samples=2)
+                dbscan = DBSCAN(eps=3, min_samples=2)
                 clusters = dbscan.fit_predict(X)
                 if max(np.unique(clusters[clusters >= 0], return_counts=True)[1]) >= MINIMUM_NUMBER_OF_POINTS_IN_BASE_PEAK:
                     # collapsing the monoisotopic's summed points onto the mobility dimension
