@@ -445,8 +445,7 @@ def find_features(segment_mz_lower, segment_mz_upper, segment_id):
 
                     # check the base peak has at least one voxel in common with the seeding voxel
                     base_peak_df = raw_df[(raw_df.mz >= iso_mz_lower) & (raw_df.mz <= iso_mz_upper) & (raw_df.scan >= iso_scan_lower) & (raw_df.scan <= iso_scan_upper) & (raw_df.retention_time_secs >= iso_rt_lower) & (raw_df.retention_time_secs <= iso_rt_upper)].copy()
-                    base_peak_bin_keys = set(list(base_peak_df.bin_key.unique()))
-                    if len(set.intersection(base_peak_bin_keys, voxel.bin_key)) > 0:
+                    if voxel.bin_key in set(list(base_peak_df.bin_key.unique())):
 
                         # we now have a definition of the voxel's isotope in m/z, scan, and RT. We need to extend that in the m/z dimension to catch all the isotopes for this feature
                         region_mz_lower = voxel_mz_midpoint - ANCHOR_POINT_MZ_LOWER_OFFSET
