@@ -538,6 +538,8 @@ def find_features(segment_mz_lower, segment_mz_upper, segment_id):
                 else:
                     # print('-', end='', flush=True)
                     print()
+                    isotope_frame_df['cluster'] = clusters
+                    print(isotope_frame_df[['mz','scan','cluster']])
                     print('could not form an isotope from the voxel\'s most intense frame, so it\'s time to stop')
                     break
             else:
