@@ -356,7 +356,7 @@ def find_features(segment_mz_lower, segment_mz_upper, segment_id):
                 X = isotope_frame_df[['mz','scan']].values
                 dbscan = DBSCAN(eps=1, min_samples=2, metric=point_metric)
                 clusters = dbscan.fit_predict(X)
-                if max(np.unique(clusters[clusters >= MINIMUM_NUMBER_OF_POINTS_IN_BASE_PEAK], return_counts=True)[1]) > 0:
+                if max(np.unique(clusters[clusters >= 0], return_counts=True)[1]) >= MINIMUM_NUMBER_OF_POINTS_IN_BASE_PEAK:
                     # collapsing the monoisotopic's summed points onto the mobility dimension
                     scan_df = isotope_frame_df.groupby(['scan'], as_index=False).intensity.sum()
                     scan_df.sort_values(by=['scan'], ascending=True, inplace=True)
