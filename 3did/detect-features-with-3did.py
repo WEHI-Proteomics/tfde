@@ -257,7 +257,7 @@ def point_metric(r1, r2):
     # scan_1 = r1[1]
     # mz_2 = r2[0]
     # scan_2 = r2[1]
-    return 0.5 if ((abs(r1[0] - r2[0]) <= 0.1) and (abs(r1[1] - r2[1]) <= 5)) else 10
+    return 0.5 if ((abs(r1[0] - r2[0]) <= 0.1) and (abs(r1[1] - r2[1]) <= 1)) else 10
 
 # process a segment of this run's data, and return a list of features
 @ray.remote
