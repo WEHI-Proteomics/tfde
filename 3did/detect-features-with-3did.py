@@ -315,7 +315,7 @@ def find_features(segment_mz_lower, segment_mz_upper, segment_id):
 
                 # find the most intense frame in the voxel
                 frame_summary_df = voxel_df.groupby(['frame_id'], as_index=False, sort=False).intensity.agg(['sum','count']).reset_index()
-                voxel_rt_highpoint_frame_id = int(frame_summary_df.loc[(frame_summary_df['sum'].idxmax())].frame_id)
+                voxel_rt_highpoint_frame_id = int(frame_summary_df.loc[(frame_summary_df['count'].idxmax())].frame_id)
 
                 # find the voxel's mz intensity-weighted centroid
                 voxel_frame_df = voxel_df[(voxel_df.frame_id == voxel_rt_highpoint_frame_id)].copy()
@@ -538,6 +538,7 @@ def find_features(segment_mz_lower, segment_mz_upper, segment_id):
                 else:
                     # print('-', end='', flush=True)
                     print()
+                    isotope_frame_df = isotope_frame_df.copy()
                     isotope_frame_df['cluster'] = clusters
                     print(isotope_frame_df[['mz','scan','cluster']])
                     print('could not form an isotope from the voxel\'s most intense frame, so it\'s time to stop')
