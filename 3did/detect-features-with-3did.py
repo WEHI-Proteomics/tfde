@@ -16,6 +16,7 @@ from configparser import ExtendedInterpolation
 from os.path import expanduser
 import json
 from ms_deisotope import deconvolute_peaks, averagine
+from sklearn.cluster import DBSCAN
 
 
 # set up the indexes we need for queries
@@ -250,6 +251,14 @@ def generate_voxel_id(segment_id, voxel_sequence_number):
     voxel_id = (segment_id * 1000000) + voxel_sequence_number
     return voxel_id
 
+# a distance metric for points within an isotope
+def point_metric(r1, r2):
+    # mz_1 = r1[0]
+    # scan_1 = r1[1]
+    # mz_2 = r2[0]
+    # scan_2 = r2[1]
+    return 0.5 if ((abs(r1[0] - r2[0]) <= 0.1) and (abs(r1[1] - r2[1]) <= 5)) else 10
+
 # process a segment of this run's data, and return a list of features
 @ray.remote
 def find_features(segment_mz_lower, segment_mz_upper, segment_id):
@@ -283,7 +292,7 @@ def find_features(segment_mz_lower, segment_mz_upper, segment_id):
         summary_df = raw_df.groupby(['bin_key'], as_index=False, sort=False).intensity.agg(['sum','count']).reset_index()
         summary_df.rename(columns={'sum':'intensity', 'count':'point_count'}, inplace=True)
         summary_df.dropna(subset=['intensity'], inplace=True)
-        summary_df = summary_df[(summary_df.intensity >= MINIMUM_VOXEL_INTENSITY)]
+        summary_df = summary_df[(summary_df.intensity > 0)]
         summary_df.sort_values(by=['intensity'], ascending=False, inplace=True)
         summary_df.reset_index(drop=True, inplace=True)
         summary_df['voxel_id'] = summary_df.index
@@ -337,7 +346,12 @@ def find_features(segment_mz_lower, segment_mz_upper, segment_id):
 
                 # find the mobility extent of the isotope in this frame
                 isotope_frame_df = raw_df[(raw_df.mz >= iso_mz_lower) & (raw_df.mz <= iso_mz_upper) & (raw_df.scan >= frame_region_scan_lower) & (raw_df.scan <= frame_region_scan_upper) & (raw_df.frame_id == voxel_rt_highpoint_frame_id)]
-                if len(isotope_frame_df) >= MINIMUM_NUMBER_OF_POINTS_IN_BASE_PEAK:
+
+                # cluster the points in the isotope space to make sure we can form an isotope worth analysing further
+                X = isotope_frame_df[['mz','scan']].values
+                dbscan = DBSCAN(eps=1, min_samples=10, metric=point_metric)
+                clusters = dbscan.fit_predict(X)
+                if (clusters >= 0).sum() >= 1:
                     # collapsing the monoisotopic's summed points onto the mobility dimension
                     scan_df = isotope_frame_df.groupby(['scan'], as_index=False).intensity.sum()
                     scan_df.sort_values(by=['scan'], ascending=True, inplace=True)
@@ -526,7 +540,10 @@ def find_features(segment_mz_lower, segment_mz_upper, segment_id):
                     else:
                         print('i', end='', flush=True)
                 else:
-                    print('-', end='', flush=True)
+                    # print('-', end='', flush=True)
+                    print()
+                    print('could not form an isotope from the voxel\'s most intense frame, so it\'s time to stop')
+                    break
             else:
                 print('x', end='', flush=True)
     features_df = pd.DataFrame(features_l)
