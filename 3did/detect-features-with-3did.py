@@ -257,7 +257,8 @@ def point_metric(r1, r2):
     # scan_1 = r1[1]
     # mz_2 = r2[0]
     # scan_2 = r2[1]
-    return 0.5 if ((abs(r1[0] - r2[0]) <= 0.1) and (abs(r1[1] - r2[1]) <= 1)) else 10
+    # return 0.5 if ((abs(r1[0] - r2[0]) <= 0.1) and (abs(r1[1] - r2[1]) <= 1)) else 10
+    return 0.5 if (abs(r1[1] - r2[1]) <= 1) else 10
 
 # process a segment of this run's data, and return a list of features
 @ray.remote
@@ -347,11 +348,15 @@ def find_features(segment_mz_lower, segment_mz_upper, segment_id):
                 # find the mobility extent of the isotope in this frame
                 isotope_frame_df = raw_df[(raw_df.mz >= iso_mz_lower) & (raw_df.mz <= iso_mz_upper) & (raw_df.scan >= frame_region_scan_lower) & (raw_df.scan <= frame_region_scan_upper) & (raw_df.frame_id == voxel_rt_highpoint_frame_id)]
 
-                # cluster the points in the isotope space to make sure we can form an isotope worth analysing further
+                # cluster the points in the isotope space to make sure we can form an isotope worth analysing further - the points must be in consecutive scans and the cluster must have at least 10 points
+                # notes about the clustering:
+                #   1. a point is part of the cluster if it's reachable by at least one point (min_samples=2, which includes the point itself)
+                #   2. a point is reachable if the distance is less than eps
+                #   3. we consider an isotope to be worthy of further analysis if has a cluster of at least MINIMUM_NUMBER_OF_POINTS_IN_BASE_PEAK points
                 X = isotope_frame_df[['mz','scan']].values
-                dbscan = DBSCAN(eps=1, min_samples=10, metric=point_metric)
+                dbscan = DBSCAN(eps=1, min_samples=2, metric=point_metric)
                 clusters = dbscan.fit_predict(X)
-                if (clusters >= 0).sum() >= 1:
+                if max(np.unique(clusters[clusters >= MINIMUM_NUMBER_OF_POINTS_IN_BASE_PEAK], return_counts=True)[1]) > 0:
                     # collapsing the monoisotopic's summed points onto the mobility dimension
                     scan_df = isotope_frame_df.groupby(['scan'], as_index=False).intensity.sum()
                     scan_df.sort_values(by=['scan'], ascending=True, inplace=True)
@@ -578,7 +583,7 @@ SCAN_BIN_SIZE = 10
 MZ_BIN_SIZE = 0.1
 
 MINIMUM_NUMBER_OF_POINTS_IN_BASE_PEAK = 10
-MINIMUM_VOXEL_INTENSITY = 3000
+
 
 #######################
 parser = argparse.ArgumentParser(description='Find all the features in a run with 3D intensity descent.')
