@@ -251,15 +251,6 @@ def generate_voxel_id(segment_id, voxel_sequence_number):
     voxel_id = (segment_id * 1000000) + voxel_sequence_number
     return voxel_id
 
-# a distance metric for points within an isotope
-def point_metric(r1, r2):
-    # mz_1 = r1[0]
-    # scan_1 = r1[1]
-    # mz_2 = r2[0]
-    # scan_2 = r2[1]
-    # return 0.5 if ((abs(r1[0] - r2[0]) <= 0.1) and (abs(r1[1] - r2[1]) <= 1)) else 10
-    return 0.5 if (abs(r1[1] - r2[1]) <= 1) else 10
-
 # process a segment of this run's data, and return a list of features
 @ray.remote
 def find_features(segment_mz_lower, segment_mz_upper, segment_id):
@@ -354,7 +345,7 @@ def find_features(segment_mz_lower, segment_mz_upper, segment_id):
                 #   2. a point is reachable if the distance is less than eps
                 #   3. we consider an isotope to be worthy of further analysis if has a cluster of at least MINIMUM_NUMBER_OF_POINTS_IN_BASE_PEAK points
                 X = isotope_frame_df[['mz','scan']].values
-                dbscan = DBSCAN(eps=1, min_samples=2, metric=point_metric)
+                dbscan = DBSCAN(eps=2, min_samples=2)
                 clusters = dbscan.fit_predict(X)
                 if max(np.unique(clusters[clusters >= 0], return_counts=True)[1]) >= MINIMUM_NUMBER_OF_POINTS_IN_BASE_PEAK:
                     # collapsing the monoisotopic's summed points onto the mobility dimension
