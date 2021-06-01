@@ -19,8 +19,6 @@ from ms_deisotope import deconvolute_peaks, averagine
 import warnings
 from scipy.optimize import OptimizeWarning
 
-# treat OptimizeWarning as an exception
-warnings.simplefilter("error", OptimizeWarning)
 
 # set up the indexes we need for queries
 def create_indexes(db_file_name):
@@ -258,6 +256,7 @@ def calculate_r_squared(series_1, series_2):
 # measure the R-squared value of the points. x and y are numpy arrays.
 def measure_curve(x, y):
     r_squared = None
+    warnings.simplefilter("error", OptimizeWarning)
     try:
         # fit a guassian to the points
         guassian_params = peakutils.peak.gaussian_fit(x, y, center_only=False)
@@ -268,6 +267,13 @@ def measure_curve(x, y):
     except:
         pass
     return r_squared
+
+# save visualisation data for later analysis of how feature detection works
+def save_visualisation(visualise_d):
+    VIS_FILE = '{}/feature-detection-{}-visualisation-3did.pkl'.format(expanduser("~"), visualise_d['voxel_id'])
+    print("writing feature detection visualisation data to {}".format(VIS_FILE))
+    with open(VIS_FILE, 'wb') as handle:
+        pickle.dump(visualise_d, handle)
 
 # process a segment of this run's data, and return a list of features
 @ray.remote
@@ -559,8 +565,14 @@ def find_features(segment_mz_lower, segment_mz_upper, segment_id):
 
                     else:
                         print('the base isotope is insufficiently gaussian in the CCS and RT dimensions, so we\'ll stop here.')
-                        scan_subset_df.to_pickle('~/last_scan_df.pkl')
-                        rt_subset_df.to_pickle('~/last_rt_df.pkl')
+
+                        d = {}
+                        d['voxel_id'] = voxel.voxel_id
+                        d['scan_df'] = scan_df.to_dict('records')
+                        d['rt_df'] = rt_df.to_dict('records')
+                        d['voxel_metadata_d'] = voxel_metadata_d
+                        d['feature_region_3d_extent'] = feature_region_3d_extent_d
+                        save_visualisation(d)
 
                         if scan_r_squared is not None:
                             print('scan: {}'.format(round(scan_r_squared,1)))
