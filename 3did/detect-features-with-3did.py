@@ -615,7 +615,7 @@ SCAN_BIN_SIZE = 10
 MZ_BIN_SIZE = 0.1
 
 MINIMUM_NUMBER_OF_POINTS_IN_BASE_PEAK = 10
-MINIMUM_R_SQUARED = 0.5  # for the curves fitted in the RT and CCS dimensions
+MINIMUM_R_SQUARED = 0.1  # for the curves fitted in the RT and CCS dimensions
 
 
 #######################
