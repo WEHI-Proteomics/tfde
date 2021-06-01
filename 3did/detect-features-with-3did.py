@@ -1,3 +1,4 @@
+from posixpath import expanduser
 import pandas as pd
 import numpy as np
 import peakutils
@@ -564,6 +565,8 @@ def find_features(segment_mz_lower, segment_mz_upper, segment_id):
                         print('the base isotope is not sufficiently gaussian in the CCS and/or RT dimensions, so we\'ll stop here. scan: {}, rt: {}'.format(round(scan_r_squared,1), round(rt_r_squared,1)))
                         print(scan_df[['scan','clipped_filtered_intensity']])
                         print(rt_df[['retention_time_secs','clipped_filtered_intensity']])
+                        scan_df.to_pickle('{}/last_scan_df.pkl'.format(expanduser('~')))
+                        rt_df.to_pickle('{}/last_rt_df.pkl'.format(expanduser('~')))
                         break
                 else:
                     print('p', end='', flush=True)
