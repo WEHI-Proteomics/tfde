@@ -269,8 +269,6 @@ def measure_curve(x, y):
         # calculate the R-squared of the fit against the observed values
         r_squared = calculate_r_squared(fitted_intensities, y)
     except:
-        print('could not fit a curve')
-        print(pd.DataFrame([x,y]).T)
         pass
     return r_squared
 
@@ -478,16 +476,12 @@ def find_features(segment_mz_lower, segment_mz_upper, segment_id):
                     scan_subset_df = scan_df[(scan_df.scan >= iso_scan_lower) & (scan_df.scan <= iso_scan_upper)]
                     rt_subset_df = rt_df[(rt_df.retention_time_secs >= iso_rt_lower) & (rt_df.retention_time_secs <= iso_rt_upper)]
 
-                    # debug
-                    scan_subset_df.to_pickle('{}/last_scan_df.pkl'.format(expanduser('~')))
-                    rt_subset_df.to_pickle('{}/last_rt_df.pkl'.format(expanduser('~')))
-
                     # calculate the R-squared
                     scan_r_squared = measure_curve(x=scan_subset_df.scan.to_numpy(), y=scan_subset_df.clipped_filtered_intensity.to_numpy())
                     rt_r_squared = measure_curve(x=rt_subset_df.retention_time_secs.to_numpy(), y=rt_subset_df.clipped_filtered_intensity.to_numpy())
 
                     # if the base isotope is sufficiently gaussian, it's worth processing
-                    if ((scan_r_squared is not None) and (scan_r_squared >= MINIMUM_R_SQUARED) and (rt_r_squared is not None) and (rt_r_squared >= MINIMUM_R_SQUARED)):
+                    if (((scan_r_squared is not None) and (scan_r_squared >= MINIMUM_R_SQUARED)) or ((rt_r_squared is not None) and (rt_r_squared >= MINIMUM_R_SQUARED))):
                         # check the base peak has at least one voxel in common with the seeding voxel
                         base_peak_df = raw_df[(raw_df.mz >= iso_mz_lower) & (raw_df.mz <= iso_mz_upper) & (raw_df.scan >= iso_scan_lower) & (raw_df.scan <= iso_scan_upper) & (raw_df.retention_time_secs >= iso_rt_lower) & (raw_df.retention_time_secs <= iso_rt_upper)].copy()
                         if voxel.voxel_id in base_peak_df.voxel_id.unique():
@@ -574,8 +568,12 @@ def find_features(segment_mz_lower, segment_mz_upper, segment_id):
                         print('the base isotope is not sufficiently gaussian in the CCS and/or RT dimensions, so we\'ll stop here.')
                         if scan_r_squared is not None:
                             print('scan: {}'.format(round(scan_r_squared,1)))
+                        else:
+                            print('could not fit a curve in CCS')
                         if rt_r_squared is not None:
                             print('rt: {}'.format(round(rt_r_squared,1)))
+                        else:
+                            print('could not fit a curve in RT')
                         break
                 else:
                     print('p', end='', flush=True)
