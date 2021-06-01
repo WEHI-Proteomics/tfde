@@ -270,7 +270,7 @@ def measure_curve(x, y):
         r_squared = calculate_r_squared(fitted_intensities, y.to_numpy())
     except:
         print('could not fit a curve')
-        print(pd.DataFrame([x,y]))
+        print(pd.DataFrame([x,y]).T)
         pass
     return r_squared
 
