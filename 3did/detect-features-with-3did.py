@@ -258,16 +258,16 @@ def calculate_r_squared(series_1, series_2):
     r_squared = 1 - (ss_res / ss_tot)
     return r_squared
 
-# measure the R-squared value of the points
+# measure the R-squared value of the points. x and y are numpy arrays.
 def measure_curve(x, y):
     r_squared = None
     try:
         # fit a guassian to the points
         guassian_params = peakutils.peak.gaussian_fit(x, y, center_only=False)
         # use the gaussian parameters to calculate the fitted intensities
-        fitted_intensities = peakutils.peak.gaussian(x.to_numpy(), guassian_params[0], guassian_params[1], guassian_params[2])
+        fitted_intensities = peakutils.peak.gaussian(x, guassian_params[0], guassian_params[1], guassian_params[2])
         # calculate the R-squared of the fit against the observed values
-        r_squared = calculate_r_squared(fitted_intensities, y.to_numpy())
+        r_squared = calculate_r_squared(fitted_intensities, y)
     except:
         print('could not fit a curve')
         print(pd.DataFrame([x,y]).T)
@@ -483,8 +483,8 @@ def find_features(segment_mz_lower, segment_mz_upper, segment_id):
                     rt_subset_df.to_pickle('{}/last_rt_df.pkl'.format(expanduser('~')))
 
                     # calculate the R-squared
-                    scan_r_squared = measure_curve(x=scan_subset_df.scan, y=scan_subset_df.clipped_filtered_intensity)
-                    rt_r_squared = measure_curve(x=rt_subset_df.retention_time_secs, y=rt_subset_df.clipped_filtered_intensity)
+                    scan_r_squared = measure_curve(x=scan_subset_df.scan.to_numpy(), y=scan_subset_df.clipped_filtered_intensity.to_numpy())
+                    rt_r_squared = measure_curve(x=rt_subset_df.retention_time_secs.to_numpy(), y=rt_subset_df.clipped_filtered_intensity.to_numpy())
 
                     # if the base isotope is sufficiently gaussian, it's worth processing
                     if ((scan_r_squared is not None) and (scan_r_squared >= MINIMUM_R_SQUARED) and (rt_r_squared is not None) and (rt_r_squared >= MINIMUM_R_SQUARED)):
