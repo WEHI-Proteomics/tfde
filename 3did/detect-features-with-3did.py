@@ -566,10 +566,14 @@ def find_features(segment_mz_lower, segment_mz_upper, segment_id):
                             print('i', end='', flush=True)
                     else:
                         print('the base isotope is not sufficiently gaussian in the CCS and/or RT dimensions, so we\'ll stop here.')
+                        scan_subset_df.to_pickle('~/last_scan_df.pkl')
+                        rt_subset_df.to_pickle('~/last_rt_df.pkl')
+
                         if scan_r_squared is not None:
                             print('scan: {}'.format(round(scan_r_squared,1)))
                         else:
                             print('could not fit a curve in CCS')
+
                         if rt_r_squared is not None:
                             print('rt: {}'.format(round(rt_r_squared,1)))
                         else:
