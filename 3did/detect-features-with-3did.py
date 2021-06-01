@@ -477,6 +477,10 @@ def find_features(segment_mz_lower, segment_mz_upper, segment_id):
                     scan_subset_df = scan_df[(scan_df.scan >= iso_scan_lower) & (scan_df.scan <= iso_scan_upper)]
                     rt_subset_df = rt_df[(rt_df.retention_time_secs >= iso_rt_lower) & (rt_df.retention_time_secs <= iso_rt_upper)]
 
+                    # debug
+                    scan_subset_df.to_pickle('{}/last_scan_df.pkl'.format(expanduser('~')))
+                    rt_subset_df.to_pickle('{}/last_rt_df.pkl'.format(expanduser('~')))
+
                     # calculate the R-squared
                     scan_r_squared = measure_curve(x=scan_subset_df.scan, y=scan_subset_df.clipped_filtered_intensity)
                     rt_r_squared = measure_curve(x=rt_subset_df.retention_time_secs, y=rt_subset_df.clipped_filtered_intensity)
@@ -566,11 +570,13 @@ def find_features(segment_mz_lower, segment_mz_upper, segment_id):
                         else:
                             print('i', end='', flush=True)
                     else:
-                        print('the base isotope is not sufficiently gaussian in the CCS and/or RT dimensions, so we\'ll stop here. scan: {}, rt: {}'.format(round(scan_r_squared,1), round(rt_r_squared,1)))
-                        print(scan_df[['scan','clipped_filtered_intensity']])
-                        print(rt_df[['retention_time_secs','clipped_filtered_intensity']])
-                        scan_df.to_pickle('{}/last_scan_df.pkl'.format(expanduser('~')))
-                        rt_df.to_pickle('{}/last_rt_df.pkl'.format(expanduser('~')))
+                        print('the base isotope is not sufficiently gaussian in the CCS and/or RT dimensions, so we\'ll stop here.')
+                        if scan_r_squared is not None:
+                            print('scan: {}'.format(round(scan_r_squared,1)))
+                        if rt_r_squared is not None:
+                            print('rt: {}'.format(round(rt_r_squared,1)))
+                        print(scan_subset_df[['scan','clipped_filtered_intensity']])
+                        print(rt_subset_df[['retention_time_secs','clipped_filtered_intensity']])
                         break
                 else:
                     print('p', end='', flush=True)
