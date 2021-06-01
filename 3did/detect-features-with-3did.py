@@ -16,7 +16,11 @@ import configparser
 from configparser import ExtendedInterpolation
 import json
 from ms_deisotope import deconvolute_peaks, averagine
+import warnings
+from scipy.optimize import OptimizeWarning
 
+# treat OptimizeWarning as an exception
+warnings.simplefilter("error", OptimizeWarning)
 
 # set up the indexes we need for queries
 def create_indexes(db_file_name):
@@ -35,13 +39,6 @@ def number_of_workers():
 def find_filter_length(number_of_points):
     filter_lengths = [51,11,5]  # must be a positive odd number, greater than the polynomial order, and less than the number of points to be filtered
     return filter_lengths[next(x[0] for x in enumerate(filter_lengths) if x[1] < number_of_points)]
-
-# find the closest frame id for a point in time
-def frame_id_for_rt(voxel_df, rt):
-    df = voxel_df.copy()
-    df['rt_delta'] = abs(voxel_df.retention_time_secs - rt)
-    df.sort_values(by=['rt_delta'], ascending=True, inplace=True)
-    return df.iloc[0].frame_id
 
 # define a straight line to exclude the charge-1 cloud
 def scan_coords_for_single_charge_region(mz_lower, mz_upper):
@@ -480,8 +477,9 @@ def find_features(segment_mz_lower, segment_mz_upper, segment_id):
                     scan_r_squared = measure_curve(x=scan_subset_df.scan.to_numpy(), y=scan_subset_df.clipped_filtered_intensity.to_numpy())
                     rt_r_squared = measure_curve(x=rt_subset_df.retention_time_secs.to_numpy(), y=rt_subset_df.clipped_filtered_intensity.to_numpy())
 
-                    # if the base isotope is sufficiently gaussian, it's worth processing
+                    # if the base isotope is sufficiently gaussian in at least one of the dimensions, it's worth processing
                     if (((scan_r_squared is not None) and (scan_r_squared >= MINIMUM_R_SQUARED)) or ((rt_r_squared is not None) and (rt_r_squared >= MINIMUM_R_SQUARED))):
+
                         # check the base peak has at least one voxel in common with the seeding voxel
                         base_peak_df = raw_df[(raw_df.mz >= iso_mz_lower) & (raw_df.mz <= iso_mz_upper) & (raw_df.scan >= iso_scan_lower) & (raw_df.scan <= iso_scan_upper) & (raw_df.retention_time_secs >= iso_rt_lower) & (raw_df.retention_time_secs <= iso_rt_upper)].copy()
                         if voxel.voxel_id in base_peak_df.voxel_id.unique():
@@ -559,10 +557,8 @@ def find_features(segment_mz_lower, segment_mz_upper, segment_id):
                                         # add the voxels included in the feature's isotopes to the list of voxels already processed
                                         voxels_processed.update(feature_d['voxels_processed'])
 
-                                        print('.', end='', flush=True)
-
                     else:
-                        print('the base isotope is not sufficiently gaussian in the CCS and/or RT dimensions, so we\'ll stop here.')
+                        print('the base isotope is insufficiently gaussian in the CCS and RT dimensions, so we\'ll stop here.')
                         scan_subset_df.to_pickle('~/last_scan_df.pkl')
                         rt_subset_df.to_pickle('~/last_rt_df.pkl')
 
