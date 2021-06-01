@@ -236,9 +236,9 @@ def calculate_monoisotopic_mass_from_mz(monoisotopic_mz, charge):
 # determine the voxels included by the raw points
 def voxels_for_points(points_df, voxels_df):
     # calculate the intensity contribution of the points to their voxel's intensity
-    df = points_df.groupby(['bin_key'], as_index=False, sort=False).intensity.agg(['sum','count']).reset_index()
+    df = points_df.groupby(['voxel_id'], as_index=False, sort=False).intensity.agg(['sum','count']).reset_index()
     df.rename(columns={'sum':'intensity', 'count':'point_count'}, inplace=True)
-    df = pd.merge(df, voxels_df, how='inner', left_on=['bin_key'], right_on=['bin_key'], suffixes=['_points','_voxel'])
+    df = pd.merge(df, voxels_df, how='inner', left_on=['voxel_id'], right_on=['voxel_id'], suffixes=['_points','_voxel'])
     df['proportion'] = df.intensity_points / df.intensity_voxel
     # if the points comprise most of a voxel's intensity, we don't need to process that voxel later on
     df = df[(df.proportion >= 0.8)]
@@ -291,8 +291,6 @@ def find_features(segment_mz_lower, segment_mz_upper, segment_id):
 
         # assign each raw point with their voxel ID
         raw_df = pd.merge(raw_df, summary_df[['bin_key','voxel_id']], how='left', left_on=['bin_key'], right_on=['bin_key'])
-        print('points without voxel ids: {}'.format(np.count_nonzero(raw_df.voxel_id.isnull())))
-        raw_df.fillna(-1, axis='columns', inplace=True)
 
         # keep track of the keys of voxels that have been processed
         voxels_processed = set()
@@ -449,7 +447,7 @@ def find_features(segment_mz_lower, segment_mz_upper, segment_id):
 
                 # check the base peak has at least one voxel in common with the seeding voxel
                 base_peak_df = raw_df[(raw_df.mz >= iso_mz_lower) & (raw_df.mz <= iso_mz_upper) & (raw_df.scan >= iso_scan_lower) & (raw_df.scan <= iso_scan_upper) & (raw_df.retention_time_secs >= iso_rt_lower) & (raw_df.retention_time_secs <= iso_rt_upper)].copy()
-                if voxel.bin_key in set(list(base_peak_df.bin_key.unique())):
+                if voxel.voxel_id in base_peak_df.voxel_id.unique():
 
                     # we now have a definition of the voxel's isotope in m/z, scan, and RT. We need to extend that in the m/z dimension to catch all the isotopes for this feature
                     region_mz_lower = voxel_mz_midpoint - ANCHOR_POINT_MZ_LOWER_OFFSET
