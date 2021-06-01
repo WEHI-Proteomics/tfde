@@ -268,6 +268,7 @@ def measure_curve(x, y):
         # calculate the R-squared of the fit against the observed values
         r_squared = calculate_r_squared(fitted_intensities, y.to_numpy())
     except:
+        print('could not fit a curve')
         pass
     return r_squared
 
@@ -561,8 +562,8 @@ def find_features(segment_mz_lower, segment_mz_upper, segment_id):
                             print('i', end='', flush=True)
                     else:
                         print('the base isotope is not sufficiently gaussian in the CCS and/or RT dimensions, so we\'ll stop here. scan: {}, rt: {}'.format(round(scan_r_squared,1), round(rt_r_squared,1)))
-                        print(scan_df[['scan','intensity','filtered_intensity']])
-                        print(rt_df[['retention_time_secs','intensity','filtered_intensity']])
+                        print(scan_df[['scan','clipped_filtered_intensity']])
+                        print(rt_df[['retention_time_secs','clipped_filtered_intensity']])
                         break
                 else:
                     print('p', end='', flush=True)
