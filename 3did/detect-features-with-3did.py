@@ -270,6 +270,7 @@ def measure_curve(x, y):
         r_squared = calculate_r_squared(fitted_intensities, y.to_numpy())
     except:
         print('could not fit a curve')
+        print(pd.DataFrame([x,y]))
         pass
     return r_squared
 
@@ -575,8 +576,6 @@ def find_features(segment_mz_lower, segment_mz_upper, segment_id):
                             print('scan: {}'.format(round(scan_r_squared,1)))
                         if rt_r_squared is not None:
                             print('rt: {}'.format(round(rt_r_squared,1)))
-                        print(scan_subset_df[['scan','clipped_filtered_intensity']])
-                        print(rt_subset_df[['retention_time_secs','clipped_filtered_intensity']])
                         break
                 else:
                     print('p', end='', flush=True)
