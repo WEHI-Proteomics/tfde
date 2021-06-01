@@ -600,8 +600,8 @@ PEAKS_THRESHOLD_SCAN = 0.5
 PEAKS_MIN_DIST_RT = 2.0     # seconds
 PEAKS_MIN_DIST_SCAN = 10.0  # scans
 
-VALLEYS_THRESHOLD_RT = 0.5    # only consider valleys that drop more than this proportion of the normalised maximum
-VALLEYS_THRESHOLD_SCAN = 0.5
+VALLEYS_THRESHOLD_RT = 0.25    # only consider valleys that drop more than this proportion of the normalised maximum
+VALLEYS_THRESHOLD_SCAN = 0.25
 VALLEYS_MIN_DIST_RT = 2.0     # seconds
 VALLEYS_MIN_DIST_SCAN = 10.0  # scans
 
