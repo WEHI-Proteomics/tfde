@@ -467,11 +467,15 @@ def find_features(segment_mz_lower, segment_mz_upper, segment_id):
                         iso_rt_lower = lower_x
                         iso_rt_upper = upper_x
 
+                    # clip the filtered intensity to zero
+                    scan_df['clipped_filtered_intensity'] = scan_df['filtered_intensity'].clip(lower=1, inplace=False)
+                    rt_df['clipped_filtered_intensity'] = rt_df['filtered_intensity'].clip(lower=1, inplace=False)
+
+                    # calculate the R-squared
+                    scan_r_squared = measure_curve(x=scan_df.scan, y=scan_df.clipped_filtered_intensity)
+                    rt_r_squared = measure_curve(x=rt_df.retention_time_secs, y=rt_df.clipped_filtered_intensity)
+
                     # if the base isotope is sufficiently gaussian, it's worth processing
-                    scan_limited_df = scan_df.filtered_intensity.clip(lower=0, inplace=False)
-                    scan_r_squared = measure_curve(x=scan_limited_df.scan, y=scan_limited_df.filtered_intensity)
-                    rt_limited_df = rt_df.filtered_intensity.clip(lower=0, inplace=False)
-                    rt_r_squared = measure_curve(x=rt_limited_df.retention_time_secs, y=rt_limited_df.filtered_intensity)
                     if ((scan_r_squared is not None) and (scan_r_squared >= MINIMUM_R_SQUARED) and (rt_r_squared is not None) and (rt_r_squared >= MINIMUM_R_SQUARED)):
                         # check the base peak has at least one voxel in common with the seeding voxel
                         base_peak_df = raw_df[(raw_df.mz >= iso_mz_lower) & (raw_df.mz <= iso_mz_upper) & (raw_df.scan >= iso_scan_lower) & (raw_df.scan <= iso_scan_upper) & (raw_df.retention_time_secs >= iso_rt_lower) & (raw_df.retention_time_secs <= iso_rt_upper)].copy()
