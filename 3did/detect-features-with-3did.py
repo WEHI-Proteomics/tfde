@@ -559,11 +559,8 @@ def find_features(segment_mz_lower, segment_mz_upper, segment_id):
                                         # add the voxels included in the feature's isotopes to the list of voxels already processed
                                         voxels_processed.update(feature_d['voxels_processed'])
 
-                                print('.', end='', flush=True)
-                            else:
-                                print('f', end='', flush=True)
-                        else:
-                            print('i', end='', flush=True)
+                                        print('.', end='', flush=True)
+
                     else:
                         print('the base isotope is not sufficiently gaussian in the CCS and/or RT dimensions, so we\'ll stop here.')
                         scan_subset_df.to_pickle('~/last_scan_df.pkl')
@@ -579,10 +576,6 @@ def find_features(segment_mz_lower, segment_mz_upper, segment_id):
                         else:
                             print('could not fit a curve in RT')
                         break
-                else:
-                    print('p', end='', flush=True)
-            else:
-                print('x', end='', flush=True)
     features_df = pd.DataFrame(features_l)
     return features_df
 
