@@ -473,9 +473,13 @@ def find_features(segment_mz_lower, segment_mz_upper, segment_id):
                     scan_df['clipped_filtered_intensity'] = scan_df['filtered_intensity'].clip(lower=1, inplace=False)
                     rt_df['clipped_filtered_intensity'] = rt_df['filtered_intensity'].clip(lower=1, inplace=False)
 
+                    # constrain the summed CCS and RT curves to the peak of interest
+                    scan_subset_df = scan_df[(scan_df.scan >= iso_scan_lower) & (scan_df.scan <= iso_scan_upper)]
+                    rt_subset_df = rt_df[(rt_df.retention_time_secs >= iso_rt_lower) & (rt_df.retention_time_secs <= iso_rt_upper)]
+
                     # calculate the R-squared
-                    scan_r_squared = measure_curve(x=scan_df.scan, y=scan_df.clipped_filtered_intensity)
-                    rt_r_squared = measure_curve(x=rt_df.retention_time_secs, y=rt_df.clipped_filtered_intensity)
+                    scan_r_squared = measure_curve(x=scan_subset_df.scan, y=scan_subset_df.clipped_filtered_intensity)
+                    rt_r_squared = measure_curve(x=rt_subset_df.retention_time_secs, y=rt_subset_df.clipped_filtered_intensity)
 
                     # if the base isotope is sufficiently gaussian, it's worth processing
                     if ((scan_r_squared is not None) and (scan_r_squared >= MINIMUM_R_SQUARED) and (rt_r_squared is not None) and (rt_r_squared >= MINIMUM_R_SQUARED)):
