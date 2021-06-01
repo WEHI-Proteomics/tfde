@@ -470,7 +470,7 @@ def find_features(segment_mz_lower, segment_mz_upper, segment_id):
                     # if the base isotope is sufficiently gaussian, it's worth processing
                     scan_r_squared = measure_curve(x=scan_df.scan, y=scan_df.filtered_intensity)
                     rt_r_squared = measure_curve(x=rt_df.retention_time_secs, y=rt_df.filtered_intensity)
-                    if ((scan_r_squared >= MINIMUM_R_SQUARED) and (rt_r_squared >= MINIMUM_R_SQUARED)):
+                    if ((scan_r_squared is not None) and (scan_r_squared >= MINIMUM_R_SQUARED) and (rt_r_squared is not None) and (rt_r_squared >= MINIMUM_R_SQUARED)):
                         # check the base peak has at least one voxel in common with the seeding voxel
                         base_peak_df = raw_df[(raw_df.mz >= iso_mz_lower) & (raw_df.mz <= iso_mz_upper) & (raw_df.scan >= iso_scan_lower) & (raw_df.scan <= iso_scan_upper) & (raw_df.retention_time_secs >= iso_rt_lower) & (raw_df.retention_time_secs <= iso_rt_upper)].copy()
                         if voxel.voxel_id in base_peak_df.voxel_id.unique():
