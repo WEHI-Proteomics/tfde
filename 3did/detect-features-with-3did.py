@@ -402,10 +402,10 @@ def find_features(segment_mz_lower, segment_mz_upper, segment_id):
 
                     upper_x = valleys_df[valleys_df.scan > scan_apex].scan.min()
                     if math.isnan(upper_x):
-                        upper_x = scan_df.scan.max()
+                        upper_x = scan_apex + (SCAN_BASE_PEAK_WIDTH / 2)
                     lower_x = valleys_df[valleys_df.scan < scan_apex].scan.max()
                     if math.isnan(lower_x):
-                        lower_x = scan_df.scan.min()
+                        lower_x = scan_apex - (SCAN_BASE_PEAK_WIDTH / 2)
 
                     # mobility extent of the isotope
                     iso_scan_lower = lower_x
