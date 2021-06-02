@@ -556,7 +556,9 @@ def find_features(segment_mz_lower, segment_mz_upper, segment_id):
                                         feature_d['voxel_id'] = voxel.voxel_id
                                         feature_d['voxel_metadata_d'] = voxel_metadata_d
                                         feature_d['scan_df'] = scan_df.to_dict('records')
+                                        feature_d['scan_r_squared'] = scan_r_squared
                                         feature_d['rt_df'] = rt_df.to_dict('records')
+                                        feature_d['rt_r_squared'] = rt_r_squared
                                         # add it to the list
                                         features_l.append(feature_d)
 
@@ -572,6 +574,8 @@ def find_features(segment_mz_lower, segment_mz_upper, segment_id):
                         d['rt_df'] = rt_df.to_dict('records')
                         d['voxel_metadata_d'] = voxel_metadata_d
                         d['feature_region_3d_extent'] = feature_region_3d_extent_d
+                        d['scan_r_squared'] = scan_r_squared
+                        d['rt_r_squared'] = rt_r_squared
                         save_visualisation(d)
 
                         if scan_r_squared is not None:
