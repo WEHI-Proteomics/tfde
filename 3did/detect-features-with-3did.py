@@ -597,7 +597,11 @@ def find_features(segment_mz_lower, segment_mz_upper, segment_id):
                                 print('rt: {}'.format(round(rt_r_squared,1)))
                             else:
                                 print('could not fit a curve in RT')
-                            break
+
+                            # unless the unviable feature is close to the RT edge, we should keep going
+                            if (iso_rt_lower > (args.rt_lower + 0.5)) or (iso_rt_upper < (args.rt_upper - 0.5)):
+                                break
+
     features_df = pd.DataFrame(features_l)
     return features_df
 
@@ -630,7 +634,7 @@ SCAN_BIN_SIZE = 10
 MZ_BIN_SIZE = 0.1
 
 MINIMUM_NUMBER_OF_POINTS_IN_BASE_PEAK = 10
-MINIMUM_R_SQUARED = 0.1  # for the curves fitted in the RT and CCS dimensions
+MINIMUM_R_SQUARED = 0.0  # for the curves fitted in the RT and CCS dimensions
 
 
 #######################
