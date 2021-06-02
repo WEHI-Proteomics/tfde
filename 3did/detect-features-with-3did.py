@@ -412,8 +412,8 @@ def find_features(segment_mz_lower, segment_mz_upper, segment_id):
                     iso_scan_upper = upper_x
 
                     # gather the isotope points constrained by m/z and CCS, and the peak search extent in RT
-                    region_rt_lower = voxel_rt_midpoint - RT_BASE_PEAK_WIDTH
-                    region_rt_upper = voxel_rt_midpoint + RT_BASE_PEAK_WIDTH
+                    region_rt_lower = voxel_rt_midpoint - (RT_BASE_PEAK_WIDTH * 2)  # need to look quite wide so we catch the high-intensity peaks
+                    region_rt_upper = voxel_rt_midpoint + (RT_BASE_PEAK_WIDTH * 2)
                     isotope_points_df = raw_df[(raw_df.mz >= iso_mz_lower) & (raw_df.mz <= iso_mz_upper) & (raw_df.scan >= iso_scan_lower) & (raw_df.scan <= iso_scan_upper) & (raw_df.retention_time_secs >= region_rt_lower) & (raw_df.retention_time_secs <= region_rt_upper)]
 
                     # in the RT dimension, find the apex
