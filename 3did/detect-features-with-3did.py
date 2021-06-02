@@ -484,7 +484,7 @@ def find_features(segment_mz_lower, segment_mz_upper, segment_id):
                     # adjust the upper bound if there are gaps
                     upper_gaps_df = gaps_rt_df[(gaps_rt_df.retention_time_secs > rt_apex) & (gaps_rt_df.rt_point_delta > 1.0)]
                     if len(upper_gaps_df) > 0:
-                        iso_rt_lower = upper_gaps_df.retention_time_secs.min()
+                        iso_rt_upper = upper_gaps_df.retention_time_secs.min()
                         rt_subset_df = rt_df[(rt_df.retention_time_secs >= iso_rt_lower) & (rt_df.retention_time_secs <= iso_rt_upper)]
 
                     # check the base peak has at least one voxel in common with the seeding voxel
