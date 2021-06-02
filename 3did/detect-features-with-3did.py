@@ -599,7 +599,7 @@ def find_features(segment_mz_lower, segment_mz_upper, segment_id):
                                 print('could not fit a curve in RT')
 
                             # unless the unviable feature is close to the RT edge, we should keep going
-                            if (iso_rt_lower < (args.rt_lower + 1.0)) or (iso_rt_upper > (args.rt_upper - 1.0)):
+                            if (iso_rt_lower > (args.rt_lower + 1.0)) and (iso_rt_upper < (args.rt_upper - 1.0)):
                                 break
 
     features_df = pd.DataFrame(features_l)
