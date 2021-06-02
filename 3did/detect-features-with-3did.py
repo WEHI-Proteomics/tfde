@@ -1,4 +1,3 @@
-from posixpath import expanduser
 import pandas as pd
 import numpy as np
 import peakutils
@@ -18,6 +17,7 @@ import json
 from ms_deisotope import deconvolute_peaks, averagine
 import warnings
 from scipy.optimize import OptimizeWarning
+from os.path import expanduser
 
 
 # set up the indexes we need for queries
@@ -270,7 +270,7 @@ def measure_curve(x, y):
 
 # save visualisation data for later analysis of how feature detection works
 def save_visualisation(visualise_d):
-    VIS_FILE = '{}/feature-detection-{}-visualisation-3did.pkl'.format(expanduser("~"), visualise_d['voxel_id'])
+    VIS_FILE = '{}/feature-detection-stopping-point-visualisation-3did.pkl'.format(expanduser("~"))
     print("writing feature detection visualisation data to {}".format(VIS_FILE))
     with open(VIS_FILE, 'wb') as handle:
         pickle.dump(visualise_d, handle)
