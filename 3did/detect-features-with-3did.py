@@ -242,7 +242,7 @@ def voxels_for_points(points_df, voxels_df):
 
 # generate a unique feature_id from the precursor id and the feature sequence number found for that precursor
 def generate_voxel_id(segment_id, voxel_sequence_number):
-    voxel_id = (segment_id * 1000000) + voxel_sequence_number
+    voxel_id = (segment_id * 10000000) + voxel_sequence_number
     return voxel_id
 
 # calculate the r-squared value of series_2 against series_1, where series_1 is the original data (source: https://stackoverflow.com/a/37899817/1184799)
