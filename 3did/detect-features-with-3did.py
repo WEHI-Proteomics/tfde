@@ -461,17 +461,35 @@ def find_features(segment_mz_lower, segment_mz_upper, segment_id):
                     iso_rt_lower = lower_x
                     iso_rt_upper = upper_x
 
+                    # clip the filtered intensity to zero
+                    scan_df['clipped_filtered_intensity'] = scan_df['filtered_intensity'].clip(lower=1, inplace=False)
+                    rt_df['clipped_filtered_intensity'] = rt_df['filtered_intensity'].clip(lower=1, inplace=False)
+
+                    # constrain the summed CCS and RT curves to the peak of interest
+                    scan_subset_df = scan_df[(scan_df.scan >= iso_scan_lower) & (scan_df.scan <= iso_scan_upper)]
+                    rt_subset_df = rt_df[(rt_df.retention_time_secs >= iso_rt_lower) & (rt_df.retention_time_secs <= iso_rt_upper)]
+
+                    # remove gaps on the edges of the RT peak
+                    gaps_rt_df = rt_subset_df.copy()
+                    gaps_rt_df['rt_point_delta'] = gaps_rt_df.retention_time_secs.diff()
+                    gaps_rt_df['rt_apex_delta'] = abs(gaps_rt_df.retention_time_secs - rt_apex)
+                    gaps_rt_df.sort_values(by=['rt_apex_delta'], ascending=True, inplace=True, ignore_index=True)
+
+                    # adjust the lower bound if there are gaps
+                    lower_gaps_df = gaps_rt_df[(gaps_rt_df.retention_time_secs < rt_apex) & (gaps_rt_df.rt_point_delta > 1.0)]
+                    if len(lower_gaps_df) > 0:
+                        iso_rt_lower = lower_gaps_df.retention_time_secs.max()
+                        rt_subset_df = rt_df[(rt_df.retention_time_secs >= iso_rt_lower) & (rt_df.retention_time_secs <= iso_rt_upper)]
+
+                    # adjust the upper bound if there are gaps
+                    upper_gaps_df = gaps_rt_df[(gaps_rt_df.retention_time_secs > rt_apex) & (gaps_rt_df.rt_point_delta > 1.0)]
+                    if len(upper_gaps_df) > 0:
+                        iso_rt_lower = upper_gaps_df.retention_time_secs.min()
+                        rt_subset_df = rt_df[(rt_df.retention_time_secs >= iso_rt_lower) & (rt_df.retention_time_secs <= iso_rt_upper)]
+
                     # check the base peak has at least one voxel in common with the seeding voxel
                     base_peak_df = raw_df[(raw_df.mz >= iso_mz_lower) & (raw_df.mz <= iso_mz_upper) & (raw_df.scan >= iso_scan_lower) & (raw_df.scan <= iso_scan_upper) & (raw_df.retention_time_secs >= iso_rt_lower) & (raw_df.retention_time_secs <= iso_rt_upper)].copy()
                     if voxel.voxel_id in base_peak_df.voxel_id.unique():
-
-                        # clip the filtered intensity to zero
-                        scan_df['clipped_filtered_intensity'] = scan_df['filtered_intensity'].clip(lower=1, inplace=False)
-                        rt_df['clipped_filtered_intensity'] = rt_df['filtered_intensity'].clip(lower=1, inplace=False)
-
-                        # constrain the summed CCS and RT curves to the peak of interest
-                        scan_subset_df = scan_df[(scan_df.scan >= iso_scan_lower) & (scan_df.scan <= iso_scan_upper)]
-                        rt_subset_df = rt_df[(rt_df.retention_time_secs >= iso_rt_lower) & (rt_df.retention_time_secs <= iso_rt_upper)]
 
                         # calculate the R-squared
                         scan_r_squared = measure_curve(x=scan_subset_df.scan.to_numpy(), y=scan_subset_df.clipped_filtered_intensity.to_numpy())
