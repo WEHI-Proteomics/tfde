@@ -260,7 +260,7 @@ def measure_curve(x, y):
     try:
         # fit a guassian to the points
         guassian_params = peakutils.peak.gaussian_fit(x, y, center_only=False)
-        # use the gaussian parameters to calculate the fitted intensities
+        # use the gaussian parameters to calculate the fitted intensities at the given RT values so we can compare
         fitted_intensities = peakutils.peak.gaussian(x, guassian_params[0], guassian_params[1], guassian_params[2])
         # calculate the R-squared of the fit against the observed values
         r_squared = calculate_r_squared(fitted_intensities, y)
