@@ -196,7 +196,7 @@ for group_name,group_df in pixel_intensity_df.groupby(['frame_id'], as_index=Fal
         draw.text((x0, y0-(1*space_per_line)), 'charge {}+'.format(feature.charge), font=feature_label_font, fill='lawngreen')
 
     # save the tile
-    tile_file_name = '{}/tile-{:03d}.png'.format(TILES_BASE_DIR, tile_id)
+    tile_file_name = '{}/tile-{:05d}.png'.format(TILES_BASE_DIR, tile_id)
     tile.save(tile_file_name)
     tile_id += 1
 
