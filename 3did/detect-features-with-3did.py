@@ -580,6 +580,12 @@ def find_features(segment_mz_lower, segment_mz_upper, segment_id):
                         d['feature_region_3d_extent'] = feature_region_3d_extent_d
                         d['scan_r_squared'] = scan_r_squared
                         d['rt_r_squared'] = rt_r_squared
+                        d['scan_apex'] = scan_apex
+                        d['scan_lower'] = iso_scan_lower
+                        d['scan_upper'] = iso_scan_upper
+                        d['rt_apex'] = rt_apex
+                        d['rt_lower'] = iso_rt_lower
+                        d['rt_upper'] = iso_rt_upper
                         save_visualisation(d)
 
                         if scan_r_squared is not None:
