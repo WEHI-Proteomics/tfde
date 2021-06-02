@@ -471,24 +471,24 @@ def find_features(segment_mz_lower, segment_mz_upper, segment_id):
                         iso_rt_lower = lower_x
                         iso_rt_upper = upper_x
 
-                    # clip the filtered intensity to zero
-                    scan_df['clipped_filtered_intensity'] = scan_df['filtered_intensity'].clip(lower=1, inplace=False)
-                    rt_df['clipped_filtered_intensity'] = rt_df['filtered_intensity'].clip(lower=1, inplace=False)
+                    # check the base peak has at least one voxel in common with the seeding voxel
+                    base_peak_df = raw_df[(raw_df.mz >= iso_mz_lower) & (raw_df.mz <= iso_mz_upper) & (raw_df.scan >= iso_scan_lower) & (raw_df.scan <= iso_scan_upper) & (raw_df.retention_time_secs >= iso_rt_lower) & (raw_df.retention_time_secs <= iso_rt_upper)].copy()
+                    if voxel.voxel_id in base_peak_df.voxel_id.unique():
 
-                    # constrain the summed CCS and RT curves to the peak of interest
-                    scan_subset_df = scan_df[(scan_df.scan >= iso_scan_lower) & (scan_df.scan <= iso_scan_upper)]
-                    rt_subset_df = rt_df[(rt_df.retention_time_secs >= iso_rt_lower) & (rt_df.retention_time_secs <= iso_rt_upper)]
+                        # clip the filtered intensity to zero
+                        scan_df['clipped_filtered_intensity'] = scan_df['filtered_intensity'].clip(lower=1, inplace=False)
+                        rt_df['clipped_filtered_intensity'] = rt_df['filtered_intensity'].clip(lower=1, inplace=False)
 
-                    # calculate the R-squared
-                    scan_r_squared = measure_curve(x=scan_subset_df.scan.to_numpy(), y=scan_subset_df.clipped_filtered_intensity.to_numpy())
-                    rt_r_squared = measure_curve(x=rt_subset_df.retention_time_secs.to_numpy(), y=rt_subset_df.clipped_filtered_intensity.to_numpy())
+                        # constrain the summed CCS and RT curves to the peak of interest
+                        scan_subset_df = scan_df[(scan_df.scan >= iso_scan_lower) & (scan_df.scan <= iso_scan_upper)]
+                        rt_subset_df = rt_df[(rt_df.retention_time_secs >= iso_rt_lower) & (rt_df.retention_time_secs <= iso_rt_upper)]
 
-                    # if the base isotope is sufficiently gaussian in at least one of the dimensions, it's worth processing
-                    if (((scan_r_squared is not None) and (scan_r_squared >= MINIMUM_R_SQUARED)) or ((rt_r_squared is not None) and (rt_r_squared >= MINIMUM_R_SQUARED))):
+                        # calculate the R-squared
+                        scan_r_squared = measure_curve(x=scan_subset_df.scan.to_numpy(), y=scan_subset_df.clipped_filtered_intensity.to_numpy())
+                        rt_r_squared = measure_curve(x=rt_subset_df.retention_time_secs.to_numpy(), y=rt_subset_df.clipped_filtered_intensity.to_numpy())
 
-                        # check the base peak has at least one voxel in common with the seeding voxel
-                        base_peak_df = raw_df[(raw_df.mz >= iso_mz_lower) & (raw_df.mz <= iso_mz_upper) & (raw_df.scan >= iso_scan_lower) & (raw_df.scan <= iso_scan_upper) & (raw_df.retention_time_secs >= iso_rt_lower) & (raw_df.retention_time_secs <= iso_rt_upper)].copy()
-                        if voxel.voxel_id in base_peak_df.voxel_id.unique():
+                        # if the base isotope is sufficiently gaussian in at least one of the dimensions, it's worth processing
+                        if (((scan_r_squared is not None) and (scan_r_squared >= MINIMUM_R_SQUARED)) or ((rt_r_squared is not None) and (rt_r_squared >= MINIMUM_R_SQUARED))):
 
                             # we now have a definition of the voxel's isotope in m/z, scan, and RT. We need to extend that in the m/z dimension to catch all the isotopes for this feature
                             region_mz_lower = voxel_mz_midpoint - ANCHOR_POINT_MZ_LOWER_OFFSET
@@ -565,39 +565,39 @@ def find_features(segment_mz_lower, segment_mz_upper, segment_id):
                                         # add the voxels included in the feature's isotopes to the list of voxels already processed
                                         voxels_processed.update(feature_d['voxels_processed'])
 
-                    else:
-                        print('the base isotope is insufficiently gaussian in the CCS and RT dimensions, so we\'ll stop here.')
-
-                        region_mz_lower = voxel_mz_midpoint - ANCHOR_POINT_MZ_LOWER_OFFSET
-                        region_mz_upper = voxel_mz_midpoint + ANCHOR_POINT_MZ_UPPER_OFFSET
-                        feature_region_3d_extent_d = {'mz_lower':region_mz_lower, 'mz_upper':region_mz_upper, 'scan_lower':iso_scan_lower, 'scan_upper':iso_scan_upper, 'rt_lower':iso_rt_lower, 'rt_upper':iso_rt_upper}
-
-                        d = {}
-                        d['voxel_id'] = voxel.voxel_id
-                        d['scan_df'] = scan_df.to_dict('records')
-                        d['rt_df'] = rt_df.to_dict('records')
-                        d['voxel_metadata_d'] = voxel_metadata_d
-                        d['feature_region_3d_extent'] = feature_region_3d_extent_d
-                        d['scan_r_squared'] = scan_r_squared
-                        d['rt_r_squared'] = rt_r_squared
-                        d['scan_apex'] = scan_apex
-                        d['scan_lower'] = iso_scan_lower
-                        d['scan_upper'] = iso_scan_upper
-                        d['rt_apex'] = rt_apex
-                        d['rt_lower'] = iso_rt_lower
-                        d['rt_upper'] = iso_rt_upper
-                        save_visualisation(d)
-
-                        if scan_r_squared is not None:
-                            print('scan: {}'.format(round(scan_r_squared,1)))
                         else:
-                            print('could not fit a curve in CCS')
+                            print('the base isotope is insufficiently gaussian in the CCS and RT dimensions, so we\'ll stop here.')
 
-                        if rt_r_squared is not None:
-                            print('rt: {}'.format(round(rt_r_squared,1)))
-                        else:
-                            print('could not fit a curve in RT')
-                        break
+                            region_mz_lower = voxel_mz_midpoint - ANCHOR_POINT_MZ_LOWER_OFFSET
+                            region_mz_upper = voxel_mz_midpoint + ANCHOR_POINT_MZ_UPPER_OFFSET
+                            feature_region_3d_extent_d = {'mz_lower':region_mz_lower, 'mz_upper':region_mz_upper, 'scan_lower':iso_scan_lower, 'scan_upper':iso_scan_upper, 'rt_lower':iso_rt_lower, 'rt_upper':iso_rt_upper}
+
+                            d = {}
+                            d['voxel_id'] = voxel.voxel_id
+                            d['scan_df'] = scan_df.to_dict('records')
+                            d['rt_df'] = rt_df.to_dict('records')
+                            d['voxel_metadata_d'] = voxel_metadata_d
+                            d['feature_region_3d_extent'] = feature_region_3d_extent_d
+                            d['scan_r_squared'] = scan_r_squared
+                            d['rt_r_squared'] = rt_r_squared
+                            d['scan_apex'] = scan_apex
+                            d['scan_lower'] = iso_scan_lower
+                            d['scan_upper'] = iso_scan_upper
+                            d['rt_apex'] = rt_apex
+                            d['rt_lower'] = iso_rt_lower
+                            d['rt_upper'] = iso_rt_upper
+                            save_visualisation(d)
+
+                            if scan_r_squared is not None:
+                                print('scan: {}'.format(round(scan_r_squared,1)))
+                            else:
+                                print('could not fit a curve in CCS')
+
+                            if rt_r_squared is not None:
+                                print('rt: {}'.format(round(rt_r_squared,1)))
+                            else:
+                                print('could not fit a curve in RT')
+                            break
     features_df = pd.DataFrame(features_l)
     return features_df
 
