@@ -452,24 +452,14 @@ def find_features(segment_mz_lower, segment_mz_upper, segment_id):
 
                     upper_x = valleys_df[valleys_df.retention_time_secs > rt_apex].retention_time_secs.min()
                     if math.isnan(upper_x):
-                        upper_x = rt_df.retention_time_secs.max()
-                        rt_upper_used_limit = True
-                    else:
-                        rt_upper_used_limit = False
+                        upper_x = rt_apex + (RT_BASE_PEAK_WIDTH / 2)
                     lower_x = valleys_df[valleys_df.retention_time_secs < rt_apex].retention_time_secs.max()
                     if math.isnan(lower_x):
-                        lower_x = rt_df.retention_time_secs.min()
-                        rt_lower_used_limit = True
-                    else:
-                        rt_lower_used_limit = False
+                        lower_x = rt_apex - (RT_BASE_PEAK_WIDTH / 2)
 
                     # RT extent of the isotope
-                    if rt_upper_used_limit and rt_lower_used_limit:
-                        iso_rt_lower = rt_apex - (RT_BASE_PEAK_WIDTH / 2)
-                        iso_rt_upper = rt_apex + (RT_BASE_PEAK_WIDTH / 2)
-                    else:
-                        iso_rt_lower = lower_x
-                        iso_rt_upper = upper_x
+                    iso_rt_lower = lower_x
+                    iso_rt_upper = upper_x
 
                     # check the base peak has at least one voxel in common with the seeding voxel
                     base_peak_df = raw_df[(raw_df.mz >= iso_mz_lower) & (raw_df.mz <= iso_mz_upper) & (raw_df.scan >= iso_scan_lower) & (raw_df.scan <= iso_scan_upper) & (raw_df.retention_time_secs >= iso_rt_lower) & (raw_df.retention_time_secs <= iso_rt_upper)].copy()
