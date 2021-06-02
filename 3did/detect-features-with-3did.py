@@ -566,40 +566,40 @@ def find_features(segment_mz_lower, segment_mz_upper, segment_id):
                                         voxels_processed.update(feature_d['voxels_processed'])
 
                         else:
-                            print('the base isotope is insufficiently gaussian in the CCS and RT dimensions, so we\'ll stop here.')
-
-                            region_mz_lower = voxel_mz_midpoint - ANCHOR_POINT_MZ_LOWER_OFFSET
-                            region_mz_upper = voxel_mz_midpoint + ANCHOR_POINT_MZ_UPPER_OFFSET
-                            feature_region_3d_extent_d = {'mz_lower':region_mz_lower, 'mz_upper':region_mz_upper, 'scan_lower':iso_scan_lower, 'scan_upper':iso_scan_upper, 'rt_lower':iso_rt_lower, 'rt_upper':iso_rt_upper}
-
-                            d = {}
-                            d['voxel_id'] = voxel.voxel_id
-                            d['scan_df'] = scan_df.to_dict('records')
-                            d['rt_df'] = rt_df.to_dict('records')
-                            d['voxel_metadata_d'] = voxel_metadata_d
-                            d['feature_region_3d_extent'] = feature_region_3d_extent_d
-                            d['scan_r_squared'] = scan_r_squared
-                            d['rt_r_squared'] = rt_r_squared
-                            d['scan_apex'] = scan_apex
-                            d['scan_lower'] = iso_scan_lower
-                            d['scan_upper'] = iso_scan_upper
-                            d['rt_apex'] = rt_apex
-                            d['rt_lower'] = iso_rt_lower
-                            d['rt_upper'] = iso_rt_upper
-                            save_visualisation(d)
-
-                            if scan_r_squared is not None:
-                                print('scan: {}'.format(round(scan_r_squared,1)))
-                            else:
-                                print('could not fit a curve in CCS')
-
-                            if rt_r_squared is not None:
-                                print('rt: {}'.format(round(rt_r_squared,1)))
-                            else:
-                                print('could not fit a curve in RT')
-
                             # unless the unviable feature is close to the RT edge, we should keep going
                             if (iso_rt_lower > (args.rt_lower + 1.0)) and (iso_rt_upper < (args.rt_upper - 1.0)):
+                                print('the base isotope is insufficiently gaussian in the CCS and RT dimensions, so we\'ll stop here.')
+                                if scan_r_squared is not None:
+                                    print('scan: {}'.format(round(scan_r_squared,1)))
+                                else:
+                                    print('could not fit a curve in CCS')
+
+                                if rt_r_squared is not None:
+                                    print('rt: {}'.format(round(rt_r_squared,1)))
+                                else:
+                                    print('could not fit a curve in RT')
+
+                                # save information about the stopping point for analysis
+                                region_mz_lower = voxel_mz_midpoint - ANCHOR_POINT_MZ_LOWER_OFFSET
+                                region_mz_upper = voxel_mz_midpoint + ANCHOR_POINT_MZ_UPPER_OFFSET
+                                feature_region_3d_extent_d = {'mz_lower':region_mz_lower, 'mz_upper':region_mz_upper, 'scan_lower':iso_scan_lower, 'scan_upper':iso_scan_upper, 'rt_lower':iso_rt_lower, 'rt_upper':iso_rt_upper}
+
+                                d = {}
+                                d['voxel_id'] = voxel.voxel_id
+                                d['scan_df'] = scan_df.to_dict('records')
+                                d['rt_df'] = rt_df.to_dict('records')
+                                d['voxel_metadata_d'] = voxel_metadata_d
+                                d['feature_region_3d_extent'] = feature_region_3d_extent_d
+                                d['scan_r_squared'] = scan_r_squared
+                                d['rt_r_squared'] = rt_r_squared
+                                d['scan_apex'] = scan_apex
+                                d['scan_lower'] = iso_scan_lower
+                                d['scan_upper'] = iso_scan_upper
+                                d['rt_apex'] = rt_apex
+                                d['rt_lower'] = iso_rt_lower
+                                d['rt_upper'] = iso_rt_upper
+                                save_visualisation(d)
+
                                 break
 
     features_df = pd.DataFrame(features_l)
