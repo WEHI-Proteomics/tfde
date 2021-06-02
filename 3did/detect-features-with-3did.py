@@ -269,11 +269,11 @@ def measure_curve(x, y):
     return r_squared
 
 # save visualisation data for later analysis of how feature detection works
-def save_visualisation(visualise_d):
-    VIS_FILE = '{}/feature-detection-stopping-point-visualisation-3did.pkl'.format(expanduser("~"))
-    print("writing feature detection visualisation data to {}".format(VIS_FILE))
+def save_visualisation(d, segment_id):
+    VIS_FILE = '{}/3did-stopping-point-segment-{}.pkl'.format(expanduser("~"), segment_id)
+    print("writing stopping point info to {}".format(VIS_FILE))
     with open(VIS_FILE, 'wb') as handle:
-        pickle.dump(visualise_d, handle)
+        pickle.dump(d, handle)
 
 # process a segment of this run's data, and return a list of features
 @ray.remote
@@ -598,7 +598,7 @@ def find_features(segment_mz_lower, segment_mz_upper, segment_id):
                                 d['rt_apex'] = rt_apex
                                 d['rt_lower'] = iso_rt_lower
                                 d['rt_upper'] = iso_rt_upper
-                                save_visualisation(d)
+                                save_visualisation(d, segment_id)
 
                                 break
 
