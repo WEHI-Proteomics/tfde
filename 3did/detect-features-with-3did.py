@@ -568,6 +568,10 @@ def find_features(segment_mz_lower, segment_mz_upper, segment_id):
                     else:
                         print('the base isotope is insufficiently gaussian in the CCS and RT dimensions, so we\'ll stop here.')
 
+                        region_mz_lower = voxel_mz_midpoint - ANCHOR_POINT_MZ_LOWER_OFFSET
+                        region_mz_upper = voxel_mz_midpoint + ANCHOR_POINT_MZ_UPPER_OFFSET
+                        feature_region_3d_extent_d = {'mz_lower':region_mz_lower, 'mz_upper':region_mz_upper, 'scan_lower':iso_scan_lower, 'scan_upper':iso_scan_upper, 'rt_lower':iso_rt_lower, 'rt_upper':iso_rt_upper}
+
                         d = {}
                         d['voxel_id'] = voxel.voxel_id
                         d['scan_df'] = scan_df.to_dict('records')
