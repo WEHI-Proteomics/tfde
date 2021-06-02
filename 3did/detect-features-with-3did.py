@@ -313,7 +313,7 @@ def find_features(segment_mz_lower, segment_mz_upper, segment_id):
         summary_df.reset_index(drop=True, inplace=True)
         summary_df['voxel_id'] = summary_df.index
         summary_df['voxel_id'] = summary_df.apply(lambda row: generate_voxel_id(segment_id, row.voxel_id+1), axis=1)
-        print('there are {} voxels for processing in segment {}'.format(len(summary_df), segment_id))
+        print('there are {} voxels for processing in segment {} ({}-{} m/z)'.format(len(summary_df), segment_id, round(segment_mz_lower,1), round(segment_mz_upper,1)))
 
         # assign each raw point with their voxel ID
         raw_df = pd.merge(raw_df, summary_df[['bin_key','voxel_id']], how='left', left_on=['bin_key'], right_on=['bin_key'])
