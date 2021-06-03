@@ -479,13 +479,13 @@ def find_features(segment_mz_lower, segment_mz_upper, segment_id):
                     lower_gaps_df = gaps_rt_df[(gaps_rt_df.retention_time_secs < rt_apex) & (gaps_rt_df.rt_point_delta > 1.0)]
                     if len(lower_gaps_df) > 0:
                         iso_rt_lower = lower_gaps_df.retention_time_secs.max()
-                        rt_subset_df = rt_df[(rt_df.retention_time_secs >= iso_rt_lower) & (rt_df.retention_time_secs <= iso_rt_upper)]
+                        rt_subset_df = rt_df[(rt_df.retention_time_secs >= iso_rt_lower) & (rt_df.retention_time_secs <= iso_rt_upper)]  # reset the subset to the new bounds
 
                     # adjust the upper bound if there are gaps
                     upper_gaps_df = gaps_rt_df[(gaps_rt_df.retention_time_secs > rt_apex) & (gaps_rt_df.rt_point_delta > 1.0)]
                     if len(upper_gaps_df) > 0:
                         iso_rt_upper = upper_gaps_df.retention_time_secs.min()
-                        rt_subset_df = rt_df[(rt_df.retention_time_secs >= iso_rt_lower) & (rt_df.retention_time_secs <= iso_rt_upper)]
+                        rt_subset_df = rt_df[(rt_df.retention_time_secs >= iso_rt_lower) & (rt_df.retention_time_secs <= iso_rt_upper)]  # reset the subset to the new bounds
 
                     # check the base peak has at least one voxel in common with the seeding voxel
                     base_peak_df = raw_df[(raw_df.mz >= iso_mz_lower) & (raw_df.mz <= iso_mz_upper) & (raw_df.scan >= iso_scan_lower) & (raw_df.scan <= iso_scan_upper) & (raw_df.retention_time_secs >= iso_rt_lower) & (raw_df.retention_time_secs <= iso_rt_upper)].copy()
