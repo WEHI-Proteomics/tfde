@@ -609,7 +609,8 @@ def find_features(segment_mz_lower, segment_mz_upper, segment_id):
                                 save_visualisation(d, segment_id)
 
                                 break
-
+                else:
+                    print('not enough base isotope points in the voxel\'s most intense frame ({})'.format(len(isotope_frame_df)))
     features_df = pd.DataFrame(features_l)
     return features_df
 
