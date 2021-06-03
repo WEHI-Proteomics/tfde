@@ -51,6 +51,7 @@ if pasef_feature_id is not None:
     'RT_MIN': selected_feature.rt_apex - VIS_RT_OFFSET_LOWER,
     'RT_MAX': selected_feature.rt_apex + VIS_RT_OFFSET_UPPER
     }
+    print('coordinates for comparison:\n{}'.format(limits))
 else:
     # for any feature
     limits = {
@@ -61,8 +62,6 @@ else:
     'RT_MIN': 1650,
     'RT_MAX': 2200
     }
-
-print('coordinates for comparison:\n{}'.format(limits))
 
 PIXELS_X = 800
 PIXELS_Y = 800
@@ -80,7 +79,7 @@ BB_SCAN_BUFFER = 5
 EXPERIMENT_DIR = '/media/big-ssd/experiments/{}'.format(experiment_name)
 CONVERTED_DATABASE_NAME = '/media/big-ssd/experiments/P3856/converted-databases/exp-P3856-run-{}-converted.sqlite'.format(run_name)
 
-TILES_BASE_DIR = '{}/feature-tiles-pasef'.format(expanduser('~'))
+TILES_BASE_DIR = '{}/tiles/feature-tiles-pasef'.format(expanduser('~'))
 
 
 if not os.path.isfile(CONVERTED_DATABASE_NAME):
@@ -126,9 +125,8 @@ colours_df = pd.DataFrame(colours_l, columns=['intensity','colour'])
 pixel_intensity_df = pd.merge(pixel_intensity_df, colours_df, how='left', left_on=['intensity'], right_on=['intensity'])
 
 # create the tiles base directory
-if os.path.exists(TILES_BASE_DIR):
-    shutil.rmtree(TILES_BASE_DIR)
-os.makedirs(TILES_BASE_DIR)
+if not os.path.exists(TILES_BASE_DIR):
+    os.makedirs(TILES_BASE_DIR)
 
 # load the font to use for labelling the overlays
 if os.path.isfile(UBUNTU_FONT_PATH):
