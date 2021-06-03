@@ -28,7 +28,7 @@ for idx,f in enumerate(overlay_A_files_l):
     overlay_b_name = overlay_B_files_l[idx]
     print('compositing {} and {} as tile {}'.format(overlay_a_name, overlay_b_name, idx+1))
 
-    composite_name = '{}/composite-tile-{}.png'.format(COMPOSITE_TILE_BASE_DIR, idx+1)
+    composite_name = '{}/composite-tile-{:05d}.png'.format(COMPOSITE_TILE_BASE_DIR, idx+1)
 
     # make the composite
     if os.path.isfile(overlay_a_name) and os.path.isfile(overlay_b_name):
