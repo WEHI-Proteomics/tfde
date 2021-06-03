@@ -360,10 +360,10 @@ def find_features(segment_mz_lower, segment_mz_upper, segment_id):
 
                 # find the mobility extent of the isotope in this frame
                 isotope_2d_df = raw_df[(raw_df.mz >= iso_mz_lower) & (raw_df.mz <= iso_mz_upper) & (raw_df.scan >= frame_region_scan_lower) & (raw_df.scan <= frame_region_scan_upper) & (raw_df.retention_time_secs >= voxel_rt_lower) & (raw_df.retention_time_secs <= voxel_rt_upper)]
-                if len(isotope_2d_df) >= MINIMUM_NUMBER_OF_POINTS_IN_BASE_PEAK:
-                    # collapsing the monoisotopic's summed points onto the mobility dimension
-                    scan_df = isotope_2d_df.groupby(['scan'], as_index=False).intensity.sum()
-                    scan_df.sort_values(by=['scan'], ascending=True, inplace=True)
+                # collapsing the monoisotopic's summed points onto the mobility dimension
+                scan_df = isotope_2d_df.groupby(['scan'], as_index=False).intensity.sum()
+                scan_df.sort_values(by=['scan'], ascending=True, inplace=True)
+                if len(scan_df) >= MINIMUM_NUMBER_OF_SCANS_IN_BASE_PEAK:
 
                     # apply a smoothing filter to the points
                     scan_df['filtered_intensity'] = scan_df.intensity  # set the default
@@ -636,10 +636,10 @@ RT_BIN_SIZE = 5
 SCAN_BIN_SIZE = 10
 MZ_BIN_SIZE = 0.1
 
-MINIMUM_NUMBER_OF_POINTS_IN_BASE_PEAK = 10
+MINIMUM_NUMBER_OF_SCANS_IN_BASE_PEAK = 5
 MINIMUM_R_SQUARED = 0.0  # for the curves fitted in the RT and CCS dimensions
 MAXIMUM_GAP_SECS_BETWEEN_EDGE_POINTS = 1.0
-INTENSITY_PROPORTION_FOR_VOXEL_TO_BE_REMOVED = 0.6
+INTENSITY_PROPORTION_FOR_VOXEL_TO_BE_REMOVED = 0.8
 
 
 #######################
