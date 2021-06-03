@@ -125,8 +125,9 @@ colours_df = pd.DataFrame(colours_l, columns=['intensity','colour'])
 pixel_intensity_df = pd.merge(pixel_intensity_df, colours_df, how='left', left_on=['intensity'], right_on=['intensity'])
 
 # create the tiles base directory
-if not os.path.exists(TILES_BASE_DIR):
-    os.makedirs(TILES_BASE_DIR)
+if os.path.exists(TILES_BASE_DIR):
+    shutil.rmtree(TILES_BASE_DIR)
+os.makedirs(TILES_BASE_DIR)
 
 # load the font to use for labelling the overlays
 if os.path.isfile(UBUNTU_FONT_PATH):
