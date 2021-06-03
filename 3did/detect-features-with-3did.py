@@ -574,7 +574,7 @@ def find_features(segment_mz_lower, segment_mz_upper, segment_id):
                                         voxels_processed.update(feature_d['voxels_processed'])
 
                         else:
-                            # unless the unviable feature is close to the RT edge, we should keep going
+                            # if the unviable feature is close to the RT edge, we should keep going
                             if (iso_rt_lower > (args.rt_lower + 1.0)) and (iso_rt_upper < (args.rt_upper - 1.0)):
                                 print('the base isotope is insufficiently gaussian in the CCS and RT dimensions, so we\'ll stop here.')
                                 if scan_r_squared is not None:
