@@ -237,7 +237,7 @@ def voxels_for_points(points_df, voxels_df):
     df = pd.merge(df, voxels_df, how='inner', left_on=['voxel_id'], right_on=['voxel_id'], suffixes=['_points','_voxel'])
     df['proportion'] = df.intensity_points / df.intensity_voxel
     # if the points comprise most of a voxel's intensity, we don't need to process that voxel later on
-    df = df[(df.proportion >= 0.8)]
+    df = df[(df.proportion >= INTENSITY_PROPORTION_FOR_VOXEL_TO_BE_REMOVED)]
     return set(df.voxel_id.tolist())
 
 # generate a unique feature_id from the precursor id and the feature sequence number found for that precursor
@@ -471,13 +471,13 @@ def find_features(segment_mz_lower, segment_mz_upper, segment_id):
                     gaps_rt_df.sort_values(by=['rt_apex_delta'], ascending=True, inplace=True, ignore_index=True)
 
                     # adjust the lower bound if there are gaps
-                    lower_gaps_df = gaps_rt_df[(gaps_rt_df.retention_time_secs < rt_apex) & (gaps_rt_df.rt_point_delta > 1.0)]
+                    lower_gaps_df = gaps_rt_df[(gaps_rt_df.retention_time_secs < rt_apex) & (gaps_rt_df.rt_point_delta > MAXIMUM_GAP_SECS_BETWEEN_EDGE_POINTS)]
                     if len(lower_gaps_df) > 0:
                         iso_rt_lower = lower_gaps_df.retention_time_secs.max()
                         rt_subset_df = rt_df[(rt_df.retention_time_secs >= iso_rt_lower) & (rt_df.retention_time_secs <= iso_rt_upper)]  # reset the subset to the new bounds
 
                     # adjust the upper bound if there are gaps
-                    upper_gaps_df = gaps_rt_df[(gaps_rt_df.retention_time_secs > rt_apex) & (gaps_rt_df.rt_point_delta > 1.0)]
+                    upper_gaps_df = gaps_rt_df[(gaps_rt_df.retention_time_secs > rt_apex) & (gaps_rt_df.rt_point_delta > MAXIMUM_GAP_SECS_BETWEEN_EDGE_POINTS)]
                     if len(upper_gaps_df) > 0:
                         iso_rt_upper = upper_gaps_df.retention_time_secs.min()
                         rt_subset_df = rt_df[(rt_df.retention_time_secs >= iso_rt_lower) & (rt_df.retention_time_secs <= iso_rt_upper)]  # reset the subset to the new bounds
@@ -638,6 +638,8 @@ MZ_BIN_SIZE = 0.1
 
 MINIMUM_NUMBER_OF_POINTS_IN_BASE_PEAK = 10
 MINIMUM_R_SQUARED = 0.0  # for the curves fitted in the RT and CCS dimensions
+MAXIMUM_GAP_SECS_BETWEEN_EDGE_POINTS = 1.0
+INTENSITY_PROPORTION_FOR_VOXEL_TO_BE_REMOVED = 0.6
 
 
 #######################
