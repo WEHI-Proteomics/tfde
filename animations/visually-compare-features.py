@@ -7,16 +7,16 @@ from os.path import expanduser
 # sudo apt install imagemagick
 
 
-BASE_DIR = expanduser('~')
-OVERLAY_A_BASE_DIR = '{}/feature-tiles-pasef'.format(BASE_DIR)
-OVERLAY_B_BASE_DIR = '{}/feature-tiles-3did'.format(BASE_DIR)
+BASE_TILES_DIR = '{}/tiles'.format(expanduser('~'))
+OVERLAY_A_BASE_DIR = '{}/feature-tiles-pasef'.format(BASE_TILES_DIR)
+OVERLAY_B_BASE_DIR = '{}/feature-tiles-3did'.format(BASE_TILES_DIR)
 
 overlay_A_files_l = sorted(glob.glob('{}/*.png'.format(OVERLAY_A_BASE_DIR)), key=lambda x: ( int(x.split('tile-')[1].split('.png')[0]) ))
 overlay_B_files_l = sorted(glob.glob('{}/*.png'.format(OVERLAY_B_BASE_DIR)), key=lambda x: ( int(x.split('tile-')[1].split('.png')[0]) ))
 print('found {} tiles in {}, and {} tiles in {}'.format(len(overlay_A_files_l), OVERLAY_A_BASE_DIR, len(overlay_B_files_l), OVERLAY_B_BASE_DIR))
 
 # check the composite tiles directory - the composites will be put in the tile list A directory
-COMPOSITE_TILE_BASE_DIR = '{}/composite-tiles'.format(BASE_DIR)
+COMPOSITE_TILE_BASE_DIR = '{}/composite-tiles'.format(BASE_TILES_DIR)
 if os.path.exists(COMPOSITE_TILE_BASE_DIR):
     shutil.rmtree(COMPOSITE_TILE_BASE_DIR)
 os.makedirs(COMPOSITE_TILE_BASE_DIR)
