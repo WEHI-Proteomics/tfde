@@ -15,7 +15,7 @@ import pickle
 MAXIMUM_Q_VALUE = 0.01
 
 # for focus on a particular feature
-pasef_feature_id = 2850902
+pasef_feature_id = None
 
 # visualisation offsets from the feature apexes
 VIS_MZ_OFFSET_LOWER = 5
@@ -31,7 +31,8 @@ feature_detection_method = 'pasef'
 run_name = 'P3856_YHE211_1_Slot1-1_1_5104'
 
 
-IDENTIFICATIONS_DIR = '{}/P3856-results-cs-false-fmdw-true-2021-04-28-22-33-56/identifications-pasef'.format(expanduser("~"))
+RESULTS_BASE_DIR = '/media/big-ssd/results-P3856'
+IDENTIFICATIONS_DIR = '{}/P3856-results-cs-true-fmdw-true-2021-05-20-02-44-34/identifications-pasef'.format(RESULTS_BASE_DIR)
 IDENTIFICATIONS_FILE = '{}/exp-{}-identifications-{}-recalibrated.pkl'.format(IDENTIFICATIONS_DIR, experiment_name, feature_detection_method)
 
 # load the identifications
@@ -41,14 +42,26 @@ identifications_df = d['identifications_df']
 
 selected_feature = identifications_df[(identifications_df.feature_id == pasef_feature_id)].iloc[0]
 
-limits = {
-'MZ_MIN': selected_feature.monoisotopic_mz - VIS_MZ_OFFSET_LOWER,
-'MZ_MAX': selected_feature.monoisotopic_mz + VIS_MZ_OFFSET_UPPER,
-'SCAN_MIN': selected_feature.scan_apex - VIS_SCAN_OFFSET_LOWER,
-'SCAN_MAX': selected_feature.scan_apex + VIS_SCAN_OFFSET_UPPER,
-'RT_MIN': selected_feature.rt_apex - VIS_RT_OFFSET_LOWER,
-'RT_MAX': selected_feature.rt_apex + VIS_RT_OFFSET_UPPER
-}
+if pasef_feature_id is not None:
+    # for a selected feature
+    limits = {
+    'MZ_MIN': selected_feature.monoisotopic_mz - VIS_MZ_OFFSET_LOWER,
+    'MZ_MAX': selected_feature.monoisotopic_mz + VIS_MZ_OFFSET_UPPER,
+    'SCAN_MIN': selected_feature.scan_apex - VIS_SCAN_OFFSET_LOWER,
+    'SCAN_MAX': selected_feature.scan_apex + VIS_SCAN_OFFSET_UPPER,
+    'RT_MIN': selected_feature.rt_apex - VIS_RT_OFFSET_LOWER,
+    'RT_MAX': selected_feature.rt_apex + VIS_RT_OFFSET_UPPER
+    }
+else:
+    # for any feature
+    limits = {
+    'MZ_MIN': 700,
+    'MZ_MAX': 710,
+    'SCAN_MIN': 450,
+    'SCAN_MAX': 920,
+    'RT_MIN': 1650,
+    'RT_MAX': 2200
+    }
 
 print('coordinates for comparison:\n{}'.format(limits))
 
