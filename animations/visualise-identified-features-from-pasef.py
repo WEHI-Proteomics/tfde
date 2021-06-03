@@ -39,6 +39,7 @@ IDENTIFICATIONS_FILE = '{}/exp-{}-identifications-{}-recalibrated.pkl'.format(ID
 with open(IDENTIFICATIONS_FILE, 'rb') as handle:
     d = pickle.load(handle)
 identifications_df = d['identifications_df']
+identifications_df = identifications_df[(identifications_df['percolator q-value'] <= MAXIMUM_Q_VALUE)]
 
 if pasef_feature_id is not None:
     selected_feature = identifications_df[(identifications_df.feature_id == pasef_feature_id)].iloc[0]
