@@ -18,6 +18,7 @@ from ms_deisotope import deconvolute_peaks, averagine
 import warnings
 from scipy.optimize import OptimizeWarning
 from os.path import expanduser
+import numba
 
 
 # set up the indexes we need for queries
@@ -277,6 +278,7 @@ def save_visualisation(d, segment_id):
 
 # process a segment of this run's data, and return a list of features
 @ray.remote
+@numba.jit(nopython=True)
 def find_features(segment_mz_lower, segment_mz_upper, segment_id):
     features_l = []
 
