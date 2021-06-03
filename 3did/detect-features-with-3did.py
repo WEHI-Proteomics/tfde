@@ -340,13 +340,8 @@ def find_features(segment_mz_lower, segment_mz_upper, segment_id):
                 voxel_rt_midpoint = rt_bin.mid
                 voxel_df = raw_df[(raw_df.mz >= voxel_mz_lower) & (raw_df.mz <= voxel_mz_upper) & (raw_df.scan >= voxel_scan_lower) & (raw_df.scan <= voxel_scan_upper) & (raw_df.retention_time_secs >= voxel_rt_lower) & (raw_df.retention_time_secs <= voxel_rt_upper)]
 
-                # find the most intense frame in the voxel
-                frame_summary_df = voxel_df.groupby(['frame_id'], as_index=False, sort=False).intensity.agg(['sum','count']).reset_index()
-                voxel_rt_highpoint_frame_id = int(frame_summary_df.loc[(frame_summary_df['sum'].idxmax())].frame_id)
-
                 # find the voxel's mz intensity-weighted centroid
-                voxel_frame_df = voxel_df[(voxel_df.frame_id == voxel_rt_highpoint_frame_id)].copy()
-                points_a = voxel_frame_df[['mz','intensity']].to_numpy()
+                points_a = voxel_df[['mz','intensity']].to_numpy()
                 voxel_mz_centroid = intensity_weighted_centroid(points_a[:,1], points_a[:,0])
 
                 # isolate the isotope's points in the m/z dimension; note the isotope may be offset so some of the points may be outside the voxel
@@ -360,14 +355,14 @@ def find_features(segment_mz_lower, segment_mz_upper, segment_id):
 
                 # record information about the voxel and the isotope we derived from it
                 voxel_metadata_d = {'mz_lower':voxel_mz_lower, 'mz_upper':voxel_mz_upper, 'scan_lower':voxel_scan_lower, 'scan_upper':voxel_scan_upper, 'rt_lower':voxel_rt_lower, 'rt_upper':voxel_rt_upper, 'mz_centroid':voxel_mz_centroid, 
-                                    'iso_mz_lower':iso_mz_lower, 'iso_mz_upper':iso_mz_upper, 'voxel_scan_midpoint':voxel_scan_midpoint, 'voxel_rt_midpoint':voxel_rt_midpoint, 'voxel_rt_highpoint_frame_id':voxel_rt_highpoint_frame_id, 
+                                    'iso_mz_lower':iso_mz_lower, 'iso_mz_upper':iso_mz_upper, 'voxel_scan_midpoint':voxel_scan_midpoint, 'voxel_rt_midpoint':voxel_rt_midpoint, 
                                     'frame_region_scan_lower':frame_region_scan_lower, 'frame_region_scan_upper':frame_region_scan_upper, 'summed_intensity':voxel.intensity, 'point_count':voxel.point_count}
 
                 # find the mobility extent of the isotope in this frame
-                isotope_frame_df = raw_df[(raw_df.mz >= iso_mz_lower) & (raw_df.mz <= iso_mz_upper) & (raw_df.scan >= frame_region_scan_lower) & (raw_df.scan <= frame_region_scan_upper) & (raw_df.frame_id == voxel_rt_highpoint_frame_id)]
-                if len(isotope_frame_df) >= MINIMUM_NUMBER_OF_POINTS_IN_BASE_PEAK:
+                isotope_2d_df = raw_df[(raw_df.mz >= iso_mz_lower) & (raw_df.mz <= iso_mz_upper) & (raw_df.scan >= frame_region_scan_lower) & (raw_df.scan <= frame_region_scan_upper) & (raw_df.retention_time_secs >= voxel_rt_lower) & (raw_df.retention_time_secs <= voxel_rt_upper)]
+                if len(isotope_2d_df) >= MINIMUM_NUMBER_OF_POINTS_IN_BASE_PEAK:
                     # collapsing the monoisotopic's summed points onto the mobility dimension
-                    scan_df = isotope_frame_df.groupby(['scan'], as_index=False).intensity.sum()
+                    scan_df = isotope_2d_df.groupby(['scan'], as_index=False).intensity.sum()
                     scan_df.sort_values(by=['scan'], ascending=True, inplace=True)
 
                     # apply a smoothing filter to the points
@@ -609,8 +604,7 @@ def find_features(segment_mz_lower, segment_mz_upper, segment_id):
                                 save_visualisation(d, segment_id)
 
                                 break
-                else:
-                    print('not enough base isotope points in the voxel\'s most intense frame ({})'.format(len(isotope_frame_df)))
+
     features_df = pd.DataFrame(features_l)
     return features_df
 
