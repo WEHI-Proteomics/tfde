@@ -304,7 +304,7 @@ def find_features(segment_mz_lower, segment_mz_upper, segment_id):
         raw_df['rt_bin'] = pd.cut(raw_df.retention_time_secs, bins=rt_bins)
         raw_df['scan_bin'] = pd.cut(raw_df.scan, bins=scan_bins)
         raw_df['mz_bin'] = pd.cut(raw_df.mz, bins=mz_bins)
-        raw_df['bin_key'] = raw_df.rt_bin.astype(str) + raw_df.scan_bin.astype(str) + raw_df.mz_bin.astype(str)
+        raw_df['bin_key'] = raw_df.apply(lambda row: (row.mz_bin, row.scan_bin, row.rt_bin), axis=1)
 
         # sum the intensities in each bin
         summary_df = raw_df.groupby(['bin_key'], as_index=False, sort=False).intensity.agg(['sum','count']).reset_index()
@@ -327,16 +327,19 @@ def find_features(segment_mz_lower, segment_mz_upper, segment_id):
         for voxel_idx,voxel in enumerate(summary_df.itertuples()):
             # if this voxel hasn't already been processed...
             if (voxel.voxel_id not in voxels_processed):
+                # retrieve the bins from the voxel key
+                (mz_bin, scan_bin, rt_bin) = voxel.bin_key
+
                 # get the attributes of this voxel
-                voxel_mz_lower = voxel.mz_bin.left
-                voxel_mz_upper = voxel.mz_bin.right
-                voxel_mz_midpoint = voxel.mz_bin.mid
-                voxel_scan_lower = voxel.scan_bin.left
-                voxel_scan_upper = voxel.scan_bin.right
-                voxel_scan_midpoint = voxel.scan_bin.mid
-                voxel_rt_lower = voxel.rt_bin.left
-                voxel_rt_upper = voxel.rt_bin.right
-                voxel_rt_midpoint = voxel.rt_bin.mid
+                voxel_mz_lower = mz_bin.left
+                voxel_mz_upper = mz_bin.right
+                voxel_mz_midpoint = mz_bin.mid
+                voxel_scan_lower = scan_bin.left
+                voxel_scan_upper = scan_bin.right
+                voxel_scan_midpoint = scan_bin.mid
+                voxel_rt_lower = rt_bin.left
+                voxel_rt_upper = rt_bin.right
+                voxel_rt_midpoint = rt_bin.mid
                 voxel_df = raw_df[(raw_df.mz >= voxel_mz_lower) & (raw_df.mz <= voxel_mz_upper) & (raw_df.scan >= voxel_scan_lower) & (raw_df.scan <= voxel_scan_upper) & (raw_df.retention_time_secs >= voxel_rt_lower) & (raw_df.retention_time_secs <= voxel_rt_upper)]
 
                 # find the voxel's mz intensity-weighted centroid
