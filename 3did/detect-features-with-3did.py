@@ -304,7 +304,7 @@ def find_features(segment_mz_lower, segment_mz_upper, segment_id):
         raw_df['rt_bin'] = pd.cut(raw_df.retention_time_secs, bins=rt_bins)
         raw_df['scan_bin'] = pd.cut(raw_df.scan, bins=scan_bins)
         raw_df['mz_bin'] = pd.cut(raw_df.mz, bins=mz_bins)
-        raw_df['bin_key'] = raw_df.apply(lambda row: (row.mz_bin, row.scan_bin, row.rt_bin), axis=1)
+        raw_df['bin_key'] = list(zip(raw_df.mz_bin, raw_df.scan_bin, raw_df.rt_bin))
 
         # sum the intensities in each bin
         summary_df = raw_df.groupby(['bin_key'], as_index=False, sort=False).intensity.agg(['sum','count']).reset_index()
