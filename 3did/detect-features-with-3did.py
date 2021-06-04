@@ -142,6 +142,7 @@ def peak_ratio(monoisotopic_mass, peak_number, number_of_sulphur):
     return ratio
 
 # calculate the characteristics of the isotopes in the feature envelope
+@profile
 def determine_isotope_characteristics(envelope, rt_apex, monoisotopic_mass, feature_region_3d_df, summary_df):
     voxels_processed = set()
     # calculate the isotope intensities from the constrained raw points
@@ -278,7 +279,6 @@ def save_visualisation(d, segment_id):
 
 # process a segment of this run's data, and return a list of features
 # @ray.remote
-@profile
 def find_features(segment_mz_lower, segment_mz_upper, segment_id):
     features_l = []
 
