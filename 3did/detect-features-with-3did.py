@@ -307,7 +307,7 @@ def find_features(segment_mz_lower, segment_mz_upper, segment_id):
         raw_df['bin_key'] = raw_df.rt_bin.astype(str) + raw_df.scan_bin.astype(str) + raw_df.mz_bin.astype(str)
 
         # sum the intensities in each bin
-        summary_df = raw_df.groupby(['bin_key','rt_bin','scan_bin','mz_bin'], as_index=False, sort=False).intensity.agg(['sum','count']).reset_index()
+        summary_df = raw_df.groupby(['bin_key'], as_index=False, sort=False).intensity.agg(['sum','count']).reset_index()
         summary_df.rename(columns={'sum':'intensity', 'count':'point_count'}, inplace=True)
         summary_df.dropna(subset=['intensity'], inplace=True)
         summary_df = summary_df[(summary_df.intensity > 0)]
