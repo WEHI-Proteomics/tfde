@@ -142,7 +142,6 @@ def peak_ratio(monoisotopic_mass, peak_number, number_of_sulphur):
     return ratio
 
 # calculate the characteristics of the isotopes in the feature envelope
-@profile
 def determine_isotope_characteristics(envelope, rt_apex, monoisotopic_mass, feature_region_3d_df, summary_df):
     voxels_processed = set()
     # calculate the isotope intensities from the constrained raw points
@@ -224,6 +223,7 @@ def calculate_monoisotopic_mass_from_mz(monoisotopic_mz, charge):
     return monoisotopic_mass
 
 # determine the voxels included by the raw points
+@profile
 def voxels_for_points(points_df, voxels_df):
     # calculate the intensity contribution of the points to their voxel's intensity
     df = points_df.groupby(['voxel_id'], as_index=False, sort=False).intensity.agg(['sum','count']).reset_index()
