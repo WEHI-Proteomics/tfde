@@ -18,8 +18,7 @@ from ms_deisotope import deconvolute_peaks, averagine
 import warnings
 from scipy.optimize import OptimizeWarning
 from os.path import expanduser
-import numba
-# import line_profiler
+import line_profiler
 
 # set up the indexes we need for queries
 def create_indexes(db_file_name):
@@ -47,12 +46,10 @@ def scan_coords_for_single_charge_region(mz_lower, mz_upper):
 
 # calculate the intensity-weighted centroid
 # takes a numpy array of intensity, and another of mz
-@numba.jit
 def intensity_weighted_centroid(_int_f, _x_f):
     return ((_int_f/_int_f.sum()) * _x_f).sum()
 
 # find 3sigma for a specified m/z
-@numba.jit
 def calculate_peak_delta(mz):
     delta_m = mz / INSTRUMENT_RESOLUTION  # FWHM of the peak
     sigma = delta_m / 2.35482  # std dev is FWHM / 2.35482. See https://en.wikipedia.org/wiki/Full_width_at_half_maximum
@@ -220,7 +217,6 @@ def determine_isotope_characteristics(envelope, rt_apex, monoisotopic_mass, feat
     return result_d
 
 # calculate the monoisotopic mass    
-@numba.jit
 def calculate_monoisotopic_mass_from_mz(monoisotopic_mz, charge):
     monoisotopic_mass = (monoisotopic_mz * charge) - (PROTON_MASS * charge)
     return monoisotopic_mass
@@ -234,13 +230,11 @@ def voxels_for_points(points_df):
     return set(df.voxel_id.tolist())
 
 # generate a unique feature_id from the precursor id and the feature sequence number found for that precursor
-@numba.jit
 def generate_voxel_id(segment_id, voxel_sequence_number):
     voxel_id = (segment_id * 10000000) + voxel_sequence_number
     return voxel_id
 
 # calculate the r-squared value of series_2 against series_1, where series_1 is the original data (source: https://stackoverflow.com/a/37899817/1184799)
-@numba.jit
 def calculate_r_squared(series_1, series_2):
     residuals = series_1 - series_2
     ss_res = np.sum(residuals**2)
@@ -272,7 +266,7 @@ def save_visualisation(d, segment_id):
 
 # process a segment of this run's data, and return a list of features
 # @ray.remote
-# @profile
+@profile
 def find_features(segment_mz_lower, segment_mz_upper, segment_id):
     features_l = []
 
@@ -337,7 +331,8 @@ def find_features(segment_mz_lower, segment_mz_upper, segment_id):
                 voxel_rt_lower = rt_bin.left
                 voxel_rt_upper = rt_bin.right
                 voxel_rt_midpoint = rt_bin.mid
-                voxel_points_df = raw_df[(raw_df.mz >= voxel_mz_lower) & (raw_df.mz <= voxel_mz_upper) & (raw_df.scan >= voxel_scan_lower) & (raw_df.scan <= voxel_scan_upper) & (raw_df.retention_time_secs >= voxel_rt_lower) & (raw_df.retention_time_secs <= voxel_rt_upper)]
+                voxel_rt_condition = (raw_df.retention_time_secs >= voxel_rt_lower) & (raw_df.retention_time_secs <= voxel_rt_upper)
+                voxel_points_df = raw_df[(raw_df.mz >= voxel_mz_lower) & (raw_df.mz <= voxel_mz_upper) & (raw_df.scan >= voxel_scan_lower) & (raw_df.scan <= voxel_scan_upper) & voxel_rt_condition]
 
                 # find the voxel's mz intensity-weighted centroid
                 points_a = voxel_points_df[['mz','intensity']].to_numpy()
@@ -358,7 +353,8 @@ def find_features(segment_mz_lower, segment_mz_upper, segment_id):
                                     'frame_region_scan_lower':frame_region_scan_lower, 'frame_region_scan_upper':frame_region_scan_upper, 'summed_intensity':voxel.voxel_intensity, 'point_count':voxel.point_count}
 
                 # find the mobility extent of the isotope in this frame
-                isotope_2d_df = raw_df[(raw_df.mz >= iso_mz_lower) & (raw_df.mz <= iso_mz_upper) & (raw_df.scan >= frame_region_scan_lower) & (raw_df.scan <= frame_region_scan_upper) & (raw_df.retention_time_secs >= voxel_rt_lower) & (raw_df.retention_time_secs <= voxel_rt_upper)]
+                iso_mz_condition = (raw_df.mz >= iso_mz_lower) & (raw_df.mz <= iso_mz_upper)
+                isotope_2d_df = raw_df[iso_mz_condition & (raw_df.scan >= frame_region_scan_lower) & (raw_df.scan <= frame_region_scan_upper) & voxel_rt_condition]
                 # collapsing the monoisotopic's summed points onto the mobility dimension
                 scan_df = isotope_2d_df.groupby(['scan'], as_index=False).intensity.sum()
                 scan_df.sort_values(by=['scan'], ascending=True, inplace=True)
@@ -408,7 +404,8 @@ def find_features(segment_mz_lower, segment_mz_upper, segment_id):
                     # gather the isotope points constrained by m/z and CCS, and the peak search extent in RT
                     region_rt_lower = voxel_rt_midpoint - (RT_BASE_PEAK_WIDTH * 2)  # need to look quite wide so we catch the high-intensity peaks
                     region_rt_upper = voxel_rt_midpoint + (RT_BASE_PEAK_WIDTH * 2)
-                    isotope_points_df = raw_df[(raw_df.mz >= iso_mz_lower) & (raw_df.mz <= iso_mz_upper) & (raw_df.scan >= iso_scan_lower) & (raw_df.scan <= iso_scan_upper) & (raw_df.retention_time_secs >= region_rt_lower) & (raw_df.retention_time_secs <= region_rt_upper)]
+                    iso_scan_condition = (raw_df.scan >= iso_scan_lower) & (raw_df.scan <= iso_scan_upper)
+                    isotope_points_df = raw_df[iso_mz_condition & iso_scan_condition & (raw_df.retention_time_secs >= region_rt_lower) & (raw_df.retention_time_secs <= region_rt_upper)]
 
                     # in the RT dimension, find the apex
                     rt_df = isotope_points_df.groupby(['frame_id','retention_time_secs'], as_index=False).intensity.sum()
@@ -482,7 +479,8 @@ def find_features(segment_mz_lower, segment_mz_upper, segment_id):
                         rt_subset_df = rt_df[(rt_df.retention_time_secs >= iso_rt_lower) & (rt_df.retention_time_secs <= iso_rt_upper)]  # reset the subset to the new bounds
 
                     # check the base peak has at least one voxel in common with the seeding voxel
-                    base_peak_df = raw_df[(raw_df.mz >= iso_mz_lower) & (raw_df.mz <= iso_mz_upper) & (raw_df.scan >= iso_scan_lower) & (raw_df.scan <= iso_scan_upper) & (raw_df.retention_time_secs >= iso_rt_lower) & (raw_df.retention_time_secs <= iso_rt_upper)].copy()
+                    iso_rt_condition = (raw_df.retention_time_secs >= iso_rt_lower) & (raw_df.retention_time_secs <= iso_rt_upper)
+                    base_peak_df = raw_df[iso_mz_condition & iso_scan_condition & iso_rt_condition].copy()
                     if voxel.voxel_id in base_peak_df.voxel_id.unique():
 
                         # calculate the R-squared
@@ -498,7 +496,7 @@ def find_features(segment_mz_lower, segment_mz_upper, segment_id):
 
                             # gather the raw points for the feature's 3D region (i.e. the region in which deconvolution will be performed)
                             feature_region_3d_extent_d = {'mz_lower':region_mz_lower, 'mz_upper':region_mz_upper, 'scan_lower':iso_scan_lower, 'scan_upper':iso_scan_upper, 'rt_lower':iso_rt_lower, 'rt_upper':iso_rt_upper}
-                            feature_region_3d_df = raw_df[(raw_df.mz >= region_mz_lower) & (raw_df.mz <= region_mz_upper) & (raw_df.scan >= iso_scan_lower) & (raw_df.scan <= iso_scan_upper) & (raw_df.retention_time_secs >= iso_rt_lower) & (raw_df.retention_time_secs <= iso_rt_upper)].copy()
+                            feature_region_3d_df = raw_df[(raw_df.mz >= region_mz_lower) & (raw_df.mz <= region_mz_upper) & iso_scan_condition & iso_rt_condition].copy()
 
                             # intensity descent
                             raw_points_a = feature_region_3d_df[['mz','intensity']].to_numpy()
