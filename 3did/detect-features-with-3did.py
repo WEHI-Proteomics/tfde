@@ -1,4 +1,5 @@
-import pandas as pd
+# import pandas as pd
+import modin.pandas as pd
 import numpy as np
 import peakutils
 from scipy import signal
@@ -18,8 +19,6 @@ from ms_deisotope import deconvolute_peaks, averagine
 import warnings
 from scipy.optimize import OptimizeWarning
 from os.path import expanduser
-import numba
-import line_profiler
 
 # set up the indexes we need for queries
 def create_indexes(db_file_name):
@@ -267,7 +266,6 @@ def save_visualisation(d, segment_id):
 
 # process a segment of this run's data, and return a list of features
 # @ray.remote
-@profile
 def find_features(segment_mz_lower, segment_mz_upper, segment_id):
     features_l = []
 
