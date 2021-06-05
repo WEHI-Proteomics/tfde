@@ -61,7 +61,6 @@ def calculate_peak_delta(mz):
 
 # peaks_a is a numpy array of [mz,intensity]
 # returns a numpy array of [intensity_weighted_centroid,summed_intensity]
-@numba.jit
 def intensity_descent(peaks_a, peak_delta=None):
     # intensity descent
     peaks_l = []
@@ -146,7 +145,6 @@ def peak_ratio(monoisotopic_mass, peak_number, number_of_sulphur):
     return ratio
 
 # calculate the characteristics of the isotopes in the feature envelope
-@numba.jit
 def determine_isotope_characteristics(envelope, rt_apex, monoisotopic_mass, feature_region_3d_df):
     voxels_processed = set()
     # calculate the isotope intensities from the constrained raw points
