@@ -88,7 +88,6 @@ def intensity_descent(peaks_a, peak_delta=None):
 # number_of_sulphur = number of sulphur atoms in the molecule
 #
 # source: Valkenborg et al, "A Model-Based Method for the Prediction of the Isotopic Distribution of Peptides", https://core.ac.uk/download/pdf/82021511.pdf
-@numba.jit
 def peak_ratio(monoisotopic_mass, peak_number, number_of_sulphur):
     MAX_NUMBER_OF_SULPHUR_ATOMS = 3
     MAX_NUMBER_OF_PREDICTED_RATIOS = 6
