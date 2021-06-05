@@ -47,10 +47,12 @@ def scan_coords_for_single_charge_region(mz_lower, mz_upper):
 
 # calculate the intensity-weighted centroid
 # takes a numpy array of intensity, and another of mz
+@numba.jit
 def intensity_weighted_centroid(_int_f, _x_f):
     return ((_int_f/_int_f.sum()) * _x_f).sum()
 
 # find 3sigma for a specified m/z
+@numba.jit
 def calculate_peak_delta(mz):
     delta_m = mz / INSTRUMENT_RESOLUTION  # FWHM of the peak
     sigma = delta_m / 2.35482  # std dev is FWHM / 2.35482. See https://en.wikipedia.org/wiki/Full_width_at_half_maximum
@@ -59,6 +61,7 @@ def calculate_peak_delta(mz):
 
 # peaks_a is a numpy array of [mz,intensity]
 # returns a numpy array of [intensity_weighted_centroid,summed_intensity]
+@numba.jit
 def intensity_descent(peaks_a, peak_delta=None):
     # intensity descent
     peaks_l = []
@@ -86,6 +89,7 @@ def intensity_descent(peaks_a, peak_delta=None):
 # number_of_sulphur = number of sulphur atoms in the molecule
 #
 # source: Valkenborg et al, "A Model-Based Method for the Prediction of the Isotopic Distribution of Peptides", https://core.ac.uk/download/pdf/82021511.pdf
+@numba.jit
 def peak_ratio(monoisotopic_mass, peak_number, number_of_sulphur):
     MAX_NUMBER_OF_SULPHUR_ATOMS = 3
     MAX_NUMBER_OF_PREDICTED_RATIOS = 6
@@ -142,6 +146,7 @@ def peak_ratio(monoisotopic_mass, peak_number, number_of_sulphur):
     return ratio
 
 # calculate the characteristics of the isotopes in the feature envelope
+@numba.jit
 def determine_isotope_characteristics(envelope, rt_apex, monoisotopic_mass, feature_region_3d_df):
     voxels_processed = set()
     # calculate the isotope intensities from the constrained raw points
@@ -218,11 +223,13 @@ def determine_isotope_characteristics(envelope, rt_apex, monoisotopic_mass, feat
     return result_d
 
 # calculate the monoisotopic mass    
+@numba.jit
 def calculate_monoisotopic_mass_from_mz(monoisotopic_mz, charge):
     monoisotopic_mass = (monoisotopic_mz * charge) - (PROTON_MASS * charge)
     return monoisotopic_mass
 
 # determine the voxels included by the raw points
+@numba.jit
 def voxels_for_points(points_df):
     # calculate the intensity contribution of the points to their voxel's intensity
     df = points_df.groupby(['voxel_id'], as_index=False, sort=False).voxel_proportion.agg(['sum']).reset_index()
@@ -231,11 +238,13 @@ def voxels_for_points(points_df):
     return set(df.voxel_id.tolist())
 
 # generate a unique feature_id from the precursor id and the feature sequence number found for that precursor
+@numba.jit
 def generate_voxel_id(segment_id, voxel_sequence_number):
     voxel_id = (segment_id * 10000000) + voxel_sequence_number
     return voxel_id
 
 # calculate the r-squared value of series_2 against series_1, where series_1 is the original data (source: https://stackoverflow.com/a/37899817/1184799)
+@numba.jit
 def calculate_r_squared(series_1, series_2):
     residuals = series_1 - series_2
     ss_res = np.sum(residuals**2)
@@ -244,6 +253,7 @@ def calculate_r_squared(series_1, series_2):
     return r_squared
 
 # measure the R-squared value of the points. x and y are numpy arrays.
+@numba.jit
 def measure_curve(x, y):
     r_squared = None
     warnings.simplefilter("error", OptimizeWarning)
