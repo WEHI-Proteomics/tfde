@@ -142,7 +142,7 @@ def peak_ratio(monoisotopic_mass, peak_number, number_of_sulphur):
     return ratio
 
 # calculate the characteristics of the isotopes in the feature envelope
-def determine_isotope_characteristics(envelope, rt_apex, monoisotopic_mass, feature_region_3d_df, summary_df):
+def determine_isotope_characteristics(envelope, rt_apex, monoisotopic_mass, feature_region_3d_df):
     voxels_processed = set()
     # calculate the isotope intensities from the constrained raw points
     isotopes_l = []
@@ -157,7 +157,7 @@ def determine_isotope_characteristics(envelope, rt_apex, monoisotopic_mass, feat
         # calculate the isotope's intensity
         if len(isotope_df) > 0:
             # record the voxels included by each isotope
-            voxel_ids_for_isotope = voxels_for_points(points_df=isotope_df, voxels_df=summary_df)
+            voxel_ids_for_isotope = voxels_for_points(points_df=isotope_df)
             # add the voxels included in the feature's points to the list of voxels already processed
             voxels_processed.update(voxel_ids_for_isotope)
             # find the intensity by summing the maximum point in the frame closest to the RT apex, and the frame maximums either side
@@ -224,14 +224,11 @@ def calculate_monoisotopic_mass_from_mz(monoisotopic_mz, charge):
 
 # determine the voxels included by the raw points
 @profile
-def voxels_for_points(points_df, voxels_df):
+def voxels_for_points(points_df):
     # calculate the intensity contribution of the points to their voxel's intensity
-    df = points_df.groupby(['voxel_id'], as_index=False, sort=False).intensity.agg(['sum','count']).reset_index()
-    df.rename(columns={'sum':'intensity', 'count':'point_count'}, inplace=True)
-    df = pd.merge(df, voxels_df, how='inner', left_on=['voxel_id'], right_on=['voxel_id'], suffixes=['_points','_voxel'])
-    df['proportion'] = df.intensity_points / df.intensity_voxel
+    df = points_df.groupby(['voxel_id'], as_index=False, sort=False).voxel_proportion.agg(['sum']).reset_index()
     # if the points comprise most of a voxel's intensity, we don't need to process that voxel later on
-    df = df[(df.proportion >= INTENSITY_PROPORTION_FOR_VOXEL_TO_BE_REMOVED)]
+    df = df[(df['sum'] >= INTENSITY_PROPORTION_FOR_VOXEL_TO_BE_REMOVED)]
     return set(df.voxel_id.tolist())
 
 # generate a unique feature_id from the precursor id and the feature sequence number found for that precursor
@@ -300,17 +297,20 @@ def find_features(segment_mz_lower, segment_mz_upper, segment_id):
 
         # sum the intensities in each bin
         summary_df = raw_df.groupby(['bin_key'], as_index=False, sort=False).intensity.agg(['sum','count']).reset_index()
-        summary_df.rename(columns={'sum':'intensity', 'count':'point_count'}, inplace=True)
-        summary_df.dropna(subset=['intensity'], inplace=True)
-        summary_df = summary_df[(summary_df.intensity > 0)]
-        summary_df.sort_values(by=['intensity'], ascending=False, inplace=True)
+        summary_df.rename(columns={'sum':'voxel_intensity', 'count':'point_count'}, inplace=True)
+        summary_df.dropna(subset=['voxel_intensity'], inplace=True)
+        summary_df = summary_df[(summary_df.voxel_intensity > 0)]
+        summary_df.sort_values(by=['voxel_intensity'], ascending=False, inplace=True)
         summary_df.reset_index(drop=True, inplace=True)
         summary_df['voxel_id'] = summary_df.index
         summary_df['voxel_id'] = summary_df.apply(lambda row: generate_voxel_id(segment_id, row.voxel_id+1), axis=1)
         print('there are {} voxels for processing in segment {} ({}-{} m/z)'.format(len(summary_df), segment_id, round(segment_mz_lower,1), round(segment_mz_upper,1)))
 
         # assign each raw point with their voxel ID
-        raw_df = pd.merge(raw_df, summary_df[['bin_key','voxel_id']], how='left', left_on=['bin_key'], right_on=['bin_key'])
+        raw_df = pd.merge(raw_df, summary_df[['bin_key','voxel_id','voxel_intensity']], how='left', left_on=['bin_key'], right_on=['bin_key'])
+
+        # determine each point\'s contribution to its voxel intensity
+        raw_df['voxel_proportion'] = raw_df.intensity / raw_df.voxel_intensity
 
         # keep track of the keys of voxels that have been processed
         voxels_processed = set()
@@ -332,10 +332,10 @@ def find_features(segment_mz_lower, segment_mz_upper, segment_id):
                 voxel_rt_lower = rt_bin.left
                 voxel_rt_upper = rt_bin.right
                 voxel_rt_midpoint = rt_bin.mid
-                voxel_df = raw_df[(raw_df.mz >= voxel_mz_lower) & (raw_df.mz <= voxel_mz_upper) & (raw_df.scan >= voxel_scan_lower) & (raw_df.scan <= voxel_scan_upper) & (raw_df.retention_time_secs >= voxel_rt_lower) & (raw_df.retention_time_secs <= voxel_rt_upper)]
+                voxel_points_df = raw_df[(raw_df.mz >= voxel_mz_lower) & (raw_df.mz <= voxel_mz_upper) & (raw_df.scan >= voxel_scan_lower) & (raw_df.scan <= voxel_scan_upper) & (raw_df.retention_time_secs >= voxel_rt_lower) & (raw_df.retention_time_secs <= voxel_rt_upper)]
 
                 # find the voxel's mz intensity-weighted centroid
-                points_a = voxel_df[['mz','intensity']].to_numpy()
+                points_a = voxel_points_df[['mz','intensity']].to_numpy()
                 voxel_mz_centroid = intensity_weighted_centroid(points_a[:,1], points_a[:,0])
 
                 # isolate the isotope's points in the m/z dimension; note the isotope may be offset so some of the points may be outside the voxel
@@ -536,7 +536,7 @@ def find_features(segment_mz_lower, segment_mz_upper, segment_id):
                                     feature_d['rt_lower'] = iso_rt_lower
                                     feature_d['rt_upper'] = iso_rt_upper
 
-                                    isotope_characteristics_d = determine_isotope_characteristics(envelope=feature.envelope, rt_apex=rt_apex, monoisotopic_mass=feature.neutral_mass, feature_region_3d_df=feature_region_3d_df, summary_df=summary_df)
+                                    isotope_characteristics_d = determine_isotope_characteristics(envelope=feature.envelope, rt_apex=rt_apex, monoisotopic_mass=feature.neutral_mass, feature_region_3d_df=feature_region_3d_df)
                                     if isotope_characteristics_d is not None:
                                         # add the characteristics to the feature dictionary
                                         feature_d = {**feature_d, **isotope_characteristics_d}
