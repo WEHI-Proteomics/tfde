@@ -253,7 +253,6 @@ def calculate_r_squared(series_1, series_2):
     return r_squared
 
 # measure the R-squared value of the points. x and y are numpy arrays.
-@numba.jit
 def measure_curve(x, y):
     r_squared = None
     warnings.simplefilter("error", OptimizeWarning)
