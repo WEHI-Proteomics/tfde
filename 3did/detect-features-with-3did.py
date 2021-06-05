@@ -226,7 +226,6 @@ def calculate_monoisotopic_mass_from_mz(monoisotopic_mz, charge):
     return monoisotopic_mass
 
 # determine the voxels included by the raw points
-@numba.jit
 def voxels_for_points(points_df):
     # calculate the intensity contribution of the points to their voxel's intensity
     df = points_df.groupby(['voxel_id'], as_index=False, sort=False).voxel_proportion.agg(['sum']).reset_index()
