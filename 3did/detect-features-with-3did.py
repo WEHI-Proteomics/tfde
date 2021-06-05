@@ -223,7 +223,6 @@ def calculate_monoisotopic_mass_from_mz(monoisotopic_mz, charge):
     return monoisotopic_mass
 
 # determine the voxels included by the raw points
-@profile
 def voxels_for_points(points_df):
     # calculate the intensity contribution of the points to their voxel's intensity
     df = points_df.groupby(['voxel_id'], as_index=False, sort=False).voxel_proportion.agg(['sum']).reset_index()
@@ -268,6 +267,7 @@ def save_visualisation(d, segment_id):
 
 # process a segment of this run's data, and return a list of features
 # @ray.remote
+@profile
 def find_features(segment_mz_lower, segment_mz_upper, segment_id):
     features_l = []
 
