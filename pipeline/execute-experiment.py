@@ -79,7 +79,7 @@ def task_define_precursor_cuboids():
     target_l = []
     for run_name in get_run_names(EXPERIMENT_DIR):
         # command
-        cmd = 'python -u define-precursor-cuboids-pasef.py -eb {experiment_base} -en {experiment_name} -rn {run_name} -ini {INI_FILE} -rl {rl} -ru {ru} -rm cluster'.format(experiment_base=config['experiment_base_dir'], experiment_name=config['experiment_name'], run_name=run_name, INI_FILE=config['ini_file'], rl=int(config['rt_lower']), ru=int(config['rt_upper']))
+        cmd = 'python -u define-precursor-cuboids-pasef.py -eb {experiment_base} -en {experiment_name} -rn {run_name} -ini {INI_FILE} -rl {rl} -ru {ru} -rm cluster -pc {pc}'.format(experiment_base=config['experiment_base_dir'], experiment_name=config['experiment_name'], run_name=run_name, INI_FILE=config['ini_file'], rl=int(config['rt_lower']), ru=int(config['rt_upper'], pc=config['proportion_of_cores_to_use']))
         cmd_l.append(cmd)
         # outputs
         cuboids_file = '{}/exp-{}-run-{}-precursor-cuboids-{}.pkl'.format(CUBOIDS_DIR, config['experiment_name'], run_name, config['precursor_definition_method'])
@@ -234,7 +234,7 @@ def task_mass_recalibration():
     # input
     IDENTIFICATIONS_FILE = '{}/exp-{}-identifications-{}.pkl'.format(IDENTIFICATIONS_DIR, config['experiment_name'], config['precursor_definition_method'])
     # command
-    cmd = 'python -u recalibrate-feature-mass.py -eb {experiment_base} -en {experiment_name} -ini {INI_FILE} -pdm {precursor_definition_method} -rm cluster'.format(experiment_base=config['experiment_base_dir'], experiment_name=config['experiment_name'], INI_FILE=config['ini_file'], precursor_definition_method=config['precursor_definition_method'])
+    cmd = 'python -u recalibrate-feature-mass.py -eb {experiment_base} -en {experiment_name} -ini {INI_FILE} -pdm {precursor_definition_method} -rm cluster -pc {pc}'.format(experiment_base=config['experiment_base_dir'], experiment_name=config['experiment_name'], INI_FILE=config['ini_file'], precursor_definition_method=config['precursor_definition_method'], pc=config['proportion_of_cores_to_use'])
 
     target_l = []
     for run_name in get_run_names(EXPERIMENT_DIR):
