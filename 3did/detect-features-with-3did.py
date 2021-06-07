@@ -485,97 +485,84 @@ def find_features(segment_mz_lower, segment_mz_upper, segment_id):
                         scan_r_squared = measure_curve(x=scan_subset_df.scan.to_numpy(), y=scan_subset_df.clipped_filtered_intensity.to_numpy())
                         rt_r_squared = measure_curve(x=rt_subset_df.retention_time_secs.to_numpy(), y=rt_subset_df.clipped_filtered_intensity.to_numpy())
 
-                        # if the base isotope is sufficiently gaussian in at least one of the dimensions, it's worth processing
-                        if (((scan_r_squared is not None) and (scan_r_squared >= MINIMUM_R_SQUARED)) or ((rt_r_squared is not None) and (rt_r_squared >= MINIMUM_R_SQUARED))):
+                        # we now have a definition of the voxel's isotope in m/z, scan, and RT. We need to extend that in the m/z dimension to catch all the isotopes for this feature
+                        region_mz_lower = voxel_mz_midpoint - ANCHOR_POINT_MZ_LOWER_OFFSET
+                        region_mz_upper = voxel_mz_midpoint + ANCHOR_POINT_MZ_UPPER_OFFSET
 
-                            # we now have a definition of the voxel's isotope in m/z, scan, and RT. We need to extend that in the m/z dimension to catch all the isotopes for this feature
-                            region_mz_lower = voxel_mz_midpoint - ANCHOR_POINT_MZ_LOWER_OFFSET
-                            region_mz_upper = voxel_mz_midpoint + ANCHOR_POINT_MZ_UPPER_OFFSET
+                        # gather the raw points for the feature's 3D region (i.e. the region in which deconvolution will be performed)
+                        feature_region_3d_extent_d = {'mz_lower':region_mz_lower, 'mz_upper':region_mz_upper, 'scan_lower':iso_scan_lower, 'scan_upper':iso_scan_upper, 'rt_lower':iso_rt_lower, 'rt_upper':iso_rt_upper}
+                        feature_region_3d_df = raw_df[(raw_df.mz >= region_mz_lower) & (raw_df.mz <= region_mz_upper) & iso_scan_condition & iso_rt_condition].copy()
 
-                            # gather the raw points for the feature's 3D region (i.e. the region in which deconvolution will be performed)
-                            feature_region_3d_extent_d = {'mz_lower':region_mz_lower, 'mz_upper':region_mz_upper, 'scan_lower':iso_scan_lower, 'scan_upper':iso_scan_upper, 'rt_lower':iso_rt_lower, 'rt_upper':iso_rt_upper}
-                            feature_region_3d_df = raw_df[(raw_df.mz >= region_mz_lower) & (raw_df.mz <= region_mz_upper) & iso_scan_condition & iso_rt_condition].copy()
+                        # intensity descent
+                        raw_points_a = feature_region_3d_df[['mz','intensity']].to_numpy()
+                        peaks_a = intensity_descent(peaks_a=raw_points_a, peak_delta=None)
 
-                            # intensity descent
-                            raw_points_a = feature_region_3d_df[['mz','intensity']].to_numpy()
-                            peaks_a = intensity_descent(peaks_a=raw_points_a, peak_delta=None)
+                        # deconvolution - see https://mobiusklein.github.io/ms_deisotope/docs/_build/html/deconvolution/deconvolution.html
+                        ms1_peaks_l = list(map(tuple, peaks_a))
+                        deconvoluted_peaks, _priority_targets = deconvolute_peaks(ms1_peaks_l, use_quick_charge=True, averagine=averagine.peptide, truncate_after=0.95)
 
-                            # deconvolution - see https://mobiusklein.github.io/ms_deisotope/docs/_build/html/deconvolution/deconvolution.html
-                            ms1_peaks_l = list(map(tuple, peaks_a))
-                            deconvoluted_peaks, _priority_targets = deconvolute_peaks(ms1_peaks_l, use_quick_charge=True, averagine=averagine.peptide, truncate_after=0.95)
+                        # collect features from deconvolution
+                        ms1_deconvoluted_peaks_l = []
+                        for peak_idx,peak in enumerate(deconvoluted_peaks):
+                            # discard a monoisotopic peak that has either of the first two peaks as placeholders (indicated by intensity of 1)
+                            if ((len(peak.envelope) >= 3) and (peak.envelope[0][1] > 1) and (peak.envelope[1][1] > 1)):
+                                mono_peak_mz = peak.mz
+                                mono_intensity = peak.intensity
+                                second_peak_mz = peak.envelope[1][0]
+                                # an accepted feature must have its mono peak or base peak aligned with the voxel
+                                if (((mono_peak_mz >= iso_mz_lower) and (mono_peak_mz <= iso_mz_upper)) or ((second_peak_mz >= iso_mz_lower) and (second_peak_mz <= iso_mz_upper))):
+                                    ms1_deconvoluted_peaks_l.append((mono_peak_mz, second_peak_mz, mono_intensity, peak.score, peak.signal_to_noise, peak.charge, peak.envelope, peak.neutral_mass))
+                        deconvolution_features_df = pd.DataFrame(ms1_deconvoluted_peaks_l, columns=['mono_mz','second_peak_mz','intensity','score','SN','charge','envelope','neutral_mass'])
+                        deconvolution_features_df.sort_values(by=['score'], ascending=False, inplace=True)
 
-                            # collect features from deconvolution
-                            ms1_deconvoluted_peaks_l = []
-                            for peak_idx,peak in enumerate(deconvoluted_peaks):
-                                # discard a monoisotopic peak that has either of the first two peaks as placeholders (indicated by intensity of 1)
-                                if ((len(peak.envelope) >= 3) and (peak.envelope[0][1] > 1) and (peak.envelope[1][1] > 1)):
-                                    mono_peak_mz = peak.mz
-                                    mono_intensity = peak.intensity
-                                    second_peak_mz = peak.envelope[1][0]
-                                    # an accepted feature must have its mono peak or base peak aligned with the voxel
-                                    if (((mono_peak_mz >= iso_mz_lower) and (mono_peak_mz <= iso_mz_upper)) or ((second_peak_mz >= iso_mz_lower) and (second_peak_mz <= iso_mz_upper))):
-                                        ms1_deconvoluted_peaks_l.append((mono_peak_mz, second_peak_mz, mono_intensity, peak.score, peak.signal_to_noise, peak.charge, peak.envelope, peak.neutral_mass))
-                            deconvolution_features_df = pd.DataFrame(ms1_deconvoluted_peaks_l, columns=['mono_mz','second_peak_mz','intensity','score','SN','charge','envelope','neutral_mass'])
-                            deconvolution_features_df.sort_values(by=['score'], ascending=False, inplace=True)
+                        if len(deconvolution_features_df) > 0:
+                            # determine the feature attributes
+                            for idx,feature in enumerate(deconvolution_features_df.itertuples()):
+                                feature_d = {}
+                                envelope_mono_mz = feature.envelope[0][0]
+                                mz_delta = calculate_peak_delta(mz=envelope_mono_mz)
+                                mono_mz_lower = envelope_mono_mz - mz_delta
+                                mono_mz_upper = envelope_mono_mz + mz_delta
+                                feature_d['mono_mz_lower'] = mono_mz_lower
+                                feature_d['mono_mz_upper'] = mono_mz_upper
 
-                            if len(deconvolution_features_df) > 0:
-                                # determine the feature attributes
-                                for idx,feature in enumerate(deconvolution_features_df.itertuples()):
-                                    feature_d = {}
-                                    envelope_mono_mz = feature.envelope[0][0]
-                                    mz_delta = calculate_peak_delta(mz=envelope_mono_mz)
-                                    mono_mz_lower = envelope_mono_mz - mz_delta
-                                    mono_mz_upper = envelope_mono_mz + mz_delta
-                                    feature_d['mono_mz_lower'] = mono_mz_lower
-                                    feature_d['mono_mz_upper'] = mono_mz_upper
+                                feature_d['scan_apex'] = scan_apex
+                                feature_d['scan_lower'] = iso_scan_lower
+                                feature_d['scan_upper'] = iso_scan_upper
 
-                                    feature_d['scan_apex'] = scan_apex
-                                    feature_d['scan_lower'] = iso_scan_lower
-                                    feature_d['scan_upper'] = iso_scan_upper
+                                feature_d['rt_apex'] = rt_apex
+                                feature_d['rt_lower'] = iso_rt_lower
+                                feature_d['rt_upper'] = iso_rt_upper
 
-                                    feature_d['rt_apex'] = rt_apex
-                                    feature_d['rt_lower'] = iso_rt_lower
-                                    feature_d['rt_upper'] = iso_rt_upper
+                                isotope_characteristics_d = determine_isotope_characteristics(envelope=feature.envelope, rt_apex=rt_apex, monoisotopic_mass=feature.neutral_mass, feature_region_3d_df=feature_region_3d_df)
+                                if isotope_characteristics_d is not None:
+                                    # add the characteristics to the feature dictionary
+                                    feature_d = {**feature_d, **isotope_characteristics_d}
+                                    feature_d['monoisotopic_mz'] = isotope_characteristics_d['mono_mz']
+                                    feature_d['charge'] = feature.charge
+                                    feature_d['monoisotopic_mass'] = calculate_monoisotopic_mass_from_mz(monoisotopic_mz=feature_d['monoisotopic_mz'], charge=feature_d['charge'])
+                                    feature_d['feature_intensity'] = isotope_characteristics_d['intensity_with_saturation_correction'] if (isotope_characteristics_d['intensity_with_saturation_correction'] > isotope_characteristics_d['intensity_without_saturation_correction']) else isotope_characteristics_d['intensity_without_saturation_correction']
+                                    feature_d['envelope'] = json.dumps([tuple(e) for e in feature.envelope])
+                                    feature_d['isotope_count'] = len(feature.envelope)
+                                    feature_d['deconvolution_score'] = feature.score
+                                    # record the feature region where we found this feature
+                                    feature_d['feature_region_3d_extent'] = feature_region_3d_extent_d
+                                    # record the voxel from where we derived the initial isotope
+                                    feature_d['voxel_id'] = voxel.voxel_id
+                                    feature_d['voxel_metadata_d'] = voxel_metadata_d
+                                    feature_d['scan_df'] = scan_df.to_dict('records')
+                                    feature_d['scan_r_squared'] = scan_r_squared
+                                    feature_d['rt_df'] = rt_df.to_dict('records')
+                                    feature_d['rt_r_squared'] = rt_r_squared
+                                    # add it to the list
+                                    features_l.append(feature_d)
 
-                                    isotope_characteristics_d = determine_isotope_characteristics(envelope=feature.envelope, rt_apex=rt_apex, monoisotopic_mass=feature.neutral_mass, feature_region_3d_df=feature_region_3d_df)
-                                    if isotope_characteristics_d is not None:
-                                        # add the characteristics to the feature dictionary
-                                        feature_d = {**feature_d, **isotope_characteristics_d}
-                                        feature_d['monoisotopic_mz'] = isotope_characteristics_d['mono_mz']
-                                        feature_d['charge'] = feature.charge
-                                        feature_d['monoisotopic_mass'] = calculate_monoisotopic_mass_from_mz(monoisotopic_mz=feature_d['monoisotopic_mz'], charge=feature_d['charge'])
-                                        feature_d['feature_intensity'] = isotope_characteristics_d['intensity_with_saturation_correction'] if (isotope_characteristics_d['intensity_with_saturation_correction'] > isotope_characteristics_d['intensity_without_saturation_correction']) else isotope_characteristics_d['intensity_without_saturation_correction']
-                                        feature_d['envelope'] = json.dumps([tuple(e) for e in feature.envelope])
-                                        feature_d['isotope_count'] = len(feature.envelope)
-                                        feature_d['deconvolution_score'] = feature.score
-                                        # record the feature region where we found this feature
-                                        feature_d['feature_region_3d_extent'] = feature_region_3d_extent_d
-                                        # record the voxel from where we derived the initial isotope
-                                        feature_d['voxel_id'] = voxel.voxel_id
-                                        feature_d['voxel_metadata_d'] = voxel_metadata_d
-                                        feature_d['scan_df'] = scan_df.to_dict('records')
-                                        feature_d['scan_r_squared'] = scan_r_squared
-                                        feature_d['rt_df'] = rt_df.to_dict('records')
-                                        feature_d['rt_r_squared'] = rt_r_squared
-                                        # add it to the list
-                                        features_l.append(feature_d)
-
-                                        # add the voxels included in the feature's isotopes to the list of voxels already processed
-                                        voxels_processed.update(feature_d['voxels_processed'])
-
+                                    # add the voxels included in the feature's isotopes to the list of voxels already processed
+                                    voxels_processed.update(feature_d['voxels_processed'])
                         else:
                             # if the unviable feature is close to the RT edge, we should keep going
                             if (iso_rt_lower > (args.rt_lower + 1.0)) and (iso_rt_upper < (args.rt_upper - 1.0)):
-                                print('the base isotope is insufficiently gaussian in the CCS and RT dimensions, so we\'ll stop here.')
-                                if scan_r_squared is not None:
-                                    print('scan: {}'.format(round(scan_r_squared,1)))
-                                else:
-                                    print('could not fit a curve in CCS')
-
-                                if rt_r_squared is not None:
-                                    print('rt: {}'.format(round(rt_r_squared,1)))
-                                else:
-                                    print('could not fit a curve in RT')
+                                print('could not deconvolve to a feature, so we\'ll stop here.')
 
                                 # save information about the stopping point for analysis
                                 region_mz_lower = voxel_mz_midpoint - ANCHOR_POINT_MZ_LOWER_OFFSET
