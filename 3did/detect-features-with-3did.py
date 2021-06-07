@@ -213,6 +213,7 @@ def determine_isotope_characteristics(envelope, rt_apex, monoisotopic_mass, feat
 
     result_d['isotopic_peaks'] = isotopes_df.to_dict('records')
     result_d['voxels_processed'] = voxels_processed
+    print('{} voxels'.format(len(voxels_processed)))
     return result_d
 
 # calculate the monoisotopic mass    
