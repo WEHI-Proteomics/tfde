@@ -79,7 +79,7 @@ def task_define_precursor_cuboids():
     target_l = []
     for run_name in get_run_names(EXPERIMENT_DIR):
         # command
-        cmd = 'python -u define-precursor-cuboids-pasef.py -eb {experiment_base} -en {experiment_name} -rn {run_name} -ini {INI_FILE} -rl {rl} -ru {ru} -rm cluster -pc {pc}'.format(experiment_base=config['experiment_base_dir'], experiment_name=config['experiment_name'], run_name=run_name, INI_FILE=config['ini_file'], rl=int(config['rt_lower']), ru=int(config['rt_upper'], pc=config['proportion_of_cores_to_use']))
+        cmd = 'python -u define-precursor-cuboids-pasef.py -eb {experiment_base} -en {experiment_name} -rn {run_name} -ini {INI_FILE} -rl {rl} -ru {ru} -rm cluster -pc {pc}'.format(experiment_base=config['experiment_base_dir'], experiment_name=config['experiment_name'], run_name=run_name, INI_FILE=config['ini_file'], rl=int(config['rt_lower']), ru=int(config['rt_upper']), pc=config['proportion_of_cores_to_use'])
         cmd_l.append(cmd)
         # outputs
         cuboids_file = '{}/exp-{}-run-{}-precursor-cuboids-{}.pkl'.format(CUBOIDS_DIR, config['experiment_name'], run_name, config['precursor_definition_method'])
@@ -105,7 +105,7 @@ def task_detect_features():
         cuboids_file = '{}/exp-{}-run-{}-precursor-cuboids-{}.pkl'.format(CUBOIDS_DIR, config['experiment_name'], run_name, config['precursor_definition_method'])
         dependency_l.append(cuboids_file)
         # command
-        cmd = 'python -u detect-features.py -eb {experiment_base} -en {experiment_name} -rn {run_name} -ini {INI_FILE} -rm cluster -pc {proportion_of_cores_to_use} -pdm {precursor_definition_method} -rl {rl} -ru {ru} {cs} {fmdw}'.format(experiment_base=config['experiment_base_dir'], experiment_name=config['experiment_name'], run_name=run_name, INI_FILE=config['ini_file'], proportion_of_cores_to_use=config['proportion_of_cores_to_use'], precursor_definition_method=config['precursor_definition_method'], rl=int(config['rt_lower']), ru=int(config['rt_upper']), cs=config['cs_flag'], fmdw=config['fmdw_flag'])
+        cmd = 'python -u detect-features.py -eb {experiment_base} -en {experiment_name} -rn {run_name} -ini {INI_FILE} -rm cluster -pc {pc} -pdm {precursor_definition_method} -rl {rl} -ru {ru} {cs} {fmdw}'.format(experiment_base=config['experiment_base_dir'], experiment_name=config['experiment_name'], run_name=run_name, INI_FILE=config['ini_file'], pc=config['proportion_of_cores_to_use'], precursor_definition_method=config['precursor_definition_method'], rl=int(config['rt_lower']), ru=int(config['rt_upper']), cs=config['cs_flag'], fmdw=config['fmdw_flag'])
         cmd_l.append(cmd)
         # output
         features_file = '{}/exp-{}-run-{}-features-{}.pkl'.format(FEATURES_DIR, config['experiment_name'], run_name, config['precursor_definition_method'])
