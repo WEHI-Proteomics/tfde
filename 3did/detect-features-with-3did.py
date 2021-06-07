@@ -490,7 +490,7 @@ def find_features(segment_mz_lower, segment_mz_upper, segment_id):
                         rt_r_squared = measure_curve(x=rt_subset_df.retention_time_secs.to_numpy(), y=rt_subset_df.clipped_filtered_intensity.to_numpy())
 
                         # if the base isotope is sufficiently gaussian in one of the dimensions, it's worth processing
-                        if logical_xor((scan_r_squared is not None), (rt_r_squared is not None)):
+                        if logical_xor((scan_r_squared is None), (rt_r_squared is None)):
 
                             # we now have a definition of the voxel's isotope in m/z, scan, and RT. We need to extend that in the m/z dimension to catch all the isotopes for this feature
                             region_mz_lower = voxel_mz_midpoint - ANCHOR_POINT_MZ_LOWER_OFFSET
