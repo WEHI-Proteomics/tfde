@@ -300,12 +300,11 @@ def find_features(segment_mz_lower, segment_mz_upper, segment_id):
         summary_df = raw_df.groupby(['bin_key'], as_index=False, sort=False).intensity.agg(['sum','count']).reset_index()
         summary_df.rename(columns={'sum':'voxel_intensity', 'count':'point_count'}, inplace=True)
         summary_df.dropna(subset=['voxel_intensity'], inplace=True)
-        summary_df = summary_df[(summary_df.voxel_intensity > 0)]
+        summary_df = summary_df[(summary_df.voxel_intensity > MINIMUM_VOXEL_INTENSITY)]
         summary_df.sort_values(by=['voxel_intensity'], ascending=False, inplace=True)
         summary_df.reset_index(drop=True, inplace=True)
         summary_df['voxel_id'] = summary_df.index
         summary_df['voxel_id'] = summary_df.apply(lambda row: generate_voxel_id(segment_id, row.voxel_id+1), axis=1)
-        summary_df.to_pickle('{}/voxel_summary.pkl'.format(expanduser('~')))
         print('there are {} voxels for processing in segment {} ({}-{} m/z)'.format(len(summary_df), segment_id, round(segment_mz_lower,1), round(segment_mz_upper,1)))
 
         # assign each raw point with their voxel ID
@@ -599,6 +598,7 @@ MZ_BIN_SIZE = 0.1
 MINIMUM_NUMBER_OF_SCANS_IN_BASE_PEAK = 5
 MAXIMUM_GAP_SECS_BETWEEN_EDGE_POINTS = 1.0
 INTENSITY_PROPORTION_FOR_VOXEL_TO_BE_REMOVED = 0.8
+MINIMUM_VOXEL_INTENSITY = 2500
 
 
 #######################
