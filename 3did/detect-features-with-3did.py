@@ -213,7 +213,6 @@ def determine_isotope_characteristics(envelope, rt_apex, monoisotopic_mass, feat
 
     result_d['isotopic_peaks'] = isotopes_df.to_dict('records')
     result_d['voxels_processed'] = voxels_processed
-    print('{} voxels'.format(len(voxels_processed)))
     return result_d
 
 # calculate the monoisotopic mass    
@@ -306,6 +305,7 @@ def find_features(segment_mz_lower, segment_mz_upper, segment_id):
         summary_df.reset_index(drop=True, inplace=True)
         summary_df['voxel_id'] = summary_df.index
         summary_df['voxel_id'] = summary_df.apply(lambda row: generate_voxel_id(segment_id, row.voxel_id+1), axis=1)
+        summary_df.to_pickle('{}/voxel_summary.pkl'.format(expanduser('~')))
         print('there are {} voxels for processing in segment {} ({}-{} m/z)'.format(len(summary_df), segment_id, round(segment_mz_lower,1), round(segment_mz_upper,1)))
 
         # assign each raw point with their voxel ID
