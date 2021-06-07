@@ -12,23 +12,25 @@ import sys
 
 # collate the feature attributes for MGF rendering
 def collate_spectra_for_feature(feature_d, monoisotopic_mz_column_name, run_name):
+    spectrum = None
     # sort the fragment ions by increasing m/z
     fragment_ions_df = pd.DataFrame(json.loads(feature_d['fragment_ions_l']))
-    fragment_ions_df.sort_values(by=['singly_protonated_mass'], ascending=True, inplace=True)
+    if len(fragment_ions_df) > 0:
+        fragment_ions_df.sort_values(by=['singly_protonated_mass'], ascending=True, inplace=True)
 
-    spectrum = {}
-    spectrum["m/z array"] = fragment_ions_df['singly_protonated_mass'].to_numpy(dtype='float')
-    spectrum["intensity array"] = fragment_ions_df['intensity'].to_numpy(dtype='uint')
+        spectrum = {}
+        spectrum["m/z array"] = fragment_ions_df['singly_protonated_mass'].to_numpy(dtype='float')
+        spectrum["intensity array"] = fragment_ions_df['intensity'].to_numpy(dtype='uint')
 
-    params = {}
-    params["TITLE"] = "RawFile: {} Charge: {} FeatureIntensity: {} Feature#: {} RtApex: {} Precursor: {}".format(run_name, int(feature_d['charge']), int(feature_d['feature_intensity']), int(feature_d['feature_id']), round(feature_d['rt_apex'],2), int(feature_d['precursor_cuboid_id']))
-    params["INSTRUMENT"] = "ESI-QUAD-TOF"
-    params["PEPMASS"] = "{} {}".format(round(feature_d[monoisotopic_mz_column_name],6), int(feature_d['feature_intensity']))
-    params["CHARGE"] = "{}+".format(int(feature_d['charge']))
-    params["RTINSECONDS"] = "{}".format(round(feature_d['rt_apex'],2))
-    params["SCANS"] = "{}".format(int(feature_d['feature_id']))
+        params = {}
+        params["TITLE"] = "RawFile: {} Charge: {} FeatureIntensity: {} Feature#: {} RtApex: {} Precursor: {}".format(run_name, int(feature_d['charge']), int(feature_d['feature_intensity']), int(feature_d['feature_id']), round(feature_d['rt_apex'],2), int(feature_d['precursor_cuboid_id']))
+        params["INSTRUMENT"] = "ESI-QUAD-TOF"
+        params["PEPMASS"] = "{} {}".format(round(feature_d[monoisotopic_mz_column_name],6), int(feature_d['feature_intensity']))
+        params["CHARGE"] = "{}+".format(int(feature_d['charge']))
+        params["RTINSECONDS"] = "{}".format(round(feature_d['rt_apex'],2))
+        params["SCANS"] = "{}".format(int(feature_d['feature_id']))
 
-    spectrum["params"] = params
+        spectrum["params"] = params
     return spectrum
 
 
@@ -89,7 +91,8 @@ associations = []
 for row in features_df.itertuples():
     # collate them for the MGF
     spectrum = collate_spectra_for_feature(feature_d=row._asdict(), monoisotopic_mz_column_name=monoisotopic_mz_column_name, run_name=args.run_name)
-    associations.append(spectrum)
+    if spectrum is not None:
+        associations.append(spectrum)
 
 # generate the MGF for all the features
 print("writing {} entries to {}".format(len(associations), MGF_FILE))
