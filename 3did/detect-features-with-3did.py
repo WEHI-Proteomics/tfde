@@ -263,6 +263,10 @@ def save_visualisation(d, segment_id):
     with open(VIS_FILE, 'wb') as handle:
         pickle.dump(d, handle)
 
+# perform a logical XOR on the two conditions (credit: https://stackoverflow.com/a/432844/1184799)
+def logical_xor(cond1, cond2):
+    return bool(cond1) ^ bool(cond2)
+
 # process a segment of this run's data, and return a list of features
 @ray.remote
 def find_features(segment_mz_lower, segment_mz_upper, segment_id):
@@ -485,8 +489,8 @@ def find_features(segment_mz_lower, segment_mz_upper, segment_id):
                         scan_r_squared = measure_curve(x=scan_subset_df.scan.to_numpy(), y=scan_subset_df.clipped_filtered_intensity.to_numpy())
                         rt_r_squared = measure_curve(x=rt_subset_df.retention_time_secs.to_numpy(), y=rt_subset_df.clipped_filtered_intensity.to_numpy())
 
-                        # if the base isotope is sufficiently gaussian in at least one of the dimensions, it's worth processing
-                        if (((scan_r_squared is not None) and (scan_r_squared >= MINIMUM_R_SQUARED)) or ((rt_r_squared is not None) and (rt_r_squared >= MINIMUM_R_SQUARED))):
+                        # if the base isotope is sufficiently gaussian in one of the dimensions, it's worth processing
+                        if logical_xor((scan_r_squared is not None), (rt_r_squared is not None)):
 
                             # we now have a definition of the voxel's isotope in m/z, scan, and RT. We need to extend that in the m/z dimension to catch all the isotopes for this feature
                             region_mz_lower = voxel_mz_midpoint - ANCHOR_POINT_MZ_LOWER_OFFSET
