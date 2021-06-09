@@ -101,7 +101,7 @@ print('loaded {} features cuboids from {}'.format(len(features_df), FEATURES_FIL
 if args.feature_id is not None:
     # take the visualisation scope from the specified feature
     selected_feature = features_df.iloc[0]
-    limits = {'MZ_MIN': args.mono_mz-offset_mz_lower, 'MZ_MAX': args.mono_mz+offset_mz_upper, 'SCAN_MIN': args.scan_apex-offset_scan_lower, 'SCAN_MAX': args.scan_apex+offset_scan_upper, 'RT_MIN': args.rt_apex-offset_rt_lower, 'RT_MAX': args.rt_apex+offset_rt_upper}
+    limits = {'MZ_MIN': selected_feature.monoisotopic_mz-offset_mz_lower, 'MZ_MAX': selected_feature.monoisotopic_mz+offset_mz_upper, 'SCAN_MIN': selected_feature.scan_apex-offset_scan_lower, 'SCAN_MAX': selected_feature.scan_apex+offset_scan_upper, 'RT_MIN': selected_feature.rt_apex-offset_rt_lower, 'RT_MAX': selected_feature.rt_apex+offset_rt_upper}
     print('limits used: {}'.format(limits))
 else:
     # default scope of the visualisation
