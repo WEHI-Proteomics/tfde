@@ -61,7 +61,7 @@ if not os.path.exists(MGF_DIR):
 print('loading the allPeptides table from {}'.format(ALLPEPTIDES_FILENAME))
 allpeptides_df = pd.read_csv(ALLPEPTIDES_FILENAME, sep='\t')
 allpeptides_df.rename(columns={'Number of isotopic peaks':'isotope_count', 'm/z':'mz', 'Number of data points':'number_data_points', 'Intensity':'intensity', 'Ion mobility index':'scan', 'Ion mobility index length':'scan_length', 'Ion mobility index length (FWHM)':'scan_length_fwhm', 'Retention time':'rt', 'Retention length':'rt_length', 'Retention length (FWHM)':'rt_length_fwhm', 'Charge':'charge_state', 'Number of pasef MS/MS':'number_pasef_ms2_ids', 'Pasef MS/MS IDs':'pasef_msms_ids', 'MS/MS scan number':'msms_scan_number', 'Isotope correlation':'isotope_correlation'}, inplace=True)
-# allpeptides_df = allpeptides_df[allpeptides_df.intensity.notnull() & (allpeptides_df.number_pasef_ms2_ids > 0) & (allpeptides_df.msms_scan_number >= 0) & allpeptides_df.pasef_msms_ids.notnull()].copy()
+allpeptides_df = allpeptides_df[allpeptides_df.intensity.notnull() & (allpeptides_df.number_pasef_ms2_ids > 0) & (allpeptides_df.msms_scan_number >= 0) & allpeptides_df.pasef_msms_ids.notnull()].copy()
 allpeptides_df = allpeptides_df[(allpeptides_df.msms_scan_number >= 0)].copy()
 allpeptides_df['rt_in_seconds'] = allpeptides_df.rt * 60.0
 allpeptides_df.sort_values(by=['msms_scan_number'], ascending=True, inplace=True)
