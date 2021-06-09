@@ -60,13 +60,18 @@ FRAME_TYPE_MS2 = 8
 PIXELS_X = 800
 PIXELS_Y = 800
 
-# offsets on the sides of the seleted feature's apex
-offset_mz_lower = 10.0
-offset_mz_upper = 10.0
-offset_scan_lower = 150
-offset_scan_upper = 150
-offset_rt_lower = 5
-offset_rt_upper = 5
+if args.feature_id is not None:
+    # offsets on the sides of the selected feature's apex
+    offset_mz_lower = 10.0
+    offset_mz_upper = 10.0
+    offset_scan_lower = 150
+    offset_scan_upper = 150
+    offset_rt_lower = 5
+    offset_rt_upper = 5
+else:
+    # offsets on the sides of a feature's apex
+    offset_rt_lower = 1
+    offset_rt_upper = 1
 
 # font paths for overlay labels
 UBUNTU_FONT_PATH = '/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf'
@@ -200,7 +205,7 @@ for group_name,group_df in pixel_intensity_df.groupby(['frame_id'], as_index=Fal
 
     # find the intersecting precursor cuboids for this tile; can be partial overlap in the m/z and scan dimensions
     intersecting_features_df = features_df[
-                (features_df.rt_lower <= tile_rt) & (features_df.rt_upper >= tile_rt) & 
+                ((features_df.rt_apex-offset_rt_lower) <= tile_rt) & ((features_df.rt_apex+offset_rt_upper) >= tile_rt) & 
                 (features_df.monoisotopic_mz >= limits['MZ_MIN']) & (features_df.monoisotopic_mz <= limits['MZ_MAX']) & 
                 ((features_df.scan_lower >= limits['SCAN_MIN']) & (features_df.scan_lower <= limits['SCAN_MAX']) |
                 (features_df.scan_upper >= limits['SCAN_MIN']) & (features_df.scan_upper <= limits['SCAN_MAX']))
