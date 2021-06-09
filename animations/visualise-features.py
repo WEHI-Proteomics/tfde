@@ -9,14 +9,26 @@ import sys
 import json
 import argparse
 
+
+def pixel_x_from_mz(mz):
+    pixel_x = int((mz - limits['MZ_MIN']) * PIXELS_PER_MZ)
+    return pixel_x
+
+def pixel_y_from_scan(scan):
+    pixel_y = int((scan - limits['SCAN_MIN']) * PIXELS_PER_SCAN)
+    return pixel_y
+
+
 # generate a tile for each frame, annotating intersecting feature cuboids
 
 ###################################
 parser = argparse.ArgumentParser(description='Generate a tile for each frame, annotating intersecting feature cuboids.')
 parser.add_argument('-eb','--experiment_base_dir', type=str, default='./experiments', help='Path to the experiments directory.', required=False)
+parser.add_argument('-rb','--results_base_dir', type=str, default='./experiments', help='Path to the results directory.', required=False)
 parser.add_argument('-en','--experiment_name', type=str, help='Name of the experiment.', required=True)
 parser.add_argument('-rn','--run_name', type=str, help='Name of the run.', required=True)
 parser.add_argument('-pdm','--precursor_definition_method', type=str, choices=['pasef','3did'], help='The method used to define the precursor cuboids.', required=True)
+parser.add_argument('-fid','--feature_id', type=int, help='A particular feature ID to visualise.', required=False)
 parser.add_argument('-rl','--rt_lower', type=int, default='1650', help='Lower limit for retention time.', required=False)
 parser.add_argument('-ru','--rt_upper', type=int, default='2200', help='Upper limit for retention time.', required=False)
 parser.add_argument('-ml','--mz_lower', type=int, default='700', help='Lower limit for m/z.', required=False)
@@ -32,14 +44,6 @@ for arg in vars(args):
     info.append((arg, getattr(args, arg)))
 print(info)
 
-limits = {'MZ_MIN': args.mz_lower, 'MZ_MAX': args.mz_upper, 'SCAN_MIN': args.scan_lower, 'SCAN_MAX': args.scan_upper, 'RT_MIN': args.rt_lower, 'RT_MAX': args.rt_upper}
-
-
-PIXELS_X = 800
-PIXELS_Y = 800
-
-PIXELS_PER_MZ = PIXELS_X / (limits['MZ_MAX'] - limits['MZ_MIN'])
-PIXELS_PER_SCAN = PIXELS_Y / (limits['SCAN_MAX'] - limits['SCAN_MIN'])
 
 minimum_pixel_intensity = 1
 maximum_pixel_intensity = 250
@@ -48,14 +52,30 @@ maximum_pixel_intensity = 250
 BB_MZ_BUFFER = 0.2
 BB_SCAN_BUFFER = 5
 
+# frame types for PASEF mode
+FRAME_TYPE_MS1 = 0
+FRAME_TYPE_MS2 = 8
+
+# pixel dimensions
+PIXELS_X = 800
+PIXELS_Y = 800
+
+# offsets on the sides of the seleted feature's apex
+offset_mz_lower = 10.0
+offset_mz_upper = 10.0
+offset_scan_lower = 150
+offset_scan_upper = 150
+offset_rt_lower = 5
+offset_rt_upper = 5
+
+# font paths for overlay labels
+UBUNTU_FONT_PATH = '/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf'
+MACOS_FONT_PATH = '/Library/Fonts/Arial.ttf'
+
 TILES_BASE_DIR = '{}/feature-tiles-{}'.format(args.tiles_base_dir, args.precursor_definition_method)
 
 EXPERIMENT_DIR = '{}/{}'.format(args.experiment_base_dir, args.experiment_name)
 CONVERTED_DATABASE_NAME = '{}/converted-databases/exp-{}-run-{}-converted.sqlite'.format(EXPERIMENT_DIR, args.experiment_name, args.run_name)
-
-FEATURES_DIR = '{}/features-{}'.format(EXPERIMENT_DIR, args.precursor_definition_method)
-FEATURES_FILE = '{}/exp-{}-run-{}-features-{}-dedup.pkl'.format(FEATURES_DIR, args.experiment_name, args.run_name, args.precursor_definition_method)
-
 
 if not os.path.exists(EXPERIMENT_DIR):
     print("The experiment directory is required but doesn't exist: {}".format(EXPERIMENT_DIR))
@@ -66,22 +86,29 @@ if not os.path.isfile(CONVERTED_DATABASE_NAME):
     print("The converted database is required but doesn't exist: {}".format(CONVERTED_DATABASE_NAME))
     sys.exit(1)
 
-# frame types for PASEF mode
-FRAME_TYPE_MS1 = 0
-FRAME_TYPE_MS2 = 8
+if args.results_base_dir is not None:
+    FEATURES_DIR = '{}/features-{}'.format(args.results_base_dir, args.precursor_definition_method)
+else:
+    FEATURES_DIR = '{}/features-{}'.format(EXPERIMENT_DIR, args.precursor_definition_method)
+FEATURES_FILE = '{}/exp-{}-run-{}-features-{}-dedup.pkl'.format(FEATURES_DIR, args.experiment_name, args.run_name, args.precursor_definition_method)
 
-# font paths for overlay labels
-UBUNTU_FONT_PATH = '/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf'
-MACOS_FONT_PATH = '/Library/Fonts/Arial.ttf'
+# load the feature cuboids
+features_df = pd.read_pickle(FEATURES_FILE)['features_df']
+if args.feature_id is not None:
+    features_df = features_df[(features_df.feature_id == args.feature_id)]
+print('loaded {} features cuboids from {}'.format(len(features_df), FEATURES_FILE))
 
+if args.feature_id is not None:
+    # take the visualisation scope from the specified feature
+    selected_feature = features_df.iloc[0]
+    limits = {'MZ_MIN': args.mono_mz-offset_mz_lower, 'MZ_MAX': args.mono_mz+offset_mz_upper, 'SCAN_MIN': args.scan_apex-offset_scan_lower, 'SCAN_MAX': args.scan_apex+offset_scan_upper, 'RT_MIN': args.rt_apex-offset_rt_lower, 'RT_MAX': args.rt_apex+offset_rt_upper}
+    print('limits used: {}'.format(limits))
+else:
+    # default scope of the visualisation
+    limits = {'MZ_MIN': args.mz_lower, 'MZ_MAX': args.mz_upper, 'SCAN_MIN': args.scan_lower, 'SCAN_MAX': args.scan_upper, 'RT_MIN': args.rt_lower, 'RT_MAX': args.rt_upper}
 
-def pixel_x_from_mz(mz):
-    pixel_x = int((mz - limits['MZ_MIN']) * PIXELS_PER_MZ)
-    return pixel_x
-
-def pixel_y_from_scan(scan):
-    pixel_y = int((scan - limits['SCAN_MIN']) * PIXELS_PER_SCAN)
-    return pixel_y
+PIXELS_PER_MZ = PIXELS_X / (limits['MZ_MAX'] - limits['MZ_MIN'])
+PIXELS_PER_SCAN = PIXELS_Y / (limits['SCAN_MAX'] - limits['SCAN_MIN'])
 
 
 print('loading raw data from {}'.format(CONVERTED_DATABASE_NAME))
@@ -112,10 +139,6 @@ pixel_intensity_df = pd.merge(pixel_intensity_df, colours_df, how='left', left_o
 if os.path.exists(TILES_BASE_DIR):
     shutil.rmtree(TILES_BASE_DIR)
 os.makedirs(TILES_BASE_DIR)
-
-# load the feature cuboids
-features_df = pd.read_pickle(FEATURES_FILE)['features_df']
-print('loaded {} features cuboids from {}'.format(len(features_df), FEATURES_FILE))
 
 # add a buffer around the edges
 x_buffer = 5
