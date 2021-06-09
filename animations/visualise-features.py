@@ -29,10 +29,10 @@ parser.add_argument('-en','--experiment_name', type=str, help='Name of the exper
 parser.add_argument('-rn','--run_name', type=str, help='Name of the run.', required=True)
 parser.add_argument('-pdm','--precursor_definition_method', type=str, choices=['pasef','3did'], help='The method used to define the precursor cuboids.', required=True)
 parser.add_argument('-fid','--feature_id', type=int, help='A particular feature ID to visualise.', required=False)
-parser.add_argument('-rl','--rt_lower', type=int, default='1650', help='Lower limit for retention time.', required=False)
-parser.add_argument('-ru','--rt_upper', type=int, default='2200', help='Upper limit for retention time.', required=False)
-parser.add_argument('-ml','--mz_lower', type=int, default='700', help='Lower limit for m/z.', required=False)
-parser.add_argument('-mu','--mz_upper', type=int, default='720', help='Upper limit for m/z.', required=False)
+parser.add_argument('-rl','--rt_lower', type=float, default='1650', help='Lower limit for retention time.', required=False)
+parser.add_argument('-ru','--rt_upper', type=float, default='2200', help='Upper limit for retention time.', required=False)
+parser.add_argument('-ml','--mz_lower', type=float, default='700', help='Lower limit for m/z.', required=False)
+parser.add_argument('-mu','--mz_upper', type=float, default='720', help='Upper limit for m/z.', required=False)
 parser.add_argument('-sl','--scan_lower', type=int, default='0', help='Lower limit for scan.', required=False)
 parser.add_argument('-su','--scan_upper', type=int, default='920', help='Upper limit for scan.', required=False)
 parser.add_argument('-tb','--tiles_base_dir', type=str, default='./tiles', help='Path to the output tiles directory.', required=False)
@@ -101,7 +101,7 @@ print('loaded {} features cuboids from {}'.format(len(features_df), FEATURES_FIL
 if args.feature_id is not None:
     # take the visualisation scope from the specified feature
     selected_feature = features_df.iloc[0]
-    limits = {'MZ_MIN': selected_feature.monoisotopic_mz-offset_mz_lower, 'MZ_MAX': selected_feature.monoisotopic_mz+offset_mz_upper, 'SCAN_MIN': selected_feature.scan_apex-offset_scan_lower, 'SCAN_MAX': selected_feature.scan_apex+offset_scan_upper, 'RT_MIN': selected_feature.rt_apex-offset_rt_lower, 'RT_MAX': selected_feature.rt_apex+offset_rt_upper}
+    limits = {'MZ_MIN': selected_feature.monoisotopic_mz-offset_mz_lower, 'MZ_MAX': selected_feature.monoisotopic_mz+offset_mz_upper, 'SCAN_MIN': int(selected_feature.scan_apex-offset_scan_lower), 'SCAN_MAX': int(selected_feature.scan_apex+offset_scan_upper), 'RT_MIN': selected_feature.rt_apex-offset_rt_lower, 'RT_MAX': selected_feature.rt_apex+offset_rt_upper}
     print('limits used: {}'.format(limits))
 else:
     # default scope of the visualisation
