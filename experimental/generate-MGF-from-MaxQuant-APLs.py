@@ -29,6 +29,7 @@ def collate_spectra_for_feature(ms1_d, ms2_df):
 parser = argparse.ArgumentParser(description='Convert the APL files from MaxQuant to an MGF for each run.')
 parser.add_argument('-mqc','--maxquant_combined_dir', type=str, help='Path to the MaxQuant combined directory.', required=True)
 parser.add_argument('-mgf','--mgf_dir', type=str, help='Path to the MGF output directory.', required=True)
+parser.add_argument('-rn','--run_name', type=str, help='Limit the processing to this run.', required=False)
 parser.add_argument('-v','--visualise', action='store_true', help='Generate data for visualisation of MaxQuant features as rendered in the MGFs.')
 args = parser.parse_args()
 
@@ -65,6 +66,10 @@ allpeptides_df = allpeptides_df[(allpeptides_df.msms_scan_number >= 0)].copy()
 allpeptides_df['rt_in_seconds'] = allpeptides_df.rt * 60.0
 allpeptides_df.sort_values(by=['msms_scan_number'], ascending=True, inplace=True)
 allpeptides_df.msms_scan_number = allpeptides_df.msms_scan_number.apply(lambda x: int(x))
+
+if args.run_name is not None:
+    allpeptides_df = allpeptides_df[(allpeptides_df['Raw file'] == args.run_name)]
+
 print('loaded {} entries from allPeptides'.format(len(allpeptides_df)))
 
 # build a list of indexes from the APL files
