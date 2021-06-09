@@ -24,7 +24,7 @@ def pixel_y_from_scan(scan):
 ###################################
 parser = argparse.ArgumentParser(description='Generate a tile for each frame, annotating intersecting feature cuboids.')
 parser.add_argument('-eb','--experiment_base_dir', type=str, default='./experiments', help='Path to the experiments directory.', required=False)
-parser.add_argument('-rb','--results_base_dir', type=str, default='./experiments', help='Path to the results directory.', required=False)
+parser.add_argument('-rb','--results_base_dir', type=str, help='Path to the results directory.', required=False)
 parser.add_argument('-en','--experiment_name', type=str, help='Name of the experiment.', required=True)
 parser.add_argument('-rn','--run_name', type=str, help='Name of the run.', required=True)
 parser.add_argument('-pdm','--precursor_definition_method', type=str, choices=['pasef','3did'], help='The method used to define the precursor cuboids.', required=True)
