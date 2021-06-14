@@ -103,12 +103,10 @@ if (len(features_df) > 2):
     features_processed = set()
     for feature in features_df.itertuples():
         if feature.feature_id not in features_processed:
-            dup_df = features_df[(features_df.dup_mz > feature.dup_mz_lower) & (features_df.dup_mz < feature.dup_mz_upper) & (features_df.scan_apex > feature.dup_scan_lower) & (features_df.scan_apex < feature.dup_scan_upper) & (features_df.rt_apex > feature.dup_rt_lower) & (features_df.rt_apex < feature.dup_rt_upper)].copy()
+            dup_df = features_df[(features_df.charge == feature.charge) & (features_df.dup_mz > feature.dup_mz_lower) & (features_df.dup_mz < feature.dup_mz_upper) & (features_df.scan_apex > feature.dup_scan_lower) & (features_df.scan_apex < feature.dup_scan_upper) & (features_df.rt_apex > feature.dup_rt_lower) & (features_df.rt_apex < feature.dup_rt_upper)].copy()
             if len(dup_df) > 1:
                 print('{} are duplicates'.format(dup_df.feature_id.tolist()))
-            # group the dups by charge
-            for group_name,group_df in dup_df.groupby(['charge'], as_index=False):
-                keep_l.append(group_df.iloc[0].feature_id)
+                keep_l.append(dup_df.iloc[0].feature_id)
             # record the features that have been processed
             features_processed.update(set(dup_df.feature_id.tolist()))
 
