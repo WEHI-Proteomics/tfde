@@ -107,7 +107,8 @@ for group_name,group_df in allpeptides_df.groupby('Raw file'):
     file_apl_indexes_df = apl_indexes_df[(apl_indexes_df['raw_file'] == group_name)]
     for idx,row in group_df.iterrows():
         mq_index = row.msms_scan_number
-        ms1_d = {'monoisotopic_mass':row.Mass, 
+        ms1_d = {'feature_id':idx+1,
+                 'monoisotopic_mass':row.Mass, 
                  'charge':row.charge_state, 
                  'monoisotopic_mz':row.mz, 
                  'intensity':int(row.intensity), 
