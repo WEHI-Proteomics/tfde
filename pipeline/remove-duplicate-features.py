@@ -100,8 +100,10 @@ if (len(features_df) > 2):
     columns_to_drop_l.append('dup_rt_lower')
     columns_to_drop_l.append('dup_rt_upper')
 
-    # sort by decreasing deconvolution score
-    features_df.sort_values(by=['deconvolution_score'], ascending=False, inplace=True)
+
+    if (args.precursor_definition_method == 'pasef') or (args.precursor_definition_method == '3did'):
+        # sort by decreasing deconvolution score
+        features_df.sort_values(by=['deconvolution_score'], ascending=False, inplace=True)
 
     # see if any detections have a duplicate - if so, keep the first one
     keep_l = []
