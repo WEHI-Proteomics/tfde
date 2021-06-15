@@ -27,10 +27,11 @@ def collate_spectra_for_feature(ms1_d, ms2_df):
 
 ###################################
 parser = argparse.ArgumentParser(description='Convert the APL files from MaxQuant to an MGF for each run.')
+parser.add_argument('-eb','--experiment_base_dir', type=str, default='./experiments', help='Path to the experiments directory.', required=False)
+parser.add_argument('-en','--experiment_name', type=str, help='Name of the experiment.', required=True)
 parser.add_argument('-mqc','--maxquant_combined_dir', type=str, help='Path to the MaxQuant combined directory.', required=True)
 parser.add_argument('-mgf','--mgf_dir', type=str, help='Path to the MGF output directory.', required=True)
 parser.add_argument('-rn','--run_name', type=str, help='Limit the processing to this run.', required=False)
-parser.add_argument('-v','--visualise', action='store_true', help='Generate data for visualisation of MaxQuant features as rendered in the MGFs.')
 args = parser.parse_args()
 
 # Print the arguments for the log
@@ -46,7 +47,7 @@ BASE_MAXQUANT_DIR = args.maxquant_combined_dir
 MAXQUANT_TXT_DIR = '{}/txt'.format(BASE_MAXQUANT_DIR)
 ALLPEPTIDES_FILENAME = '{}/allPeptides.txt'.format(MAXQUANT_TXT_DIR)
 APL_DIR = '{}/andromeda'.format(BASE_MAXQUANT_DIR)
-MGF_DIR = args.mgf_dir
+MGF_DIR = '{}/{}/mgf-mq'.format(args.experiment_base_dir, args.experiment_name)
 
 # check the MaxQuant directory
 if not os.path.exists(BASE_MAXQUANT_DIR):
@@ -103,7 +104,6 @@ for group_name,group_df in allpeptides_df.groupby('Raw file'):
     mgf_spectra = []
     visualisation_l = []
     mgf_file_name = '{}/{}.mgf'.format(MGF_DIR, group_name)
-    df_file_name = '{}/{}.pkl'.format(MGF_DIR, group_name)
     file_apl_indexes_df = apl_indexes_df[(apl_indexes_df['raw_file'] == group_name)]
     for idx,row in group_df.iterrows():
         mq_index = row.msms_scan_number
@@ -128,11 +128,12 @@ for group_name,group_df in allpeptides_df.groupby('Raw file'):
     if os.path.isfile(mgf_file_name):
         os.remove(mgf_file_name)
     f = mgf.write(output=mgf_file_name, spectra=mgf_spectra)
-    if args.visualise:
-        # save the visualisation DF
-        print("saving visualisation DF: {}".format(df_file_name))
-        vis_df = pd.DataFrame(visualisation_l)
-        vis_df.to_pickle(df_file_name)
+
+    # save the visualisation DF
+    features_file = '{}/exp-{}-run-{}-features-mq.pkl'.format(MGF_DIR, args.experiment_name, group_name)
+    print("saving {} features to {}".format(len(visualisation_l), features_file))
+    features_df = pd.DataFrame(visualisation_l)
+    features_df.to_pickle(features_file)
 
 stop_run = time.time()
 print("total running time ({}): {} seconds".format(parser.prog, round(stop_run-start_run,1)))
