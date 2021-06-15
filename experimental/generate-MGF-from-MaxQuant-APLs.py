@@ -30,7 +30,6 @@ parser = argparse.ArgumentParser(description='Convert the APL files from MaxQuan
 parser.add_argument('-eb','--experiment_base_dir', type=str, default='./experiments', help='Path to the experiments directory.', required=False)
 parser.add_argument('-en','--experiment_name', type=str, help='Name of the experiment.', required=True)
 parser.add_argument('-mqc','--maxquant_combined_dir', type=str, help='Path to the MaxQuant combined directory.', required=True)
-parser.add_argument('-mgf','--mgf_dir', type=str, help='Path to the MGF output directory.', required=True)
 parser.add_argument('-rn','--run_name', type=str, help='Limit the processing to this run.', required=False)
 args = parser.parse_args()
 
