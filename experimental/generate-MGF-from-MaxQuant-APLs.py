@@ -47,6 +47,7 @@ MAXQUANT_TXT_DIR = '{}/txt'.format(BASE_MAXQUANT_DIR)
 ALLPEPTIDES_FILENAME = '{}/allPeptides.txt'.format(MAXQUANT_TXT_DIR)
 APL_DIR = '{}/andromeda'.format(BASE_MAXQUANT_DIR)
 MGF_DIR = '{}/{}/mgf-mq'.format(args.experiment_base_dir, args.experiment_name)
+FEATURES_DIR = '{}/{}/features-mq'.format(args.experiment_base_dir, args.experiment_name)
 
 # check the MaxQuant directory
 if not os.path.exists(BASE_MAXQUANT_DIR):
@@ -129,7 +130,7 @@ for group_name,group_df in allpeptides_df.groupby('Raw file'):
     f = mgf.write(output=mgf_file_name, spectra=mgf_spectra)
 
     # save the visualisation DF
-    features_file = '{}/exp-{}-run-{}-features-mq.pkl'.format(MGF_DIR, args.experiment_name, group_name)
+    features_file = '{}/exp-{}-run-{}-features-mq.pkl'.format(FEATURES_DIR, args.experiment_name, group_name)
     print("saving {} features to {}".format(len(visualisation_l), features_file))
     features_df = pd.DataFrame(visualisation_l)
     features_df.to_pickle(features_file)
