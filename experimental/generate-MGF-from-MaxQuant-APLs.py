@@ -2,9 +2,9 @@ import pandas as pd
 import sys
 import glob, os
 from pyteomics import mgf
-from os.path import expanduser
 import time
 import argparse
+import pickle
 
 
 def collate_spectra_for_feature(ms1_d, ms2_df):
@@ -133,7 +133,13 @@ for group_name,group_df in allpeptides_df.groupby('Raw file'):
     features_file = '{}/exp-{}-run-{}-features-mq.pkl'.format(FEATURES_DIR, args.experiment_name, group_name)
     print("saving {} features to {}".format(len(visualisation_l), features_file))
     features_df = pd.DataFrame(visualisation_l)
-    features_df.to_pickle(features_file)
+
+    info.append(('total_running_time',round(time.time()-start_run,1)))
+    info.append(('processor',parser.prog))
+    info.append(('processed', time.ctime()))
+    content_d = {'features_df':features_df, 'metadata':info}
+    with open(features_file, 'wb') as handle:
+        pickle.dump(content_d, handle)
 
 stop_run = time.time()
 print("total running time ({}): {} seconds".format(parser.prog, round(stop_run-start_run,1)))
