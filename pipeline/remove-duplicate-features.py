@@ -5,14 +5,14 @@ import time
 import pickle
 import configparser
 from configparser import ExtendedInterpolation
-
+import pandas as pd
 
 ###################################
 parser = argparse.ArgumentParser(description='Remove duplicate features.')
 parser.add_argument('-eb','--experiment_base_dir', type=str, default='./experiments', help='Path to the experiments directory.', required=False)
 parser.add_argument('-en','--experiment_name', type=str, help='Name of the experiment.', required=True)
 parser.add_argument('-rn','--run_name', type=str, help='Name of the run.', required=True)
-parser.add_argument('-pdm','--precursor_definition_method', type=str, choices=['pasef','3did'], help='The method used to define the precursor cuboids.', required=True)
+parser.add_argument('-pdm','--precursor_definition_method', type=str, choices=['pasef','3did','mq'], help='The method used to define the precursor cuboids.', required=True)
 parser.add_argument('-ini','--ini_file', type=str, default='./otf-peak-detect/pipeline/pasef-process-short-gradient.ini', help='Path to the config file.', required=False)
 args = parser.parse_args()
 
@@ -69,9 +69,12 @@ if not os.path.isfile(FEATURES_FILE):
     sys.exit(1)
 
 # load the features
-with open(FEATURES_FILE, 'rb') as handle:
-    features_df = pickle.load(handle)['features_df']
-    print('loaded {} features from {}'.format(len(features_df), FEATURES_FILE))
+if (args.precursor_definition_method == 'pasef') or (args.precursor_definition_method == '3did'):
+    with open(FEATURES_FILE, 'rb') as handle:
+        features_df = pickle.load(handle)['features_df']
+else:
+    features_df = pd.read_pickle(FEATURES_FILE)
+print('loaded {} features from {}'.format(len(features_df), FEATURES_FILE))
 
 # de-dup the features
 if (len(features_df) > 2):
