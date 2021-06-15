@@ -5,6 +5,10 @@ from pyteomics import mgf
 import time
 import argparse
 import pickle
+import json
+import numpy as np
+import configparser
+from configparser import ExtendedInterpolation
 
 
 def collate_spectra_for_feature(ms1_d, ms2_df):
@@ -31,6 +35,7 @@ parser.add_argument('-eb','--experiment_base_dir', type=str, default='./experime
 parser.add_argument('-en','--experiment_name', type=str, help='Name of the experiment.', required=True)
 parser.add_argument('-mqc','--maxquant_combined_dir', type=str, help='Path to the MaxQuant combined directory.', required=True)
 parser.add_argument('-rn','--run_name', type=str, help='Limit the processing to this run.', required=False)
+parser.add_argument('-ini','--ini_file', type=str, default='./otf-peak-detect/pipeline/pasef-process-short-gradient.ini', help='Path to the config file.', required=False)
 args = parser.parse_args()
 
 # Print the arguments for the log
@@ -48,6 +53,17 @@ ALLPEPTIDES_FILENAME = '{}/allPeptides.txt'.format(MAXQUANT_TXT_DIR)
 APL_DIR = '{}/andromeda'.format(BASE_MAXQUANT_DIR)
 MGF_DIR = '{}/{}/mgf-mq'.format(args.experiment_base_dir, args.experiment_name)
 FEATURES_DIR = '{}/{}/features-mq'.format(args.experiment_base_dir, args.experiment_name)
+
+# check the INI file exists
+if not os.path.isfile(args.ini_file):
+    print("The configuration file doesn't exist: {}".format(args.ini_file))
+    sys.exit(1)
+
+# load the INI file
+cfg = configparser.ConfigParser(interpolation=ExtendedInterpolation())
+cfg.read(args.ini_file)
+
+CARBON_MASS_DIFFERENCE = cfg.getfloat('common','CARBON_MASS_DIFFERENCE')
 
 # check the MaxQuant directory
 if not os.path.exists(BASE_MAXQUANT_DIR):
@@ -107,14 +123,24 @@ for group_name,group_df in allpeptides_df.groupby('Raw file'):
     file_apl_indexes_df = apl_indexes_df[(apl_indexes_df['raw_file'] == group_name)]
     for idx,row in group_df.iterrows():
         mq_index = row.msms_scan_number
+        # determine the feature envelope
+        expected_spacing_mz = CARBON_MASS_DIFFERENCE / row.charge
+        mz_upper = row.mz + (row.isotope_count * expected_spacing_mz)
+        envelope = np.array([(row.mz,0),(mz_upper,0)])
+        # put everything together
         ms1_d = {'feature_id':idx+1,
                  'monoisotopic_mass':row.Mass, 
                  'charge':row.charge_state, 
                  'monoisotopic_mz':row.mz, 
                  'intensity':int(row.intensity), 
                  'scan_apex':row.scan, 
+                 'scan_lower':row.scan-(row.scan_length/2),
+                 'scan_upper':row.scan+(row.scan_length/2),
                  'rt_apex':row.rt_in_seconds,
+                 'rt_lower':row.rt_in_seconds-(row.rt_length_fwhm/2),
+                 'rt_upper':row.rt_in_seconds+(row.rt_length_fwhm/2),
                  'raw_file':row['Raw file'],
+                 'envelope':json.dumps([tuple(e) for e in envelope]),
                  'mq_index':mq_index}
         df = file_apl_indexes_df[(file_apl_indexes_df.mq_index == mq_index)]
         ms2_peaks_df = pd.DataFrame(df.iloc[0].ms2_peaks, columns=['mz','intensity'])
