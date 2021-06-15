@@ -124,7 +124,7 @@ for group_name,group_df in allpeptides_df.groupby('Raw file'):
     for idx,row in group_df.iterrows():
         mq_index = row.msms_scan_number
         # determine the feature envelope
-        expected_spacing_mz = CARBON_MASS_DIFFERENCE / row.charge
+        expected_spacing_mz = CARBON_MASS_DIFFERENCE / row.charge_state
         mz_upper = row.mz + (row.isotope_count * expected_spacing_mz)
         envelope = np.array([(row.mz,0),(mz_upper,0)])
         # put everything together
