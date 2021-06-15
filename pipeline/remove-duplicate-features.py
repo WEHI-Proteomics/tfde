@@ -69,11 +69,8 @@ if not os.path.isfile(FEATURES_FILE):
     sys.exit(1)
 
 # load the features
-if (args.precursor_definition_method == 'pasef') or (args.precursor_definition_method == '3did'):
-    with open(FEATURES_FILE, 'rb') as handle:
-        features_df = pickle.load(handle)['features_df']
-else:
-    features_df = pd.read_pickle(FEATURES_FILE)
+with open(FEATURES_FILE, 'rb') as handle:
+    features_df = pickle.load(handle)['features_df']
 print('loaded {} features from {}'.format(len(features_df), FEATURES_FILE))
 
 # de-dup the features
@@ -99,7 +96,6 @@ if (len(features_df) > 2):
     columns_to_drop_l.append('dup_scan_upper')
     columns_to_drop_l.append('dup_rt_lower')
     columns_to_drop_l.append('dup_rt_upper')
-
 
     if (args.precursor_definition_method == 'pasef') or (args.precursor_definition_method == '3did'):
         # sort by decreasing deconvolution score
