@@ -49,6 +49,8 @@ else:
     DUP_SCAN_TOLERANCE = cfg.getint('ms1', 'DUP_SCAN_TOLERANCE')
     DUP_RT_TOLERANCE = cfg.getint('ms1', 'DUP_RT_TOLERANCE')
 
+print('removing duplicate features that are within +/- {} ppm m/z, {} scan, {} retention time'.format(DUP_MZ_TOLERANCE_PPM, DUP_SCAN_TOLERANCE, DUP_RT_TOLERANCE))
+
 # input features
 FEATURES_DIR = "{}/features-{}".format(EXPERIMENT_DIR, args.precursor_definition_method)
 FEATURES_FILE = '{}/exp-{}-run-{}-features-{}.pkl'.format(FEATURES_DIR, args.experiment_name, args.run_name, args.precursor_definition_method)
