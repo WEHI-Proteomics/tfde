@@ -101,7 +101,7 @@ if (len(features_df) > 2):
         # sort by decreasing deconvolution score
         features_df.sort_values(by=['deconvolution_score'], ascending=False, inplace=True)
 
-    # see if any detections have a duplicate - if so, keep the first one
+    # see if any detections have a duplicate
     keep_l = []
     features_processed = set()
     for feature in features_df.itertuples():
@@ -109,7 +109,8 @@ if (len(features_df) > 2):
             dup_df = features_df[(features_df.charge == feature.charge) & (features_df.dup_mz > feature.dup_mz_lower) & (features_df.dup_mz < feature.dup_mz_upper) & (features_df.scan_apex > feature.dup_scan_lower) & (features_df.scan_apex < feature.dup_scan_upper) & (features_df.rt_apex > feature.dup_rt_lower) & (features_df.rt_apex < feature.dup_rt_upper)].copy()
             if len(dup_df) > 1:
                 print('{} are duplicates'.format(dup_df.feature_id.tolist()))
-                keep_l.append(dup_df.iloc[0].feature_id)
+            # keep the first one
+            keep_l.append(dup_df.iloc[0].feature_id)
             # record the features that have been processed
             features_processed.update(set(dup_df.feature_id.tolist()))
 
