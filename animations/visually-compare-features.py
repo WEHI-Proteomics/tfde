@@ -8,12 +8,14 @@ from os.path import expanduser
 
 
 BASE_TILES_DIR = '{}/tiles'.format(expanduser('~'))
-OVERLAY_A_BASE_DIR = '{}/feature-tiles-pasef'.format(BASE_TILES_DIR)
-OVERLAY_B_BASE_DIR = '{}/feature-tiles-3did'.format(BASE_TILES_DIR)
+OVERLAY_A_BASE_DIR = '{}/feature-tiles-mq'.format(BASE_TILES_DIR)
+OVERLAY_B_BASE_DIR = '{}/feature-tiles-pasef'.format(BASE_TILES_DIR)
+OVERLAY_C_BASE_DIR = '{}/feature-tiles-3did'.format(BASE_TILES_DIR)
 
 overlay_A_files_l = sorted(glob.glob('{}/*.png'.format(OVERLAY_A_BASE_DIR)), key=lambda x: ( int(x.split('tile-')[1].split('.png')[0]) ))
 overlay_B_files_l = sorted(glob.glob('{}/*.png'.format(OVERLAY_B_BASE_DIR)), key=lambda x: ( int(x.split('tile-')[1].split('.png')[0]) ))
-print('found {} tiles in {}, and {} tiles in {}'.format(len(overlay_A_files_l), OVERLAY_A_BASE_DIR, len(overlay_B_files_l), OVERLAY_B_BASE_DIR))
+overlay_C_files_l = sorted(glob.glob('{}/*.png'.format(OVERLAY_C_BASE_DIR)), key=lambda x: ( int(x.split('tile-')[1].split('.png')[0]) ))
+print('found {} tiles in {}, {} tiles in {}, and {} tiles in {}'.format(len(overlay_A_files_l), OVERLAY_A_BASE_DIR, len(overlay_B_files_l), OVERLAY_B_BASE_DIR, len(overlay_C_files_l), OVERLAY_C_BASE_DIR))
 
 # check the composite tiles directory - the composites will be put in the tile list A directory
 COMPOSITE_TILE_BASE_DIR = '{}/composite-tiles'.format(BASE_TILES_DIR)
@@ -26,13 +28,18 @@ composite_tile_count = 0
 for idx,f in enumerate(overlay_A_files_l):
     overlay_a_name = f
     overlay_b_name = overlay_B_files_l[idx]
-    print('compositing {} and {} as tile {}'.format(overlay_a_name, overlay_b_name, idx+1))
+    overlay_c_name = overlay_C_files_l[idx]
+    print('compositing {},{},{} as tile {}'.format(overlay_a_name, overlay_b_name, overlay_c_name, idx+1))
 
     composite_name = '{}/composite-tile-{:05d}.png'.format(COMPOSITE_TILE_BASE_DIR, idx+1)
 
     # make the composite
-    if os.path.isfile(overlay_a_name) and os.path.isfile(overlay_b_name):
+    if os.path.isfile(overlay_a_name) and os.path.isfile(overlay_b_name) and os.path.isfile(overlay_c_name):
+        # composite A+B
         cmd = "convert {} {} +append -background darkgrey -splice 10x0+800+0 {}".format(overlay_a_name, overlay_b_name, composite_name)
+        os.system(cmd)
+        # composite A+B+C
+        cmd = "convert {} {} +append -background darkgrey -splice 10x0+1600+0 {}".format(composite_name, overlay_c_name, composite_name)
         os.system(cmd)
         composite_tile_count += 1
     else:
