@@ -2,6 +2,7 @@ import os
 import shutil
 import glob
 from os.path import expanduser
+import sys
 
 # Note this script uses the convert command from ImageMagick, installed with:
 # sudo apt install imagemagick
@@ -16,6 +17,10 @@ overlay_A_files_l = sorted(glob.glob('{}/*.png'.format(OVERLAY_A_BASE_DIR)), key
 overlay_B_files_l = sorted(glob.glob('{}/*.png'.format(OVERLAY_B_BASE_DIR)), key=lambda x: ( int(x.split('tile-')[1].split('.png')[0]) ))
 overlay_C_files_l = sorted(glob.glob('{}/*.png'.format(OVERLAY_C_BASE_DIR)), key=lambda x: ( int(x.split('tile-')[1].split('.png')[0]) ))
 print('found {} tiles in {}, {} tiles in {}, and {} tiles in {}'.format(len(overlay_A_files_l), OVERLAY_A_BASE_DIR, len(overlay_B_files_l), OVERLAY_B_BASE_DIR, len(overlay_C_files_l), OVERLAY_C_BASE_DIR))
+
+if not (len(overlay_A_files_l) == len(overlay_B_files_l) == len(overlay_C_files_l)):
+    print('The number of tiles to be composited is not the same')
+    sys.exit(1)
 
 # check the composite tiles directory - the composites will be put in the tile list A directory
 COMPOSITE_TILE_BASE_DIR = '{}/composite-tiles'.format(BASE_TILES_DIR)
@@ -47,6 +52,8 @@ for idx,f in enumerate(overlay_A_files_l):
             print('could not find {}'.format(overlay_a_name))
         if not os.path.isfile(overlay_b_name):
             print('could not find {}'.format(overlay_b_name))
+        if not os.path.isfile(overlay_c_name):
+            print('could not find {}'.format(overlay_c_name))
     # print('.', end='', flush=True)
 
 print()
