@@ -27,7 +27,7 @@ parser.add_argument('-eb','--experiment_base_dir', type=str, default='./experime
 parser.add_argument('-rb','--results_base_dir', type=str, help='Path to the results directory.', required=False)
 parser.add_argument('-en','--experiment_name', type=str, help='Name of the experiment.', required=True)
 parser.add_argument('-rn','--run_name', type=str, help='Name of the run.', required=True)
-parser.add_argument('-pdm','--precursor_definition_method', type=str, choices=['pasef','3did','mq'], help='The method used to define the precursor cuboids.', required=True)
+parser.add_argument('-pdm','--precursor_definition_method', type=str, choices=['pasef','3did','mq','none'], default='none', help='The method used to define the precursor cuboids.', required=False)
 parser.add_argument('-fid','--feature_id', type=int, help='A particular feature ID to visualise.', required=False)
 parser.add_argument('-rl','--rt_lower', type=float, default='1650', help='Lower limit for retention time.', required=False)
 parser.add_argument('-ru','--rt_upper', type=float, default='2200', help='Upper limit for retention time.', required=False)
@@ -44,6 +44,9 @@ for arg in vars(args):
     info.append((arg, getattr(args, arg)))
 print(info)
 
+if (args.precursor_definition_method == 'none') and (args.mz_lower is None or args.mz_upper is None or args.scan_lower is None or args.scan_upper is None or args.rt_lower is None or args.rt_upper is None):
+    print('for no precursor definition, the region in 3D must be specified.')
+    sys.exit(1)
 
 minimum_pixel_intensity = 1
 maximum_pixel_intensity = 250
@@ -97,11 +100,14 @@ else:
     FEATURES_DIR = '{}/features-{}'.format(EXPERIMENT_DIR, args.precursor_definition_method)
 FEATURES_FILE = '{}/exp-{}-run-{}-features-{}-dedup.pkl'.format(FEATURES_DIR, args.experiment_name, args.run_name, args.precursor_definition_method)
 
-# load the feature cuboids
-features_df = pd.read_pickle(FEATURES_FILE)['features_df']
-if args.feature_id is not None:
-    features_df = features_df[(features_df.feature_id == args.feature_id)]
-print('loaded {} features cuboids from {}'.format(len(features_df), FEATURES_FILE))
+if args.precursor_definition_method == 'none':
+    # load the feature cuboids
+    features_df = pd.read_pickle(FEATURES_FILE)['features_df']
+    if args.feature_id is not None:
+        features_df = features_df[(features_df.feature_id == args.feature_id)]
+    print('loaded {} features cuboids from {}'.format(len(features_df), FEATURES_FILE))
+else:
+    features_df = pd.DataFrame(columns=['monoisotopic_mz','rt_apex','scan_lower','scan_upper'])
 
 if args.feature_id is not None:
     # take the visualisation scope from the specified feature
@@ -199,8 +205,8 @@ for group_name,group_df in pixel_intensity_df.groupby(['frame_id'], as_index=Fal
     info_box_y_inset = 24
     space_per_line = 12
     draw.rectangle(xy=[(PIXELS_X-info_box_x_inset, info_box_y_inset), (PIXELS_X, 3*space_per_line)], fill=(20,20,20), outline=None)
-    draw.text((PIXELS_X-info_box_x_inset, (0*space_per_line)+info_box_y_inset), args.precursor_definition_method.upper(), font=feature_label_font, fill='lawngreen')
-    draw.text((PIXELS_X-info_box_x_inset, (1*space_per_line)+info_box_y_inset), '{}'.format(args.run_name), font=feature_label_font, fill='lawngreen')
+    draw.text((PIXELS_X-info_box_x_inset, (0*space_per_line)+info_box_y_inset), 'feature detection: {}'.format(args.precursor_definition_method.upper()), font=feature_label_font, fill='lawngreen')
+    draw.text((PIXELS_X-info_box_x_inset, (1*space_per_line)+info_box_y_inset), 'run: {}'.format(args.run_name), font=feature_label_font, fill='lawngreen')
     draw.text((PIXELS_X-info_box_x_inset, (2*space_per_line)+info_box_y_inset), '{} secs'.format(round(tile_rt,1)), font=feature_label_font, fill='lawngreen')
 
     # find the intersecting precursor cuboids for this tile; can be partial overlap in the m/z and scan dimensions
