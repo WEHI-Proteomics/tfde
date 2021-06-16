@@ -100,7 +100,7 @@ else:
     FEATURES_DIR = '{}/features-{}'.format(EXPERIMENT_DIR, args.precursor_definition_method)
 FEATURES_FILE = '{}/exp-{}-run-{}-features-{}-dedup.pkl'.format(FEATURES_DIR, args.experiment_name, args.run_name, args.precursor_definition_method)
 
-if args.precursor_definition_method is not 'none':
+if args.precursor_definition_method != 'none':
     # load the feature cuboids
     features_df = pd.read_pickle(FEATURES_FILE)['features_df']
     if args.feature_id is not None:
