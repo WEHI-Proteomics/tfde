@@ -36,6 +36,12 @@ parser.add_argument('-mu','--mz_upper', type=float, default='720', help='Upper l
 parser.add_argument('-sl','--scan_lower', type=int, default='0', help='Lower limit for scan.', required=False)
 parser.add_argument('-su','--scan_upper', type=int, default='920', help='Upper limit for scan.', required=False)
 parser.add_argument('-tb','--tiles_base_dir', type=str, default='./tiles', help='Path to the output tiles directory.', required=False)
+parser.add_argument('-px','--pixels_x', type=int, default='800', help='Number of pixels on the x-axis for the tiles.', required=False)
+parser.add_argument('-py','--pixels_y', type=int, default='800', help='Number of pixels on the y-axis for the tiles.', required=False)
+parser.add_argument('-minpi','--minimum_pixel_intensity', type=int, default='1', help='Lower edge of the colour map.', required=False)
+parser.add_argument('-maxpi','--maximum_pixel_intensity', type=int, default='250', help='Upper edge of the colour map.', required=False)
+parser.add_argument('-ccsm','--ccs_marker_each', type=int, default='50', help='Marker period for the CCS dimension.', required=False)
+parser.add_argument('-mzm','--mz_marker_each', type=int, default='1', help='Marker period for the m/z dimension.', required=False)
 args = parser.parse_args()
 
 # Print the arguments for the log
@@ -48,9 +54,6 @@ if (args.precursor_definition_method == 'none') and (args.mz_lower is None or ar
     print('for no precursor definition, the region in 3D must be specified.')
     sys.exit(1)
 
-minimum_pixel_intensity = 1
-maximum_pixel_intensity = 250
-
 # add a buffer around the edges of the bounding box
 BB_MZ_BUFFER = 0.2
 BB_SCAN_BUFFER = 5
@@ -58,10 +61,6 @@ BB_SCAN_BUFFER = 5
 # frame types for PASEF mode
 FRAME_TYPE_MS1 = 0
 FRAME_TYPE_MS2 = 8
-
-# pixel dimensions
-PIXELS_X = 800
-PIXELS_Y = 800
 
 if args.feature_id is not None:
     # offsets on the sides of the selected feature's apex
@@ -118,8 +117,8 @@ else:
     # default scope of the visualisation
     limits = {'MZ_MIN': args.mz_lower, 'MZ_MAX': args.mz_upper, 'SCAN_MIN': args.scan_lower, 'SCAN_MAX': args.scan_upper, 'RT_MIN': args.rt_lower, 'RT_MAX': args.rt_upper}
 
-PIXELS_PER_MZ = PIXELS_X / (limits['MZ_MAX'] - limits['MZ_MIN'])
-PIXELS_PER_SCAN = PIXELS_Y / (limits['SCAN_MAX'] - limits['SCAN_MIN'])
+PIXELS_PER_MZ = args.pixels_x / (limits['MZ_MAX'] - limits['MZ_MIN'])
+PIXELS_PER_SCAN = args.pixels_y / (limits['SCAN_MAX'] - limits['SCAN_MIN'])
 
 
 print('loading raw data from {}'.format(CONVERTED_DATABASE_NAME))
@@ -137,7 +136,7 @@ print('intensity range {}..{}'.format(pixel_intensity_df.intensity.min(), pixel_
 # create the colour map to convert intensity to colour
 colour_map = plt.get_cmap('ocean')
 # colour_map = cm.batlow
-norm = colors.LogNorm(vmin=minimum_pixel_intensity, vmax=maximum_pixel_intensity, clip=True)  # aiming to get good colour variation in the lower range, and clipping everything else
+norm = colors.LogNorm(vmin=args.minimum_pixel_intensity, vmax=args.maximum_pixel_intensity, clip=True)  # aiming to get good colour variation in the lower range, and clipping everything else
 
 # calculate the colour to represent the intensity
 colours_l = []
@@ -167,7 +166,7 @@ for group_name,group_df in pixel_intensity_df.groupby(['frame_id'], as_index=Fal
     tile_rt = raw_df[(raw_df.frame_id == group_name)].iloc[0].retention_time_secs
 
     # create an intensity array
-    tile_im_array = np.zeros([PIXELS_Y+1, PIXELS_X+1, 3], dtype=np.uint8)  # container for the image
+    tile_im_array = np.zeros([args.pixels_y+1, args.pixels_x+1, 3], dtype=np.uint8)  # container for the image
     for r in zip(group_df.pixel_x, group_df.pixel_y, group_df.colour):
         x = r[0]
         y = r[1]
@@ -183,19 +182,17 @@ for group_name,group_df in pixel_intensity_df.groupby(['frame_id'], as_index=Fal
     draw = ImageDraw.Draw(tile)
 
     # draw the CCS markers
-    ccs_marker_each = 50
-    range_l = round(limits['SCAN_MIN'] / ccs_marker_each) * ccs_marker_each
-    range_u = round(limits['SCAN_MAX'] / ccs_marker_each) * ccs_marker_each
-    for marker_scan in np.arange(range_l,range_u+ccs_marker_each,ccs_marker_each):
+    range_l = round(limits['SCAN_MIN'] / args.ccs_marker_each) * args.ccs_marker_each
+    range_u = round(limits['SCAN_MAX'] / args.ccs_marker_each) * args.ccs_marker_each
+    for marker_scan in np.arange(range_l,range_u+args.ccs_marker_each,args.ccs_marker_each):
         marker_y = pixel_y_from_scan(marker_scan)
         draw.text((10, marker_y-6), str(round(marker_scan)), font=feature_label_font, fill='lawngreen')
         draw.line((0,marker_y, 5,marker_y), fill='lawngreen', width=1)
 
     # draw the m/z markers
-    mz_marker_each = 1
-    range_l = round(limits['MZ_MIN'] / mz_marker_each) * mz_marker_each
-    range_u = round(limits['MZ_MAX'] / mz_marker_each) * mz_marker_each
-    for marker_mz in np.arange(range_l,range_u+mz_marker_each,mz_marker_each):
+    range_l = round(limits['MZ_MIN'] / args.mz_marker_each) * args.mz_marker_each
+    range_u = round(limits['MZ_MAX'] / args.mz_marker_each) * args.mz_marker_each
+    for marker_mz in np.arange(range_l,range_u+args.mz_marker_each,args.mz_marker_each):
         marker_x = pixel_x_from_mz(marker_mz)
         draw.text((marker_x-10, 8), str(round(marker_mz)), font=feature_label_font, fill='lawngreen')
         draw.line((marker_x,0, marker_x,5), fill='lawngreen', width=1)
@@ -204,10 +201,10 @@ for group_name,group_df in pixel_intensity_df.groupby(['frame_id'], as_index=Fal
     info_box_x_inset = 200
     info_box_y_inset = 24
     space_per_line = 12
-    draw.rectangle(xy=[(PIXELS_X-info_box_x_inset, info_box_y_inset), (PIXELS_X, 3*space_per_line)], fill=(20,20,20), outline=None)
-    draw.text((PIXELS_X-info_box_x_inset, (0*space_per_line)+info_box_y_inset), 'feature detection: {}'.format(args.precursor_definition_method.upper()), font=feature_label_font, fill='lawngreen')
-    draw.text((PIXELS_X-info_box_x_inset, (1*space_per_line)+info_box_y_inset), 'run: {}'.format(args.run_name), font=feature_label_font, fill='lawngreen')
-    draw.text((PIXELS_X-info_box_x_inset, (2*space_per_line)+info_box_y_inset), '{} secs'.format(round(tile_rt,1)), font=feature_label_font, fill='lawngreen')
+    draw.rectangle(xy=[(args.pixels_x-info_box_x_inset, info_box_y_inset), (args.pixels_x, 3*space_per_line)], fill=(20,20,20), outline=None)
+    draw.text((args.pixels_x-info_box_x_inset, (0*space_per_line)+info_box_y_inset), 'feature detection: {}'.format(args.precursor_definition_method.upper()), font=feature_label_font, fill='lawngreen')
+    draw.text((args.pixels_x-info_box_x_inset, (1*space_per_line)+info_box_y_inset), 'run: {}'.format(args.run_name), font=feature_label_font, fill='lawngreen')
+    draw.text((args.pixels_x-info_box_x_inset, (2*space_per_line)+info_box_y_inset), '{} secs'.format(round(tile_rt,1)), font=feature_label_font, fill='lawngreen')
 
     # find the intersecting precursor cuboids for this tile; can be partial overlap in the m/z and scan dimensions
     intersecting_features_df = features_df[
