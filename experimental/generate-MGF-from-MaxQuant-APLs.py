@@ -141,6 +141,7 @@ for group_name,group_df in allpeptides_df.groupby('Raw file'):
                  'rt_upper':row.rt_in_seconds+(row.rt_length_fwhm/2),
                  'raw_file':row['Raw file'],
                  'envelope':json.dumps([tuple(e) for e in envelope]),
+                 'isotope_count':row.isotope_count,
                  'mq_index':mq_index}
         df = file_apl_indexes_df[(file_apl_indexes_df.mq_index == mq_index)]
         ms2_peaks_df = pd.DataFrame(df.iloc[0].ms2_peaks, columns=['mz','intensity'])
