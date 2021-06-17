@@ -286,9 +286,9 @@ def find_features(segment_mz_lower, segment_mz_upper, segment_id):
         raw_df['point_id'] = raw_df.index
 
         # define bins
-        rt_bins = pd.interval_range(start=raw_df.retention_time_secs.min(), end=raw_df.retention_time_secs.max()+RT_BIN_SIZE, freq=RT_BIN_SIZE, closed='left')
-        scan_bins = pd.interval_range(start=raw_df.scan.min(), end=raw_df.scan.max()+SCAN_BIN_SIZE, freq=SCAN_BIN_SIZE, closed='left')
-        mz_bins = pd.interval_range(start=raw_df.mz.min(), end=raw_df.mz.max()+MZ_BIN_SIZE, freq=MZ_BIN_SIZE, closed='left')
+        rt_bins = pd.interval_range(start=raw_df.retention_time_secs.min(), end=raw_df.retention_time_secs.max()+VOXEL_SIZE_RT, freq=VOXEL_SIZE_RT, closed='left')
+        scan_bins = pd.interval_range(start=raw_df.scan.min(), end=raw_df.scan.max()+VOXEL_SIZE_SCAN, freq=VOXEL_SIZE_SCAN, closed='left')
+        mz_bins = pd.interval_range(start=raw_df.mz.min(), end=raw_df.mz.max()+VOXEL_SIZE_MZ, freq=VOXEL_SIZE_MZ, closed='left')
 
         # assign raw points to their bins
         raw_df['rt_bin'] = pd.cut(raw_df.retention_time_secs, bins=rt_bins)
@@ -590,16 +590,6 @@ VALLEYS_MIN_DIST_SCAN = 10.0  # scans
 SCAN_FILTER_POLY_ORDER = 5
 RT_FILTER_POLY_ORDER = 3
 
-# bin sizes; RT and CCS are determined from half the mean base peak width
-RT_BIN_SIZE = 5
-SCAN_BIN_SIZE = 10
-MZ_BIN_SIZE = 0.1
-
-MINIMUM_NUMBER_OF_SCANS_IN_BASE_PEAK = 5
-MAXIMUM_GAP_SECS_BETWEEN_EDGE_POINTS = 1.0
-INTENSITY_PROPORTION_FOR_VOXEL_TO_BE_REMOVED = 0.8
-MINIMUM_VOXEL_INTENSITY = 2500
-
 
 #######################
 parser = argparse.ArgumentParser(description='Find all the features in a run with 3D intensity descent.')
@@ -656,6 +646,14 @@ INSTRUMENT_RESOLUTION = cfg.getfloat('common', 'INSTRUMENT_RESOLUTION')
 SATURATION_INTENSITY = cfg.getint('common', 'SATURATION_INTENSITY')
 TARGET_NUMBER_OF_FEATURES_FOR_CUBOID = cfg.getint('ms1', 'TARGET_NUMBER_OF_FEATURES_FOR_CUBOID')
 
+VOXEL_SIZE_RT = cfg.getint('3did', 'VOXEL_SIZE_RT')
+VOXEL_SIZE_SCAN = cfg.getint('3did', 'VOXEL_SIZE_SCAN')
+VOXEL_SIZE_MZ = cfg.getfloat('3did', 'VOXEL_SIZE_MZ')
+
+MINIMUM_NUMBER_OF_SCANS_IN_BASE_PEAK = cfg.getint('3did', 'MINIMUM_NUMBER_OF_SCANS_IN_BASE_PEAK')
+MAXIMUM_GAP_SECS_BETWEEN_EDGE_POINTS = cfg.getfloat('3did', 'MAXIMUM_GAP_SECS_BETWEEN_EDGE_POINTS')
+INTENSITY_PROPORTION_FOR_VOXEL_TO_BE_REMOVED = cfg.getfloat('3did', 'INTENSITY_PROPORTION_FOR_VOXEL_TO_BE_REMOVED')
+MINIMUM_VOXEL_INTENSITY = cfg.getint('3did', 'MINIMUM_VOXEL_INTENSITY')
 
 # set up the indexes
 print('setting up indexes on {}'.format(CONVERTED_DATABASE_NAME))
