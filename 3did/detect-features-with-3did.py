@@ -300,7 +300,7 @@ def find_features(segment_mz_lower, segment_mz_upper, segment_id):
         summary_df = raw_df.groupby(['bin_key'], as_index=False, sort=False).intensity.agg(['sum','count']).reset_index()
         summary_df.rename(columns={'sum':'voxel_intensity', 'count':'point_count'}, inplace=True)
         summary_df.dropna(subset=['voxel_intensity'], inplace=True)
-        summary_df = summary_df[(summary_df.voxel_intensity > MINIMUM_VOXEL_INTENSITY)]
+        summary_df = summary_df[(summary_df.voxel_intensity > args.minimum_voxel_intensity)]
         summary_df.sort_values(by=['voxel_intensity'], ascending=False, inplace=True)
         summary_df.reset_index(drop=True, inplace=True)
         summary_df['voxel_id'] = summary_df.index
@@ -601,6 +601,7 @@ parser.add_argument('-mu','--mz_upper', type=int, default='1700', help='Upper li
 parser.add_argument('-mw','--mz_width_per_segment', type=int, default=20, help='Width in Da of the m/z processing window per segment.', required=False)
 parser.add_argument('-rl','--rt_lower', type=int, default='1650', help='Lower limit for retention time.', required=False)
 parser.add_argument('-ru','--rt_upper', type=int, default='2200', help='Upper limit for retention time.', required=False)
+parser.add_argument('-minvi','--minimum_voxel_intensity', type=int, default='2500', help='The minimum voxel intensity to analyse.', required=False)
 parser.add_argument('-ini','--ini_file', type=str, default='./otf-peak-detect/pipeline/pasef-process-short-gradient.ini', help='Path to the config file.', required=False)
 parser.add_argument('-rm','--ray_mode', type=str, choices=['local','cluster'], help='The Ray mode to use.', required=True)
 parser.add_argument('-pc','--proportion_of_cores_to_use', type=float, default=0.9, help='Proportion of the machine\'s cores to use for this program.', required=False)
@@ -653,7 +654,6 @@ VOXEL_SIZE_MZ = cfg.getfloat('3did', 'VOXEL_SIZE_MZ')
 MINIMUM_NUMBER_OF_SCANS_IN_BASE_PEAK = cfg.getint('3did', 'MINIMUM_NUMBER_OF_SCANS_IN_BASE_PEAK')
 MAXIMUM_GAP_SECS_BETWEEN_EDGE_POINTS = cfg.getfloat('3did', 'MAXIMUM_GAP_SECS_BETWEEN_EDGE_POINTS')
 INTENSITY_PROPORTION_FOR_VOXEL_TO_BE_REMOVED = cfg.getfloat('3did', 'INTENSITY_PROPORTION_FOR_VOXEL_TO_BE_REMOVED')
-MINIMUM_VOXEL_INTENSITY = cfg.getint('3did', 'MINIMUM_VOXEL_INTENSITY')
 
 # set up the indexes
 print('setting up indexes on {}'.format(CONVERTED_DATABASE_NAME))
