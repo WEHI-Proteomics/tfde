@@ -129,6 +129,9 @@ else:
 
 # write out all the features
 print("writing {} de-duped features to {}".format(len(dedup_df), FEATURES_DEDUP_FILE))
+info.append(('total_running_time',round(time.time()-start_run,1)))
+info.append(('processor',parser.prog))
+info.append(('processed', time.ctime()))
 content_d = {'features_df':dedup_df, 'metadata':info}
 with open(FEATURES_DEDUP_FILE, 'wb') as handle:
     pickle.dump(content_d, handle)
