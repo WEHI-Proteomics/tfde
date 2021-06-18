@@ -42,6 +42,7 @@ parser.add_argument('-minpi','--minimum_pixel_intensity', type=int, default='1',
 parser.add_argument('-maxpi','--maximum_pixel_intensity', type=int, default='250', help='Upper edge of the colour map.', required=False)
 parser.add_argument('-ccsm','--ccs_marker_each', type=int, default='50', help='Marker period for the CCS dimension.', required=False)
 parser.add_argument('-mzm','--mz_marker_each', type=int, default='1', help='Marker period for the m/z dimension.', required=False)
+parser.add_argument('-ofl','--omit_feature_labels', action='store_true', help='Don\'t label individual features.')
 args = parser.parse_args()
 
 # Print the arguments for the log
@@ -222,9 +223,10 @@ for group_name,group_df in pixel_intensity_df.groupby(['frame_id'], as_index=Fal
         y1 = pixel_y_from_scan(feature.scan_upper + BB_SCAN_BUFFER)
         # draw the bounding box
         draw.rectangle(xy=[(x0, y0), (x1, y1)], fill=None, outline='deepskyblue')
-        # draw the bounding box label
-        draw.text((x0, y0-(2*space_per_line)), 'feature {}'.format(feature.feature_id), font=feature_label_font, fill='lawngreen')
-        draw.text((x0, y0-(1*space_per_line)), 'charge {}+'.format(feature.charge), font=feature_label_font, fill='lawngreen')
+        if not args.omit_feature_labels:
+            # draw the bounding box label
+            draw.text((x0, y0-(2*space_per_line)), 'feature {}'.format(feature.feature_id), font=feature_label_font, fill='lawngreen')
+            draw.text((x0, y0-(1*space_per_line)), 'charge {}+'.format(feature.charge), font=feature_label_font, fill='lawngreen')
 
     # save the tile
     tile_file_name = '{}/tile-{:05d}.png'.format(TILES_BASE_DIR, tile_id)
