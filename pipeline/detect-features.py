@@ -268,21 +268,13 @@ def determine_mono_characteristics(envelope, mono_mz_lower, mono_mz_upper, monoi
             # calculate the isotope's intensity
             if len(isotope_df) > 0:
                 # find the intensity by summing the maximum point in the frame closest to the RT apex, and the frame maximums either side
-                frame_maximums_l = []
-                for frame_id,group_df in isotope_df.groupby('frame_id'):
-                    frame_maximums_l.append(group_df.loc[group_df.intensity.idxmax()])
-                frame_maximums_df = pd.DataFrame(frame_maximums_l)
-                frame_maximums_df.sort_values(by=['retention_time_secs'], ascending=True, inplace=True)
-                frame_maximums_df.reset_index(drop=True, inplace=True)
-                # find the index closest to the RT apex and the index either side
+                frame_maximums_df = isotope_df.groupby(['retention_time_secs'], as_index=False, sort=False).intensity.agg(['max']).reset_index()
                 frame_maximums_df['rt_delta'] = np.abs(frame_maximums_df.retention_time_secs - rt_apex)
-                apex_idx = frame_maximums_df.rt_delta.idxmin()
-                apex_idx_minus_one = max(0, apex_idx-1)
-                apex_idx_plus_one = min(len(frame_maximums_df)-1, apex_idx+1)
+                frame_maximums_df.sort_values(by=['rt_delta'], ascending=True, inplace=True)
                 # sum the maximum intensity and the max intensity of the frame either side in RT
-                summed_intensity = frame_maximums_df.loc[apex_idx_minus_one:apex_idx_plus_one].intensity.sum()
+                summed_intensity = frame_maximums_df[:3]['max'].sum()
                 # are any of the three points in saturation?
-                isotope_in_saturation = (frame_maximums_df.loc[apex_idx_minus_one:apex_idx_plus_one].intensity.max() > SATURATION_INTENSITY)
+                isotope_in_saturation = (frame_maximums_df[:3]['max'].max() > SATURATION_INTENSITY)
                 # add the isotope to the list
                 isotopes_l.append({'mz':iso_mz, 'mz_lower':iso_mz_lower, 'mz_upper':iso_mz_upper, 'intensity':summed_intensity, 'saturated':isotope_in_saturation})
             else:
