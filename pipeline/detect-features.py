@@ -298,7 +298,7 @@ def determine_mono_characteristics(envelope, mono_mz_lower, mono_mz_upper, monoi
                 # measure it's elution similarity with the previous isotope
                 similarity_scan = measure_peak_similarity(pd.DataFrame(isotopes_l[idx-1]['scan_df']), scan_df, x_label='scan', scale=1) if idx > 0 else None
                 # add the isotope to the list
-                isotopes_l.append({'mz':iso_mz, 'mz_lower':iso_mz_lower, 'mz_upper':iso_mz_upper, 'intensity':summed_intensity, 'saturated':isotope_in_saturation, 'rt_df':rt_df.to_dict('records'), 'similarity_rt':similarity_rt, 'similarity_scan':similarity_scan})
+                isotopes_l.append({'mz':iso_mz, 'mz_lower':iso_mz_lower, 'mz_upper':iso_mz_upper, 'intensity':summed_intensity, 'saturated':isotope_in_saturation, 'rt_df':rt_df.to_dict('records'), 'scan_df':scan_df.to_dict('records'), 'similarity_rt':similarity_rt, 'similarity_scan':similarity_scan})
             else:
                 break
         isotopes_df = pd.DataFrame(isotopes_l)
