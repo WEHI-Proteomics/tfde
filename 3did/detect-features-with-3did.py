@@ -18,6 +18,9 @@ from ms_deisotope import deconvolute_peaks, averagine
 import warnings
 from scipy.optimize import OptimizeWarning
 from os.path import expanduser
+from sklearn.metrics.pairwise import cosine_similarity
+
+
 
 # set up the indexes we need for queries
 def create_indexes(db_file_name):
@@ -139,6 +142,17 @@ def peak_ratio(monoisotopic_mass, peak_number, number_of_sulphur):
         ratio = beta0 + (beta1*scaled_m) + beta2*(scaled_m**2) + beta3*(scaled_m**3) + beta4*(scaled_m**4)
     return ratio
 
+# calculate the cosine similarity of two peaks; each DF is assumed to have an 'x' column that reflects the x-axis values, and an 'intensity' column
+def measure_peak_similarity(isotopeA_df, isotopeB_df, x_label, scale):
+    # scale the x axis so we can join them
+    isotopeA_df['x_scaled'] = (isotopeA_df[x_label] * scale).astype(int)
+    isotopeB_df['x_scaled'] = (isotopeB_df[x_label] * scale).astype(int)
+    # combine the isotopes by aligning the x-dimension points they have in common
+    combined_df = pd.merge(isotopeA_df, isotopeB_df, on='x_scaled', how='inner', suffixes=('_A', '_B')).sort_values(by='x_scaled')
+    combined_df = combined_df[['x_scaled','intensity_A','intensity_B']]
+    # calculate the similarity
+    return float(cosine_similarity([combined_df.intensity_A.values], [combined_df.intensity_B.values])) if len(combined_df) > 0 else None
+
 # calculate the characteristics of the isotopes in the feature envelope
 def determine_isotope_characteristics(envelope, rt_apex, monoisotopic_mass, feature_region_3d_df):
     voxels_processed = set()
@@ -166,11 +180,25 @@ def determine_isotope_characteristics(envelope, rt_apex, monoisotopic_mass, feat
             summed_intensity = frame_maximums_df[:3]['max'].sum()
             # are any of the three points in saturation?
             isotope_in_saturation = (frame_maximums_df[:3]['max'].max() > SATURATION_INTENSITY)
+            # determine the isotope's profile in retention time
+            rt_df = isotope_df.groupby(['retention_time_secs'], as_index=False).intensity.sum()
+            rt_df.sort_values(by=['retention_time_secs'], ascending=True, inplace=True)
+            # measure it's elution similarity with the previous isotope
+            similarity_rt = measure_peak_similarity(pd.DataFrame(isotopes_l[idx-1]['rt_df']), rt_df, x_label='retention_time_secs', scale=100) if idx > 0 else None
+            # determine the isotope's profile in mobility
+            scan_df = isotope_df.groupby(['scan'], as_index=False).intensity.sum()
+            scan_df.sort_values(by=['scan'], ascending=True, inplace=True)
+            # measure it's elution similarity with the previous isotope
+            similarity_scan = measure_peak_similarity(pd.DataFrame(isotopes_l[idx-1]['scan_df']), scan_df, x_label='scan', scale=1) if idx > 0 else None
             # add the isotope to the list
-            isotopes_l.append({'mz':iso_mz, 'mz_lower':iso_mz_lower, 'mz_upper':iso_mz_upper, 'intensity':summed_intensity, 'saturated':isotope_in_saturation})
+            isotopes_l.append({'mz':iso_mz, 'mz_lower':iso_mz_lower, 'mz_upper':iso_mz_upper, 'intensity':summed_intensity, 'saturated':isotope_in_saturation, 'similarity_rt':similarity_rt, 'similarity_scan':similarity_scan})
         else:
             break
     isotopes_df = pd.DataFrame(isotopes_l)
+
+    # calculate the coelution coefficient for the isotopic peak series
+    coelution_coefficient = isotopes_df.similarity_rt.mean()
+    mobility_coefficient = isotopes_df.similarity_scan.mean()
 
     # set the summed intensity and m/z to be the default adjusted intensity for all isotopes
     isotopes_df['inferred_intensity'] = isotopes_df.intensity
@@ -212,6 +240,8 @@ def determine_isotope_characteristics(envelope, rt_apex, monoisotopic_mass, feat
     result_d['mono_mz'] = isotopes_df.iloc[0].mz
 
     result_d['isotopic_peaks'] = isotopes_df.to_dict('records')
+    result_d['coelution_coefficient'] = coelution_coefficient
+    result_d['mobility_coefficient'] = mobility_coefficient
     result_d['voxels_processed'] = voxels_processed
     return result_d
 
