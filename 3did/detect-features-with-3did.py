@@ -286,17 +286,6 @@ def measure_curve(x, y):
         pass
     return r_squared
 
-# save visualisation data for later analysis of how feature detection works
-def save_visualisation(d, segment_id):
-    VIS_FILE = '{}/3did-stopping-point-segment-{}.pkl'.format(expanduser("~"), segment_id)
-    print("writing stopping point info to {}".format(VIS_FILE))
-    with open(VIS_FILE, 'wb') as handle:
-        pickle.dump(d, handle)
-
-# perform a logical XOR on the two conditions (credit: https://stackoverflow.com/a/432844/1184799)
-def logical_xor(cond1, cond2):
-    return bool(cond1) ^ bool(cond2)
-
 # process a segment of this run's data, and return a list of features
 @ray.remote
 def find_features(segment_mz_lower, segment_mz_upper, segment_id):
@@ -711,6 +700,7 @@ NUMBER_OF_MZ_SEGMENTS = (mz_range // args.mz_width_per_segment) + (mz_range % ar
 # find all the features
 print('finding features')
 features_l = ray.get([find_features.remote(segment_mz_lower=args.mz_lower+(i*args.mz_width_per_segment), segment_mz_upper=args.mz_lower+(i*args.mz_width_per_segment)+args.mz_width_per_segment, segment_id=i+1) for i in range(NUMBER_OF_MZ_SEGMENTS)])
+# for profiling without Ray...
 # features_l = [find_features(segment_mz_lower=args.mz_lower+(i*args.mz_width_per_segment), segment_mz_upper=args.mz_lower+(i*args.mz_width_per_segment)+args.mz_width_per_segment, segment_id=i+1) for i in range(NUMBER_OF_MZ_SEGMENTS)]
 
 # join the list of dataframes into a single dataframe
