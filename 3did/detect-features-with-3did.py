@@ -583,8 +583,11 @@ def find_features(segment_mz_lower, segment_mz_upper, segment_id):
                                     # add the voxels included in the feature's isotopes to the list of voxels already processed
                                     voxels_processed.update(feature_d['voxels_processed'])
 
+    # save these features until we have all the segments processed
     features_df = pd.DataFrame(features_l)
-    return features_df
+    interim_df_name = '{}/features-segment-{}.pkl'.format(INTERIM_FEATURES_DIR, segment_id)
+    features_df.to_pickle(interim_df_name)
+    return interim_df_name
 
 
 # move these constants to the INI file
@@ -685,6 +688,12 @@ FEATURES_FILE = '{}/exp-{}-run-{}-features-3did.pkl'.format(FEATURES_DIR, args.e
 if not os.path.exists(FEATURES_DIR):
     os.makedirs(FEATURES_DIR)
 
+# set up the interim features directory
+INTERIM_FEATURES_DIR = "{}/interim".format(FEATURES_DIR)
+if os.path.exists(INTERIM_FEATURES_DIR):
+    os.rmdir(INTERIM_FEATURES_DIR)
+os.makedirs(INTERIM_FEATURES_DIR)
+
 # set up Ray
 print("setting up Ray")
 if not ray.is_initialized():
@@ -699,11 +708,13 @@ NUMBER_OF_MZ_SEGMENTS = (mz_range // args.mz_width_per_segment) + (mz_range % ar
 
 # find all the features
 print('finding features')
-features_l = ray.get([find_features.remote(segment_mz_lower=args.mz_lower+(i*args.mz_width_per_segment), segment_mz_upper=args.mz_lower+(i*args.mz_width_per_segment)+args.mz_width_per_segment, segment_id=i+1) for i in range(NUMBER_OF_MZ_SEGMENTS)])
-# for profiling without Ray...
-# features_l = [find_features(segment_mz_lower=args.mz_lower+(i*args.mz_width_per_segment), segment_mz_upper=args.mz_lower+(i*args.mz_width_per_segment)+args.mz_width_per_segment, segment_id=i+1) for i in range(NUMBER_OF_MZ_SEGMENTS)]
+interim_names_l = ray.get([find_features.remote(segment_mz_lower=args.mz_lower+(i*args.mz_width_per_segment), segment_mz_upper=args.mz_lower+(i*args.mz_width_per_segment)+args.mz_width_per_segment, segment_id=i+1) for i in range(NUMBER_OF_MZ_SEGMENTS)])
 
 # join the list of dataframes into a single dataframe
+features_l = []
+for segment_file_name in interim_names_l:
+    df = pd.read_pickle(segment_file_name)
+    features_l.append(df)
 features_df = pd.concat(features_l, axis=0, sort=False, ignore_index=True)
 
 # assign each feature a unique identifier
