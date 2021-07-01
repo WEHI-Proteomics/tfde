@@ -111,15 +111,15 @@ if (len(features_df) > 2):
     # see if any detections have a duplicate
     keep_l = []
     features_processed = set()
-    for feature in features_df.itertuples():
-        if feature.feature_id not in features_processed:
-            dup_df = features_df[(features_df.charge == feature.charge) & (features_df.dup_mz > feature.dup_mz_lower) & (features_df.dup_mz < feature.dup_mz_upper) & (features_df.scan_apex > feature.dup_scan_lower) & (features_df.scan_apex < feature.dup_scan_upper) & (features_df.rt_apex > feature.dup_rt_lower) & (features_df.rt_apex < feature.dup_rt_upper)].copy()
-            if (len(dup_df) > 1) and args.verbose_mode:
-                print('{} are duplicates'.format(dup_df.feature_id.tolist()))
-            # keep the first one
-            keep_l.append(dup_df.iloc[0].feature_id)
+    for row in features_df.itertuples():
+        if row.feature_id not in features_processed:
+            df = features_df[(row.charge == features_df.charge) & (row.dup_mz >= features_df.dup_mz_lower) & (row.dup_mz <= features_df.dup_mz_upper) & (row.scan_apex >= features_df.dup_scan_lower) & (row.scan_apex <= features_df.dup_scan_upper) & (row.rt_apex >= features_df.dup_rt_lower) & (row.rt_apex <= features_df.dup_rt_upper)]
+            if (len(df) > 1) and args.verbose_mode:
+                print('{} are duplicates'.format(df.feature_id.tolist()))
+            # keep the first one because we've already sorted them
+            keep_l.append(df.iloc[0].feature_id)
             # record the features that have been processed
-            features_processed.update(set(dup_df.feature_id.tolist()))
+            features_processed.update(set(df.feature_id.tolist()))
 
     # remove any features that are not in the keep list
     dedup_df = features_df[features_df.feature_id.isin(keep_l)].copy()
