@@ -210,7 +210,7 @@ for group_name,group_df in pixel_intensity_df.groupby(['frame_id'], as_index=Fal
 
     # find the intersecting precursor cuboids for this tile; can be partial overlap in the m/z and scan dimensions
     intersecting_features_df = features_df[
-                ((features_df.rt_lower) <= tile_rt) & ((features_df.rt_upper) >= tile_rt) & 
+                ((features_df.rt_apex-offset_rt_lower) <= tile_rt) & ((features_df.rt_apex+offset_rt_upper) >= tile_rt) & 
                 (features_df.monoisotopic_mz >= limits['MZ_MIN']) & (features_df.monoisotopic_mz <= limits['MZ_MAX']) & 
                 ((features_df.scan_lower >= limits['SCAN_MIN']) & (features_df.scan_lower <= limits['SCAN_MAX']) | (features_df.scan_upper >= limits['SCAN_MIN']) & (features_df.scan_upper <= limits['SCAN_MAX']))
                 ]
