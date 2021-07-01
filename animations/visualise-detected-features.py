@@ -28,6 +28,7 @@ parser.add_argument('-rb','--results_base_dir', type=str, help='Path to the resu
 parser.add_argument('-en','--experiment_name', type=str, help='Name of the experiment.', required=True)
 parser.add_argument('-rn','--run_name', type=str, help='Name of the run.', required=True)
 parser.add_argument('-pdm','--precursor_definition_method', type=str, choices=['pasef','3did','mq','none'], default='none', help='The method used to define the precursor cuboids.', required=False)
+parser.add_argument('-fm','--feature_mode', type=str, choices=['detected','identified'], default='detected', help='The mode for the features to be displayed.', required=False)
 parser.add_argument('-fid','--feature_id', type=int, help='A particular feature ID to visualise.', required=False)
 parser.add_argument('-rl','--rt_lower', type=float, default='1650', help='Lower limit for retention time.', required=False)
 parser.add_argument('-ru','--rt_upper', type=float, default='2200', help='Upper limit for retention time.', required=False)
