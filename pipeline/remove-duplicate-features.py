@@ -14,6 +14,7 @@ parser.add_argument('-en','--experiment_name', type=str, help='Name of the exper
 parser.add_argument('-rn','--run_name', type=str, help='Name of the run.', required=True)
 parser.add_argument('-pdm','--precursor_definition_method', type=str, choices=['pasef','3did','mq'], help='The method used to define the precursor cuboids.', required=True)
 parser.add_argument('-ini','--ini_file', type=str, default='./otf-peak-detect/pipeline/pasef-process-short-gradient.ini', help='Path to the config file.', required=False)
+parser.add_argument('-v','--verbose_mode', action='store_true', help='Verbose mode.')
 args = parser.parse_args()
 
 # Print the arguments for the log
@@ -56,7 +57,7 @@ else:
     # input features
     FEATURES_FILE = '{}/exp-{}-run-{}-features-{}.pkl'.format(FEATURES_DIR, args.experiment_name, args.run_name, args.precursor_definition_method)
 
-print('removing duplicate features that are within +/- {} ppm m/z, {} scans, {} seconds retention time'.format(DUP_MZ_TOLERANCE_PPM, DUP_SCAN_TOLERANCE, DUP_RT_TOLERANCE))
+print('removing duplicate features that are within +/- {} ppm m/z, {} scans, {} seconds in {}'.format(DUP_MZ_TOLERANCE_PPM, DUP_SCAN_TOLERANCE, DUP_RT_TOLERANCE, FEATURES_FILE))
 
 # output features
 FEATURES_DEDUP_FILE = '{}/exp-{}-run-{}-features-{}-dedup.pkl'.format(FEATURES_DIR, args.experiment_name, args.run_name, args.precursor_definition_method)
@@ -110,7 +111,7 @@ if (len(features_df) > 2):
     for feature in features_df.itertuples():
         if feature.feature_id not in features_processed:
             dup_df = features_df[(features_df.charge == feature.charge) & (features_df.dup_mz > feature.dup_mz_lower) & (features_df.dup_mz < feature.dup_mz_upper) & (features_df.scan_apex > feature.dup_scan_lower) & (features_df.scan_apex < feature.dup_scan_upper) & (features_df.rt_apex > feature.dup_rt_lower) & (features_df.rt_apex < feature.dup_rt_upper)].copy()
-            if len(dup_df) > 1:
+            if (len(dup_df) > 1) and args.verbose_mode:
                 print('{} are duplicates'.format(dup_df.feature_id.tolist()))
             # keep the first one
             keep_l.append(dup_df.iloc[0].feature_id)
