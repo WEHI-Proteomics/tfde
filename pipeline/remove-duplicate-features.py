@@ -101,9 +101,12 @@ if (len(features_df) > 2):
     columns_to_drop_l.append('dup_rt_lower')
     columns_to_drop_l.append('dup_rt_upper')
 
-    if (args.precursor_definition_method == 'pasef') or (args.precursor_definition_method == '3did'):
+    if args.precursor_definition_method == 'pasef':
         # sort by decreasing deconvolution score
-        features_df.sort_values(by=['deconvolution_score'], ascending=False, inplace=True)
+        features_df.sort_values(by=['deconvolution_score'], ascending=False, ignore_index=True, inplace=True)
+    elif args.precursor_definition_method == '3did':
+        # sort by decreasing identifiability score
+        features_df.sort_values(by=['prediction'], ascending=False, ignore_index=True, inplace=True)
 
     # see if any detections have a duplicate
     keep_l = []
