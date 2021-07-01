@@ -39,21 +39,24 @@ if not os.path.isfile(args.ini_file):
 cfg = configparser.ConfigParser(interpolation=ExtendedInterpolation())
 cfg.read(args.ini_file)
 
+# input features directory
+FEATURES_DIR = "{}/features-{}".format(EXPERIMENT_DIR, args.precursor_definition_method)
+
 # set up constants
 if args.precursor_definition_method == '3did':
     DUP_MZ_TOLERANCE_PPM = cfg.getint('3did', 'DUP_MZ_TOLERANCE_PPM')
     DUP_SCAN_TOLERANCE = cfg.getint('3did', 'DUP_SCAN_TOLERANCE')
     DUP_RT_TOLERANCE = cfg.getint('3did', 'DUP_RT_TOLERANCE')
+    # input features
+    FEATURES_FILE = '{}/exp-{}-run-{}-features-3did-ident.pkl'.format(FEATURES_DIR, args.experiment_name, args.run_name)
 else:
     DUP_MZ_TOLERANCE_PPM = cfg.getint('ms1', 'DUP_MZ_TOLERANCE_PPM')
     DUP_SCAN_TOLERANCE = cfg.getint('ms1', 'DUP_SCAN_TOLERANCE')
     DUP_RT_TOLERANCE = cfg.getint('ms1', 'DUP_RT_TOLERANCE')
+    # input features
+    FEATURES_FILE = '{}/exp-{}-run-{}-features-{}.pkl'.format(FEATURES_DIR, args.experiment_name, args.run_name, args.precursor_definition_method)
 
 print('removing duplicate features that are within +/- {} ppm m/z, {} scans, {} seconds retention time'.format(DUP_MZ_TOLERANCE_PPM, DUP_SCAN_TOLERANCE, DUP_RT_TOLERANCE))
-
-# input features
-FEATURES_DIR = "{}/features-{}".format(EXPERIMENT_DIR, args.precursor_definition_method)
-FEATURES_FILE = '{}/exp-{}-run-{}-features-{}.pkl'.format(FEATURES_DIR, args.experiment_name, args.run_name, args.precursor_definition_method)
 
 # output features
 FEATURES_DEDUP_FILE = '{}/exp-{}-run-{}-features-{}-dedup.pkl'.format(FEATURES_DIR, args.experiment_name, args.run_name, args.precursor_definition_method)
