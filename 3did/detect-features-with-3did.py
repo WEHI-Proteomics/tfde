@@ -589,6 +589,12 @@ def find_features(segment_mz_lower, segment_mz_upper, segment_id):
     features_df.to_pickle(interim_df_name)
     return interim_df_name
 
+# remove the isotopic peak profiles to save space
+def strip_peaks(peaks_l):
+    df = pd.DataFrame(peaks_l)
+    df.drop(['scan_df','rt_df'], axis=1, inplace=True)
+    return df.to_dict('records')
+
 
 # move these constants to the INI file
 ANCHOR_POINT_MZ_LOWER_OFFSET = 0.6   # one isotope for charge-2 plus a little bit more
@@ -714,7 +720,9 @@ interim_names_l = ray.get([find_features.remote(segment_mz_lower=args.mz_lower+(
 features_l = []
 for segment_file_name in interim_names_l:
     df = pd.read_pickle(segment_file_name)
-    features_l.append(df)
+    if len(df) > 0:
+        df['isotopic_peaks'] = df.apply(lambda row: strip_peaks(row.isotopic_peaks), axis=1)
+        features_l.append(df)
 features_df = pd.concat(features_l, axis=0, sort=False, ignore_index=True)
 
 # assign each feature a unique identifier
