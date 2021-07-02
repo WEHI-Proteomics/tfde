@@ -113,7 +113,7 @@ if (len(features_df) > 2):
     features_processed = set()
     for row in features_df.itertuples():
         if row.feature_id not in features_processed:
-            df = features_df[(~features_df.feature_id.isin(features_processed)) & (row.charge == features_df.charge) & (row.dup_mz >= features_df.dup_mz_lower) & (row.dup_mz <= features_df.dup_mz_upper) & (row.scan_apex >= features_df.dup_scan_lower) & (row.scan_apex <= features_df.dup_scan_upper) & (row.rt_apex >= features_df.dup_rt_lower) & (row.rt_apex <= features_df.dup_rt_upper)]
+            df = features_df[(row.charge == features_df.charge) & (row.dup_mz >= features_df.dup_mz_lower) & (row.dup_mz <= features_df.dup_mz_upper) & (row.scan_apex >= features_df.dup_scan_lower) & (row.scan_apex <= features_df.dup_scan_upper) & (row.rt_apex >= features_df.dup_rt_lower) & (row.rt_apex <= features_df.dup_rt_upper)]
             if (len(df) > 1) and args.verbose_mode:
                 print('{} are duplicates'.format(df.feature_id.tolist()))
             keep_l.append(row.feature_id)
