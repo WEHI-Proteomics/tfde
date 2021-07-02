@@ -116,8 +116,7 @@ if (len(features_df) > 2):
             df = features_df[(row.charge == features_df.charge) & (row.dup_mz >= features_df.dup_mz_lower) & (row.dup_mz <= features_df.dup_mz_upper) & (row.scan_apex >= features_df.dup_scan_lower) & (row.scan_apex <= features_df.dup_scan_upper) & (row.rt_apex >= features_df.dup_rt_lower) & (row.rt_apex <= features_df.dup_rt_upper)]
             if (len(df) > 1) and args.verbose_mode:
                 print('{} are duplicates'.format(df.feature_id.tolist()))
-            # keep the first one because we've already sorted them
-            keep_l.append(df.iloc[0].feature_id)
+            keep_l.append(row.feature_id)
             # record the features that have been processed
             features_processed.update(set(df.feature_id.tolist()))
 
