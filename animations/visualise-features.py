@@ -27,8 +27,8 @@ parser = argparse.ArgumentParser(description='Generate a tile for each frame, an
 parser.add_argument('-eb','--experiment_base_dir', type=str, default='./experiments', help='Path to the experiments directory.', required=False)
 parser.add_argument('-en','--experiment_name', type=str, help='Name of the experiment.', required=True)
 parser.add_argument('-rn','--run_name', type=str, help='Name of the run.', required=True)
-parser.add_argument('-pdm','--precursor_definition_method', type=str, choices=['pasef','3did','mq','none'], default='none', help='The method used to define the precursor cuboids.', required=False)
-parser.add_argument('-fm','--feature_mode', type=str, choices=['detected','identified'], default='detected', help='The mode for the features to be displayed.', required=False)
+parser.add_argument('-pdm','--precursor_definition_method', type=str, choices=['pasef','3did','mq'], default='none', help='The method used to define the precursor cuboids.', required=False)
+parser.add_argument('-fm','--feature_mode', type=str, choices=['detected','identified','none'], default='detected', help='The mode for the features to be displayed.', required=False)
 parser.add_argument('-rl','--rt_lower', type=float, default='1650', help='Lower limit for retention time.', required=False)
 parser.add_argument('-ru','--rt_upper', type=float, default='2200', help='Upper limit for retention time.', required=False)
 parser.add_argument('-ml','--mz_lower', type=float, default='700', help='Lower limit for m/z.', required=False)
@@ -50,10 +50,6 @@ info = []
 for arg in vars(args):
     info.append((arg, getattr(args, arg)))
 print(info)
-
-if (args.precursor_definition_method == 'none') and (args.mz_lower is None or args.mz_upper is None or args.scan_lower is None or args.scan_upper is None or args.rt_lower is None or args.rt_upper is None):
-    print('for no precursor definition, the region in 3D must be specified.')
-    sys.exit(1)
 
 # add a buffer around the edges of the bounding box
 BB_MZ_BUFFER = 0.2
@@ -94,7 +90,7 @@ if args.feature_mode == 'detected':
     with open(FEATURES_FILE, 'rb') as handle:
         d = pickle.load(handle)
     features_df = d['features_df']
-else:  # identified
+elif args.feature_mode == 'identified':
     if args.precursor_definition_method == 'pasef':
         FEATURES_DIR = '{}/identifications-pasef'.format(EXPERIMENT_DIR)
         FEATURES_FILE = '{}/exp-{}-identifications-pasef-recalibrated.pkl'.format(FEATURES_DIR, args.experiment_name)
@@ -129,12 +125,7 @@ else:  # identified
         with open(FEATURES_FILE, 'rb') as handle:
             d = pickle.load(handle)
         features_df = d['features_df']
-
-if args.precursor_definition_method != 'none':
-    # load the feature cuboids
-    features_df = pd.read_pickle(FEATURES_FILE)['features_df']
-    print('loaded {} features cuboids from {}'.format(len(features_df), FEATURES_FILE))
-else:
+else:  # don't display features
     features_df = pd.DataFrame(columns=['monoisotopic_mz','rt_apex','scan_lower','scan_upper'])
 
 # default scope of the visualisation
