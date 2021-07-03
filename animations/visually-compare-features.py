@@ -3,15 +3,28 @@ import shutil
 import glob
 from os.path import expanduser
 import sys
+import argparse
+
 
 # Note this script uses the convert command from ImageMagick, installed with:
 # sudo apt install imagemagick
 
 
+###################################
+parser = argparse.ArgumentParser(description='Generate a tile for each frame, annotating intersecting feature cuboids.')
+parser.add_argument('-fm','--feature_mode', type=str, choices=['detected','identified','none'], default='detected', help='The mode for the features to be displayed.', required=False)
+args = parser.parse_args()
+
+# Print the arguments for the log
+info = []
+for arg in vars(args):
+    info.append((arg, getattr(args, arg)))
+print(info)
+
 BASE_TILES_DIR = '{}/tiles'.format(expanduser('~'))
-OVERLAY_A_BASE_DIR = '{}/feature-tiles-mq'.format(BASE_TILES_DIR)
-OVERLAY_B_BASE_DIR = '{}/feature-tiles-pasef'.format(BASE_TILES_DIR)
-OVERLAY_C_BASE_DIR = '{}/feature-tiles-3did'.format(BASE_TILES_DIR)
+OVERLAY_A_BASE_DIR = '{}/{}-feature-tiles-mq'.format(BASE_TILES_DIR, args.feature_mode)
+OVERLAY_B_BASE_DIR = '{}/{}-feature-tiles-pasef'.format(BASE_TILES_DIR, args.feature_mode)
+OVERLAY_C_BASE_DIR = '{}/{}-feature-tiles-3did'.format(BASE_TILES_DIR, args.feature_mode)
 
 overlay_A_files_l = sorted(glob.glob('{}/*.png'.format(OVERLAY_A_BASE_DIR)), key=lambda x: ( int(x.split('tile-')[1].split('.png')[0]) ))
 overlay_B_files_l = sorted(glob.glob('{}/*.png'.format(OVERLAY_B_BASE_DIR)), key=lambda x: ( int(x.split('tile-')[1].split('.png')[0]) ))
