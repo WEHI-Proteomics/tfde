@@ -104,7 +104,7 @@ else:  # identified
         features_df = d['features_df']
         features_df = features_df[(features_df.run_name == args.run_name) & (features_df['percolator q-value'] <= MAXIMUM_Q_VALUE)]
     elif args.precursor_definition_method == 'mq':
-        FEATURES_DIR = '{}/identifications-mq'.format(EXPERIMENT_DIR)
+        FEATURES_DIR = '{}/features-mq'.format(EXPERIMENT_DIR)
         FEATURES_FILE = '{}/exp-{}-run-{}-features-mq-dedup.pkl'.format(FEATURES_DIR, args.experiment_name, args.run_name)
         # load the features detected
         with open(FEATURES_FILE, 'rb') as handle:
