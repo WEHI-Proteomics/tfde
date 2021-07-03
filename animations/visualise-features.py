@@ -74,7 +74,7 @@ MAXIMUM_Q_VALUE = 0.01
 UBUNTU_FONT_PATH = '/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf'
 MACOS_FONT_PATH = '/Library/Fonts/Arial.ttf'
 
-TILES_BASE_DIR = '{}/feature-tiles-{}'.format(args.tiles_base_dir, args.precursor_definition_method)
+TILES_BASE_DIR = '{}/{}-feature-tiles-{}'.format(args.tiles_base_dir, args.feature_mode, args.precursor_definition_method)
 
 EXPERIMENT_DIR = '{}/{}'.format(args.experiment_base_dir, args.experiment_name)
 CONVERTED_DATABASE_NAME = '{}/converted-databases/exp-{}-run-{}-converted.sqlite'.format(EXPERIMENT_DIR, args.experiment_name, args.run_name)
