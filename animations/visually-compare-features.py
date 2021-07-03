@@ -36,7 +36,7 @@ if not (len(overlay_A_files_l) == len(overlay_B_files_l) == len(overlay_C_files_
     sys.exit(1)
 
 # check the composite tiles directory - the composites will be put in the tile list A directory
-COMPOSITE_TILE_BASE_DIR = '{}/composite-tiles'.format(BASE_TILES_DIR)
+COMPOSITE_TILE_BASE_DIR = '{}/{}-composite-tiles'.format(BASE_TILES_DIR, args.feature_mode)
 if os.path.exists(COMPOSITE_TILE_BASE_DIR):
     shutil.rmtree(COMPOSITE_TILE_BASE_DIR)
 os.makedirs(COMPOSITE_TILE_BASE_DIR)
