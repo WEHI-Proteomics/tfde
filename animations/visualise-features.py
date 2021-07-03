@@ -245,7 +245,7 @@ for group_name,group_df in pixel_intensity_df.groupby(['frame_id'], as_index=Fal
         draw.rectangle(xy=[(x0, y0), (x1, y1)], fill=None, outline='deepskyblue')
         if not args.omit_feature_labels:
             # draw the bounding box label
-            if (args.feature_mode == 'detected') or (args.precursor_definition_mode == '3did'):
+            if (args.feature_mode == 'detected') or (args.precursor_definition_method == '3did'):
                 feature_label = 'feature {}'.format(feature.feature_id)
             else:
                 feature_label = feature.sequence
