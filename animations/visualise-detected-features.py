@@ -8,6 +8,7 @@ import sqlite3
 import sys
 import json
 import argparse
+import pickle
 
 
 def pixel_x_from_mz(mz):
@@ -29,7 +30,6 @@ parser.add_argument('-en','--experiment_name', type=str, help='Name of the exper
 parser.add_argument('-rn','--run_name', type=str, help='Name of the run.', required=True)
 parser.add_argument('-pdm','--precursor_definition_method', type=str, choices=['pasef','3did','mq','none'], default='none', help='The method used to define the precursor cuboids.', required=False)
 parser.add_argument('-fm','--feature_mode', type=str, choices=['detected','identified'], default='detected', help='The mode for the features to be displayed.', required=False)
-parser.add_argument('-fid','--feature_id', type=int, help='A particular feature ID to visualise.', required=False)
 parser.add_argument('-rl','--rt_lower', type=float, default='1650', help='Lower limit for retention time.', required=False)
 parser.add_argument('-ru','--rt_upper', type=float, default='2200', help='Upper limit for retention time.', required=False)
 parser.add_argument('-ml','--mz_lower', type=float, default='700', help='Lower limit for m/z.', required=False)
@@ -64,18 +64,11 @@ BB_SCAN_BUFFER = 5
 FRAME_TYPE_MS1 = 0
 FRAME_TYPE_MS2 = 8
 
-if args.feature_id is not None:
-    # offsets on the sides of the selected feature's apex
-    offset_mz_lower = 10.0
-    offset_mz_upper = 10.0
-    offset_scan_lower = 150
-    offset_scan_upper = 150
-    offset_rt_lower = 5
-    offset_rt_upper = 5
-else:
-    # offsets on the sides of a feature's apex
-    offset_rt_lower = 1
-    offset_rt_upper = 1
+# offsets on the sides of a feature's apex
+offset_rt_lower = 1
+offset_rt_upper = 1
+
+MAXIMUM_Q_VALUE = 0.01
 
 # font paths for overlay labels
 UBUNTU_FONT_PATH = '/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf'
@@ -95,33 +88,67 @@ if not os.path.isfile(CONVERTED_DATABASE_NAME):
     print("The converted database is required but doesn't exist: {}".format(CONVERTED_DATABASE_NAME))
     sys.exit(1)
 
-if args.results_base_dir is not None:
-    FEATURES_DIR = '{}/features-{}'.format(args.results_base_dir, args.precursor_definition_method)
-else:
-    FEATURES_DIR = '{}/features-{}'.format(EXPERIMENT_DIR, args.precursor_definition_method)
-FEATURES_FILE = '{}/exp-{}-run-{}-features-{}-dedup.pkl'.format(FEATURES_DIR, args.experiment_name, args.run_name, args.precursor_definition_method)
+if args.feature_mode == 'detected':
+    if args.results_base_dir is not None:
+        FEATURES_DIR = '{}/features-{}'.format(args.results_base_dir, args.precursor_definition_method)
+    else:
+        FEATURES_DIR = '{}/features-{}'.format(EXPERIMENT_DIR, args.precursor_definition_method)
+    FEATURES_FILE = '{}/exp-{}-run-{}-features-{}-dedup.pkl'.format(FEATURES_DIR, args.experiment_name, args.run_name, args.precursor_definition_method)
+
+    # load the features detected
+    with open(FEATURES_FILE, 'rb') as handle:
+        d = pickle.load(handle)
+    features_df = d['features_df']
+else:  # identified
+    if args.results_base_dir is not None:
+        FEATURES_DIR = '{}/identifications-{}'.format(args.results_base_dir, args.precursor_definition_method)
+    else:
+        FEATURES_DIR = '{}/identifications-{}'.format(EXPERIMENT_DIR, args.precursor_definition_method)
+
+    if args.precursor_definition_method == 'pasef':
+        FEATURES_FILE = '{}/exp-{}-identifications-pasef-recalibrated.pkl'.format(FEATURES_DIR, args.experiment_name)
+        # load the features detected
+        with open(FEATURES_FILE, 'rb') as handle:
+            d = pickle.load(handle)
+        features_df = d['features_df']
+        features_df = features_df[(features_df.run_name == args.run_name) & (features_df['percolator q-value'] <= MAXIMUM_Q_VALUE)]
+    elif args.precursor_definition_method == 'mq':
+        FEATURES_FILE = '{}/exp-{}-run-{}-features-mq-dedup.pkl'.format(FEATURES_DIR, args.experiment_name, args.run_name)
+        # load the features detected
+        with open(FEATURES_FILE, 'rb') as handle:
+            d = pickle.load(handle)
+        features_df = d['features_df']
+        # load the percolator output
+        MQ_PERCOLATOR_OUTPUT_DIR = '{}/percolator-output-pasef-maxquant'.format(EXPERIMENT_DIR)
+        MQ_PERCOLATOR_OUTPUT_FILE_NAME = "{}/{}.percolator.target.psms.txt".format(MQ_PERCOLATOR_OUTPUT_DIR, args.experiment_name)
+        mq_psms_df = pd.read_csv(MQ_PERCOLATOR_OUTPUT_FILE_NAME, sep='\t')
+        mq_psms_df.rename(columns={'scan': 'mq_index'}, inplace=True)
+        mq_psms_df.drop(['charge'], axis=1, inplace=True)
+        # remove the poor quality identifications
+        mq_psms_df = mq_psms_df[mq_psms_df['peptide mass'] > 0]
+        idents_mq_df = pd.merge(features_df, mq_psms_df, how='left', left_on=['mq_index'], right_on=['mq_index'])
+        # remove any features that were not identified
+        idents_mq_df.dropna(subset=['sequence'], inplace=True)
+        features_df = idents_mq_df[(idents_mq_df.raw_file == args.run_name) & (idents_mq_df['percolator q-value'] <= MAXIMUM_Q_VALUE)]
+    else: # 3did
+        FEATURES_FILE = '{}/exp-{}-run-{}-features-3did-dedup.pkl'.format(FEATURES_DIR, args.experiment_name, args.run_name)
+        # load the features detected
+        with open(FEATURES_FILE, 'rb') as handle:
+            d = pickle.load(handle)
+        features_df = d['features_df']
 
 if args.precursor_definition_method != 'none':
     # load the feature cuboids
     features_df = pd.read_pickle(FEATURES_FILE)['features_df']
-    if args.feature_id is not None:
-        features_df = features_df[(features_df.feature_id == args.feature_id)]
     print('loaded {} features cuboids from {}'.format(len(features_df), FEATURES_FILE))
 else:
     features_df = pd.DataFrame(columns=['monoisotopic_mz','rt_apex','scan_lower','scan_upper'])
 
-if args.feature_id is not None:
-    # take the visualisation scope from the specified feature
-    selected_feature = features_df.iloc[0]
-    limits = {'MZ_MIN': selected_feature.monoisotopic_mz-offset_mz_lower, 'MZ_MAX': selected_feature.monoisotopic_mz+offset_mz_upper, 'SCAN_MIN': int(selected_feature.scan_apex-offset_scan_lower), 'SCAN_MAX': int(selected_feature.scan_apex+offset_scan_upper), 'RT_MIN': selected_feature.rt_apex-offset_rt_lower, 'RT_MAX': selected_feature.rt_apex+offset_rt_upper}
-    print('limits used: {}'.format(limits))
-else:
-    # default scope of the visualisation
-    limits = {'MZ_MIN': args.mz_lower, 'MZ_MAX': args.mz_upper, 'SCAN_MIN': args.scan_lower, 'SCAN_MAX': args.scan_upper, 'RT_MIN': args.rt_lower, 'RT_MAX': args.rt_upper}
+# default scope of the visualisation
+limits = {'MZ_MIN': args.mz_lower, 'MZ_MAX': args.mz_upper, 'SCAN_MIN': args.scan_lower, 'SCAN_MAX': args.scan_upper, 'RT_MIN': args.rt_lower, 'RT_MAX': args.rt_upper}
 
 PIXELS_PER_MZ = args.pixels_x / (limits['MZ_MAX'] - limits['MZ_MIN'])
 PIXELS_PER_SCAN = args.pixels_y / (limits['SCAN_MAX'] - limits['SCAN_MIN'])
-
 
 print('loading raw data from {}'.format(CONVERTED_DATABASE_NAME))
 db_conn = sqlite3.connect(CONVERTED_DATABASE_NAME)
@@ -225,7 +252,11 @@ for group_name,group_df in pixel_intensity_df.groupby(['frame_id'], as_index=Fal
         draw.rectangle(xy=[(x0, y0), (x1, y1)], fill=None, outline='deepskyblue')
         if not args.omit_feature_labels:
             # draw the bounding box label
-            draw.text((x0, y0-(2*space_per_line)), 'feature {}'.format(feature.feature_id), font=feature_label_font, fill='lawngreen')
+            if (args.feature_mode == 'detected') or (args.precursor_definition_mode == '3did'):
+                feature_label = 'feature {}'.format(feature.feature_id)
+            else:
+                feature_label = feature.sequence
+            draw.text((x0, y0-(2*space_per_line)), feature_label, font=feature_label_font, fill='lawngreen')
             draw.text((x0, y0-(1*space_per_line)), 'charge {}+'.format(feature.charge), font=feature_label_font, fill='lawngreen')
 
     # save the tile
