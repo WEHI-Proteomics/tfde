@@ -25,7 +25,6 @@ def pixel_y_from_scan(scan):
 ###################################
 parser = argparse.ArgumentParser(description='Generate a tile for each frame, annotating intersecting feature cuboids.')
 parser.add_argument('-eb','--experiment_base_dir', type=str, default='./experiments', help='Path to the experiments directory.', required=False)
-parser.add_argument('-rb','--results_base_dir', type=str, help='Path to the results directory.', required=False)
 parser.add_argument('-en','--experiment_name', type=str, help='Name of the experiment.', required=True)
 parser.add_argument('-rn','--run_name', type=str, help='Name of the run.', required=True)
 parser.add_argument('-pdm','--precursor_definition_method', type=str, choices=['pasef','3did','mq','none'], default='none', help='The method used to define the precursor cuboids.', required=False)
@@ -89,23 +88,15 @@ if not os.path.isfile(CONVERTED_DATABASE_NAME):
     sys.exit(1)
 
 if args.feature_mode == 'detected':
-    if args.results_base_dir is not None:
-        FEATURES_DIR = '{}/features-{}'.format(args.results_base_dir, args.precursor_definition_method)
-    else:
-        FEATURES_DIR = '{}/features-{}'.format(EXPERIMENT_DIR, args.precursor_definition_method)
+    FEATURES_DIR = '{}/features-{}'.format(EXPERIMENT_DIR, args.precursor_definition_method)
     FEATURES_FILE = '{}/exp-{}-run-{}-features-{}-dedup.pkl'.format(FEATURES_DIR, args.experiment_name, args.run_name, args.precursor_definition_method)
-
     # load the features detected
     with open(FEATURES_FILE, 'rb') as handle:
         d = pickle.load(handle)
     features_df = d['features_df']
 else:  # identified
-    if args.results_base_dir is not None:
-        FEATURES_DIR = '{}/identifications-{}'.format(args.results_base_dir, args.precursor_definition_method)
-    else:
-        FEATURES_DIR = '{}/identifications-{}'.format(EXPERIMENT_DIR, args.precursor_definition_method)
-
     if args.precursor_definition_method == 'pasef':
+        FEATURES_DIR = '{}/identifications-pasef'.format(EXPERIMENT_DIR)
         FEATURES_FILE = '{}/exp-{}-identifications-pasef-recalibrated.pkl'.format(FEATURES_DIR, args.experiment_name)
         # load the features detected
         with open(FEATURES_FILE, 'rb') as handle:
@@ -113,6 +104,7 @@ else:  # identified
         features_df = d['features_df']
         features_df = features_df[(features_df.run_name == args.run_name) & (features_df['percolator q-value'] <= MAXIMUM_Q_VALUE)]
     elif args.precursor_definition_method == 'mq':
+        FEATURES_DIR = '{}/identifications-mq'.format(EXPERIMENT_DIR)
         FEATURES_FILE = '{}/exp-{}-run-{}-features-mq-dedup.pkl'.format(FEATURES_DIR, args.experiment_name, args.run_name)
         # load the features detected
         with open(FEATURES_FILE, 'rb') as handle:
@@ -131,6 +123,7 @@ else:  # identified
         idents_mq_df.dropna(subset=['sequence'], inplace=True)
         features_df = idents_mq_df[(idents_mq_df.raw_file == args.run_name) & (idents_mq_df['percolator q-value'] <= MAXIMUM_Q_VALUE)]
     else: # 3did
+        FEATURES_DIR = '{}/features-3did'.format(EXPERIMENT_DIR)
         FEATURES_FILE = '{}/exp-{}-run-{}-features-3did-dedup.pkl'.format(FEATURES_DIR, args.experiment_name, args.run_name)
         # load the features detected
         with open(FEATURES_FILE, 'rb') as handle:
