@@ -97,7 +97,7 @@ elif args.feature_mode == 'identified':
         # load the features detected
         with open(FEATURES_FILE, 'rb') as handle:
             d = pickle.load(handle)
-        features_df = d['features_df']
+        features_df = d['identifications_df']
         features_df = features_df[(features_df.run_name == args.run_name) & (features_df['percolator q-value'] <= MAXIMUM_Q_VALUE)]
     elif args.precursor_definition_method == 'mq':
         FEATURES_DIR = '{}/features-mq'.format(EXPERIMENT_DIR)
