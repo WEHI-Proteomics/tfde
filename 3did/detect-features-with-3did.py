@@ -19,7 +19,7 @@ import warnings
 from scipy.optimize import OptimizeWarning
 from os.path import expanduser
 from sklearn.metrics.pairwise import cosine_similarity
-
+import shutil
 
 
 # set up the indexes we need for queries
@@ -697,7 +697,7 @@ if not os.path.exists(FEATURES_DIR):
 # set up the interim features directory
 INTERIM_FEATURES_DIR = "{}/interim".format(FEATURES_DIR)
 if os.path.exists(INTERIM_FEATURES_DIR):
-    os.rmdir(INTERIM_FEATURES_DIR)
+    shutil.rmtree(INTERIM_FEATURES_DIR)
 os.makedirs(INTERIM_FEATURES_DIR)
 
 # set up Ray
