@@ -190,8 +190,9 @@ def determine_isotope_characteristics(envelope, rt_apex, monoisotopic_mass, feat
             scan_df.sort_values(by=['scan'], ascending=True, inplace=True)
             # measure it's elution similarity with the previous isotope
             similarity_scan = measure_peak_similarity(pd.DataFrame(isotopes_l[idx-1]['scan_df']), scan_df, x_label='scan', scale=1) if idx > 0 else None
-            # add the isotope to the list
-            isotopes_l.append({'mz':iso_mz, 'mz_lower':iso_mz_lower, 'mz_upper':iso_mz_upper, 'intensity':summed_intensity, 'saturated':isotope_in_saturation, 'rt_df':rt_df.to_dict('records'), 'scan_df':scan_df.to_dict('records'), 'similarity_rt':similarity_rt, 'similarity_scan':similarity_scan})
+            if (similarity_rt >= ISOTOPE_SIMILARITY_RT_THRESHOLD) and (similarity_scan >= ISOTOPE_SIMILARITY_CCS_THRESHOLD):
+                # add the isotope to the list
+                isotopes_l.append({'mz':iso_mz, 'mz_lower':iso_mz_lower, 'mz_upper':iso_mz_upper, 'intensity':summed_intensity, 'saturated':isotope_in_saturation, 'rt_df':rt_df.to_dict('records'), 'scan_df':scan_df.to_dict('records'), 'similarity_rt':similarity_rt, 'similarity_scan':similarity_scan})
         else:
             break
     isotopes_df = pd.DataFrame(isotopes_l)
@@ -240,6 +241,8 @@ def determine_isotope_characteristics(envelope, rt_apex, monoisotopic_mass, feat
     result_d['mono_mz'] = isotopes_df.iloc[0].mz
 
     result_d['isotopic_peaks'] = isotopes_df.to_dict('records')
+    result_d['isotope_count'] = len(isotopes_df)
+    result_d['envelope'] = envelope[:result_d['isotope_count']]  # modify the envelope according to how many similar isotopes we found
     result_d['coelution_coefficient'] = coelution_coefficient
     result_d['mobility_coefficient'] = mobility_coefficient
     result_d['voxels_processed'] = voxels_processed
@@ -565,8 +568,7 @@ def find_features(segment_mz_lower, segment_mz_upper, segment_id):
                                     feature_d['charge'] = feature.charge
                                     feature_d['monoisotopic_mass'] = calculate_monoisotopic_mass_from_mz(monoisotopic_mz=feature_d['monoisotopic_mz'], charge=feature_d['charge'])
                                     feature_d['feature_intensity'] = isotope_characteristics_d['intensity_with_saturation_correction'] if (isotope_characteristics_d['intensity_with_saturation_correction'] > isotope_characteristics_d['intensity_without_saturation_correction']) else isotope_characteristics_d['intensity_without_saturation_correction']
-                                    feature_d['envelope'] = json.dumps([tuple(e) for e in feature.envelope])
-                                    feature_d['isotope_count'] = len(feature.envelope)
+                                    feature_d['deconvolution_envelope'] = json.dumps([tuple(e) for e in feature.envelope])
                                     feature_d['deconvolution_score'] = feature.score
                                     # record the feature region where we found this feature
                                     feature_d['feature_region_3d_extent'] = feature_region_3d_extent_d
@@ -673,7 +675,7 @@ CARBON_MASS_DIFFERENCE = cfg.getfloat('common','CARBON_MASS_DIFFERENCE')
 PROTON_MASS = cfg.getfloat('common', 'PROTON_MASS')
 INSTRUMENT_RESOLUTION = cfg.getfloat('common', 'INSTRUMENT_RESOLUTION')
 SATURATION_INTENSITY = cfg.getint('common', 'SATURATION_INTENSITY')
-TARGET_NUMBER_OF_FEATURES_FOR_CUBOID = cfg.getint('ms1', 'TARGET_NUMBER_OF_FEATURES_FOR_CUBOID')
+TARGET_NUMBER_OF_FEATURES_FOR_CUBOID = cfg.getint('3did', 'TARGET_NUMBER_OF_FEATURES_FOR_CUBOID')
 
 VOXEL_SIZE_RT = cfg.getint('3did', 'VOXEL_SIZE_RT')
 VOXEL_SIZE_SCAN = cfg.getint('3did', 'VOXEL_SIZE_SCAN')
@@ -682,6 +684,8 @@ VOXEL_SIZE_MZ = cfg.getfloat('3did', 'VOXEL_SIZE_MZ')
 MINIMUM_NUMBER_OF_SCANS_IN_BASE_PEAK = cfg.getint('3did', 'MINIMUM_NUMBER_OF_SCANS_IN_BASE_PEAK')
 MAXIMUM_GAP_SECS_BETWEEN_EDGE_POINTS = cfg.getfloat('3did', 'MAXIMUM_GAP_SECS_BETWEEN_EDGE_POINTS')
 INTENSITY_PROPORTION_FOR_VOXEL_TO_BE_REMOVED = cfg.getfloat('3did', 'INTENSITY_PROPORTION_FOR_VOXEL_TO_BE_REMOVED')
+ISOTOPE_SIMILARITY_RT_THRESHOLD = cfg.getfloat('3did', 'ISOTOPE_SIMILARITY_RT_THRESHOLD')
+ISOTOPE_SIMILARITY_CCS_THRESHOLD = cfg.getfloat('3did', 'ISOTOPE_SIMILARITY_CCS_THRESHOLD')
 
 # set up the indexes
 print('setting up indexes on {}'.format(CONVERTED_DATABASE_NAME))
