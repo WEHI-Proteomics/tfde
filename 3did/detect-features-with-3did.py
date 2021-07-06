@@ -688,9 +688,9 @@ VALLEYS_THRESHOLD_SCAN = 0.25
 VALLEYS_MIN_DIST_RT = 2.0     # seconds
 VALLEYS_MIN_DIST_SCAN = 10.0  # scans
 
-# filter parameters
+# filter parameters; the smaller the order compared to the window length, the more smoothing
 SCAN_FILTER_POLY_ORDER = 5
-RT_FILTER_POLY_ORDER = 3
+RT_FILTER_POLY_ORDER = 5
 
 
 # set up the indexes
