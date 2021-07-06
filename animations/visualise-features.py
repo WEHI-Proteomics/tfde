@@ -120,8 +120,8 @@ elif args.feature_mode == 'identified':
         features_df = idents_mq_df[(idents_mq_df.raw_file == args.run_name) & (idents_mq_df['percolator q-value'] <= MAXIMUM_Q_VALUE)]
     else: # 3did
         FEATURES_DIR = '{}/features-3did'.format(EXPERIMENT_DIR)
-        # FEATURES_FILE = '{}/exp-{}-run-{}-features-3did-dedup.pkl'.format(FEATURES_DIR, args.experiment_name, args.run_name)
-        FEATURES_FILE = '{}/exp-{}-run-{}-features-3did.pkl'.format(FEATURES_DIR, args.experiment_name, args.run_name)
+        FEATURES_FILE = '{}/exp-{}-run-{}-features-3did-dedup.pkl'.format(FEATURES_DIR, args.experiment_name, args.run_name)
+        # FEATURES_FILE = '{}/exp-{}-run-{}-features-3did.pkl'.format(FEATURES_DIR, args.experiment_name, args.run_name)
         # load the features detected
         with open(FEATURES_FILE, 'rb') as handle:
             d = pickle.load(handle)
