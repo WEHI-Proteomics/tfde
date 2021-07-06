@@ -168,7 +168,7 @@ def determine_isotope_characteristics(envelope, rt_apex, monoisotopic_mass, feat
         isotope_df = feature_region_3d_df[(feature_region_3d_df.mz >= iso_mz_lower) & (feature_region_3d_df.mz <= iso_mz_upper)]
         # calculate the isotope's intensity
         if len(isotope_df) > 0:
-            # record the voxels included by each isotope
+            # record the voxels included by this isotope
             voxel_ids_for_isotope = voxels_for_points(points_df=isotope_df)
             # add the voxels included in the feature's points to the list of voxels already processed
             voxels_processed.update(voxel_ids_for_isotope)
@@ -533,7 +533,7 @@ def find_features(segment_mz_lower, segment_mz_upper, segment_id):
                         ms1_deconvoluted_peaks_l = []
                         for peak_idx,peak in enumerate(deconvoluted_peaks):
                             # discard a monoisotopic peak that has either of the first two peaks as placeholders (indicated by intensity of 1)
-                            if ((len(peak.envelope) >= 3) and (peak.envelope[0][1] > 1) and (peak.envelope[1][1] > 1)):
+                            if ((len(peak.envelope) >= MINIMUM_NUMBER_OF_ISOTOPES) and (peak.envelope[0][1] > 1) and (peak.envelope[1][1] > 1)):
                                 mono_peak_mz = peak.mz
                                 mono_intensity = peak.intensity
                                 second_peak_mz = peak.envelope[1][0]
@@ -566,23 +566,25 @@ def find_features(segment_mz_lower, segment_mz_upper, segment_id):
                                 if isotope_characteristics_d is not None:
                                     # add the characteristics to the feature dictionary
                                     feature_d = {**feature_d, **isotope_characteristics_d}
-                                    feature_d['monoisotopic_mz'] = isotope_characteristics_d['mono_mz']
-                                    feature_d['charge'] = feature.charge
-                                    feature_d['monoisotopic_mass'] = calculate_monoisotopic_mass_from_mz(monoisotopic_mz=feature_d['monoisotopic_mz'], charge=feature_d['charge'])
-                                    feature_d['feature_intensity'] = isotope_characteristics_d['intensity_with_saturation_correction'] if (isotope_characteristics_d['intensity_with_saturation_correction'] > isotope_characteristics_d['intensity_without_saturation_correction']) else isotope_characteristics_d['intensity_without_saturation_correction']
-                                    feature_d['deconvolution_envelope'] = json.dumps([tuple(e) for e in feature.envelope])
-                                    feature_d['deconvolution_score'] = feature.score
-                                    # record the feature region where we found this feature
-                                    feature_d['feature_region_3d_extent'] = feature_region_3d_extent_d
-                                    # record the voxel from where we derived the initial isotope
-                                    feature_d['voxel_id'] = voxel.voxel_id
-                                    feature_d['voxel_metadata_d'] = voxel_metadata_d
-                                    feature_d['scan_df'] = scan_df.to_dict('records')
-                                    feature_d['scan_r_squared'] = scan_r_squared
-                                    feature_d['rt_df'] = rt_df.to_dict('records')
-                                    feature_d['rt_r_squared'] = rt_r_squared
-                                    # add it to the list
-                                    features_l.append(feature_d)
+                                    # only include the feature if it has a minimum number of isotopes
+                                    if feature_d['isotope_count'] >= MINIMUM_NUMBER_OF_ISOTOPES:
+                                        feature_d['monoisotopic_mz'] = isotope_characteristics_d['mono_mz']
+                                        feature_d['charge'] = feature.charge
+                                        feature_d['monoisotopic_mass'] = calculate_monoisotopic_mass_from_mz(monoisotopic_mz=feature_d['monoisotopic_mz'], charge=feature_d['charge'])
+                                        feature_d['feature_intensity'] = isotope_characteristics_d['intensity_with_saturation_correction'] if (isotope_characteristics_d['intensity_with_saturation_correction'] > isotope_characteristics_d['intensity_without_saturation_correction']) else isotope_characteristics_d['intensity_without_saturation_correction']
+                                        feature_d['deconvolution_envelope'] = json.dumps([tuple(e) for e in feature.envelope])
+                                        feature_d['deconvolution_score'] = feature.score
+                                        # record the feature region where we found this feature
+                                        feature_d['feature_region_3d_extent'] = feature_region_3d_extent_d
+                                        # record the voxel from where we derived the initial isotope
+                                        feature_d['voxel_id'] = voxel.voxel_id
+                                        feature_d['voxel_metadata_d'] = voxel_metadata_d
+                                        feature_d['scan_df'] = scan_df.to_dict('records')
+                                        feature_d['scan_r_squared'] = scan_r_squared
+                                        feature_d['rt_df'] = rt_df.to_dict('records')
+                                        feature_d['rt_r_squared'] = rt_r_squared
+                                        # add it to the list
+                                        features_l.append(feature_d)
 
                                     # add the voxels included in the feature's isotopes to the list of voxels already processed
                                     voxels_processed.update(feature_d['voxels_processed'])
@@ -682,6 +684,8 @@ TARGET_NUMBER_OF_FEATURES_FOR_CUBOID = cfg.getint('3did', 'TARGET_NUMBER_OF_FEAT
 VOXEL_SIZE_RT = cfg.getint('3did', 'VOXEL_SIZE_RT')
 VOXEL_SIZE_SCAN = cfg.getint('3did', 'VOXEL_SIZE_SCAN')
 VOXEL_SIZE_MZ = cfg.getfloat('3did', 'VOXEL_SIZE_MZ')
+
+MINIMUM_NUMBER_OF_ISOTOPES = cfg.getfloat('ms1', 'MINIMUM_NUMBER_OF_ISOTOPES')
 
 MINIMUM_NUMBER_OF_SCANS_IN_BASE_PEAK = cfg.getint('3did', 'MINIMUM_NUMBER_OF_SCANS_IN_BASE_PEAK')
 MAXIMUM_GAP_SECS_BETWEEN_EDGE_POINTS = cfg.getfloat('3did', 'MAXIMUM_GAP_SECS_BETWEEN_EDGE_POINTS')
