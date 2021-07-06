@@ -602,29 +602,6 @@ def strip_peaks(peaks_l):
     return df.to_dict('records')
 
 
-# move these constants to the INI file
-ANCHOR_POINT_MZ_LOWER_OFFSET = 0.6   # one isotope for charge-2 plus a little bit more
-ANCHOR_POINT_MZ_UPPER_OFFSET = 3.0   # six isotopes for charge-2 plus a little bit more
-
-ANCHOR_POINT_SCAN_LOWER_OFFSET = 40  # twice the base peak width
-ANCHOR_POINT_SCAN_UPPER_OFFSET = 40
-
-# peak and valley detection parameters
-PEAKS_THRESHOLD_RT = 0.5    # only consider peaks that are higher than this proportion of the normalised maximum
-PEAKS_THRESHOLD_SCAN = 0.5
-PEAKS_MIN_DIST_RT = 2.0     # seconds
-PEAKS_MIN_DIST_SCAN = 10.0  # scans
-
-VALLEYS_THRESHOLD_RT = 0.25    # only consider valleys that drop more than this proportion of the normalised maximum
-VALLEYS_THRESHOLD_SCAN = 0.25
-VALLEYS_MIN_DIST_RT = 2.0     # seconds
-VALLEYS_MIN_DIST_SCAN = 10.0  # scans
-
-# filter parameters
-SCAN_FILTER_POLY_ORDER = 5
-RT_FILTER_POLY_ORDER = 3
-
-
 #######################
 parser = argparse.ArgumentParser(description='Find all the features in a run with 3D intensity descent.')
 parser.add_argument('-eb','--experiment_base_dir', type=str, default='./experiments', help='Path to the experiments directory.', required=False)
@@ -692,6 +669,29 @@ MAXIMUM_GAP_SECS_BETWEEN_EDGE_POINTS = cfg.getfloat('3did', 'MAXIMUM_GAP_SECS_BE
 INTENSITY_PROPORTION_FOR_VOXEL_TO_BE_REMOVED = cfg.getfloat('3did', 'INTENSITY_PROPORTION_FOR_VOXEL_TO_BE_REMOVED')
 ISOTOPE_SIMILARITY_RT_THRESHOLD = cfg.getfloat('3did', 'ISOTOPE_SIMILARITY_RT_THRESHOLD')
 ISOTOPE_SIMILARITY_CCS_THRESHOLD = cfg.getfloat('3did', 'ISOTOPE_SIMILARITY_CCS_THRESHOLD')
+
+# move these constants to the INI file
+ANCHOR_POINT_MZ_LOWER_OFFSET = CARBON_MASS_DIFFERENCE / 1
+ANCHOR_POINT_MZ_UPPER_OFFSET = 3.0   # six isotopes for charge-2 plus a little bit more
+
+ANCHOR_POINT_SCAN_LOWER_OFFSET = 40  # twice the base peak width
+ANCHOR_POINT_SCAN_UPPER_OFFSET = 40
+
+# peak and valley detection parameters
+PEAKS_THRESHOLD_RT = 0.5    # only consider peaks that are higher than this proportion of the normalised maximum
+PEAKS_THRESHOLD_SCAN = 0.5
+PEAKS_MIN_DIST_RT = 2.0     # seconds
+PEAKS_MIN_DIST_SCAN = 10.0  # scans
+
+VALLEYS_THRESHOLD_RT = 0.25    # only consider valleys that drop more than this proportion of the normalised maximum
+VALLEYS_THRESHOLD_SCAN = 0.25
+VALLEYS_MIN_DIST_RT = 2.0     # seconds
+VALLEYS_MIN_DIST_SCAN = 10.0  # scans
+
+# filter parameters
+SCAN_FILTER_POLY_ORDER = 5
+RT_FILTER_POLY_ORDER = 3
+
 
 # set up the indexes
 print('setting up indexes on {}'.format(CONVERTED_DATABASE_NAME))
