@@ -121,7 +121,7 @@ elif args.feature_mode == 'identified':
     else: # 3did
         FEATURES_DIR = '{}/features-3did'.format(EXPERIMENT_DIR)
         # FEATURES_FILE = '{}/exp-{}-run-{}-features-3did-dedup.pkl'.format(FEATURES_DIR, args.experiment_name, args.run_name)
-        FEATURES_FILE = '{}/exp-{}-run-{}-features-3did-ident.pkl'.format(FEATURES_DIR, args.experiment_name, args.run_name)
+        FEATURES_FILE = '{}/exp-{}-run-{}-features-3did.pkl'.format(FEATURES_DIR, args.experiment_name, args.run_name)
         # load the features detected
         with open(FEATURES_FILE, 'rb') as handle:
             d = pickle.load(handle)
