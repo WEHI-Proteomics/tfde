@@ -244,7 +244,7 @@ def determine_isotope_characteristics(envelope, rt_apex, monoisotopic_mass, feat
 
     result_d['isotopic_peaks'] = isotopes_df.to_dict('records')
     result_d['isotope_count'] = len(isotopes_df)
-    result_d['envelope'] = envelope[:result_d['isotope_count']]  # modify the envelope according to how many similar isotopes we found
+    result_d['envelope'] = json.dumps([tuple(e) for e in envelope[:result_d['isotope_count']]])  # modify the envelope according to how many similar isotopes we found
     result_d['coelution_coefficient'] = coelution_coefficient
     result_d['mobility_coefficient'] = mobility_coefficient
     result_d['voxels_processed'] = voxels_processed
