@@ -228,7 +228,7 @@ for group_name,group_df in pixel_intensity_df.groupby(['frame_id'], as_index=Fal
                 ]
 
     for idx,feature in intersecting_features_df.iterrows():
-        envelope = feature.envelope
+        envelope = json.loads(feature.envelope)
         x0 = pixel_x_from_mz(envelope[0][0] - BB_MZ_BUFFER)
         x1 = pixel_x_from_mz(envelope[-1][0] + BB_MZ_BUFFER)
         y0 = pixel_y_from_scan(feature.scan_lower - BB_SCAN_BUFFER)
