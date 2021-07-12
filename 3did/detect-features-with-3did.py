@@ -330,7 +330,7 @@ def find_features(segment_mz_lower, segment_mz_upper, segment_id):
         summary_df.reset_index(drop=True, inplace=True)
         summary_df['voxel_id'] = summary_df.index
         summary_df['voxel_id'] = summary_df.apply(lambda row: generate_voxel_id(segment_id, row.voxel_id+1), axis=1)
-        summary_df_name = '{}/summary-{}-{}.pkl'.format(SUMMARY_DIR, round(segment_mz_lower*100), round(segment_mz_upper*100))
+        summary_df_name = '{}/summary-{}-{}.pkl'.format(SUMMARY_DIR, round(segment_mz_lower), round(segment_mz_upper))
         summary_df.to_pickle(summary_df_name)
         print('there are {} voxels for processing in segment {} ({}-{} m/z)'.format(len(summary_df), segment_id, round(segment_mz_lower,1), round(segment_mz_upper,1)))
 
