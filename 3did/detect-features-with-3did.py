@@ -192,7 +192,7 @@ def determine_isotope_characteristics(envelope, rt_apex, monoisotopic_mass, feat
             similarity_scan = measure_peak_similarity(pd.DataFrame(isotopes_l[idx-1]['scan_df']), scan_df, x_label='scan', scale=1) if idx > 0 else None
             if (idx == 0) or ((idx > 0) and (similarity_rt >= ISOTOPE_SIMILARITY_RT_THRESHOLD) and (similarity_scan >= ISOTOPE_SIMILARITY_CCS_THRESHOLD)):
                 # add the isotope to the list
-                isotopes_l.append({'mz':iso_mz, 'mz_lower':iso_mz_lower, 'mz_upper':iso_mz_upper, 'intensity':summed_intensity, 'saturated':isotope_in_saturation, 'rt_df':rt_df.to_dict('records'), 'scan_df':scan_df.to_dict('records'), 'similarity_rt':similarity_rt, 'similarity_scan':similarity_scan})
+                isotopes_l.append({'mz':iso_mz, 'mz_lower':iso_mz_lower, 'mz_upper':iso_mz_upper, 'intensity':summed_intensity, 'saturated':isotope_in_saturation, 'rt_df':rt_df.to_dict('records'), 'scan_df':scan_df.to_dict('records'), 'similarity_rt':similarity_rt, 'similarity_scan':similarity_scan, 'voxel_ids_for_isotope':voxel_ids_for_isotope})
             else:
                 break
         else:
@@ -330,6 +330,8 @@ def find_features(segment_mz_lower, segment_mz_upper, segment_id):
         summary_df.reset_index(drop=True, inplace=True)
         summary_df['voxel_id'] = summary_df.index
         summary_df['voxel_id'] = summary_df.apply(lambda row: generate_voxel_id(segment_id, row.voxel_id+1), axis=1)
+        summary_df_name = '{}/summary-{}-{}.pkl'.format(SUMMARY_DIR, round(segment_mz_lower*100), round(segment_mz_upper*100))
+        summary_df.to_pickle(summary_df_name)
         print('there are {} voxels for processing in segment {} ({}-{} m/z)'.format(len(summary_df), segment_id, round(segment_mz_lower,1), round(segment_mz_upper,1)))
 
         # assign each raw point with their voxel ID
@@ -712,6 +714,12 @@ INTERIM_FEATURES_DIR = "{}/interim".format(FEATURES_DIR)
 if os.path.exists(INTERIM_FEATURES_DIR):
     shutil.rmtree(INTERIM_FEATURES_DIR)
 os.makedirs(INTERIM_FEATURES_DIR)
+
+# set up the summary directory
+SUMMARY_DIR = "{}/summary".format(FEATURES_DIR)
+if os.path.exists(SUMMARY_DIR):
+    shutil.rmtree(SUMMARY_DIR)
+os.makedirs(SUMMARY_DIR)
 
 # set up Ray
 print("setting up Ray")
