@@ -321,11 +321,12 @@ def find_features(segment_mz_lower, segment_mz_upper, segment_id):
         raw_df['bin_key'] = list(zip(raw_df.mz_bin, raw_df.scan_bin, raw_df.rt_bin))
 
         # sum the intensities in each bin
-        summary_df = raw_df.groupby(['bin_key'], as_index=False, sort=False).intensity.agg(['sum','count']).reset_index()
-        summary_df.rename(columns={'sum':'voxel_intensity', 'count':'point_count'}, inplace=True)
+        summary_df = raw_df.groupby(['bin_key'], as_index=False, sort=False).intensity.agg(['sum','count','mean']).reset_index()
+        summary_df.rename(columns={'sum':'voxel_intensity', 'count':'point_count', 'mean':'voxel_mean'}, inplace=True)
         summary_df.dropna(subset=['voxel_intensity'], inplace=True)
-        summary_df = summary_df[(summary_df.voxel_intensity > args.minimum_voxel_intensity)]
-        summary_df.sort_values(by=['voxel_intensity'], ascending=False, inplace=True)
+        summary_df.dropna(subset=['voxel_mean'], inplace=True)
+        summary_df = summary_df[(summary_df.voxel_mean > args.minimum_voxel_mean)]
+        summary_df.sort_values(by=['voxel_mean'], ascending=False, inplace=True)
         summary_df.reset_index(drop=True, inplace=True)
         summary_df['voxel_id'] = summary_df.index
         summary_df['voxel_id'] = summary_df.apply(lambda row: generate_voxel_id(segment_id, row.voxel_id+1), axis=1)
@@ -614,7 +615,7 @@ parser.add_argument('-mu','--mz_upper', type=int, default='1700', help='Upper li
 parser.add_argument('-mw','--mz_width_per_segment', type=int, default=20, help='Width in Da of the m/z processing window per segment.', required=False)
 parser.add_argument('-rl','--rt_lower', type=int, default='1650', help='Lower limit for retention time.', required=False)
 parser.add_argument('-ru','--rt_upper', type=int, default='2200', help='Upper limit for retention time.', required=False)
-parser.add_argument('-minvi','--minimum_voxel_intensity', type=int, default='2500', help='The minimum voxel intensity to analyse.', required=False)
+parser.add_argument('-mvm','--minimum_voxel_mean', type=int, default='100', help='The minimum mean voxel intensity to analyse.', required=False)
 parser.add_argument('-ini','--ini_file', type=str, default='./otf-peak-detect/pipeline/pasef-process-short-gradient.ini', help='Path to the config file.', required=False)
 parser.add_argument('-rm','--ray_mode', type=str, choices=['local','cluster'], help='The Ray mode to use.', required=True)
 parser.add_argument('-pc','--proportion_of_cores_to_use', type=float, default=0.9, help='Proportion of the machine\'s cores to use for this program.', required=False)
