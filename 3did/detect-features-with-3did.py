@@ -326,7 +326,6 @@ def find_features(segment_mz_lower, segment_mz_upper, segment_id):
         summary_df.rename(columns={'sum':'voxel_intensity', 'count':'point_count', 'mean':'voxel_mean'}, inplace=True)
         summary_df.dropna(subset=['voxel_intensity'], inplace=True)
         summary_df.dropna(subset=['voxel_mean'], inplace=True)
-        summary_df = summary_df[(summary_df.voxel_mean > args.minimum_voxel_mean)]
         summary_df.sort_values(by=['voxel_mean'], ascending=False, inplace=True)
         summary_df.reset_index(drop=True, inplace=True)
         summary_df['voxel_id'] = summary_df.index
@@ -346,7 +345,8 @@ def find_features(segment_mz_lower, segment_mz_upper, segment_id):
         voxels_processed = set()
 
         # process each voxel by decreasing intensity
-        for voxel_idx,voxel in enumerate(summary_df.itertuples()):
+        base_peak_voxels_df = summary_df[(summary_df.voxel_mean > args.minimum_voxel_mean)]
+        for voxel_idx,voxel in enumerate(base_peak_voxels_df.itertuples()):
             # if this voxel hasn't already been processed...
             if (voxel.voxel_id not in voxels_processed):
                 # retrieve the bins from the voxel key
