@@ -337,6 +337,7 @@ def find_features(segment_mz_lower, segment_mz_upper, segment_id):
 
         # assign each raw point with their voxel ID
         raw_df = pd.merge(raw_df, summary_df[['bin_key','voxel_id','voxel_intensity']], how='left', left_on=['bin_key'], right_on=['bin_key'])
+        print('{} null voxel ids'.format(raw_df.voxel_id.isna().sum()))
 
         # determine each point\'s contribution to its voxel intensity
         raw_df['voxel_proportion'] = raw_df.intensity / raw_df.voxel_intensity
