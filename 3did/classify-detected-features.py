@@ -5,7 +5,10 @@ import os
 import argparse
 import tensorflow as tf
 from tensorflow import keras
-
+from keras.models import Sequential
+from keras.layers import Dense, BatchNormalization, Dropout
+from tensorflow.keras import layers
+from tensorflow.keras.layers.experimental import preprocessing
 
 #######################
 parser = argparse.ArgumentParser(description='Use the trained model to classify the 3DID features detected for their identifiability.')
@@ -48,6 +51,7 @@ if not os.path.exists(MODEL_DIR):
     sys.exit(1)
 
 # load the trained model
+print('loading the trained model from {}'.format(MODEL_DIR))
 model = keras.models.load_model(MODEL_DIR)
 
 # load the features detected
