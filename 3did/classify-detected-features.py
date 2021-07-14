@@ -69,11 +69,15 @@ features_df['identification_predicted'] = features_df.apply(lambda row: row.pred
 
 # update the detected features with the predictions
 print('updating {} features with predictions: {}'.format(len(features_df), FEATURES_FILE))
+# strip out previous predictions entry
+features_metadata = [x for x in features_metadata if 'predictions' != x[0]]
+# add predictions entry to metadata
 l = []
 l.append(('processor', parser.prog))
 l.append(('processed', time.ctime()))
 l.append(('model', MODEL_DIR))
 features_metadata.append(('predictions',l))
+# save the features
 content_d = {'features_df':features_df, 'metadata':features_metadata}
 with open(FEATURES_FILE, 'wb') as handle:
     pickle.dump(content_d, handle)
