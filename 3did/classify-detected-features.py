@@ -70,10 +70,10 @@ features_df['identification_predicted'] = features_df.apply(lambda row: row.pred
 # update the detected features with the predictions
 print('updating {} features with predictions: {}'.format(len(features_df), FEATURES_FILE))
 l = []
-l.append(('processor',parser.prog))
+l.append(('processor', parser.prog))
 l.append(('processed', time.ctime()))
 l.append(('model', MODEL_DIR))
-features_metadata.append({'predictions':l})
+features_metadata.append(('predictions',l))
 content_d = {'features_df':features_df, 'metadata':features_metadata}
 with open(FEATURES_FILE, 'wb') as handle:
     pickle.dump(content_d, handle)
@@ -84,7 +84,7 @@ features_df = features_df[(features_df.identification_predicted == True)]
 print()
 print('saving {} features classified as identifiable to {}'.format(len(features_df), FEATURES_IDENT_FILE))
 info.append(('total_running_time',round(time.time()-start_run,1)))
-info.append(('processor',parser.prog))
+info.append(('processor', parser.prog))
 info.append(('processed', time.ctime()))
 info.append(('model', MODEL_DIR))
 content_d = {'features_df':features_df, 'metadata':info}
