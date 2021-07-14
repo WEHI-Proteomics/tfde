@@ -82,7 +82,7 @@ with open(FEATURES_FILE, 'wb') as handle:
 features_df = features_df[(features_df.identification_predicted == True)]
 
 print()
-print('saving {} features to {}'.format(len(features_df), FEATURES_IDENT_FILE))
+print('saving {} features classified as identifiable to {}'.format(len(features_df), FEATURES_IDENT_FILE))
 info.append(('total_running_time',round(time.time()-start_run,1)))
 info.append(('processor',parser.prog))
 info.append(('processed', time.ctime()))
