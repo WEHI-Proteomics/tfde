@@ -332,7 +332,6 @@ def find_features(segment_mz_lower, segment_mz_upper, segment_id):
         summary_df['voxel_id'] = summary_df.apply(lambda row: generate_voxel_id(segment_id, row.voxel_id+1), axis=1)
         summary_df_name = '{}/summary-{}-{}.pkl'.format(SUMMARY_DIR, round(segment_mz_lower), round(segment_mz_upper))
         summary_df.to_pickle(summary_df_name)
-        print('there are {} voxels for processing in segment {} ({}-{} m/z)'.format(len(summary_df), segment_id, round(segment_mz_lower,1), round(segment_mz_upper,1)))
 
         # assign each raw point with their voxel ID
         raw_df = pd.merge(raw_df, summary_df[['bin_key','voxel_id','voxel_intensity']], how='left', left_on=['bin_key'], right_on=['bin_key'])
@@ -345,6 +344,7 @@ def find_features(segment_mz_lower, segment_mz_upper, segment_id):
 
         # process each voxel by decreasing intensity
         base_peak_voxels_df = summary_df[(summary_df.voxel_intensity >= args.minimum_voxel_intensity)]
+        print('there are {} voxels for processing in segment {} ({}-{} m/z)'.format(len(base_peak_voxels_df), segment_id, round(segment_mz_lower,1), round(segment_mz_upper,1)))
         for voxel_idx,voxel in enumerate(base_peak_voxels_df.itertuples()):
             # if this voxel hasn't already been processed...
             if (voxel.voxel_id not in voxels_processed):
