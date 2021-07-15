@@ -236,13 +236,9 @@ def determine_isotope_characteristics(envelope, rt_apex, monoisotopic_mass, feat
 
     # package the result
     result_d = {}
-
     result_d['intensity_without_saturation_correction'] = isotopes_df.iloc[:3].intensity.sum()  # only take the first three isotopes for intensity, as the number of isotopes varies
     result_d['intensity_with_saturation_correction'] = isotopes_df.iloc[:3].inferred_intensity.sum()
     result_d['mono_intensity_adjustment_outcome'] = outcome
-
-    result_d['mono_mz'] = isotopes_df.iloc[0].mz
-
     result_d['isotopic_peaks'] = isotopes_df.to_dict('records')
     result_d['isotope_count'] = len(isotopes_df)
     result_d['envelope'] = json.dumps([tuple(e) for e in envelope[:result_d['isotope_count']]])  # modify the envelope according to how many similar isotopes we found
@@ -574,7 +570,7 @@ def find_features(segment_mz_lower, segment_mz_upper, segment_id):
                                     feature_d = {**feature_d, **isotope_characteristics_d}
                                     # only include the feature if it has a minimum number of isotopes
                                     if feature_d['isotope_count'] >= MINIMUM_NUMBER_OF_ISOTOPES:
-                                        feature_d['monoisotopic_mz'] = isotope_characteristics_d['mono_mz']
+                                        feature_d['monoisotopic_mz'] = feature.mono_mz
                                         feature_d['charge'] = feature.charge
                                         feature_d['monoisotopic_mass'] = calculate_monoisotopic_mass_from_mz(monoisotopic_mz=feature_d['monoisotopic_mz'], charge=feature_d['charge'])
                                         feature_d['feature_intensity'] = isotope_characteristics_d['intensity_with_saturation_correction'] if (isotope_characteristics_d['intensity_with_saturation_correction'] > isotope_characteristics_d['intensity_without_saturation_correction']) else isotope_characteristics_d['intensity_without_saturation_correction']
