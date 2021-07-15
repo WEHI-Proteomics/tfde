@@ -339,21 +339,15 @@ def determine_mono_characteristics(envelope, mono_mz_lower, mono_mz_upper, monoi
 
         # package the result
         result_d = {}
-
         result_d['scan_apex'] = scan_apex
         result_d['scan_lower'] = scan_lower
         result_d['scan_upper'] = scan_upper
-
         result_d['rt_apex'] = rt_apex
         result_d['rt_lower'] = rt_lower
         result_d['rt_upper'] = rt_upper
-
         result_d['intensity_without_saturation_correction'] = isotopes_df.iloc[:3].intensity.sum()  # only take the first three isotopes for intensity, as the number of isotopes varies
         result_d['intensity_with_saturation_correction'] = isotopes_df.iloc[:3].inferred_intensity.sum()
         result_d['mono_intensity_adjustment_outcome'] = outcome
-
-        result_d['mono_mz'] = isotopes_df.iloc[0].mz
-
         result_d['isotopic_peaks'] = isotopes_df.to_dict('records')
         result_d['coelution_coefficient'] = coelution_coefficient
         result_d['mobility_coefficient'] = mobility_coefficient
@@ -478,7 +472,7 @@ def detect_features(precursor_cuboid_d, converted_db_name, mass_defect_bins, vis
             if mono_characteristics_d is not None:
                 # add the characteristics to the feature dictionary
                 feature_d = {**feature_d, **mono_characteristics_d}
-                feature_d['monoisotopic_mz'] = mono_characteristics_d['mono_mz']
+                feature_d['monoisotopic_mz'] = row.mono_mz
                 feature_d['charge'] = row.charge
                 feature_d['monoisotopic_mass'] = calculate_monoisotopic_mass_from_mz(monoisotopic_mz=feature_d['monoisotopic_mz'], charge=feature_d['charge'])
                 feature_d['feature_intensity'] = mono_characteristics_d['intensity_with_saturation_correction'] if (args.correct_for_saturation and (mono_characteristics_d['intensity_with_saturation_correction'] > mono_characteristics_d['intensity_without_saturation_correction'])) else mono_characteristics_d['intensity_without_saturation_correction']
