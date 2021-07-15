@@ -526,6 +526,8 @@ def find_features(segment_mz_lower, segment_mz_upper, segment_id):
                         peaks_a = intensity_descent(peaks_a=raw_points_a, peak_delta=None)
 
                         # deconvolution - see https://mobiusklein.github.io/ms_deisotope/docs/_build/html/deconvolution/deconvolution.html
+                        # returns a collection of DeconvolutedPeak (https://github.com/mobiusklein/ms_deisotope/blob/bce522a949579a5f54465eab24194eb5693f40ef/ms_deisotope/peak_set.py#L78) representing a single deconvoluted peak 
+                        # which represents an aggregated isotopic pattern collapsed to its monoisotopic peak, with a known charge state
                         ms1_peaks_l = list(map(tuple, peaks_a))
                         deconvoluted_peaks, _priority_targets = deconvolute_peaks(ms1_peaks_l, use_quick_charge=True, averagine=averagine.peptide, truncate_after=0.95)
 
