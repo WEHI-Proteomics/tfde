@@ -297,7 +297,6 @@ def find_features(segment_mz_lower, segment_mz_upper, segment_id):
 
     # load the raw points for this m/z segment
     raw_df = pd.read_hdf(CONVERTED_DATABASE_NAME, key='frames', columns=['frame_id','mz','retention_time_secs','scan','intensity'], where=['frame_type == {} and retention_time_secs >= {} and retention_time_secs <= {} and scan >= {} and mz >= {} and mz <= {}'.format(FRAME_TYPE_MS1, args.rt_lower, args.rt_upper, scan_limit, segment_mz_lower, segment_mz_upper)])
-    print('loaded {} raw points for segment {}'.format(len(raw_df), segment_id))
 
     if len(raw_df) > 0:
         # assign each point a unique identifier
