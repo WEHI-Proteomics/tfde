@@ -7,7 +7,6 @@ import os
 import time
 import argparse
 import ray
-import sqlite3
 import sys
 import multiprocessing as mp
 import pickle
@@ -297,9 +296,7 @@ def find_features(segment_mz_lower, segment_mz_upper, segment_id):
     scan_limit = scan_coords_for_single_charge_region(mz_lower=segment_mz_lower, mz_upper=segment_mz_upper)['scan_for_mz_upper']
 
     # load the raw points for this m/z segment
-    db_conn = sqlite3.connect(CONVERTED_DATABASE_NAME)
-    raw_df = pd.read_sql_query("select frame_id,mz,scan,intensity,retention_time_secs from frames where frame_type == {} and retention_time_secs >= {} and retention_time_secs <= {} and scan >= {} and mz >= {} and mz <= {}".format(FRAME_TYPE_MS1, args.rt_lower, args.rt_upper, scan_limit, segment_mz_lower, segment_mz_upper), db_conn)
-    db_conn.close()
+    raw_df = pd.read_hdf(CONVERTED_DATABASE_NAME, key='frames', columns=['frame_id','mz','retention_time_secs','scan','intensity'], where=['frame_type == {} and retention_time_secs >= {} and retention_time_secs <= {} and scan >= {} and mz >= {} and mz <= {}'.format(FRAME_TYPE_MS1, args.rt_lower, args.rt_upper, scan_limit, segment_mz_lower, segment_mz_upper)])
 
     if len(raw_df) > 0:
         # assign each point a unique identifier
@@ -637,7 +634,7 @@ if not os.path.exists(EXPERIMENT_DIR):
     sys.exit(1)
 
 # check the converted databases directory exists
-CONVERTED_DATABASE_NAME = "{}/converted-databases/exp-{}-run-{}-converted.sqlite".format(EXPERIMENT_DIR, args.experiment_name, args.run_name)
+CONVERTED_DATABASE_NAME = "{}/converted-databases/exp-{}-run-{}-converted.hdf".format(EXPERIMENT_DIR, args.experiment_name, args.run_name)
 if not os.path.isfile(CONVERTED_DATABASE_NAME):
     print("The converted database is required but doesn't exist: {}".format(CONVERTED_DATABASE_NAME))
     sys.exit(1)
@@ -698,8 +695,8 @@ RT_FILTER_POLY_ORDER = 5
 
 
 # set up the indexes
-print('setting up indexes on {}'.format(CONVERTED_DATABASE_NAME))
-create_indexes(db_file_name=CONVERTED_DATABASE_NAME)
+# print('setting up indexes on {}'.format(CONVERTED_DATABASE_NAME))
+# create_indexes(db_file_name=CONVERTED_DATABASE_NAME)
 
 # output features
 FEATURES_DIR = "{}/features-3did".format(EXPERIMENT_DIR)
