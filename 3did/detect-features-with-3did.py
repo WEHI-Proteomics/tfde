@@ -301,6 +301,12 @@ def find_features(segment_mz_lower, segment_mz_upper, segment_id):
     raw_df = pd.read_sql_query("select frame_id,mz,scan,intensity,retention_time_secs from frames where frame_type == {} and retention_time_secs >= {} and retention_time_secs <= {} and scan >= {} and mz >= {} and mz <= {}".format(FRAME_TYPE_MS1, args.rt_lower, args.rt_upper, scan_limit, segment_mz_lower, segment_mz_upper), db_conn)
     db_conn.close()
 
+    # downcast the data types to minimise the memory used
+    int_columns = ['frame_id','scan','intensity']
+    raw_df[int_columns] = raw_df[int_columns].apply(pd.to_numeric, downcast="unsigned")
+    float_columns = ['mz','retention_time_secs']
+    raw_df[float_columns] = raw_df[float_columns].apply(pd.to_numeric, downcast="float")
+
     if len(raw_df) > 0:
         # assign each point a unique identifier
         raw_df.reset_index(drop=True, inplace=True)  # just in case
