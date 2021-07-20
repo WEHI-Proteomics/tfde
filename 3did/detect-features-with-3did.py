@@ -20,7 +20,6 @@ from scipy.optimize import OptimizeWarning
 from os.path import expanduser
 from sklearn.metrics.pairwise import cosine_similarity
 import shutil
-import line_profiler
 
 
 # set up the indexes we need for queries
@@ -290,8 +289,7 @@ def measure_curve(x, y):
     return r_squared
 
 # process a segment of this run's data, and return a list of features
-# @ray.remote
-@profile
+@ray.remote
 def find_features(segment_mz_lower, segment_mz_upper, segment_id):
     features_l = []
 
@@ -729,12 +727,12 @@ if os.path.exists(SUMMARY_DIR):
 os.makedirs(SUMMARY_DIR)
 
 # set up Ray
-# print("setting up Ray")
-# if not ray.is_initialized():
-#     if args.ray_mode == "cluster":
-#         ray.init(num_cpus=number_of_workers())
-#     else:
-#         ray.init(local_mode=True)
+print("setting up Ray")
+if not ray.is_initialized():
+    if args.ray_mode == "cluster":
+        ray.init(num_cpus=number_of_workers())
+    else:
+        ray.init(local_mode=True)
 
 # calculate the segments
 mz_range = args.mz_upper - args.mz_lower
@@ -742,8 +740,7 @@ NUMBER_OF_MZ_SEGMENTS = (mz_range // args.mz_width_per_segment) + (mz_range % ar
 
 # find all the features
 print('finding features')
-# interim_names_l = ray.get([find_features.remote(segment_mz_lower=args.mz_lower+(i*args.mz_width_per_segment), segment_mz_upper=args.mz_lower+(i*args.mz_width_per_segment)+args.mz_width_per_segment, segment_id=i+1) for i in range(NUMBER_OF_MZ_SEGMENTS)])
-interim_names_l = [find_features(segment_mz_lower=args.mz_lower+(i*args.mz_width_per_segment), segment_mz_upper=args.mz_lower+(i*args.mz_width_per_segment)+args.mz_width_per_segment, segment_id=i+1) for i in range(NUMBER_OF_MZ_SEGMENTS)]
+interim_names_l = ray.get([find_features.remote(segment_mz_lower=args.mz_lower+(i*args.mz_width_per_segment), segment_mz_upper=args.mz_lower+(i*args.mz_width_per_segment)+args.mz_width_per_segment, segment_id=i+1) for i in range(NUMBER_OF_MZ_SEGMENTS)])
 
 # join the list of dataframes into a single dataframe
 features_l = []
