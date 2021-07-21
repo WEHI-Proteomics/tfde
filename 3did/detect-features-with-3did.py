@@ -600,7 +600,9 @@ def find_features(segment_mz_lower, segment_mz_upper, segment_id):
 
                                     # add the voxels included in the feature's isotopes to the list of voxels already processed
                                     voxels_processed.update(feature_d['voxels_processed'])
-
+    else:
+        print('no raw points were found in segment {} ({}-{} m/z)'.format(segment_id, round(segment_mz_lower,1), round(segment_mz_upper,1)))
+        
     # save these features until we have all the segments processed
     features_df = pd.DataFrame(features_l)
     interim_df_name = '{}/features-segment-{}.pkl'.format(INTERIM_FEATURES_DIR, segment_id)
