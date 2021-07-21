@@ -298,7 +298,7 @@ def find_features(segment_mz_lower, segment_mz_upper, segment_id):
 
     # load the raw points for this m/z segment
     db_conn = sqlite3.connect(CONVERTED_DATABASE_NAME)
-    raw_df = pd.read_sql_query("select frame_id,mz,scan,intensity,retention_time_secs from frames where frame_type == {} and retention_time_secs >= {} and retention_time_secs <= {} and scan >= {} and mz >= {} and mz <= {}".format(FRAME_TYPE_MS1, args.rt_lower, args.rt_upper, scan_limit, segment_mz_lower, segment_mz_upper), db_conn)
+    raw_df = pd.read_sql_query("select frame_id,mz,scan,intensity,retention_time_secs from frames where frame_type == {} and retention_time_secs >= {} and retention_time_secs <= {} and scan >= {} and mz >= {} and mz <= {}".format(FRAME_TYPE_MS1, args.rt_lower, args.rt_upper, scan_limit, segment_mz_lower, segment_mz_upper+SEGMENT_EXTENSION), db_conn)
     db_conn.close()
 
     # downcast the data types to minimise the memory used
@@ -315,7 +315,7 @@ def find_features(segment_mz_lower, segment_mz_upper, segment_id):
         # define bins
         rt_bins = pd.interval_range(start=raw_df.retention_time_secs.min(), end=raw_df.retention_time_secs.max()+VOXEL_SIZE_RT, freq=VOXEL_SIZE_RT, closed='left')
         scan_bins = pd.interval_range(start=raw_df.scan.min(), end=raw_df.scan.max()+VOXEL_SIZE_SCAN, freq=VOXEL_SIZE_SCAN, closed='left')
-        mz_bins = pd.interval_range(start=raw_df.mz.min(), end=raw_df.mz.max()+VOXEL_SIZE_MZ, freq=VOXEL_SIZE_MZ, closed='left')
+        mz_bins = pd.interval_range(start=segment_mz_lower, end=segment_mz_upper, freq=VOXEL_SIZE_MZ, closed='left')
 
         # assign raw points to their bins
         raw_df['rt_bin'] = pd.cut(raw_df.retention_time_secs, bins=rt_bins)
@@ -679,6 +679,8 @@ MAXIMUM_GAP_SECS_BETWEEN_EDGE_POINTS = cfg.getfloat('3did', 'MAXIMUM_GAP_SECS_BE
 INTENSITY_PROPORTION_FOR_VOXEL_TO_BE_REMOVED = cfg.getfloat('3did', 'INTENSITY_PROPORTION_FOR_VOXEL_TO_BE_REMOVED')
 ISOTOPE_SIMILARITY_RT_THRESHOLD = cfg.getfloat('3did', 'ISOTOPE_SIMILARITY_RT_THRESHOLD')
 ISOTOPE_SIMILARITY_CCS_THRESHOLD = cfg.getfloat('3did', 'ISOTOPE_SIMILARITY_CCS_THRESHOLD')
+
+SEGMENT_EXTENSION = cfg.getfloat('3did', 'SEGMENT_EXTENSION')
 
 # move these constants to the INI file
 ANCHOR_POINT_MZ_LOWER_OFFSET = CARBON_MASS_DIFFERENCE / 1
