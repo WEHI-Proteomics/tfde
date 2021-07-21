@@ -315,7 +315,7 @@ def find_features(segment_mz_lower, segment_mz_upper, segment_id):
         # define bins
         rt_bins = pd.interval_range(start=raw_df.retention_time_secs.min(), end=raw_df.retention_time_secs.max()+VOXEL_SIZE_RT, freq=VOXEL_SIZE_RT, closed='left')
         scan_bins = pd.interval_range(start=raw_df.scan.min(), end=raw_df.scan.max()+VOXEL_SIZE_SCAN, freq=VOXEL_SIZE_SCAN, closed='left')
-        mz_bins = pd.interval_range(start=segment_mz_lower, end=segment_mz_upper, freq=VOXEL_SIZE_MZ, closed='left')
+        mz_bins = pd.interval_range(start=segment_mz_lower, end=segment_mz_upper+SEGMENT_EXTENSION, freq=VOXEL_SIZE_MZ, closed='left')
 
         # assign raw points to their bins
         raw_df['rt_bin'] = pd.cut(raw_df.retention_time_secs, bins=rt_bins)
@@ -325,6 +325,8 @@ def find_features(segment_mz_lower, segment_mz_upper, segment_id):
 
         # sum the intensities in each bin
         summary_df = raw_df.groupby(['bin_key'], as_index=False, sort=False).intensity.agg(['sum','count','mean']).reset_index()
+        summary_df['extension_zone'] = summary_df.apply(lambda row: row.bin_key[0].mid > segment_mz_upper, axis=1)  # identify which voxels are in the extension zone
+        summary_df = summary_df[(summary_df.extension_zone == False)]                                               # and remove them from the summary
         summary_df.rename(columns={'sum':'voxel_intensity', 'count':'point_count', 'mean':'voxel_mean'}, inplace=True)
         summary_df.dropna(subset=['voxel_intensity'], inplace=True)
         summary_df.dropna(subset=['voxel_mean'], inplace=True)
