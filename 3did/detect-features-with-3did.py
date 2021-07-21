@@ -315,7 +315,7 @@ def find_features(segment_mz_lower, segment_mz_upper, segment_id):
         # define bins
         rt_bins = pd.interval_range(start=raw_df.retention_time_secs.min(), end=raw_df.retention_time_secs.max()+VOXEL_SIZE_RT, freq=VOXEL_SIZE_RT, closed='left')
         scan_bins = pd.interval_range(start=raw_df.scan.min(), end=raw_df.scan.max()+VOXEL_SIZE_SCAN, freq=VOXEL_SIZE_SCAN, closed='left')
-        mz_bins = pd.interval_range(start=segment_mz_lower, end=segment_mz_upper+SEGMENT_EXTENSION, freq=VOXEL_SIZE_MZ, closed='left')
+        mz_bins = pd.interval_range(start=segment_mz_lower, end=segment_mz_upper+SEGMENT_EXTENSION+VOXEL_SIZE_MZ, freq=VOXEL_SIZE_MZ, closed='left')
 
         # assign raw points to their bins
         raw_df['rt_bin'] = pd.cut(raw_df.retention_time_secs, bins=rt_bins)
