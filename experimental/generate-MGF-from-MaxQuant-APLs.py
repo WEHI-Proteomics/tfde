@@ -81,6 +81,8 @@ allpeptides_df.rename(columns={'Number of isotopic peaks':'isotope_count', 'm/z'
 allpeptides_df = allpeptides_df[allpeptides_df.intensity.notnull() & (allpeptides_df.number_pasef_ms2_ids > 0) & (allpeptides_df.msms_scan_number >= 0) & allpeptides_df.pasef_msms_ids.notnull()].copy()
 allpeptides_df = allpeptides_df[(allpeptides_df.msms_scan_number >= 0)].copy()
 allpeptides_df['rt_in_seconds'] = allpeptides_df.rt * 60.0
+allpeptides_df['rt_length_secs'] = allpeptides_df.rt_length * 60.0
+allpeptides_df['rt_length_fwhm_secs'] = allpeptides_df.rt_length_fwhm * 60.0
 allpeptides_df.sort_values(by=['msms_scan_number'], ascending=True, inplace=True)
 allpeptides_df.msms_scan_number = allpeptides_df.msms_scan_number.apply(lambda x: int(x))
 
@@ -137,8 +139,8 @@ for group_name,group_df in allpeptides_df.groupby('Raw file'):
                  'scan_lower':row.scan-(row.scan_length/2),
                  'scan_upper':row.scan+(row.scan_length/2),
                  'rt_apex':row.rt_in_seconds,
-                 'rt_lower':row.rt_in_seconds-(row.rt_length_fwhm/2),
-                 'rt_upper':row.rt_in_seconds+(row.rt_length_fwhm/2),
+                 'rt_lower':row.rt_in_seconds-(row.rt_length_secs/2),
+                 'rt_upper':row.rt_in_seconds+(row.rt_length_secs/2),
                  'raw_file':row['Raw file'],
                  'envelope':json.dumps([tuple(e) for e in envelope]),
                  'isotope_count':row.isotope_count,
