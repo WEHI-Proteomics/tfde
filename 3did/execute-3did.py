@@ -46,7 +46,7 @@ def task_detect_features():
     cmd = 'python -u detect-features-with-3did.py -eb {experiment_base} -en {experiment_name} -rn {run_name} -ini {INI_FILE} -rm cluster -minvi {minvi}'.format(experiment_base=config['experiment_base_dir'], experiment_name=config['experiment_name'], run_name=config['run_name'], INI_FILE=config['ini_file'], minvi=config['minvi'])
     # output
     FEATURES_DIR = '{experiment_dir}/features-3did'.format(experiment_dir=EXPERIMENT_DIR)
-    FEATURES_FILE = '{features_dir}/exp-{experiment_name}-run-{run_name}-features-3did.pkl'.format(features_dir=FEATURES_DIR, config['experiment_name'], config['run_name'])
+    FEATURES_FILE = '{features_dir}/exp-{experiment_name}-run-{run_name}-features-3did.pkl'.format(features_dir=FEATURES_DIR, experiment_name=config['experiment_name'], run_name=config['run_name'])
 
     return {
         'file_dep': [CONVERTED_DATABASE_NAME],
