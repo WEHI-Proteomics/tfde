@@ -41,12 +41,12 @@ start_run = time.time()
 ####################
 def task_detect_features():
     # input
-    CONVERTED_DATABASE_NAME = "{}/converted-databases/exp-{}-run-{}-converted.sqlite".format(EXPERIMENT_DIR, config['experiment_name'], config['run_name'])
+    CONVERTED_DATABASE_NAME = "{experiment_dir}/converted-databases/exp-{experiment_name}-run-{run_name}-converted.sqlite".format(experiment_dir=EXPERIMENT_DIR, experiment_name=config['experiment_name'], run_name=config['run_name'])
     # command
     cmd = 'python -u detect-features-with-3did.py -eb {experiment_base} -en {experiment_name} -rn {run_name} -ini {INI_FILE} -rm cluster -minvi {minvi}'.format(experiment_base=config['experiment_base_dir'], experiment_name=config['experiment_name'], run_name=config['run_name'], INI_FILE=config['ini_file'], minvi=config['minvi'])
     # output
-    FEATURES_DIR = '{}/features-3did'.format(EXPERIMENT_DIR)
-    FEATURES_FILE = '{}/exp-{}-run-{}-features-3did.pkl'.format(FEATURES_DIR, config['experiment_name'], config['run_name'])
+    FEATURES_DIR = '{experiment_dir}/features-3did'.format(experiment_dir=EXPERIMENT_DIR)
+    FEATURES_FILE = '{features_dir}/exp-{experiment_name}-run-{run_name}-features-3did.pkl'.format(features_dir=FEATURES_DIR, config['experiment_name'], config['run_name'])
 
     return {
         'file_dep': [CONVERTED_DATABASE_NAME],
@@ -58,12 +58,12 @@ def task_detect_features():
 
 def task_classify_features():
     # input
-    FEATURES_DIR = '{}/features-3did'.format(EXPERIMENT_DIR)
-    FEATURES_FILE = '{}/exp-{}-run-{}-features-3did.pkl'.format(FEATURES_DIR, config['experiment_name'], config['run_name'])
+    FEATURES_DIR = '{experiment_dir}/features-3did'.format(experiment_dir=EXPERIMENT_DIR)
+    FEATURES_FILE = '{features_dir}/exp-{experiment_name}-run-{run_name}-features-3did.pkl'.format(features_dir=FEATURES_DIR, experiment_name=config['experiment_name'], run_name=config['run_name'])
     # command
     cmd = 'python -u classify-detected-features.py -eb {experiment_base} -en {experiment_name} -rn {run_name}'.format(experiment_base=config['experiment_base_dir'], experiment_name=config['experiment_name'], run_name=config['run_name'])
     # output
-    FEATURES_IDENT_FILE = '{FEATURES_DIR}/exp-{experiment_name}-run-{run_name}-features-3did-ident.pkl'.format(FEATURES_DIR, experiment_name=config['experiment_name'], run_name=config['run_name'])
+    FEATURES_IDENT_FILE = '{features_dir}/exp-{experiment_name}-run-{run_name}-features-3did-ident.pkl'.format(features_dir=FEATURES_DIR, experiment_name=config['experiment_name'], run_name=config['run_name'])
 
     return {
         'file_dep': [FEATURES_FILE],
@@ -75,12 +75,12 @@ def task_classify_features():
 
 def task_remove_duplicate_features():
     # input
-    FEATURES_DIR = "{}/features-3did".format(EXPERIMENT_DIR)
-    FEATURES_IDENT_FILE = '{FEATURES_DIR}/exp-{experiment_name}-run-{run_name}-features-3did-ident.pkl'.format(FEATURES_DIR, experiment_name=config['experiment_name'], run_name=config['run_name'])
+    FEATURES_DIR = "{experiment_dir}/features-3did".format(experiment_dir=EXPERIMENT_DIR)
+    FEATURES_IDENT_FILE = '{features_dir}/exp-{experiment_name}-run-{run_name}-features-3did-ident.pkl'.format(features_dir=FEATURES_DIR, experiment_name=config['experiment_name'], run_name=config['run_name'])
     # command
     cmd = 'python -u ../pipeline/remove-duplicate-features.py -eb {experiment_base} -en {experiment_name} -rn {run_name} -ini {INI_FILE} -pdm 3did'.format(experiment_base=config['experiment_base_dir'], experiment_name=config['experiment_name'], run_name=config['run_name'], INI_FILE=config['ini_file'])
     # output
-    FEATURES_DEDUP_FILE = '{}/exp-{}-run-{}-features-3did-dedup.pkl'.format(FEATURES_DIR, config['experiment_name'], config['run_name'])
+    FEATURES_DEDUP_FILE = '{features_dir}/exp-{experiment_name}-run-{run_name}-features-3did-dedup.pkl'.format(features_dir=FEATURES_DIR, experiment_name=config['experiment_name'], run_name=config['run_name'])
 
     return {
         'file_dep': [FEATURES_IDENT_FILE],
