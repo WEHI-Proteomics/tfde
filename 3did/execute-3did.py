@@ -108,7 +108,7 @@ def task_make_copies():
 
     def create_features_cmd_string():
         # copy features
-        source_features_dir = '{}/features-{}'.format(EXPERIMENT_DIR, config['precursor_definition_method'])
+        source_features_dir = '{}/features-3did'.format(EXPERIMENT_DIR)
         cmd = 'cp -r {}/ {}/'.format(source_features_dir, target_directory_name)
         return cmd
 
