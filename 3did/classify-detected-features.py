@@ -45,7 +45,7 @@ if not os.path.isfile(FEATURES_FILE):
 FEATURES_IDENT_FILE = '{}/exp-{}-run-{}-features-3did-ident.pkl'.format(FEATURES_DIR, args.experiment_name, args.run_name)
 
 # check the trained model
-MODEL_DIR = '{}/classifier'.format(FEATURES_DIR)
+MODEL_DIR = '{}/features-3did-classifier'.format(EXPERIMENT_DIR)
 if not os.path.exists(MODEL_DIR):
     print("The trained model is required but doesn't exist: {}".format(MODEL_DIR))
     sys.exit(1)
