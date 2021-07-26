@@ -598,11 +598,12 @@ def find_features(segment_mz_lower, segment_mz_upper, segment_id):
         print('no raw points were found in segment {} ({}-{} m/z)'.format(segment_id, round(segment_mz_lower,1), round(segment_mz_upper,1)))
         
     features_df = pd.DataFrame(features_l)
-    # downcast the data types to minimise the memory used
-    int_columns = ['intensity_without_saturation_correction','intensity_with_saturation_correction','isotope_count','charge','feature_intensity','voxel_id','feature_id']
-    features_df[int_columns] = features_df[int_columns].apply(pd.to_numeric, downcast="unsigned")
-    float_columns = ['mono_mz_lower','mono_mz_upper','scan_apex','scan_lower','scan_upper','rt_apex','rt_lower','rt_upper','coelution_coefficient','mobility_coefficient','monoisotopic_mz','monoisotopic_mass','deconvolution_score','scan_r_squared','rt_r_squared','prediction']
-    features_df[float_columns] = features_df[float_columns].apply(pd.to_numeric, downcast="float")    
+    if len(features_df) > 0:
+        # downcast the data types to minimise the memory used
+        int_columns = ['intensity_without_saturation_correction','intensity_with_saturation_correction','isotope_count','charge','feature_intensity','voxel_id','feature_id']
+        features_df[int_columns] = features_df[int_columns].apply(pd.to_numeric, downcast="unsigned")
+        float_columns = ['mono_mz_lower','mono_mz_upper','scan_apex','scan_lower','scan_upper','rt_apex','rt_lower','rt_upper','coelution_coefficient','mobility_coefficient','monoisotopic_mz','monoisotopic_mass','deconvolution_score','scan_r_squared','rt_r_squared','prediction']
+        features_df[float_columns] = features_df[float_columns].apply(pd.to_numeric, downcast="float")    
     # save these features until we have all the segments processed
     interim_df_name = '{}/features-segment-{}.pkl'.format(INTERIM_FEATURES_DIR, segment_id)
     features_df.to_pickle(interim_df_name)
