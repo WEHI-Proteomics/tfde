@@ -298,14 +298,8 @@ def find_features(segment_mz_lower, segment_mz_upper, segment_id):
 
     # load the raw points for this m/z segment
     db_conn = sqlite3.connect(CONVERTED_DATABASE_NAME)
-    raw_df = pd.read_sql_query("select frame_id,mz,scan,intensity,retention_time_secs from frames where frame_type == {} and retention_time_secs >= {} and retention_time_secs <= {} and scan >= {} and mz >= {} and mz <= {}".format(FRAME_TYPE_MS1, args.rt_lower, args.rt_upper, scan_limit, segment_mz_lower, segment_mz_upper+SEGMENT_EXTENSION), db_conn)
+    raw_df = pd.read_sql_query("select frame_id,mz,scan,intensity,retention_time_secs from frames where frame_type == {} and retention_time_secs >= {} and retention_time_secs <= {} and scan >= {} and mz >= {} and mz <= {}".format(FRAME_TYPE_MS1, args.rt_lower, args.rt_upper, scan_limit, segment_mz_lower, segment_mz_upper+SEGMENT_EXTENSION), db_conn, dtype={'frame_id':np.uint16,'mz':np.float16,'scan':np.uint16,'intensity':np.uint16,'retention_time_secs':np.float32})
     db_conn.close()
-
-    # downcast the data types to minimise the memory used
-    int_columns = ['frame_id','scan','intensity']
-    raw_df[int_columns] = raw_df[int_columns].apply(pd.to_numeric, downcast="unsigned")
-    float_columns = ['mz','retention_time_secs']
-    raw_df[float_columns] = raw_df[float_columns].apply(pd.to_numeric, downcast="float")
 
     if len(raw_df) > 0:
         # assign each point a unique identifier
