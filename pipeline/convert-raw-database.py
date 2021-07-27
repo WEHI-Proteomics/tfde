@@ -91,6 +91,12 @@ def load_raw_points(frame_lower, frame_upper):
                 intensity = int(intensity_values[i])
                 frame_points.append({'frame_id':frame_id, 'frame_type':frame_type, 'mz':mz_value, 'scan':scan_number, 'intensity':intensity, 'retention_time_secs':retention_time_secs, 'one_over_k0':one_over_k0, 'voltage':voltage})
     points_df = pd.DataFrame(frame_points)
+    if len(points_df) > 0:
+        # downcast the data types to minimise the memory used
+        int_columns = ['frame_id','frame_type','scan','intensity']
+        points_df[int_columns] = points_df[int_columns].apply(pd.to_numeric, downcast="unsigned")
+        float_columns = ['mz','retention_time_secs','one_over_k0','voltage']
+        points_df[float_columns] = points_df[float_columns].apply(pd.to_numeric, downcast="float")    
     return points_df
 
 
