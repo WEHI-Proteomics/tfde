@@ -29,41 +29,6 @@ def load_frame_properties(database_name):
     print("loaded {} frame_properties from {}".format(len(frames_properties_df), database_name))
     return frames_properties_df
 
-# load the raw points within the given frame and scan range
-def load_raw_points():
-    # connect to the database with the timsTOF SDK
-    td = timsdata.TimsData(args.raw_database_directory)
-
-    # read the raw points in the specified frame range
-    frame_points = []
-    for row in frames_properties_df.itertuples():
-        # read the points from the scan lines
-        for scan_idx,scan in enumerate(td.readScans(frame_id=row.Id, scan_begin=0, scan_end=row.NumScans)):
-            index = np.array(scan[0], dtype=np.float64)
-            mz_values = td.indexToMz(row.Id, index)
-            intensity_values = scan[1]
-            scan_number = scan_idx
-            number_of_points_on_scan = len(mz_values)
-            for i in range(0, number_of_points_on_scan):   # step through the readings (i.e. points) on this scan line
-                mz_value = float(mz_values[i])
-                intensity = int(intensity_values[i])
-                frame_points.append((row.Id, mz_value, scan_number, intensity))
-
-    # form the raw points DF
-    points_df = pd.DataFrame(frame_points, columns=['frame_id','mz','scan','intensity'])
-
-    # merge in the retention time
-    points_df = pd.merge(points_df, frames_properties_df[['Id','Time']], how='left', left_on=['frame_id'], right_on=['Id'])
-    points_df.rename(columns={'Time':'retention_time_secs'}, inplace=True)
-
-    # downcast the data types to minimise the memory used
-    if len(points_df) > 0:
-        int_columns = ['frame_id','scan','intensity']
-        points_df[int_columns] = points_df[int_columns].apply(pd.to_numeric, downcast="unsigned")
-        float_columns = ['mz','retention_time_secs']
-        points_df[float_columns] = points_df[float_columns].apply(pd.to_numeric, downcast="float")
-    return points_df
-
 
 ##############################################
 parser = argparse.ArgumentParser(description='Transform the raw database to a processing schema.')
@@ -112,7 +77,36 @@ frames_properties_df = load_frame_properties(RAW_DATABASE_NAME)
 
 # copy the frames
 print("loading the raw points")
-points_df = load_raw_points()
+# connect to the database with the timsTOF SDK
+td = timsdata.TimsData(args.raw_database_directory)
+# read the raw points in the specified frame range
+frame_points = []
+for row in frames_properties_df.itertuples():
+    # read the points from the scan lines
+    for scan_idx,scan in enumerate(td.readScans(frame_id=row.Id, scan_begin=0, scan_end=row.NumScans)):
+        index = np.array(scan[0], dtype=np.float64)
+        mz_values = td.indexToMz(row.Id, index)
+        intensity_values = scan[1]
+        scan_number = scan_idx
+        number_of_points_on_scan = len(mz_values)
+        for i in range(0, number_of_points_on_scan):   # step through the readings (i.e. points) on this scan line
+            mz_value = float(mz_values[i])
+            intensity = int(intensity_values[i])
+            frame_points.append((row.Id, mz_value, scan_number, intensity))
+
+# form the raw points DF
+points_df = pd.DataFrame(frame_points, columns=['frame_id','mz','scan','intensity'])
+
+# merge in the retention time
+points_df = pd.merge(points_df, frames_properties_df[['Id','Time']], how='left', left_on=['frame_id'], right_on=['Id'])
+points_df.rename(columns={'Time':'retention_time_secs'}, inplace=True)
+
+# downcast the data types to minimise the memory used
+if len(points_df) > 0:
+    int_columns = ['frame_id','scan','intensity']
+    points_df[int_columns] = points_df[int_columns].apply(pd.to_numeric, downcast="unsigned")
+    float_columns = ['mz','retention_time_secs']
+    points_df[float_columns] = points_df[float_columns].apply(pd.to_numeric, downcast="float")
 
 # calculate the segments
 mz_range = args.mz_upper - args.mz_lower
