@@ -174,7 +174,7 @@ print("loading the raw points")
 max_frame_id = frames_properties_df.Id.max()
 
 if args.small_set_mode:
-    max_frame_id = 10
+    max_frame_id = 500
 
 print("max_frame_id: {}".format(max_frame_id))
 
