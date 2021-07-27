@@ -77,6 +77,7 @@ if not os.path.isfile(RAW_DATABASE_NAME):
 print("loading the frames information")
 frames_properties_df = load_frame_properties(RAW_DATABASE_NAME)
 
+
 # copy the frames
 print("loading the raw points")
 # connect to the database with the timsTOF SDK
@@ -84,6 +85,8 @@ td = timsdata.TimsData(args.raw_database_directory)
 # connect to the in-memory database
 con = sqlite3.connect(':memory:')
 cur = con.cursor()
+cur.execute("CREATE TABLE frames (frame_id INTEGER, mz REAL, scan INTEGER, intensity INTEGER, retention_time_secs REAL)")
+
 # read the raw points in the specified frame range
 for row in frames_properties_df.itertuples():
     frame_points = []
