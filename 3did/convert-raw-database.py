@@ -102,7 +102,7 @@ for row in frames_properties_df.itertuples():
             intensity = int(intensity_values[i])
             frame_points.append((row.Id, mz_value, scan_number, intensity, row.Time))
     # insert the frame's points into the table
-    cur.executemany("insert into frames values (?, ?, ?, ?, ?, ?, ?, ?)", frame_points)
+    cur.executemany("insert into frames values (?, ?, ?, ?, ?)", frame_points)
 
 # calculate the segments
 print('segmenting')
