@@ -47,10 +47,10 @@ def load_raw_points():
             for i in range(0, number_of_points_on_scan):   # step through the readings (i.e. points) on this scan line
                 mz_value = float(mz_values[i])
                 intensity = int(intensity_values[i])
-                frame_points.append({'frame_id':row.Id, 'mz':mz_value, 'scan':scan_number, 'intensity':intensity})
+                frame_points.append((row.Id, mz_value, scan_number, intensity))
 
     # form the raw points DF
-    points_df = pd.DataFrame(frame_points)
+    points_df = pd.DataFrame(frame_points, columns=['frame_id','mz','scan','intensity'])
 
     # merge in the retention time
     points_df = pd.merge(points_df, frames_properties_df[['Id','Time']], how='left', left_on=['frame_id'], right_on=['Id'])
@@ -58,7 +58,7 @@ def load_raw_points():
 
     # downcast the data types to minimise the memory used
     if len(points_df) > 0:
-        int_columns = ['frame_id','frame_type','scan','intensity']
+        int_columns = ['frame_id','scan','intensity']
         points_df[int_columns] = points_df[int_columns].apply(pd.to_numeric, downcast="unsigned")
         float_columns = ['mz','retention_time_secs']
         points_df[float_columns] = points_df[float_columns].apply(pd.to_numeric, downcast="float")
