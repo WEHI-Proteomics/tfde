@@ -23,7 +23,7 @@ FRAME_TYPE_MS2 = 8
 def load_frame_properties(database_name):
     # get all the isolation windows
     db_conn = sqlite3.connect(database_name)
-    frames_properties_df = pd.read_sql_query("select * from Frames order by Id ASC;", db_conn)
+    frames_properties_df = pd.read_sql_query("select Id,Time,NumScans from Frames where MsMsType==0 order by Id ASC;", db_conn)
     db_conn.close()
 
     print("loaded {} frame_properties from {}".format(len(frames_properties_df), database_name))
@@ -31,33 +31,23 @@ def load_frame_properties(database_name):
 
 # load the raw points within the given frame and scan range
 def load_raw_points():
-    # check parameter ranges
-    min_frames = frames_properties_df.Id.min()
-    max_frames = frames_properties_df.Id.max()-1
-
     # connect to the database with the timsTOF SDK
     td = timsdata.TimsData(args.raw_database_directory)
 
     # read the raw points in the specified frame range
     frame_points = []
-    for frame_id in range(min_frames, max_frames+1):
-        # find the metadata for this frame
-        frame_info = frames_properties_df[(frames_properties_df.Id == frame_id)].iloc[0]
-        retention_time_secs = frame_info['Time']
-        frame_type = int(frame_info['MsMsType'])
-        number_of_scans = int(frame_info['NumScans'])
-        if frame_type == FRAME_TYPE_MS1:
-            # read the points from the scan lines
-            for scan_idx,scan in enumerate(td.readScans(frame_id=frame_id, scan_begin=0, scan_end=number_of_scans)):
-                index = np.array(scan[0], dtype=np.float64)
-                mz_values = td.indexToMz(frame_id, index)
-                intensity_values = scan[1]
-                scan_number = scan_idx
-                number_of_points_on_scan = len(mz_values)
-                for i in range(0, number_of_points_on_scan):   # step through the readings (i.e. points) on this scan line
-                    mz_value = float(mz_values[i])
-                    intensity = int(intensity_values[i])
-                    frame_points.append({'frame_id':frame_id, 'frame_type':frame_type, 'mz':mz_value, 'scan':scan_number, 'intensity':intensity, 'retention_time_secs':retention_time_secs})
+    for row in frames_properties_df.itertuples():
+        # read the points from the scan lines
+        for scan_idx,scan in enumerate(td.readScans(frame_id=row.Id, scan_begin=0, scan_end=row.NumScans)):
+            index = np.array(scan[0], dtype=np.float64)
+            mz_values = td.indexToMz(row.Id, index)
+            intensity_values = scan[1]
+            scan_number = scan_idx
+            number_of_points_on_scan = len(mz_values)
+            for i in range(0, number_of_points_on_scan):   # step through the readings (i.e. points) on this scan line
+                mz_value = float(mz_values[i])
+                intensity = int(intensity_values[i])
+                frame_points.append({'frame_id':row.Id, 'frame_type':FRAME_TYPE_MS1, 'mz':mz_value, 'scan':scan_number, 'intensity':intensity, 'retention_time_secs':row.Time})
 
     points_df = pd.DataFrame(frame_points)
     if len(points_df) > 0:
