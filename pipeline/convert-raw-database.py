@@ -89,7 +89,11 @@ def load_raw_points(frame_lower, frame_upper):
             for i in range(0, number_of_points_on_scan):   # step through the readings (i.e. points) on this scan line
                 mz_value = float(mz_values[i])
                 intensity = int(intensity_values[i])
-                frame_points.append({'frame_id':frame_id, 'frame_type':frame_type, 'mz':mz_value, 'scan':scan_number, 'intensity':intensity, 'retention_time_secs':retention_time_secs, 'one_over_k0':one_over_k0, 'voltage':voltage})
+                d = {'frame_id':frame_id, 'frame_type':frame_type, 'mz':mz_value, 'scan':scan_number, 'intensity':intensity, 'retention_time_secs':retention_time_secs}
+                if args.include_extra_fields:
+                    d['one_over_k0'] = one_over_k0
+                    d['voltage'] = voltage
+                frame_points.append(d)
     points_df = pd.DataFrame(frame_points)
     return points_df
 
@@ -103,6 +107,7 @@ parser.add_argument('-rdd','--raw_database_directory', type=str, help='The full 
 parser.add_argument('-ini','--ini_file', type=str, default='./otf-peak-detect/pipeline/pasef-process-short-gradient.ini', help='Path to the config file.', required=False)
 parser.add_argument('-nfb','--number_of_frames_in_batch', type=int, default=500, help='The number of frames in a batch.', required=False)
 parser.add_argument('-ssm', '--small_set_mode', action='store_true', help='A small subset of the data for testing purposes.')
+parser.add_argument('-ief', '--include_extra_fields', action='store_true', help='Include one_over_k0 and voltage.')
 args = parser.parse_args()
 
 # Print the arguments for the log
