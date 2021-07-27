@@ -46,19 +46,26 @@ def load_raw_points():
         retention_time_secs = frame_info['Time']
         frame_type = int(frame_info['MsMsType'])
         number_of_scans = int(frame_info['NumScans'])
+        if frame_type == FRAME_TYPE_MS1:
+            # read the points from the scan lines
+            for scan_idx,scan in enumerate(td.readScans(frame_id=frame_id, scan_begin=0, scan_end=number_of_scans)):
+                index = np.array(scan[0], dtype=np.float64)
+                mz_values = td.indexToMz(frame_id, index)
+                intensity_values = scan[1]
+                scan_number = scan_idx
+                number_of_points_on_scan = len(mz_values)
+                for i in range(0, number_of_points_on_scan):   # step through the readings (i.e. points) on this scan line
+                    mz_value = float(mz_values[i])
+                    intensity = int(intensity_values[i])
+                    frame_points.append({'frame_id':frame_id, 'frame_type':frame_type, 'mz':mz_value, 'scan':scan_number, 'intensity':intensity, 'retention_time_secs':retention_time_secs})
 
-        # read the points from the scan lines
-        for scan_idx,scan in enumerate(td.readScans(frame_id=frame_id, scan_begin=0, scan_end=number_of_scans)):
-            index = np.array(scan[0], dtype=np.float64)
-            mz_values = td.indexToMz(frame_id, index)
-            intensity_values = scan[1]
-            scan_number = scan_idx
-            number_of_points_on_scan = len(mz_values)
-            for i in range(0, number_of_points_on_scan):   # step through the readings (i.e. points) on this scan line
-                mz_value = float(mz_values[i])
-                intensity = int(intensity_values[i])
-                frame_points.append({'frame_id':frame_id, 'frame_type':frame_type, 'mz':mz_value, 'scan':scan_number, 'intensity':intensity, 'retention_time_secs':retention_time_secs})
     points_df = pd.DataFrame(frame_points)
+    if len(points_df) > 0:
+        # downcast the data types to minimise the memory used
+        int_columns = ['frame_id','frame_type','scan','intensity']
+        points_df[int_columns] = points_df[int_columns].apply(pd.to_numeric, downcast="unsigned")
+        float_columns = ['mz','retention_time_secs']
+        points_df[float_columns] = points_df[float_columns].apply(pd.to_numeric, downcast="float")
     return points_df
 
 
