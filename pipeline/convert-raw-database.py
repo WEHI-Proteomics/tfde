@@ -22,7 +22,7 @@ FRAME_TYPE_MS1 = 0
 FRAME_TYPE_MS2 = 8
 
 # returns a dataframe with the prepared isolation windows
-def load_isolation_windows(database_name, small_set_mode):
+def load_isolation_windows(database_name):
     # get all the isolation windows
     db_conn = sqlite3.connect(database_name)
     isolation_window_df = pd.read_sql_query("select * from PasefFrameMsMsInfo order by Precursor", db_conn)
@@ -30,14 +30,8 @@ def load_isolation_windows(database_name, small_set_mode):
 
     isolation_window_df['mz_lower'] = isolation_window_df.IsolationMz - (isolation_window_df.IsolationWidth / 2) - MS2_MZ_ISOLATION_WINDOW_EXTENSION
     isolation_window_df['mz_upper'] = isolation_window_df.IsolationMz + (isolation_window_df.IsolationWidth / 2) + MS2_MZ_ISOLATION_WINDOW_EXTENSION
-
-    if small_set_mode:
-        # select a subset around the middle
-        start_idx = int(len(isolation_window_df) / 2)
-        stop_idx = start_idx + 20
-        isolation_window_df = isolation_window_df[start_idx:stop_idx]
-
     print("loaded {} isolation windows from {}".format(len(isolation_window_df), database_name))
+
     return isolation_window_df
 
 # returns a dataframe with the frame properties
@@ -105,8 +99,6 @@ parser.add_argument('-en','--experiment_name', type=str, help='Name of the exper
 parser.add_argument('-rn','--run_name', type=str, help='Name of the run.', required=True)
 parser.add_argument('-rdd','--raw_database_directory', type=str, help='The full path to the directory (i.e. the \'.d\' path) of the raw database.', required=True)
 parser.add_argument('-ini','--ini_file', type=str, default='./otf-peak-detect/pipeline/pasef-process-short-gradient.ini', help='Path to the config file.', required=False)
-parser.add_argument('-nfb','--number_of_frames_in_batch', type=int, default=500, help='The number of frames in a batch.', required=False)
-parser.add_argument('-ssm', '--small_set_mode', action='store_true', help='A small subset of the data for testing purposes.')
 parser.add_argument('-ief', '--include_extra_fields', action='store_true', help='Include one_over_k0 and voltage.')
 args = parser.parse_args()
 
@@ -169,7 +161,7 @@ db_conn.close()
 
 # load the isolation windows table
 print("loading the isolation windows")
-isolation_windows_df = load_isolation_windows(RAW_DATABASE_NAME, args.small_set_mode)
+isolation_windows_df = load_isolation_windows(RAW_DATABASE_NAME)
 db_conn = sqlite3.connect(RUN_DB_NAME)
 isolation_windows_df.to_sql(name='isolation_windows', con=db_conn, if_exists='replace', index=False)
 db_conn.close()
@@ -177,19 +169,11 @@ db_conn.close()
 # copy the frames
 print("loading the raw points")
 max_frame_id = frames_properties_df.Id.max()
-
-if args.small_set_mode:
-    max_frame_id = 2000
-
-print("max_frame_id: {}".format(max_frame_id))
-
-for frame_lower in range(1, max_frame_id, args.number_of_frames_in_batch):
-    frame_upper = min(frame_lower + args.number_of_frames_in_batch - 1, max_frame_id)
-    print("processing frames {} to {}".format(frame_lower, frame_upper))
-    points_df = load_raw_points(frame_lower=frame_lower, frame_upper=frame_upper)
-    db_conn = sqlite3.connect(RUN_DB_NAME)
-    points_df.to_sql(name='frames', con=db_conn, if_exists='append', index=False)
-    db_conn.close()
+print("processing frames {} to {}".format(1, max_frame_id))
+points_df = load_raw_points(frame_lower=1, frame_upper=max_frame_id)
+db_conn = sqlite3.connect(RUN_DB_NAME)
+points_df.to_sql(name='frames', con=db_conn, if_exists='replace', index=False)
+db_conn.close()
 
 stop_run = time.time()
 print("total running time ({}): {} seconds".format(parser.prog, round(stop_run-start_run,1)))
