@@ -95,13 +95,16 @@ for row in frames_properties_df.itertuples():
             frame_points.append((row.Id, mz_value, scan_number, intensity))
 
 # form the raw points DF
+print('creating the dataframe')
 points_df = pd.DataFrame(frame_points, columns=['frame_id','mz','scan','intensity'])
 
 # merge in the retention time
+print('merging')
 points_df = pd.merge(points_df, frames_properties_df[['Id','Time']], how='left', left_on=['frame_id'], right_on=['Id'])
 points_df.rename(columns={'Time':'retention_time_secs'}, inplace=True)
 
 # downcast the data types to minimise the memory used
+print('downcasting')
 if len(points_df) > 0:
     int_columns = ['frame_id','scan','intensity']
     points_df[int_columns] = points_df[int_columns].apply(pd.to_numeric, downcast="unsigned")
@@ -109,6 +112,7 @@ if len(points_df) > 0:
     points_df[float_columns] = points_df[float_columns].apply(pd.to_numeric, downcast="float")
 
 # calculate the segments
+print('segmenting')
 mz_range = args.mz_upper - args.mz_lower
 NUMBER_OF_MZ_SEGMENTS = (mz_range // args.mz_width_per_segment) + (mz_range % args.mz_width_per_segment > 0)  # thanks to https://stackoverflow.com/a/23590097/1184799
 for i in range(NUMBER_OF_MZ_SEGMENTS):
