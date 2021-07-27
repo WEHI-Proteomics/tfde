@@ -19,6 +19,8 @@ import os.path
 FRAME_TYPE_MS1 = 0
 FRAME_TYPE_MS2 = 8
 
+SEGMENT_EXTENSION = 2.0
+
 # returns a dataframe with the frame properties
 def load_frame_properties(database_name):
     # get all the isolation windows
@@ -79,9 +81,12 @@ frames_properties_df = load_frame_properties(RAW_DATABASE_NAME)
 print("loading the raw points")
 # connect to the database with the timsTOF SDK
 td = timsdata.TimsData(args.raw_database_directory)
+# connect to the in-memory database
+con = sqlite3.connect(':memory:')
+cur = con.cursor()
 # read the raw points in the specified frame range
-frame_points = []
 for row in frames_properties_df.itertuples():
+    frame_points = []
     # read the points from the scan lines
     for scan_idx,scan in enumerate(td.readScans(frame_id=row.Id, scan_begin=0, scan_end=row.NumScans)):
         index = np.array(scan[0], dtype=np.float64)
@@ -92,24 +97,9 @@ for row in frames_properties_df.itertuples():
         for i in range(0, number_of_points_on_scan):   # step through the readings (i.e. points) on this scan line
             mz_value = float(mz_values[i])
             intensity = int(intensity_values[i])
-            frame_points.append((row.Id, mz_value, scan_number, intensity))
-
-# form the raw points DF
-print('creating the dataframe')
-points_df = pd.DataFrame(frame_points, columns=['frame_id','mz','scan','intensity'])
-
-# merge in the retention time
-print('merging')
-points_df = pd.merge(points_df, frames_properties_df[['Id','Time']], how='left', left_on=['frame_id'], right_on=['Id'])
-points_df.rename(columns={'Time':'retention_time_secs'}, inplace=True)
-
-# downcast the data types to minimise the memory used
-print('downcasting')
-if len(points_df) > 0:
-    int_columns = ['frame_id','scan','intensity']
-    points_df[int_columns] = points_df[int_columns].apply(pd.to_numeric, downcast="unsigned")
-    float_columns = ['mz','retention_time_secs']
-    points_df[float_columns] = points_df[float_columns].apply(pd.to_numeric, downcast="float")
+            frame_points.append((row.Id, mz_value, scan_number, intensity, row.Time))
+    # insert the frame's points into the table
+    cur.executemany("insert into frames values (?, ?, ?, ?, ?, ?, ?, ?)", frame_points)
 
 # calculate the segments
 print('segmenting')
@@ -120,9 +110,11 @@ for i in range(NUMBER_OF_MZ_SEGMENTS):
     segment_mz_upper=args.mz_lower+(i*args.mz_width_per_segment)+args.mz_width_per_segment
     segment_id=i+1
     segment_filename = '{}/exp-{}-run-{}-segment-{}-{}-{}.pkl'.format(RUN_DIR, args.experiment_name, args.run_name, segment_id, segment_mz_lower, segment_mz_upper)
-    segment_df = points_df[(points_df.mz >= segment_mz_lower) & (points_df.mz <= segment_mz_upper)]
+    segment_df = pd.read_sql_query("select frame_id,mz,scan,intensity,retention_time_secs from frames where mz >= {} and mz <= {}".format(segment_mz_lower, segment_mz_upper+SEGMENT_EXTENSION), con, dtype={'frame_id':np.uint16,'mz':np.float32,'scan':np.uint16,'intensity':np.uint16,'retention_time_secs':np.float32})
     print('writing {} points to {}'.format(len(segment_df), segment_filename))
     segment_df.to_pickle(segment_filename)
+
+con.close()
 
 stop_run = time.time()
 print("total running time ({}): {} seconds".format(parser.prog, round(stop_run-start_run,1)))
