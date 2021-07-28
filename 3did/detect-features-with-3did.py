@@ -284,26 +284,26 @@ def measure_curve(x, y):
 
 # process a segment of this run's data, and return a list of features
 @ray.remote
-def find_features(segment_mz_lower, segment_mz_upper, segment_id):
+def find_features(segment_mz_lower, segment_mz_upper, segment_id, segment_df):
     features_l = []
-    if len(raw_df) > 0:
+    if len(segment_df) > 0:
         # assign each point a unique identifier
-        raw_df.reset_index(drop=True, inplace=True)  # just in case
-        raw_df['point_id'] = raw_df.index
+        segment_df.reset_index(drop=True, inplace=True)  # just in case
+        segment_df['point_id'] = segment_df.index
 
         # define bins
-        rt_bins = pd.interval_range(start=raw_df.retention_time_secs.min(), end=raw_df.retention_time_secs.max()+VOXEL_SIZE_RT, freq=VOXEL_SIZE_RT, closed='left')
-        scan_bins = pd.interval_range(start=raw_df.scan.min(), end=raw_df.scan.max()+VOXEL_SIZE_SCAN, freq=VOXEL_SIZE_SCAN, closed='left')
+        rt_bins = pd.interval_range(start=segment_df.retention_time_secs.min(), end=segment_df.retention_time_secs.max()+VOXEL_SIZE_RT, freq=VOXEL_SIZE_RT, closed='left')
+        scan_bins = pd.interval_range(start=segment_df.scan.min(), end=segment_df.scan.max()+VOXEL_SIZE_SCAN, freq=VOXEL_SIZE_SCAN, closed='left')
         mz_bins = pd.interval_range(start=segment_mz_lower, end=segment_mz_upper+SEGMENT_EXTENSION+VOXEL_SIZE_MZ, freq=VOXEL_SIZE_MZ, closed='left')
 
         # assign raw points to their bins
-        raw_df['rt_bin'] = pd.cut(raw_df.retention_time_secs, bins=rt_bins)
-        raw_df['scan_bin'] = pd.cut(raw_df.scan, bins=scan_bins)
-        raw_df['mz_bin'] = pd.cut(raw_df.mz, bins=mz_bins)
-        raw_df['bin_key'] = list(zip(raw_df.mz_bin, raw_df.scan_bin, raw_df.rt_bin))
+        segment_df['rt_bin'] = pd.cut(segment_df.retention_time_secs, bins=rt_bins)
+        segment_df['scan_bin'] = pd.cut(segment_df.scan, bins=scan_bins)
+        segment_df['mz_bin'] = pd.cut(segment_df.mz, bins=mz_bins)
+        segment_df['bin_key'] = list(zip(segment_df.mz_bin, segment_df.scan_bin, segment_df.rt_bin))
 
         # sum the intensities in each bin
-        summary_df = raw_df.groupby(['bin_key'], as_index=False, sort=False).intensity.agg(['sum','count','mean']).reset_index()
+        summary_df = segment_df.groupby(['bin_key'], as_index=False, sort=False).intensity.agg(['sum','count','mean']).reset_index()
         summary_df['extension_zone'] = summary_df.apply(lambda row: row.bin_key[0].mid > segment_mz_upper, axis=1)  # identify which voxels are in the extension zone
         summary_df = summary_df[(summary_df.extension_zone == False)]                                               # and remove them from the summary
         summary_df.rename(columns={'sum':'voxel_intensity', 'count':'point_count', 'mean':'voxel_mean'}, inplace=True)
@@ -317,10 +317,10 @@ def find_features(segment_mz_lower, segment_mz_upper, segment_id):
         summary_df.to_pickle(summary_df_name)
 
         # assign each raw point with their voxel ID
-        raw_df = pd.merge(raw_df, summary_df[['bin_key','voxel_id','voxel_intensity']], how='left', left_on=['bin_key'], right_on=['bin_key'])
+        segment_df = pd.merge(segment_df, summary_df[['bin_key','voxel_id','voxel_intensity']], how='left', left_on=['bin_key'], right_on=['bin_key'])
 
         # determine each point\'s contribution to its voxel intensity
-        raw_df['voxel_proportion'] = raw_df.intensity / raw_df.voxel_intensity
+        segment_df['voxel_proportion'] = segment_df.intensity / segment_df.voxel_intensity
 
         # keep track of the keys of voxels that have been processed
         voxels_processed = set()
@@ -344,8 +344,8 @@ def find_features(segment_mz_lower, segment_mz_upper, segment_id):
                 voxel_rt_lower = rt_bin.left
                 voxel_rt_upper = rt_bin.right
                 voxel_rt_midpoint = rt_bin.mid
-                voxel_rt_condition = (raw_df.retention_time_secs >= voxel_rt_lower) & (raw_df.retention_time_secs <= voxel_rt_upper)
-                voxel_points_df = raw_df[(raw_df.mz >= voxel_mz_lower) & (raw_df.mz <= voxel_mz_upper) & (raw_df.scan >= voxel_scan_lower) & (raw_df.scan <= voxel_scan_upper) & voxel_rt_condition]
+                voxel_rt_condition = (segment_df.retention_time_secs >= voxel_rt_lower) & (segment_df.retention_time_secs <= voxel_rt_upper)
+                voxel_points_df = segment_df[(segment_df.mz >= voxel_mz_lower) & (segment_df.mz <= voxel_mz_upper) & (segment_df.scan >= voxel_scan_lower) & (segment_df.scan <= voxel_scan_upper) & voxel_rt_condition]
 
                 # find the voxel's mz intensity-weighted centroid
                 points_a = voxel_points_df[['mz','intensity']].to_numpy()
@@ -366,8 +366,8 @@ def find_features(segment_mz_lower, segment_mz_upper, segment_id):
                                     'frame_region_scan_lower':frame_region_scan_lower, 'frame_region_scan_upper':frame_region_scan_upper, 'summed_intensity':voxel.voxel_intensity, 'point_count':voxel.point_count}
 
                 # find the mobility extent of the isotope in this frame
-                iso_mz_condition = (raw_df.mz >= iso_mz_lower) & (raw_df.mz <= iso_mz_upper)
-                isotope_2d_df = raw_df[iso_mz_condition & (raw_df.scan >= frame_region_scan_lower) & (raw_df.scan <= frame_region_scan_upper) & voxel_rt_condition]
+                iso_mz_condition = (segment_df.mz >= iso_mz_lower) & (segment_df.mz <= iso_mz_upper)
+                isotope_2d_df = segment_df[iso_mz_condition & (segment_df.scan >= frame_region_scan_lower) & (segment_df.scan <= frame_region_scan_upper) & voxel_rt_condition]
                 # collapsing the monoisotopic's summed points onto the mobility dimension
                 scan_df = isotope_2d_df.groupby(['scan'], as_index=False).intensity.sum()
                 scan_df.sort_values(by=['scan'], ascending=True, inplace=True)
@@ -417,8 +417,8 @@ def find_features(segment_mz_lower, segment_mz_upper, segment_id):
                     # gather the isotope points constrained by m/z and CCS, and the peak search extent in RT
                     region_rt_lower = voxel_rt_lower - RT_BASE_PEAK_WIDTH
                     region_rt_upper = voxel_rt_upper + RT_BASE_PEAK_WIDTH
-                    iso_scan_condition = (raw_df.scan >= iso_scan_lower) & (raw_df.scan <= iso_scan_upper)
-                    isotope_points_df = raw_df[iso_mz_condition & iso_scan_condition & (raw_df.retention_time_secs >= region_rt_lower) & (raw_df.retention_time_secs <= region_rt_upper)]
+                    iso_scan_condition = (segment_df.scan >= iso_scan_lower) & (segment_df.scan <= iso_scan_upper)
+                    isotope_points_df = segment_df[iso_mz_condition & iso_scan_condition & (segment_df.retention_time_secs >= region_rt_lower) & (segment_df.retention_time_secs <= region_rt_upper)]
 
                     # in the RT dimension, find the apex
                     rt_df = isotope_points_df.groupby(['frame_id','retention_time_secs'], as_index=False).intensity.sum()
@@ -492,8 +492,8 @@ def find_features(segment_mz_lower, segment_mz_upper, segment_id):
                         rt_subset_df = rt_df[(rt_df.retention_time_secs >= iso_rt_lower) & (rt_df.retention_time_secs <= iso_rt_upper)]  # reset the subset to the new bounds
 
                     # check the base peak has at least one voxel in common with the seeding voxel
-                    iso_rt_condition = (raw_df.retention_time_secs >= iso_rt_lower) & (raw_df.retention_time_secs <= iso_rt_upper)
-                    base_peak_df = raw_df[iso_mz_condition & iso_scan_condition & iso_rt_condition].copy()
+                    iso_rt_condition = (segment_df.retention_time_secs >= iso_rt_lower) & (segment_df.retention_time_secs <= iso_rt_upper)
+                    base_peak_df = segment_df[iso_mz_condition & iso_scan_condition & iso_rt_condition].copy()
                     if voxel.voxel_id in base_peak_df.voxel_id.unique():
 
                         # calculate the R-squared
@@ -506,7 +506,7 @@ def find_features(segment_mz_lower, segment_mz_upper, segment_id):
 
                         # gather the raw points for the feature's 3D region (i.e. the region in which deconvolution will be performed)
                         feature_region_3d_extent_d = {'mz_lower':region_mz_lower, 'mz_upper':region_mz_upper, 'scan_lower':iso_scan_lower, 'scan_upper':iso_scan_upper, 'rt_lower':iso_rt_lower, 'rt_upper':iso_rt_upper}
-                        feature_region_3d_df = raw_df[(raw_df.mz >= region_mz_lower) & (raw_df.mz <= region_mz_upper) & iso_scan_condition & iso_rt_condition].copy()
+                        feature_region_3d_df = segment_df[(segment_df.mz >= region_mz_lower) & (segment_df.mz <= region_mz_upper) & iso_scan_condition & iso_rt_condition].copy()
 
                         # intensity descent
                         raw_points_a = feature_region_3d_df[['mz','intensity']].to_numpy()
@@ -741,6 +741,7 @@ mz_range = args.mz_upper - args.mz_lower
 NUMBER_OF_MZ_SEGMENTS = (mz_range // args.mz_width_per_segment) + (mz_range % args.mz_width_per_segment > 0)  # thanks to https://stackoverflow.com/a/23590097/1184799
 
 # split the raw data into segments
+print('segmenting the raw data')
 segment_packages_l = []
 for i in range(NUMBER_OF_MZ_SEGMENTS):
     segment_mz_lower=args.mz_lower+(i*args.mz_width_per_segment)
