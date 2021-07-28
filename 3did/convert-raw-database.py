@@ -76,33 +76,32 @@ if not os.path.isfile(RAW_DATABASE_NAME):
 # get the frame metadata
 print("loading the frames information")
 frames_properties_df = load_frame_properties(RAW_DATABASE_NAME)
-print('there are {} total points'.format(frames_properties_df.NumPeaks.sum()))
+number_of_rows = frames_properties_df.NumPeaks.sum()
+print('there are {} total points'.format(number_of_rows))
 
-# # copy the frames
-# print("loading the raw points")
-# # connect to the database with the timsTOF SDK
-# td = timsdata.TimsData(args.raw_database_directory)
-# # connect to the in-memory database
-# con = sqlite3.connect(':memory:')
-# cur = con.cursor()
-# cur.execute("CREATE TABLE frames (frame_id INTEGER, mz REAL, scan INTEGER, intensity INTEGER, retention_time_secs REAL)")
+data = np.zeros((number_of_rows,), dtype=[('frame_id', np.uint16), ('mz', np.float32), ('scan', np.uint16), ('intensity', np.uint16), ('retention_time_secs', np.float32)])
 
-# # read the raw points in the specified frame range
-# for row in frames_properties_df.itertuples():
-#     frame_points = []
-#     # read the points from the scan lines
-#     for scan_idx,scan in enumerate(td.readScans(frame_id=row.Id, scan_begin=0, scan_end=row.NumScans)):
-#         index = np.array(scan[0], dtype=np.float64)
-#         mz_values = td.indexToMz(row.Id, index)
-#         intensity_values = scan[1]
-#         scan_number = scan_idx
-#         number_of_points_on_scan = len(mz_values)
-#         for i in range(0, number_of_points_on_scan):   # step through the readings (i.e. points) on this scan line
-#             mz_value = float(mz_values[i])
-#             intensity = int(intensity_values[i])
-#             frame_points.append((row.Id, mz_value, scan_number, intensity, row.Time))
-#     # insert the frame's points into the table
-#     cur.executemany("insert into frames values (?, ?, ?, ?, ?)", frame_points)
+# copy the frames
+print("loading the raw points")
+# connect to the database with the timsTOF SDK
+td = timsdata.TimsData(args.raw_database_directory)
+
+# read the raw points in the specified frame range
+base_idx = 0
+for row in frames_properties_df.itertuples():
+    # read the points from the scan lines
+    for scan_idx,scan in enumerate(td.readScans(frame_id=row.Id, scan_begin=0, scan_end=row.NumScans)):
+        index = np.array(scan[0], dtype=np.float64)
+        mz_values = td.indexToMz(row.Id, index)
+        intensity_values = scan[1]
+        scan_number = scan_idx
+        number_of_points_on_scan = len(mz_values)
+        for i in range(0, number_of_points_on_scan):   # step through the readings (i.e. points) on this scan line
+            mz_value = float(mz_values[i])
+            intensity = int(intensity_values[i])
+            data[base_idx] = (row.Id, mz_value, scan_number, intensity, row.Time)
+            base_idx += 1
+
 
 # # calculate the segments
 # print('segmenting')
@@ -116,8 +115,6 @@ print('there are {} total points'.format(frames_properties_df.NumPeaks.sum()))
 #     segment_df = pd.read_sql_query("select frame_id,mz,scan,intensity,retention_time_secs from frames where mz >= {} and mz <= {}".format(segment_mz_lower, segment_mz_upper+SEGMENT_EXTENSION), con, dtype={'frame_id':np.uint16,'mz':np.float32,'scan':np.uint16,'intensity':np.uint16,'retention_time_secs':np.float32})
 #     print('writing {} points to {}'.format(len(segment_df), segment_filename))
 #     segment_df.to_pickle(segment_filename)
-
-# con.close()
 
 stop_run = time.time()
 print("total running time ({}): {} seconds".format(parser.prog, round(stop_run-start_run,1)))
