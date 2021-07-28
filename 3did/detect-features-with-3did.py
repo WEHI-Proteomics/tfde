@@ -757,7 +757,7 @@ raw_db_l = None
 
 # find all the features
 print('finding features')
-interim_names_l = ray.get([find_features.remote(segment_mz_lower=sp['segment_mz_lower'], segment_mz_upper=sp['segment_mz_upper'], segment_id=sp['segment_id']) for sp in segment_packages_l])
+interim_names_l = ray.get([find_features.remote(segment_mz_lower=sp['segment_mz_lower'], segment_mz_upper=sp['segment_mz_upper'], segment_id=sp['segment_id'], segment_df=sp['segment_df']) for sp in segment_packages_l])
 segment_packages_l = None
 
 # join the list of dataframes into a single dataframe
