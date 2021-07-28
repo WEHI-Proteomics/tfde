@@ -734,6 +734,7 @@ for idx,d in enumerate(raw_database_handle.query_iter(raw_database_handle.ms1_fr
         d['retention_time'] = d['retention_time'].astype(np.float32, copy=False)
         raw_db_l.append(pd.DataFrame(d))
 raw_db_df = pd.concat(raw_db_l, axis=0, sort=False, ignore_index=True)
+raw_db_df.rename(columns={'frame':'frame_id','retention_time':'retention_time_secs'}, inplace=True)
 print('loaded {} raw points from {}'.format(len(raw_db_df), RAW_DATABASE_DIR))
 
 # calculate the segments
