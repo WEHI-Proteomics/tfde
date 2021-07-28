@@ -7,9 +7,7 @@ import os
 import time
 import argparse
 import ray
-import sqlite3
 import sys
-import multiprocessing as mp
 import pickle
 import configparser
 from configparser import ExtendedInterpolation
@@ -17,17 +15,12 @@ import json
 from ms_deisotope import deconvolute_peaks, averagine
 import warnings
 from scipy.optimize import OptimizeWarning
-from os.path import expanduser
 from sklearn.metrics.pairwise import cosine_similarity
 import shutil
+import pathlib
+import opentimspy
+from opentimspy.opentims import OpenTIMS
 
-
-# set up the indexes we need for queries
-def create_indexes(db_file_name):
-    db_conn = sqlite3.connect(db_file_name)
-    src_c = db_conn.cursor()
-    src_c.execute("create index if not exists idx_extract_cuboids_1 on frames (frame_type,retention_time_secs,scan,mz)")
-    db_conn.close()
 
 # determine the number of workers based on the number of available cores and the proportion of the machine to be used
 def number_of_workers():
@@ -292,15 +285,6 @@ def measure_curve(x, y):
 @ray.remote
 def find_features(segment_mz_lower, segment_mz_upper, segment_id):
     features_l = []
-
-    # find out where the charge-1 cloud ends and only include points below it (i.e. include points with a higher scan)
-    scan_limit = scan_coords_for_single_charge_region(mz_lower=segment_mz_lower, mz_upper=segment_mz_upper)['scan_for_mz_upper']
-
-    # load the raw points for this m/z segment
-    db_conn = sqlite3.connect(CONVERTED_DATABASE_NAME)
-    raw_df = pd.read_sql_query("select frame_id,mz,scan,intensity,retention_time_secs from frames where frame_type == {} and retention_time_secs >= {} and retention_time_secs <= {} and scan >= {} and mz >= {} and mz <= {}".format(FRAME_TYPE_MS1, args.rt_lower, args.rt_upper, scan_limit, segment_mz_lower, segment_mz_upper+SEGMENT_EXTENSION), db_conn, dtype={'frame_id':np.uint16,'mz':np.float32,'scan':np.uint16,'intensity':np.uint16,'retention_time_secs':np.float32})
-    db_conn.close()
-
     if len(raw_df) > 0:
         # assign each point a unique identifier
         raw_df.reset_index(drop=True, inplace=True)  # just in case
@@ -621,6 +605,7 @@ parser = argparse.ArgumentParser(description='Find all the features in a run wit
 parser.add_argument('-eb','--experiment_base_dir', type=str, default='./experiments', help='Path to the experiments directory.', required=False)
 parser.add_argument('-en','--experiment_name', type=str, help='Name of the experiment.', required=True)
 parser.add_argument('-rn','--run_name', type=str, help='Name of the run.', required=True)
+parser.add_argument('-rdn','--raw_database_name', type=str, help='The name of the \'.d\' folder.', required=True)
 parser.add_argument('-ml','--mz_lower', type=int, default='100', help='Lower limit for m/z.', required=False)
 parser.add_argument('-mu','--mz_upper', type=int, default='1700', help='Upper limit for m/z.', required=False)
 parser.add_argument('-mw','--mz_width_per_segment', type=int, default=20, help='Width in Da of the m/z processing window per segment.', required=False)
@@ -646,10 +631,10 @@ if not os.path.exists(EXPERIMENT_DIR):
     print("The experiment directory is required but doesn't exist: {}".format(EXPERIMENT_DIR))
     sys.exit(1)
 
-# check the converted databases directory exists
-CONVERTED_DATABASE_NAME = "{}/converted-databases/exp-{}-run-{}-converted.sqlite".format(EXPERIMENT_DIR, args.experiment_name, args.run_name)
-if not os.path.isfile(CONVERTED_DATABASE_NAME):
-    print("The converted database is required but doesn't exist: {}".format(CONVERTED_DATABASE_NAME))
+# check the raw database directory exists
+RAW_DATABASE_DIR = '{}/raw-databases/{}'.format(EXPERIMENT_DIR, args.raw_database_name)
+if not os.path.exists(RAW_DATABASE_DIR):
+    print("The raw database analysis.tdf doesn't exist: {}".format(RAW_DATABASE_DIR))
     sys.exit(1)
 
 # check the INI file exists
@@ -709,11 +694,7 @@ SCAN_FILTER_POLY_ORDER = 5
 RT_FILTER_POLY_ORDER = 5
 
 
-# set up the indexes
-print('setting up indexes on {}'.format(CONVERTED_DATABASE_NAME))
-create_indexes(db_file_name=CONVERTED_DATABASE_NAME)
-
-# output features
+# set up the output features
 FEATURES_DIR = "{}/features-3did".format(EXPERIMENT_DIR)
 FEATURES_FILE = '{}/exp-{}-run-{}-features-3did.pkl'.format(FEATURES_DIR, args.experiment_name, args.run_name)
 # set up the output directory
@@ -740,15 +721,45 @@ if not ray.is_initialized():
     else:
         ray.init(local_mode=True)
 
+# load the raw database
+raw_database_handle = OpenTIMS(pathlib.Path(RAW_DATABASE_DIR))
+raw_db_l = []
+for idx,d in enumerate(raw_database_handle.query_iter(raw_database_handle.ms1_frames, columns=('frame','mz','scan','intensity','retention_time'))):
+    if (d['retention_time'][0] >= args.rt_lower) and (d['retention_time'][0] <= args.rt_upper):
+        d['frame'] = d['frame'].astype(np.uint16, copy=False)
+        d['mz'] = d['mz'].astype(np.float32, copy=False)
+        d['scan'] = d['scan'].astype(np.uint16, copy=False)
+        d['intensity'] = d['intensity'].astype(np.uint16, copy=False)
+        d['retention_time'] = d['retention_time'].astype(np.float32, copy=False)
+        raw_db_l.append(pd.DataFrame(d))
+raw_db_df = pd.concat(raw_db_l, axis=0, sort=False, ignore_index=True)
+print('loaded {} raw points from {}'.format(len(raw_db_df), RAW_DATABASE_DIR))
+
 # calculate the segments
 mz_range = args.mz_upper - args.mz_lower
 NUMBER_OF_MZ_SEGMENTS = (mz_range // args.mz_width_per_segment) + (mz_range % args.mz_width_per_segment > 0)  # thanks to https://stackoverflow.com/a/23590097/1184799
 
+# split the raw data into segments
+segment_packages_l = []
+for i in range(NUMBER_OF_MZ_SEGMENTS):
+    segment_mz_lower=args.mz_lower+(i*args.mz_width_per_segment)
+    segment_mz_upper=args.mz_lower+(i*args.mz_width_per_segment)+args.mz_width_per_segment
+    segment_id=i+1
+    # find out where the charge-1 cloud ends and only include points below it (i.e. include points with a higher scan)
+    scan_limit = scan_coords_for_single_charge_region(mz_lower=segment_mz_lower, mz_upper=segment_mz_upper)['scan_for_mz_upper']
+    segment_df = raw_db_df[(raw_db_df.mz >= segment_mz_lower) & (raw_db_df.mz <= segment_mz_upper) & (raw_db_df.scan >= scan_limit)]
+    segment_packages_l.append({'segment_mz_lower':segment_mz_lower, 'segment_mz_upper':segment_mz_upper, 'segment_id':segment_id, 'segment_df':segment_df})
+# tell Python we don't need this any more
+raw_db_df = None
+raw_db_l = None
+
 # find all the features
 print('finding features')
-interim_names_l = ray.get([find_features.remote(segment_mz_lower=args.mz_lower+(i*args.mz_width_per_segment), segment_mz_upper=args.mz_lower+(i*args.mz_width_per_segment)+args.mz_width_per_segment, segment_id=i+1) for i in range(NUMBER_OF_MZ_SEGMENTS)])
+interim_names_l = ray.get([find_features.remote(segment_mz_lower=sp['segment_mz_lower'], segment_mz_upper=sp['segment_mz_upper'], segment_id=sp['segment_id']) for sp in segment_packages_l])
+segment_packages_l = None
 
 # join the list of dataframes into a single dataframe
+print('collating the detected features')
 features_l = []
 for segment_file_name in interim_names_l:
     df = pd.read_pickle(segment_file_name)
