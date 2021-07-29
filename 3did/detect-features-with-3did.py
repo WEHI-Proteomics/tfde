@@ -750,11 +750,11 @@ for i in range(NUMBER_OF_MZ_SEGMENTS):
     segment_id=i+1
     # find out where the charge-1 cloud ends and only include points below it (i.e. include points with a higher scan)
     scan_limit = scan_coords_for_single_charge_region(mz_lower=segment_mz_lower, mz_upper=segment_mz_upper)['scan_for_mz_upper']
-    segment_df = raw_db_df[(raw_db_df.mz >= segment_mz_lower) & (raw_db_df.mz <= segment_mz_upper) & (raw_db_df.scan >= scan_limit)]
+    segment_df = raw_db_df[(raw_db_df.mz >= segment_mz_lower) & (raw_db_df.mz <= segment_mz_upper) & (raw_db_df.scan >= scan_limit)].copy()
     segment_packages_l.append({'segment_mz_lower':segment_mz_lower, 'segment_mz_upper':segment_mz_upper, 'segment_id':segment_id, 'segment_df':segment_df})
 # tell Python we don't need this any more
-raw_db_df = None
-raw_db_l = None
+del raw_db_df
+del raw_db_l
 
 # find all the features
 print('finding features')
@@ -770,6 +770,7 @@ for segment_file_name in interim_names_l:
         df['isotopic_peaks'] = df.apply(lambda row: strip_peaks(row.isotopic_peaks), axis=1)
         features_l.append(df)
 features_df = pd.concat(features_l, axis=0, sort=False, ignore_index=True)
+del features_l
 
 # assign each feature a unique identifier
 features_df['feature_id'] = features_df.index
