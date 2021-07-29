@@ -493,7 +493,7 @@ def find_features(segment_mz_lower, segment_mz_upper, segment_id, segment_df):
 
                     # check the base peak has at least one voxel in common with the seeding voxel
                     iso_rt_condition = (segment_df.retention_time_secs >= iso_rt_lower) & (segment_df.retention_time_secs <= iso_rt_upper)
-                    base_peak_df = segment_df[iso_mz_condition & iso_scan_condition & iso_rt_condition].copy()
+                    base_peak_df = segment_df[iso_mz_condition & iso_scan_condition & iso_rt_condition]
                     if voxel.voxel_id in base_peak_df.voxel_id.unique():
 
                         # calculate the R-squared
@@ -506,7 +506,7 @@ def find_features(segment_mz_lower, segment_mz_upper, segment_id, segment_df):
 
                         # gather the raw points for the feature's 3D region (i.e. the region in which deconvolution will be performed)
                         feature_region_3d_extent_d = {'mz_lower':region_mz_lower, 'mz_upper':region_mz_upper, 'scan_lower':iso_scan_lower, 'scan_upper':iso_scan_upper, 'rt_lower':iso_rt_lower, 'rt_upper':iso_rt_upper}
-                        feature_region_3d_df = segment_df[(segment_df.mz >= region_mz_lower) & (segment_df.mz <= region_mz_upper) & iso_scan_condition & iso_rt_condition].copy()
+                        feature_region_3d_df = segment_df[(segment_df.mz >= region_mz_lower) & (segment_df.mz <= region_mz_upper) & iso_scan_condition & iso_rt_condition]
 
                         # intensity descent
                         raw_points_a = feature_region_3d_df[['mz','intensity']].to_numpy()
