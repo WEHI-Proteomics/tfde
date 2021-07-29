@@ -37,7 +37,7 @@ def task_detect_features():
     # input
     CONVERTED_DATABASE_NAME = "{experiment_dir}/converted-databases/exp-{experiment_name}-run-{run_name}-converted.sqlite".format(experiment_dir=EXPERIMENT_DIR, experiment_name=config['experiment_name'], run_name=config['run_name'])
     # command
-    cmd = 'python -u detect-features-with-3did.py -eb {experiment_base} -en {experiment_name} -rdn {raw_database_name} -rn {run_name} -ini {INI_FILE} -rm cluster -minvi {minvi}'.format(experiment_base=config['experiment_base_dir'], experiment_name=config['experiment_name'], raw_database_name=config['raw_database_name'], run_name=config['run_name'], INI_FILE=config['ini_file'], minvi=config['minvi'])
+    cmd = 'python -u detect-features-with-3did.py -eb {experiment_base} -en {experiment_name} -rdn {raw_database_name} -rn {run_name} -pc {proportion_of_cores_to_use} -ini {INI_FILE} -rm cluster -minvi {minvi}'.format(experiment_base=config['experiment_base_dir'], experiment_name=config['experiment_name'], raw_database_name=config['raw_database_name'], run_name=config['run_name'], proportion_of_cores_to_use=config['proportion_of_cores_to_use'], INI_FILE=config['ini_file'], minvi=config['minvi'])
     # output
     FEATURES_DIR = '{experiment_dir}/features-3did'.format(experiment_dir=EXPERIMENT_DIR)
     FEATURES_FILE = '{features_dir}/exp-{experiment_name}-run-{run_name}-features-3did.pkl'.format(features_dir=FEATURES_DIR, experiment_name=config['experiment_name'], run_name=config['run_name'])
