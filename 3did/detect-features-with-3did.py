@@ -292,9 +292,9 @@ def find_features(segment_mz_lower, segment_mz_upper, segment_id, segment_df):
         segment_df['point_id'] = segment_df.index
 
         # define bins
-        rt_bins = pd.interval_range(start=segment_df.retention_time_secs.min(), end=segment_df.retention_time_secs.max()+VOXEL_SIZE_RT, freq=VOXEL_SIZE_RT, closed='left')
-        scan_bins = pd.interval_range(start=segment_df.scan.min(), end=segment_df.scan.max()+VOXEL_SIZE_SCAN, freq=VOXEL_SIZE_SCAN, closed='left')
-        mz_bins = pd.interval_range(start=segment_mz_lower, end=segment_mz_upper+SEGMENT_EXTENSION+VOXEL_SIZE_MZ, freq=VOXEL_SIZE_MZ, closed='left')
+        rt_bins = pd.interval_range(start=segment_df.retention_time_secs.min(), end=segment_df.retention_time_secs.max()+(VOXEL_SIZE_RT*2), freq=VOXEL_SIZE_RT, closed='left')
+        scan_bins = pd.interval_range(start=segment_df.scan.min(), end=segment_df.scan.max()+(VOXEL_SIZE_SCAN*2), freq=VOXEL_SIZE_SCAN, closed='left')
+        mz_bins = pd.interval_range(start=segment_mz_lower, end=segment_mz_upper+SEGMENT_EXTENSION+(VOXEL_SIZE_MZ*2), freq=VOXEL_SIZE_MZ, closed='left')
 
         # assign raw points to their bins
         segment_df['rt_bin'] = pd.cut(segment_df.retention_time_secs, bins=rt_bins)
