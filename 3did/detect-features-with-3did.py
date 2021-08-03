@@ -328,7 +328,7 @@ def find_features(segment_d):
 
         # process each voxel by decreasing intensity
         base_peak_voxels_df = summary_df[(summary_df.voxel_intensity >= args.minimum_voxel_intensity)]
-        print('there are {} voxels for processing in segment {} ({}-{} m/z)'.format(len(base_peak_voxels_df), segment_id, round(segment_d['mz_lower'],1), round(segment_d['mz_upper'],1)))
+        print('there are {} voxels for processing in segment {} ({}-{} m/z)'.format(len(base_peak_voxels_df), segment_d['segment_id'], round(segment_d['mz_lower'],1), round(segment_d['mz_upper'],1)))
         for voxel_idx,voxel in enumerate(base_peak_voxels_df.itertuples()):
             # if this voxel hasn't already been processed...
             if (voxel.voxel_id not in voxels_processed):
