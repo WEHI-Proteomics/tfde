@@ -285,7 +285,8 @@ def measure_curve(x, y):
 # process a segment of this run's data, and return a list of features
 @ray.remote
 def find_features(segment_d):
-    segment_df = pd.read_pickle(segment_d['segment_name'])
+    # segment_df = pd.read_pickle(segment_d['segment_name'])
+    segment_df = segment_d['segment_df']
     features_l = []
     if len(segment_df) > 0:
         # assign each point a unique identifier
@@ -764,9 +765,10 @@ for i in range(NUMBER_OF_MZ_SEGMENTS):
     float_columns = ['retention_time_secs']
     segment_df[float_columns] = segment_df[float_columns].apply(pd.to_numeric, downcast="float")    
     # save the segment
-    segment_name = '{}/segment-{}.pkl'.format(SEGMENTS_DIR, segment_id)
-    segment_df.to_pickle(segment_name)
-    segment_packages_l.append({'mz_lower':mz_lower, 'mz_upper':mz_upper, 'rt_lower':rt_lower, 'rt_upper':rt_upper, 'scan_limit':scan_limit, 'segment_id':segment_id, 'segment_name':segment_name})
+    # segment_name = '{}/segment-{}.pkl'.format(SEGMENTS_DIR, segment_id)
+    # segment_df.to_pickle(segment_name)
+    # segment_packages_l.append({'mz_lower':mz_lower, 'mz_upper':mz_upper, 'rt_lower':rt_lower, 'rt_upper':rt_upper, 'scan_limit':scan_limit, 'segment_id':segment_id, 'segment_name':segment_name})
+    segment_packages_l.append({'mz_lower':mz_lower, 'mz_upper':mz_upper, 'rt_lower':rt_lower, 'rt_upper':rt_upper, 'scan_limit':scan_limit, 'segment_id':segment_id, 'segment_df':segment_df})
 del data
 
 # find all the features
