@@ -328,7 +328,7 @@ def find_features(segment_d):
 
         # process each voxel by decreasing intensity
         base_peak_voxels_df = summary_df[(summary_df.voxel_intensity >= args.minimum_voxel_intensity)]
-        print('there are {} voxels for processing in segment {} ({}-{} m/z)'.format(len(base_peak_voxels_df), segment_d['segment_id'], round(segment_d['mz_lower'],1), round(segment_d['mz_upper'],1)))
+        print('there are {} voxels for processing in segment {} ({}-{} m/z)'.format(len(base_peak_voxels_df), segment_d['segment_id'], round(segment_d['mz_lower']), round(segment_d['mz_upper'])))
         for voxel_idx,voxel in enumerate(base_peak_voxels_df.itertuples()):
             # if this voxel hasn't already been processed...
             if (voxel.voxel_id not in voxels_processed):
@@ -581,7 +581,7 @@ def find_features(segment_d):
                                     # add the voxels included in the feature's isotopes to the list of voxels already processed
                                     voxels_processed.update(feature_d['voxels_processed'])
     else:
-        print('no raw points were found in segment {} ({}-{} m/z)'.format(segment_d['segment_id'], round(segment_d['mz_lower'],1), round(segment_d['mz_upper'],1)))
+        print('no raw points were found in segment {} ({}-{} m/z)'.format(segment_d['segment_id'], round(segment_d['mz_lower']), round(segment_d['mz_upper'])))
         
     features_df = pd.DataFrame(features_l)
     if len(features_df) > 0:
@@ -591,7 +591,7 @@ def find_features(segment_d):
         float_columns = ['mono_mz_lower','mono_mz_upper','scan_apex','scan_lower','scan_upper','rt_apex','rt_lower','rt_upper','coelution_coefficient','mobility_coefficient','monoisotopic_mz','monoisotopic_mass','deconvolution_score','scan_r_squared','rt_r_squared']
         features_df[float_columns] = features_df[float_columns].apply(pd.to_numeric, downcast="float")    
     # save these features until we have all the segments processed
-    interim_df_name = '{}/features-segment-{}.pkl'.format(INTERIM_FEATURES_DIR, segment_id)
+    interim_df_name = '{}/features-segment-{}.pkl'.format(INTERIM_FEATURES_DIR, segment_d['segment_id'])
     features_df.to_pickle(interim_df_name)
     return interim_df_name
 
