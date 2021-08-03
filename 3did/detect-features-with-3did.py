@@ -294,6 +294,7 @@ def find_features(segment_d):
             "precursor_indices": 0,
         }
     ]
+    segment_df.rename(columns={'mz_values':'mz', 'scan_indices':'scan', 'frame_indices':'frame_id', 'rt_values':'retention_time_secs'}, inplace=True)
 
     features_l = []
     if len(segment_df) > 0:
