@@ -758,6 +758,12 @@ for i in range(NUMBER_OF_MZ_SEGMENTS):
         }
     ][['mz_values','scan_indices','frame_indices','rt_values','intensity_values']]
     segment_df.rename(columns={'mz_values':'mz', 'scan_indices':'scan', 'frame_indices':'frame_id', 'rt_values':'retention_time_secs', 'intensity_values':'intensity'}, inplace=True)
+    # downcast the data types to minimise the memory used
+    int_columns = ['frame_id','scan','intensity']
+    segment_df[int_columns] = segment_df[int_columns].apply(pd.to_numeric, downcast="unsigned")
+    float_columns = ['retention_time_secs']
+    segment_df[float_columns] = segment_df[float_columns].apply(pd.to_numeric, downcast="float")    
+    # save the segment
     segment_name = '{}/segment-{}.pkl'.format(SEGMENTS_DIR, segment_id)
     segment_df.to_pickle(segment_name)
     segment_packages_l.append({'mz_lower':mz_lower, 'mz_upper':mz_upper, 'rt_lower':rt_lower, 'rt_upper':rt_upper, 'scan_limit':scan_limit, 'segment_id':segment_id, 'segment_name':segment_name})
