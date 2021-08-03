@@ -286,7 +286,7 @@ def measure_curve(x, y):
 @ray.remote
 def find_features(segment_d):
     # segment_df = pd.read_pickle(segment_d['segment_name'])
-    segment_df = segment_d['segment_df']
+    segment_df = segment_d['segment_df'].copy()
     features_l = []
     if len(segment_df) > 0:
         # assign each point a unique identifier
