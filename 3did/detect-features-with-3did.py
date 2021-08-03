@@ -581,7 +581,7 @@ def find_features(segment_d):
                                     # add the voxels included in the feature's isotopes to the list of voxels already processed
                                     voxels_processed.update(feature_d['voxels_processed'])
     else:
-        print('no raw points were found in segment {} ({}-{} m/z)'.format(segment_id, round(segment_d['mz_lower'],1), round(segment_d['mz_upper'],1)))
+        print('no raw points were found in segment {} ({}-{} m/z)'.format(segment_d['segment_id'], round(segment_d['mz_lower'],1), round(segment_d['mz_upper'],1)))
         
     features_df = pd.DataFrame(features_l)
     if len(features_df) > 0:
