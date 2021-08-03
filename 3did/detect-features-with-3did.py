@@ -741,10 +741,10 @@ NUMBER_OF_MZ_SEGMENTS = (mz_range // args.mz_width_per_segment) + (mz_range % ar
 print('segmenting the raw data')
 segment_packages_l = []
 for i in range(NUMBER_OF_MZ_SEGMENTS):
-    mz_lower=args.mz_lower+(i*args.mz_width_per_segment)
-    mz_upper=args.mz_lower+(i*args.mz_width_per_segment)+args.mz_width_per_segment
-    rt_lower=args.rt_lower
-    rt_upper=args.rt_upper
+    mz_lower=float(args.mz_lower+(i*args.mz_width_per_segment))
+    mz_upper=float(args.mz_lower+(i*args.mz_width_per_segment)+args.mz_width_per_segment)
+    rt_lower=float(args.rt_lower)
+    rt_upper=float(args.rt_upper)
     scan_limit = scan_coords_for_single_charge_region(mz_lower=mz_lower, mz_upper=mz_upper)['scan_for_mz_upper']
     segment_id=i+1
     # extract the raw points for this segment
