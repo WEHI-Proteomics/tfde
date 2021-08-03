@@ -285,16 +285,7 @@ def measure_curve(x, y):
 # process a segment of this run's data, and return a list of features
 @ray.remote
 def find_features(segment_d):
-
-    # extract the raw points for this segment
-    segment_df = segment_d['data'][
-        {
-            "rt_values": slice(segment_d['rt_lower'], segment_d['rt_upper']),
-            "mz_values": slice(segment_d['mz_lower'], segment_d['mz_upper']+SEGMENT_EXTENSION),
-            "scan_indices": slice(segment_d['scan_limit'], None),
-            "precursor_indices": 0,
-        }
-    ]
+    segment_df = segment_d['segment_df']
 
     features_l = []
     if len(segment_df) > 0:
@@ -750,7 +741,16 @@ for i in range(NUMBER_OF_MZ_SEGMENTS):
     rt_upper=args.rt_upper
     scan_limit = scan_coords_for_single_charge_region(mz_lower=mz_lower, mz_upper=mz_upper)['scan_for_mz_upper']
     segment_id=i+1
-    segment_packages_l.append({'mz_lower':mz_lower, 'mz_upper':mz_upper, 'rt_lower':rt_lower, 'rt_upper':rt_upper, 'scan_limit':scan_limit, 'segment_id':segment_id, 'data':data})
+    # extract the raw points for this segment
+    segment_df = data[
+        {
+            "rt_values": slice(rt_lower, rt_upper),
+            "mz_values": slice(mz_lower, mz_upper+SEGMENT_EXTENSION),
+            "scan_indices": slice(scan_limit, None),
+            "precursor_indices": 0,
+        }
+    ]
+    segment_packages_l.append({'mz_lower':mz_lower, 'mz_upper':mz_upper, 'rt_lower':rt_lower, 'rt_upper':rt_upper, 'scan_limit':scan_limit, 'segment_id':segment_id, 'segment_df':segment_df})
 
 # find all the features
 print('finding features')
