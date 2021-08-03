@@ -19,8 +19,8 @@ from scipy.optimize import OptimizeWarning
 from sklearn.metrics.pairwise import cosine_similarity
 import shutil
 import pathlib
-import opentimspy
-from opentimspy.opentims import OpenTIMS
+import alphatims.bruker
+import alphatims.utils
 
 
 # determine the number of workers based on the number of available cores and the proportion of the machine to be used
@@ -284,7 +284,18 @@ def measure_curve(x, y):
 
 # process a segment of this run's data, and return a list of features
 @ray.remote
-def find_features(segment_mz_lower, segment_mz_upper, segment_id, segment_df):
+def find_features(segment_d):
+
+    # extract the raw points for this segment
+    segment_df = segment_d['data'][
+        {
+            "rt_values": slice(segment_d['rt_lower'], segment_d['rt_upper']),
+            "mz_values": slice(segment_d['mz_lower'], segment_d['mz_upper']+SEGMENT_EXTENSION),
+            "scan_indices": slice(segment_d['scan_limit'], None),
+            "precursor_indices": 0,
+        }
+    ]
+
     features_l = []
     if len(segment_df) > 0:
         # assign each point a unique identifier
@@ -294,7 +305,7 @@ def find_features(segment_mz_lower, segment_mz_upper, segment_id, segment_df):
         # define bins
         rt_bins = pd.interval_range(start=segment_df.retention_time_secs.min(), end=segment_df.retention_time_secs.max()+(VOXEL_SIZE_RT*2), freq=VOXEL_SIZE_RT, closed='left')
         scan_bins = pd.interval_range(start=segment_df.scan.min(), end=segment_df.scan.max()+(VOXEL_SIZE_SCAN*2), freq=VOXEL_SIZE_SCAN, closed='left')
-        mz_bins = pd.interval_range(start=segment_mz_lower, end=segment_mz_upper+SEGMENT_EXTENSION+(VOXEL_SIZE_MZ*2), freq=VOXEL_SIZE_MZ, closed='left')
+        mz_bins = pd.interval_range(start=segment_d['mz_lower'], end=segment_d['mz_upper']+SEGMENT_EXTENSION+(VOXEL_SIZE_MZ*2), freq=VOXEL_SIZE_MZ, closed='left')
 
         # assign raw points to their bins
         segment_df['rt_bin'] = pd.cut(segment_df.retention_time_secs, bins=rt_bins)
@@ -304,7 +315,7 @@ def find_features(segment_mz_lower, segment_mz_upper, segment_id, segment_df):
 
         # sum the intensities in each bin
         summary_df = segment_df.groupby(['bin_key'], as_index=False, sort=False).intensity.agg(['sum','count','mean']).reset_index()
-        summary_df['extension_zone'] = summary_df.apply(lambda row: row.bin_key[0].mid > segment_mz_upper, axis=1)  # identify which voxels are in the extension zone
+        summary_df['extension_zone'] = summary_df.apply(lambda row: row.bin_key[0].mid > segment_d['mz_upper'], axis=1)  # identify which voxels are in the extension zone
         summary_df = summary_df[(summary_df.extension_zone == False)]                                               # and remove them from the summary
         summary_df.rename(columns={'sum':'voxel_intensity', 'count':'point_count', 'mean':'voxel_mean'}, inplace=True)
         summary_df.dropna(subset=['voxel_intensity'], inplace=True)
@@ -313,7 +324,7 @@ def find_features(segment_mz_lower, segment_mz_upper, segment_id, segment_df):
         summary_df.reset_index(drop=True, inplace=True)
         summary_df['voxel_id'] = summary_df.index
         summary_df['voxel_id'] = summary_df.apply(lambda row: generate_voxel_id(segment_id, row.voxel_id+1), axis=1)
-        summary_df_name = '{}/summary-{}-{}.pkl'.format(SUMMARY_DIR, round(segment_mz_lower), round(segment_mz_upper))
+        summary_df_name = '{}/summary-{}-{}.pkl'.format(SUMMARY_DIR, round(segment_d['mz_lower']), round(segment_d['mz_upper']))
         summary_df.to_pickle(summary_df_name)
 
         # assign each raw point with their voxel ID
@@ -327,7 +338,7 @@ def find_features(segment_mz_lower, segment_mz_upper, segment_id, segment_df):
 
         # process each voxel by decreasing intensity
         base_peak_voxels_df = summary_df[(summary_df.voxel_intensity >= args.minimum_voxel_intensity)]
-        print('there are {} voxels for processing in segment {} ({}-{} m/z)'.format(len(base_peak_voxels_df), segment_id, round(segment_mz_lower,1), round(segment_mz_upper,1)))
+        print('there are {} voxels for processing in segment {} ({}-{} m/z)'.format(len(base_peak_voxels_df), segment_id, round(segment_d['mz_lower'],1), round(segment_d['mz_upper'],1)))
         for voxel_idx,voxel in enumerate(base_peak_voxels_df.itertuples()):
             # if this voxel hasn't already been processed...
             if (voxel.voxel_id not in voxels_processed):
@@ -580,7 +591,7 @@ def find_features(segment_mz_lower, segment_mz_upper, segment_id, segment_df):
                                     # add the voxels included in the feature's isotopes to the list of voxels already processed
                                     voxels_processed.update(feature_d['voxels_processed'])
     else:
-        print('no raw points were found in segment {} ({}-{} m/z)'.format(segment_id, round(segment_mz_lower,1), round(segment_mz_upper,1)))
+        print('no raw points were found in segment {} ({}-{} m/z)'.format(segment_id, round(segment_d['mz_lower'],1), round(segment_d['mz_upper'],1)))
         
     features_df = pd.DataFrame(features_l)
     if len(features_df) > 0:
@@ -723,19 +734,7 @@ if not ray.is_initialized():
         ray.init(local_mode=True)
 
 # load the raw database
-raw_database_handle = OpenTIMS(pathlib.Path(RAW_DATABASE_DIR))
-raw_db_l = []
-for idx,d in enumerate(raw_database_handle.query_iter(raw_database_handle.ms1_frames, columns=('frame','mz','scan','intensity','retention_time'))):
-    if (d['retention_time'][0] >= args.rt_lower) and (d['retention_time'][0] <= args.rt_upper):
-        d['frame'] = d['frame'].astype(np.uint16, copy=False)
-        d['mz'] = d['mz'].astype(np.float32, copy=False)
-        d['scan'] = d['scan'].astype(np.uint16, copy=False)
-        d['intensity'] = d['intensity'].astype(np.uint16, copy=False)
-        d['retention_time'] = d['retention_time'].astype(np.float32, copy=False)
-        raw_db_l.append(pd.DataFrame(d))
-raw_db_df = pd.concat(raw_db_l, axis=0, sort=False, ignore_index=True)
-raw_db_df.rename(columns={'frame':'frame_id','retention_time':'retention_time_secs'}, inplace=True)
-print('loaded {} raw points from {}'.format(len(raw_db_df), RAW_DATABASE_DIR))
+data = alphatims.bruker.TimsTOF(RAW_DATABASE_DIR)
 
 # calculate the segments
 mz_range = args.mz_upper - args.mz_lower
@@ -745,20 +744,17 @@ NUMBER_OF_MZ_SEGMENTS = (mz_range // args.mz_width_per_segment) + (mz_range % ar
 print('segmenting the raw data')
 segment_packages_l = []
 for i in range(NUMBER_OF_MZ_SEGMENTS):
-    segment_mz_lower=args.mz_lower+(i*args.mz_width_per_segment)
-    segment_mz_upper=args.mz_lower+(i*args.mz_width_per_segment)+args.mz_width_per_segment
+    mz_lower=args.mz_lower+(i*args.mz_width_per_segment)
+    mz_upper=args.mz_lower+(i*args.mz_width_per_segment)+args.mz_width_per_segment
+    rt_lower=args.rt_lower
+    rt_upper=args.rt_upper
+    scan_limit = scan_coords_for_single_charge_region(mz_lower=mz_lower, mz_upper=mz_upper)['scan_for_mz_upper']
     segment_id=i+1
-    # find out where the charge-1 cloud ends and only include points below it (i.e. include points with a higher scan)
-    scan_limit = scan_coords_for_single_charge_region(mz_lower=segment_mz_lower, mz_upper=segment_mz_upper)['scan_for_mz_upper']
-    segment_df = raw_db_df[(raw_db_df.mz >= segment_mz_lower) & (raw_db_df.mz <= segment_mz_upper+SEGMENT_EXTENSION) & (raw_db_df.scan >= scan_limit)].copy()
-    segment_packages_l.append({'segment_mz_lower':segment_mz_lower, 'segment_mz_upper':segment_mz_upper, 'segment_id':segment_id, 'segment_df':segment_df})
-# tell Python we don't need this any more
-del raw_db_df
-del raw_db_l
+    segment_packages_l.append({'mz_lower':mz_lower, 'mz_upper':mz_upper, 'rt_lower':rt_lower, 'rt_upper':rt_upper, 'scan_limit':scan_limit, 'segment_id':segment_id, 'data':data})
 
 # find all the features
 print('finding features')
-interim_names_l = ray.get([find_features.remote(segment_mz_lower=sp['segment_mz_lower'], segment_mz_upper=sp['segment_mz_upper'], segment_id=sp['segment_id'], segment_df=sp['segment_df']) for sp in segment_packages_l])
+interim_names_l = ray.get([find_features.remote(segment_d=sp) for sp in segment_packages_l])
 segment_packages_l = None
 
 # join the list of dataframes into a single dataframe
