@@ -138,6 +138,7 @@ def peak_ratio(monoisotopic_mass, peak_number, number_of_sulphur):
     return ratio
 
 # calculate the cosine similarity of two peaks; each DF is assumed to have an 'x' column that reflects the x-axis values, and an 'intensity' column
+@profile
 def measure_peak_similarity(isotopeA_df, isotopeB_df, x_label, scale):
     # scale the x axis so we can join them
     isotopeA_df['x_scaled'] = (isotopeA_df[x_label] * scale).astype(int)
@@ -149,7 +150,6 @@ def measure_peak_similarity(isotopeA_df, isotopeB_df, x_label, scale):
     return float(cosine_similarity([combined_df.intensity_A.values], [combined_df.intensity_B.values])) if len(combined_df) > 0 else 0.0
 
 # calculate the characteristics of the isotopes in the feature envelope
-@profile
 def determine_isotope_characteristics(envelope, rt_apex, monoisotopic_mass, feature_region_3d_df):
     voxels_processed = set()
     # calculate the isotope intensities from the constrained raw points
