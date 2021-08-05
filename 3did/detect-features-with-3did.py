@@ -284,7 +284,7 @@ def measure_curve(x, y):
     return r_squared
 
 # process a segment of this run's data, and return a list of features
-@ray.remote
+# @ray.remote
 def find_features(segment_d):
     # segment_df = segment_d['segment_df'].copy()
     segment_df = cudf.DataFrame.from_pandas(segment_d['segment_df'])
@@ -724,12 +724,12 @@ if os.path.exists(SUMMARY_DIR):
 os.makedirs(SUMMARY_DIR)
 
 # set up Ray
-print("setting up Ray")
-if not ray.is_initialized():
-    if args.ray_mode == "cluster":
-        ray.init(num_cpus=number_of_workers())
-    else:
-        ray.init(local_mode=True)
+# print("setting up Ray")
+# if not ray.is_initialized():
+#     if args.ray_mode == "cluster":
+#         ray.init(num_cpus=number_of_workers())
+#     else:
+#         ray.init(local_mode=True)
 
 # load the raw database
 print('loading the raw data from {}'.format(RAW_DATABASE_DIR))
@@ -773,7 +773,8 @@ del data
 
 # find all the features
 print('finding features')
-interim_names_l = ray.get([find_features.remote(segment_d=sp) for sp in segment_packages_l])
+# interim_names_l = ray.get([find_features.remote(segment_d=sp) for sp in segment_packages_l])
+interim_names_l = [find_features(segment_d=sp) for sp in segment_packages_l]
 segment_packages_l = None
 
 # join the list of dataframes into a single dataframe
