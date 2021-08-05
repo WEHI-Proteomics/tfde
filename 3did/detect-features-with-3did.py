@@ -21,6 +21,7 @@ import shutil
 import pathlib
 import alphatims.bruker
 import alphatims.utils
+import cudf
 
 
 # determine the number of workers based on the number of available cores and the proportion of the machine to be used
@@ -285,8 +286,8 @@ def measure_curve(x, y):
 # process a segment of this run's data, and return a list of features
 @ray.remote
 def find_features(segment_d):
-    # segment_df = pd.read_pickle(segment_d['segment_name'])
-    segment_df = segment_d['segment_df'].copy()
+    # segment_df = segment_d['segment_df'].copy()
+    segment_df = cudf.DataFrame.from_pandas(segment_d['segment_df'])
     features_l = []
     if len(segment_df) > 0:
         # assign each point a unique identifier
