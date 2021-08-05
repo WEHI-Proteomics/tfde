@@ -149,6 +149,7 @@ def measure_peak_similarity(isotopeA_df, isotopeB_df, x_label, scale):
     return float(cosine_similarity([combined_df.intensity_A.values], [combined_df.intensity_B.values])) if len(combined_df) > 0 else 0.0
 
 # calculate the characteristics of the isotopes in the feature envelope
+@profile
 def determine_isotope_characteristics(envelope, rt_apex, monoisotopic_mass, feature_region_3d_df):
     voxels_processed = set()
     # calculate the isotope intensities from the constrained raw points
@@ -285,7 +286,6 @@ def measure_curve(x, y):
 
 # process a segment of this run's data, and return a list of features
 # @ray.remote
-@profile
 def find_features(segment_d):
     # segment_df = pd.read_pickle(segment_d['segment_name'])
     segment_df = segment_d['segment_df'].copy()
