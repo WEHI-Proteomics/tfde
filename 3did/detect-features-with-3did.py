@@ -21,7 +21,6 @@ import shutil
 import pathlib
 import alphatims.bruker
 import alphatims.utils
-import line_profiler
 
 
 # determine the number of workers based on the number of available cores and the proportion of the machine to be used
@@ -138,7 +137,6 @@ def peak_ratio(monoisotopic_mass, peak_number, number_of_sulphur):
     return ratio
 
 # calculate the cosine similarity of two peaks; each DF is assumed to have an 'x' column that reflects the x-axis values, and an 'intensity' column
-@profile
 def measure_peak_similarity(isotopeA_df, isotopeB_df, x_label, scale):
     # scale the x axis so we can join them
     isotopeA_df['x_scaled'] = (isotopeA_df[x_label] * scale).astype(int)
@@ -285,7 +283,7 @@ def measure_curve(x, y):
     return r_squared
 
 # process a segment of this run's data, and return a list of features
-# @ray.remote
+@ray.remote
 def find_features(segment_d):
     # segment_df = pd.read_pickle(segment_d['segment_name'])
     segment_df = segment_d['segment_df'].copy()
@@ -774,8 +772,7 @@ del data
 
 # find all the features
 print('finding features')
-# interim_names_l = ray.get([find_features.remote(segment_d=sp) for sp in segment_packages_l])
-interim_names_l = [find_features(segment_d=sp) for sp in segment_packages_l]
+interim_names_l = ray.get([find_features.remote(segment_d=sp) for sp in segment_packages_l])
 segment_packages_l = None
 
 # join the list of dataframes into a single dataframe
