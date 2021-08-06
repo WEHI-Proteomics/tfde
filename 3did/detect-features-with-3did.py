@@ -344,7 +344,7 @@ def find_features(segment_d):
         voxels_processed = set()
 
         # process each voxel by decreasing intensity
-        base_peak_voxels_df = segment_cudf[(summary_df.voxel_intensity >= args.minimum_voxel_intensity) & (segment_cudf.mz_bin_mid < segment_d['mz_upper'])]
+        base_peak_voxels_df = summary_df[(summary_df.voxel_intensity >= args.minimum_voxel_intensity) & (summary_df.mz_bin_mid < segment_d['mz_upper'])]
         print('there are {} voxels for processing in segment {} ({}-{} m/z)'.format(len(base_peak_voxels_df), segment_d['segment_id'], round(segment_d['mz_lower']), round(segment_d['mz_upper'])))
         for voxel_idx,voxel in enumerate(base_peak_voxels_df.itertuples()):
             # if this voxel hasn't already been processed...
