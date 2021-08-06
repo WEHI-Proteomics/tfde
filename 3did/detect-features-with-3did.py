@@ -302,8 +302,8 @@ def find_features(segment_d):
 
         # assign raw points to their bins
         segment_df['rt_bin'] = cupy.asarray(pd.cut(segment_df.retention_time_secs, bins=rt_bins))
-        segment_df['scan_bin'] = pd.cut(segment_df.scan, bins=scan_bins)
-        segment_df['mz_bin'] = pd.cut(segment_df.mz, bins=mz_bins)
+        segment_df['scan_bin'] = cupy.asarray(pd.cut(segment_df.scan, bins=scan_bins))
+        segment_df['mz_bin'] = cupy.asarray(pd.cut(segment_df.mz, bins=mz_bins))
         segment_df['bin_key'] = list(zip(segment_df.mz_bin, segment_df.scan_bin, segment_df.rt_bin))
 
         # sum the intensities in each bin
