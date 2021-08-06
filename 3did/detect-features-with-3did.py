@@ -320,9 +320,7 @@ def find_features(segment_d):
         segment_df.drop(['rt_bin','scan_bin','mz_bin'], axis=1, inplace=True)
 
         # sum the intensities in each bin
-        summary_df = segment_df.groupby(['bin_key'], as_index=False, sort=False).intensity.agg(['sum','count','mean']).reset_index()
-        summary_df['extension_zone'] = summary_df.apply(lambda row: row.mz_bin_mid > segment_d['mz_upper'], axis=1)  # identify which voxels are in the extension zone
-        summary_df = summary_df[(summary_df.extension_zone == False)]                                               # and remove them from the summary
+        summary_df = segment_df[(segment_df.mz_bin_mid < segment_d['mz_upper'])].groupby(['bin_key'], as_index=False, sort=False).intensity.agg(['sum','count','mean']).reset_index()
         summary_df.rename(columns={'sum':'voxel_intensity', 'count':'point_count', 'mean':'voxel_mean'}, inplace=True)
         summary_df.dropna(subset=['voxel_intensity'], inplace=True)
         summary_df.dropna(subset=['voxel_mean'], inplace=True)
