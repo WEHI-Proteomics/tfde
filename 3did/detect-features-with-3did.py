@@ -304,17 +304,17 @@ def find_features(segment_d):
         segment_df['scan_bin'] = pd.cut(segment_df.scan, bins=scan_bins)
         segment_df['mz_bin'] = pd.cut(segment_df.mz, bins=mz_bins)
 
-        segment_df['rt_bin_left'] = segment_df.rt_bin.apply(lambda x:x.left)
-        segment_df['rt_bin_right'] = segment_df.rt_bin.apply(lambda x:x.right)
-        segment_df['rt_bin_mid'] = segment_df.rt_bin.apply(lambda x:x.mid)
+        segment_df['rt_bin_left'] = segment_df.rt_bin.apply(lambda x:x.left).astype(np.float32)
+        segment_df['rt_bin_right'] = segment_df.rt_bin.apply(lambda x:x.right).astype(np.float32)
+        segment_df['rt_bin_mid'] = segment_df.rt_bin.apply(lambda x:x.mid).astype(np.float32)
 
-        segment_df['scan_bin_left'] = segment_df.scan_bin.apply(lambda x:x.left)
-        segment_df['scan_bin_right'] = segment_df.scan_bin.apply(lambda x:x.right)
-        segment_df['scan_bin_mid'] = segment_df.scan_bin.apply(lambda x:x.mid)
+        segment_df['scan_bin_left'] = segment_df.scan_bin.apply(lambda x:x.left).astype(np.float32)
+        segment_df['scan_bin_right'] = segment_df.scan_bin.apply(lambda x:x.right).astype(np.float32)
+        segment_df['scan_bin_mid'] = segment_df.scan_bin.apply(lambda x:x.mid).astype(np.float32)
 
-        segment_df['mz_bin_left'] = segment_df.mz_bin.apply(lambda x:x.left)
-        segment_df['mz_bin_right'] = segment_df.mz_bin.apply(lambda x:x.right)
-        segment_df['mz_bin_mid'] = segment_df.mz_bin.apply(lambda x:x.mid)
+        segment_df['mz_bin_left'] = segment_df.mz_bin.apply(lambda x:x.left).astype(np.float32)
+        segment_df['mz_bin_right'] = segment_df.mz_bin.apply(lambda x:x.right).astype(np.float32)
+        segment_df['mz_bin_mid'] = segment_df.mz_bin.apply(lambda x:x.mid).astype(np.float32)
 
         segment_df['bin_key'] = segment_df.apply(lambda x:hash((x.rt_bin_mid, x.scan_bin_mid, x.mz_bin_mid)), axis=1)
         segment_df.drop(['rt_bin','scan_bin','mz_bin'], axis=1, inplace=True)
