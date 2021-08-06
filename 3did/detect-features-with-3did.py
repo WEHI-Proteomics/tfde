@@ -22,6 +22,7 @@ import pathlib
 import alphatims.bruker
 import alphatims.utils
 import cudf
+import cupy
 
 
 # determine the number of workers based on the number of available cores and the proportion of the machine to be used
@@ -300,7 +301,7 @@ def find_features(segment_d):
         mz_bins = pd.interval_range(start=segment_d['mz_lower'], end=segment_d['mz_upper']+SEGMENT_EXTENSION+(VOXEL_SIZE_MZ*2), freq=VOXEL_SIZE_MZ, closed='left')
 
         # assign raw points to their bins
-        segment_df['rt_bin'] = pd.cut(segment_df.retention_time_secs, bins=rt_bins)
+        segment_df['rt_bin'] = cupy.asarray(pd.cut(segment_df.retention_time_secs, bins=rt_bins))
         segment_df['scan_bin'] = pd.cut(segment_df.scan, bins=scan_bins)
         segment_df['mz_bin'] = pd.cut(segment_df.mz, bins=mz_bins)
         segment_df['bin_key'] = list(zip(segment_df.mz_bin, segment_df.scan_bin, segment_df.rt_bin))
