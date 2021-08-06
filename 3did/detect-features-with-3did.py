@@ -303,11 +303,25 @@ def find_features(segment_d):
         segment_df['rt_bin'] = pd.cut(segment_df.retention_time_secs, bins=rt_bins)
         segment_df['scan_bin'] = pd.cut(segment_df.scan, bins=scan_bins)
         segment_df['mz_bin'] = pd.cut(segment_df.mz, bins=mz_bins)
-        segment_df['bin_key'] = list(zip(segment_df.mz_bin, segment_df.scan_bin, segment_df.rt_bin))
+
+        segment_df['rt_bin_left'] = segment_df.rt_bin.apply(lambda x:x.left)
+        segment_df['rt_bin_right'] = segment_df.rt_bin.apply(lambda x:x.right)
+        segment_df['rt_bin_mid'] = segment_df.rt_bin.apply(lambda x:x.mid)
+
+        segment_df['scan_bin_left'] = segment_df.scan_bin.apply(lambda x:x.left)
+        segment_df['scan_bin_right'] = segment_df.scan_bin.apply(lambda x:x.right)
+        segment_df['scan_bin_mid'] = segment_df.scan_bin.apply(lambda x:x.mid)
+
+        segment_df['mz_bin_left'] = segment_df.mz_bin.apply(lambda x:x.left)
+        segment_df['mz_bin_right'] = segment_df.mz_bin.apply(lambda x:x.right)
+        segment_df['mz_bin_mid'] = segment_df.mz_bin.apply(lambda x:x.mid)
+
+        segment_df['bin_key'] = segment_df.apply(lambda x:hash((x.rt_bin_mid, x.scan_bin_mid, x.mz_bin_mid)), axis=1)
+        segment_df.drop(['rt_bin','scan_bin','mz_bin'], axis=1, inplace=True)
 
         # sum the intensities in each bin
         summary_df = segment_df.groupby(['bin_key'], as_index=False, sort=False).intensity.agg(['sum','count','mean']).reset_index()
-        summary_df['extension_zone'] = summary_df.apply(lambda row: row.bin_key[0].mid > segment_d['mz_upper'], axis=1)  # identify which voxels are in the extension zone
+        summary_df['extension_zone'] = summary_df.apply(lambda row: row.mz_bin_mid > segment_d['mz_upper'], axis=1)  # identify which voxels are in the extension zone
         summary_df = summary_df[(summary_df.extension_zone == False)]                                               # and remove them from the summary
         summary_df.rename(columns={'sum':'voxel_intensity', 'count':'point_count', 'mean':'voxel_mean'}, inplace=True)
         summary_df.dropna(subset=['voxel_intensity'], inplace=True)
@@ -321,10 +335,10 @@ def find_features(segment_d):
 
         # assign each raw point with their voxel ID
         segment_df = pd.merge(segment_df, summary_df[['bin_key','voxel_id','voxel_intensity']], how='left', left_on=['bin_key'], right_on=['bin_key'])
-        segment_cudf = cudf.DataFrame.from_pandas(segment_df)
+        # segment_cudf = cudf.DataFrame.from_pandas(segment_df)
 
         # determine each point\'s contribution to its voxel intensity
-        segment_cudf['voxel_proportion'] = segment_cudf.intensity / segment_cudf.voxel_intensity
+        segment_df['voxel_proportion'] = segment_df.intensity / segment_df.voxel_intensity
 
         # keep track of the keys of voxels that have been processed
         voxels_processed = set()
@@ -335,21 +349,18 @@ def find_features(segment_d):
         for voxel_idx,voxel in enumerate(base_peak_voxels_df.itertuples()):
             # if this voxel hasn't already been processed...
             if (voxel.voxel_id not in voxels_processed):
-                # retrieve the bins from the voxel key
-                (mz_bin, scan_bin, rt_bin) = voxel.bin_key
-
                 # get the attributes of this voxel
-                voxel_mz_lower = mz_bin.left
-                voxel_mz_upper = mz_bin.right
-                voxel_mz_midpoint = mz_bin.mid
-                voxel_scan_lower = scan_bin.left
-                voxel_scan_upper = scan_bin.right
-                voxel_scan_midpoint = scan_bin.mid
-                voxel_rt_lower = rt_bin.left
-                voxel_rt_upper = rt_bin.right
-                voxel_rt_midpoint = rt_bin.mid
-                voxel_rt_condition = (segment_cudf.retention_time_secs >= voxel_rt_lower) & (segment_cudf.retention_time_secs <= voxel_rt_upper)
-                voxel_points_df = segment_cudf[(segment_cudf.mz >= voxel_mz_lower) & (segment_cudf.mz <= voxel_mz_upper) & (segment_cudf.scan >= voxel_scan_lower) & (segment_cudf.scan <= voxel_scan_upper) & voxel_rt_condition]
+                voxel_mz_lower = voxel.mz_bin_left
+                voxel_mz_upper = voxel.mz_bin_right
+                voxel_mz_midpoint = voxel.mz_bin_mid
+                voxel_scan_lower = voxel.scan_bin_left
+                voxel_scan_upper = voxel.scan_bin_right
+                voxel_scan_midpoint = voxel.scan_bin_mid
+                voxel_rt_lower = voxel.rt_bin_left
+                voxel_rt_upper = voxel.rt_bin_right
+                voxel_rt_midpoint = voxel.rt_bin_mid
+                voxel_rt_condition = (segment_df.retention_time_secs >= voxel_rt_lower) & (segment_df.retention_time_secs <= voxel_rt_upper)
+                voxel_points_df = segment_df[(segment_df.mz >= voxel_mz_lower) & (segment_df.mz <= voxel_mz_upper) & (segment_df.scan >= voxel_scan_lower) & (segment_df.scan <= voxel_scan_upper) & voxel_rt_condition]
 
                 # find the voxel's mz intensity-weighted centroid
                 points_a = voxel_points_df[['mz','intensity']].to_numpy()
@@ -370,8 +381,8 @@ def find_features(segment_d):
                                     'frame_region_scan_lower':frame_region_scan_lower, 'frame_region_scan_upper':frame_region_scan_upper, 'summed_intensity':voxel.voxel_intensity, 'point_count':voxel.point_count}
 
                 # find the mobility extent of the isotope in this frame
-                iso_mz_condition = (segment_cudf.mz >= iso_mz_lower) & (segment_cudf.mz <= iso_mz_upper)
-                isotope_2d_df = segment_cudf[iso_mz_condition & (segment_cudf.scan >= frame_region_scan_lower) & (segment_cudf.scan <= frame_region_scan_upper) & voxel_rt_condition]
+                iso_mz_condition = (segment_df.mz >= iso_mz_lower) & (segment_df.mz <= iso_mz_upper)
+                isotope_2d_df = segment_df[iso_mz_condition & (segment_df.scan >= frame_region_scan_lower) & (segment_df.scan <= frame_region_scan_upper) & voxel_rt_condition]
                 # collapsing the monoisotopic's summed points onto the mobility dimension
                 scan_df = isotope_2d_df.groupby(['scan'], as_index=False).intensity.sum()
                 scan_df.sort_values(by=['scan'], ascending=True, inplace=True)
