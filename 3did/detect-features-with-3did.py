@@ -323,7 +323,7 @@ def find_features(segment_d):
         # sum the intensities in each bin
         summary_df = segment_df.groupby(['bin_key'], as_index=False, sort=False).agg({'intensity':['sum','count','mean'],'rt_bin_left':['first'],'rt_bin_mid':['first'],'rt_bin_right':['first'],'scan_bin_left':['first'],'scan_bin_mid':['first'],'scan_bin_right':['first'],'mz_bin_left':['first'],'mz_bin_mid':['first'],'mz_bin_right':['first']})
         summary_df.columns = summary_df.columns.to_flat_index()
-        summary_df.rename(columns={('intensity','sum'):'voxel_intensity', ('intensity','count'):'point_count', ('intensity','mean'):'voxel_mean', ('rt_bin_left','first'):'rt_bin_left', ('rt_bin_mid','first'):'rt_bin_mid', ('rt_bin_right','first'):'rt_bin_right', ('scan_bin_left','first'):'scan_bin_left', ('scan_bin_mid','first'):'scan_bin_mid', ('scan_bin_right','first'):'scan_bin_right', ('mz_bin_left','first'):'mz_bin_left', ('mz_bin_mid','first'):'mz_bin_mid', ('mz_bin_right','first'):'mz_bin_right'}, inplace=True)
+        summary_df.rename(columns={('bin_key',''):'bin_key', ('intensity','sum'):'voxel_intensity', ('intensity','count'):'point_count', ('intensity','mean'):'voxel_mean', ('rt_bin_left','first'):'rt_bin_left', ('rt_bin_mid','first'):'rt_bin_mid', ('rt_bin_right','first'):'rt_bin_right', ('scan_bin_left','first'):'scan_bin_left', ('scan_bin_mid','first'):'scan_bin_mid', ('scan_bin_right','first'):'scan_bin_right', ('mz_bin_left','first'):'mz_bin_left', ('mz_bin_mid','first'):'mz_bin_mid', ('mz_bin_right','first'):'mz_bin_right'}, inplace=True)
         summary_df.dropna(subset=['voxel_intensity'], inplace=True)
         summary_df.dropna(subset=['voxel_mean'], inplace=True)
         summary_df.sort_values(by=['voxel_mean'], ascending=False, inplace=True)
