@@ -45,7 +45,7 @@ def scan_coords_for_single_charge_region(mz_lower, mz_upper):
 # calculate the intensity-weighted centroid
 # takes a numpy array of intensity, and another of mz
 def intensity_weighted_centroid(_int_f, _x_f):
-    return ((_int_f/_int_f.sum()) * _x_f).sum()
+    return float(((_int_f/_int_f.sum()) * _x_f).sum())
 
 # find 3sigma for a specified m/z
 def calculate_peak_delta(mz):
