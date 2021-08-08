@@ -363,8 +363,9 @@ def find_features(segment_d):
                 voxel_points_df = segment_cudf[(segment_cudf.mz >= voxel_mz_lower) & (segment_cudf.mz <= voxel_mz_upper) & (segment_cudf.scan >= voxel_scan_lower) & (segment_cudf.scan <= voxel_scan_upper) & voxel_rt_condition]
 
                 # find the voxel's mz intensity-weighted centroid
-                points_a = cupy.fromDlpack(voxel_points_df[['mz','intensity']].to_dlpack())
-                voxel_mz_centroid = intensity_weighted_centroid(points_a[:,1], points_a[:,0])
+                mz_points_a = cupy.fromDlpack(voxel_points_df[['mz']].to_dlpack())
+                intensity_points_a = cupy.fromDlpack(voxel_points_df[['intensity']].to_dlpack())
+                voxel_mz_centroid = intensity_weighted_centroid(intensity_points_a, mz_points_a)
 
                 # isolate the isotope's points in the m/z dimension; note the isotope may be offset so some of the points may be outside the voxel
                 iso_mz_delta = calculate_peak_delta(voxel_mz_centroid)
