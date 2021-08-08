@@ -366,6 +366,7 @@ def find_features(segment_d):
                 mz_points_a = cupy.fromDlpack(voxel_points_df[['mz']].to_dlpack())
                 intensity_points_a = cupy.fromDlpack(voxel_points_df[['intensity']].to_dlpack())
                 voxel_mz_centroid = intensity_weighted_centroid(intensity_points_a, mz_points_a)
+                print('voxel_mz_centroid: {}'.format(voxel_mz_centroid))
 
                 # isolate the isotope's points in the m/z dimension; note the isotope may be offset so some of the points may be outside the voxel
                 iso_mz_delta = calculate_peak_delta(voxel_mz_centroid)
