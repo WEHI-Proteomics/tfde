@@ -363,10 +363,7 @@ def find_features(segment_d):
                 voxel_points_df = segment_cudf[(segment_cudf.mz >= voxel_mz_lower) & (segment_cudf.mz <= voxel_mz_upper) & (segment_cudf.scan >= voxel_scan_lower) & (segment_cudf.scan <= voxel_scan_upper) & voxel_rt_condition]
 
                 # find the voxel's mz intensity-weighted centroid
-                mz_points_a = cupy.fromDlpack(voxel_points_df[['mz']].to_dlpack())
-                intensity_points_a = cupy.fromDlpack(voxel_points_df[['intensity']].to_dlpack())
-                voxel_mz_centroid = intensity_weighted_centroid(intensity_points_a, mz_points_a)
-                print('voxel_mz_centroid type: {}'.format(type(voxel_mz_centroid)))
+                voxel_mz_centroid = intensity_weighted_centroid(cupy.asarray(voxel_points_df[['intensity']]), cupy.asarray(voxel_points_df[['mz']]))
 
                 # isolate the isotope's points in the m/z dimension; note the isotope may be offset so some of the points may be outside the voxel
                 iso_mz_delta = calculate_peak_delta(voxel_mz_centroid)
@@ -526,8 +523,7 @@ def find_features(segment_d):
                         feature_region_3d_df = segment_cudf[(segment_cudf.mz >= region_mz_lower) & (segment_cudf.mz <= region_mz_upper) & iso_scan_condition & iso_rt_condition]
 
                         # intensity descent
-                        raw_points_a = feature_region_3d_df[['mz','intensity']].to_numpy()
-                        peaks_a = intensity_descent(peaks_a=raw_points_a, peak_delta=None)
+                        peaks_a = intensity_descent(peaks_a=cupy.fromDlpack(feature_region_3d_df[['mz','intensity']].to_dlpack()), peak_delta=None)
 
                         # deconvolution - see https://mobiusklein.github.io/ms_deisotope/docs/_build/html/deconvolution/deconvolution.html
                         # returns a collection of DeconvolutedPeak (https://github.com/mobiusklein/ms_deisotope/blob/bce522a949579a5f54465eab24194eb5693f40ef/ms_deisotope/peak_set.py#L78) representing a single deconvoluted peak 
