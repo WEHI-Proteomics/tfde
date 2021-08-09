@@ -147,7 +147,7 @@ def measure_peak_similarity(isotopeA_df, isotopeB_df, x_label, scale):
     # combine the isotopes by aligning the x-dimension points they have in common
     combined_df = isotopeA_df.join(isotopeB_df, how='inner', lsuffix='_A', rsuffix='_B')
     # combined_df = pd.merge(isotopeA_df, isotopeB_df, on='x_scaled', how='inner', suffixes=('_A', '_B')).sort_values(by='x_scaled')
-    combined_df = combined_df[['x_scaled','intensity_A','intensity_B']]
+    # combined_df = combined_df[['x_scaled','intensity_A','intensity_B']]
     # calculate the similarity
     return float(cosine_similarity([combined_df.intensity_A.values], [combined_df.intensity_B.values])) if len(combined_df) > 0 else 0.0
 
