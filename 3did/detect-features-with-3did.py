@@ -384,7 +384,7 @@ def find_features(segment_d):
                 isotope_2d_df = segment_cudf[iso_mz_condition & (segment_cudf.scan >= frame_region_scan_lower) & (segment_cudf.scan <= frame_region_scan_upper) & voxel_rt_condition]
                 # collapsing the monoisotopic's summed points onto the mobility dimension
                 scan_df = isotope_2d_df.groupby(['scan'], as_index=False).intensity.sum()
-                scan_df.sort_values(by=['scan'], ascending=True, inplace=True)
+                scan_df = scan_df.sort_values(by=['scan'], ascending=True, inplace=False)
                 if len(scan_df) >= MINIMUM_NUMBER_OF_SCANS_IN_BASE_PEAK:
 
                     # apply a smoothing filter to the points
