@@ -22,8 +22,8 @@ def number_of_workers():
 # returns a dataframe with the prepared isolation windows
 def load_isolation_windows():
     # get all the isolation windows
-    db_conn = sqlite3.connect(CONVERTED_DATABASE_NAME)
-    isolation_window_df = pd.read_sql_query("select * from isolation_windows order by Precursor", db_conn)
+    db_conn = sqlite3.connect('{}/analysis.tdf'.format(RAW_DATABASE_NAME))
+    isolation_window_df = pd.read_sql_query("select * from PasefFrameMsMsInfo order by Precursor", db_conn)
     db_conn.close()
 
     isolation_window_df['mz_lower'] = isolation_window_df.IsolationMz - (isolation_window_df.IsolationWidth / 2) - MS2_MZ_ISOLATION_WINDOW_EXTENSION
@@ -35,17 +35,17 @@ def load_isolation_windows():
         stop_idx = start_idx + 20
         isolation_window_df = isolation_window_df[start_idx:stop_idx]
 
-    print("loaded {} isolation windows from {}".format(len(isolation_window_df), CONVERTED_DATABASE_NAME))
+    print("loaded {} isolation windows from {}".format(len(isolation_window_df), RAW_DATABASE_NAME))
     return isolation_window_df
 
 # returns a dataframe with the frame properties
 def load_frame_properties():
     # get all the isolation windows
-    db_conn = sqlite3.connect(CONVERTED_DATABASE_NAME)
-    frames_properties_df = pd.read_sql_query("select * from frame_properties order by Id ASC;", db_conn)
+    db_conn = sqlite3.connect('{}/analysis.tdf'.format(RAW_DATABASE_NAME))
+    frames_properties_df = pd.read_sql_query("select * from Frames order by Id ASC;", db_conn)
     db_conn.close()
 
-    print("loaded {} frame_properties from {}".format(len(frames_properties_df), CONVERTED_DATABASE_NAME))
+    print("loaded {} frame_properties from {}".format(len(frames_properties_df), RAW_DATABASE_NAME))
     return frames_properties_df
 
 def metadata_for_frame(frame_properties_df, frame_id):
@@ -158,10 +158,10 @@ if not os.path.exists(EXPERIMENT_DIR):
     print("The experiment directory is required but doesn't exist: {}".format(EXPERIMENT_DIR))
     sys.exit(1)
 
-# check the converted databases directory exists
-CONVERTED_DATABASE_NAME = "{}/converted-databases/exp-{}-run-{}-converted.sqlite".format(EXPERIMENT_DIR, args.experiment_name, args.run_name)
-if not os.path.isfile(CONVERTED_DATABASE_NAME):
-    print("The converted database is required but doesn't exist: {}".format(CONVERTED_DATABASE_NAME))
+# check the raw database exists
+RAW_DATABASE_NAME = "{}/raw-databases/{}.d".format(EXPERIMENT_DIR, args.run_name)
+if not os.path.exists(RAW_DATABASE_NAME):
+    print("The raw database is required but doesn't exist: {}".format(RAW_DATABASE_NAME))
     sys.exit(1)
 
 # check the INI file exists
