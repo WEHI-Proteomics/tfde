@@ -535,7 +535,8 @@ if not os.path.exists(EXPERIMENT_DIR):
     sys.exit(1)
 
 # check the raw database exists
-RAW_DATABASE_NAME = "{}/raw-databases/{}.d".format(EXPERIMENT_DIR, args.run_name)
+RAW_DATABASE_BASE_DIR = "{}/raw-databases".format(EXPERIMENT_DIR)
+RAW_DATABASE_NAME = "{}/{}.d".format(RAW_DATABASE_BASE_DIR, args.run_name)
 if not os.path.exists(RAW_DATABASE_NAME):
     print("The raw database is required but doesn't exist: {}".format(RAW_DATABASE_NAME))
     sys.exit(1)
@@ -601,7 +602,20 @@ if not ray.is_initialized():
         ray.init(local_mode=True)
 
 # create the TimsTOF object
-data = alphatims.bruker.TimsTOF(RAW_DATABASE_NAME)
+RAW_HDF_FILE = '{}.hdf'.format(args.run_name)
+RAW_HDF_PATH = '{}/{}'.format(RAW_DATABASE_BASE_DIR, RAW_HDF_FILE)
+if not os.path.isfile(RAW_HDF_PATH):
+    print('{} doesn\'t exist so loading the raw data from {}'.format(RAW_HDF_PATH, RAW_DATABASE_NAME))
+    data = alphatims.bruker.TimsTOF(RAW_DATABASE_NAME)
+    print('saving to {}'.format(RAW_HDF_PATH))
+    _ = data.save_as_hdf(
+        directory=RAW_DATABASE_BASE_DIR,
+        file_name=RAW_HDF_FILE,
+        overwrite=True
+    )
+else:
+    print('loading raw data from {}'.format(RAW_HDF_PATH))
+    data = alphatims.bruker.TimsTOF(RAW_HDF_PATH)
 
 print('loading the cuboids')
 cuboids_l = []
