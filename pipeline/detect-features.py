@@ -613,12 +613,12 @@ TARGET_NUMBER_OF_FEATURES_FOR_CUBOID = cfg.getint('ms1', 'TARGET_NUMBER_OF_FEATU
 CARBON_MASS_DIFFERENCE = cfg.getfloat('common', 'CARBON_MASS_DIFFERENCE')
 
 # input cuboids
-CUBOIDS_DIR = "{}/precursor-cuboids-{}".format(EXPERIMENT_DIR, args.precursor_definition_method)
-CUBOIDS_FILE = '{}/exp-{}-run-{}-precursor-cuboids-{}.pkl'.format(CUBOIDS_DIR, args.experiment_name, args.run_name, args.precursor_definition_method)
+CUBOIDS_DIR = "{}/precursor-cuboids-pasef".format(EXPERIMENT_DIR)
+CUBOIDS_FILE = '{}/exp-{}-run-{}-precursor-cuboids-pasef.pkl'.format(CUBOIDS_DIR, args.experiment_name, args.run_name)
 
 # output features
-FEATURES_DIR = "{}/features-{}".format(EXPERIMENT_DIR, args.precursor_definition_method)
-FEATURES_FILE = '{}/exp-{}-run-{}-features-{}.pkl'.format(FEATURES_DIR, args.experiment_name, args.run_name, args.precursor_definition_method)
+FEATURES_DIR = "{}/features-pasef".format(EXPERIMENT_DIR)
+FEATURES_FILE = '{}/exp-{}-run-{}-features-pasef.pkl'.format(FEATURES_DIR, args.experiment_name, args.run_name)
 
 # check the cuboids file
 if not os.path.isfile(CUBOIDS_FILE):
