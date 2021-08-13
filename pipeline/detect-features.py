@@ -414,7 +414,7 @@ def detect_features(cuboid, mass_defect_bins, visualise):
     wide_ms1_points_df = cuboid['ms1_df']
     precursor_cuboid = cuboid['precursor_cuboid']
     # for deconvolution, constrain the CCS and RT dimensions to the fragmentation event
-    fe_ms1_points_df = wide_ms1_points_df[(wide_ms1_points_df.retention_time_secs >= precursor_cuboid.ms1_rt_lower) & (wide_ms1_points_df.retention_time_secs <= precursor_cuboid.ms1_rt_upper) & (wide_ms1_points_df.scan >= precursor_cuboid.scan_lower) & (wide_ms1_points_df.scan <= precursor_cuboid.scan_upper)]
+    fe_ms1_points_df = wide_ms1_points_df[(wide_ms1_points_df.retention_time_secs >= precursor_cuboid.fe_ms1_rt_lower) & (wide_ms1_points_df.retention_time_secs <= precursor_cuboid.fe_ms1_rt_upper) & (wide_ms1_points_df.scan >= precursor_cuboid.fe_scan_lower) & (wide_ms1_points_df.scan <= precursor_cuboid.fe_scan_upper)]
 
     # intensity descent
     raw_points_a = fe_ms1_points_df[['mz','intensity']].to_numpy()
@@ -638,8 +638,8 @@ for row in precursor_cuboids_df.itertuples():
     # load the ms2 points for this cuboid
     ms2_df = data[
         {
-            "frame_indices": slice(int(row.ms2_frame_lower), int(row.ms2_frame_upper+1)),
-            "scan_indices": slice(int(row.scan_lower), int(row.scan_upper)),
+            "frame_indices": slice(int(row.fe_ms2_frame_lower), int(row.fe_ms2_frame_upper+1)),
+            "scan_indices": slice(int(row.fe_scan_lower), int(row.fe_scan_upper)),
             "precursor_indices": slice(1, None)  # ms2 frames only
         }
     ][['mz_values','scan_indices','frame_indices','rt_values','intensity_values']]
