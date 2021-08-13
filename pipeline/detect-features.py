@@ -7,7 +7,6 @@ import time
 import json
 import multiprocessing as mp
 import ray
-import sqlite3
 from ms_deisotope import deconvolute_peaks, averagine, scoring
 from ms_deisotope.deconvolution import peak_retention_strategy
 import pickle
@@ -18,6 +17,7 @@ import peakutils
 from scipy import signal
 import math
 from sklearn.metrics.pairwise import cosine_similarity
+import alphatims.bruker
 
 
 # peak and valley detection parameters
@@ -34,14 +34,6 @@ VALLEYS_MIN_DIST_SCAN = 10.0  # scans
 # filter parameters
 SCAN_FILTER_POLY_ORDER = 5
 RT_FILTER_POLY_ORDER = 3
-
-# set up the indexes we need for queries
-def create_indexes(db_file_name):
-    db_conn = sqlite3.connect(db_file_name)
-    src_c = db_conn.cursor()
-    src_c.execute("create index if not exists idx_extract_cuboids_1 on frames (frame_type,retention_time_secs,scan,mz)")
-    src_c.execute("create index if not exists idx_extract_cuboids_2 on frames (frame_type,frame_id,scan)")
-    db_conn.close()
 
 # determine the maximum filter length for the number of points
 def find_filter_length(number_of_points):
@@ -417,11 +409,23 @@ def save_visualisation(visualise_d, method):
 
 # prepare the metadata and raw points for the feature detection
 @ray.remote
-def detect_features(precursor_cuboid_d, converted_db_name, mass_defect_bins, visualise):
+def detect_features(precursor_cuboid_d, raw_data, mass_defect_bins, visualise):
     # load the raw points for this cuboid
-    db_conn = sqlite3.connect(converted_db_name)
-    wide_ms1_points_df = pd.read_sql_query("select frame_id,mz,scan,intensity,retention_time_secs from frames where frame_type == {} and retention_time_secs >= {} and retention_time_secs <= {} and scan >= {} and scan <= {} and mz >= {} and mz <= {}".format(FRAME_TYPE_MS1, precursor_cuboid_d['wide_ms1_rt_lower'], precursor_cuboid_d['wide_ms1_rt_upper'], precursor_cuboid_d['wide_scan_lower'], precursor_cuboid_d['wide_scan_upper'], precursor_cuboid_d['wide_mz_lower'], precursor_cuboid_d['wide_mz_upper']), db_conn)
-    db_conn.close()
+    wide_ms1_points_df = raw_data[
+        {
+            "rt_values": slice(float(precursor_cuboid_d['wide_ms1_rt_lower']), float(precursor_cuboid_d['wide_ms1_rt_upper'])),
+            "mz_values": slice(float(precursor_cuboid_d['wide_mz_lower']), float(precursor_cuboid_d['wide_mz_upper'])),
+            "scan_indices": slice(int(precursor_cuboid_d['wide_scan_lower']), int(precursor_cuboid_d['wide_scan_upper'])),
+            "precursor_indices": 0,  # ms1 frames only
+        }
+    ][['mz_values','scan_indices','frame_indices','rt_values','intensity_values']]
+    wide_ms1_points_df.rename(columns={'mz_values':'mz', 'scan_indices':'scan', 'frame_indices':'frame_id', 'rt_values':'retention_time_secs', 'intensity_values':'intensity'}, inplace=True)
+
+    # downcast the data types to minimise the memory used
+    int_columns = ['frame_id','scan','intensity']
+    wide_ms1_points_df[int_columns] = wide_ms1_points_df[int_columns].apply(pd.to_numeric, downcast="unsigned")
+    float_columns = ['retention_time_secs']
+    wide_ms1_points_df[float_columns] = wide_ms1_points_df[float_columns].apply(pd.to_numeric, downcast="float")    
 
     # for deconvolution, constrain the CCS and RT dimensions to the fragmentation event
     fe_ms1_points_df = wide_ms1_points_df[(wide_ms1_points_df.retention_time_secs >= precursor_cuboid_d['ms1_rt_lower']) & (wide_ms1_points_df.retention_time_secs <= precursor_cuboid_d['ms1_rt_upper']) & (wide_ms1_points_df.scan >= precursor_cuboid_d['scan_lower']) & (wide_ms1_points_df.scan <= precursor_cuboid_d['scan_upper'])]
@@ -450,13 +454,21 @@ def detect_features(precursor_cuboid_d, converted_db_name, mass_defect_bins, vis
         # take the top N scoring features
         deconvolution_features_df = df.head(n=TARGET_NUMBER_OF_FEATURES_FOR_CUBOID)
 
-        if args.precursor_definition_method != '3did':  # ms2 is not yet implemented for 3DID
-            # load the ms2 data for the precursor
-            db_conn = sqlite3.connect(converted_db_name)
-            ms2_points_df = pd.read_sql_query("select frame_id,mz,scan,intensity,retention_time_secs from frames where frame_type == {} and frame_id >= {} and frame_id <= {} and scan >= {} and scan <= {}".format(FRAME_TYPE_MS2, precursor_cuboid_d['ms2_frame_lower'], precursor_cuboid_d['ms2_frame_upper'], precursor_cuboid_d['scan_lower'], precursor_cuboid_d['scan_upper']), db_conn)
-            db_conn.close()
-        else:
-            ms2_points_df = None
+        # load the ms2 data for the precursor
+        ms2_points_df = raw_data[
+            {
+                "frame_indices": slice(int(precursor_cuboid_d['ms2_frame_lower']), int(precursor_cuboid_d['ms2_frame_upper'])),
+                "scan_indices": slice(int(precursor_cuboid_d['scan_lower']), int(precursor_cuboid_d['scan_upper'])),
+                "precursor_indices": slice(1, None)  # ms2 frames only
+            }
+        ][['mz_values','scan_indices','frame_indices','rt_values','intensity_values']]
+        ms2_points_df.rename(columns={'mz_values':'mz', 'scan_indices':'scan', 'frame_indices':'frame_id', 'rt_values':'retention_time_secs', 'intensity_values':'intensity'}, inplace=True)
+
+        # downcast the data types to minimise the memory used
+        int_columns = ['frame_id','scan','intensity']
+        ms2_points_df[int_columns] = ms2_points_df[int_columns].apply(pd.to_numeric, downcast="unsigned")
+        float_columns = ['retention_time_secs']
+        ms2_points_df[float_columns] = ms2_points_df[float_columns].apply(pd.to_numeric, downcast="float")    
 
         # determine the feature attributes
         feature_l = []
@@ -543,32 +555,11 @@ def get_common_cuboid_definition_from_pasef(precursor_cuboid_row):
     d['ms2_frame_upper'] = precursor_cuboid_row.fe_ms2_frame_upper
     return d
 
-# map the 3did cuboid coordinates to the common form
-def get_common_cuboid_definition_from_3did(precursor_cuboid_row):
-    d = {}
-    d['precursor_cuboid_id'] = precursor_cuboid_row.precursor_cuboid_id  # a unique identifier for the precursor cuboid
-    d['mz_lower'] = precursor_cuboid_row.mz_lower
-    d['mz_upper'] = precursor_cuboid_row.mz_upper
-    d['wide_mz_lower'] = precursor_cuboid_row.wide_mz_lower
-    d['wide_mz_upper'] = precursor_cuboid_row.wide_mz_upper
-    d['scan_lower'] = precursor_cuboid_row.scan_lower
-    d['scan_upper'] = precursor_cuboid_row.scan_upper
-    d['wide_scan_lower'] = precursor_cuboid_row.wide_scan_lower
-    d['wide_scan_upper'] = precursor_cuboid_row.wide_scan_upper
-    d['ms1_rt_lower'] = precursor_cuboid_row.rt_lower
-    d['ms1_rt_upper'] = precursor_cuboid_row.rt_upper
-    d['wide_ms1_rt_lower'] = precursor_cuboid_row.wide_rt_lower
-    d['wide_ms1_rt_upper'] = precursor_cuboid_row.wide_rt_upper
-    d['ms2_frame_lower'] = None
-    d['ms2_frame_upper'] = None
-    return d
-
 ###################################
 parser = argparse.ArgumentParser(description='Detect the features in a run\'s precursor cuboids.')
 parser.add_argument('-eb','--experiment_base_dir', type=str, default='./experiments', help='Path to the experiments directory.', required=False)
 parser.add_argument('-en','--experiment_name', type=str, help='Name of the experiment.', required=True)
 parser.add_argument('-rn','--run_name', type=str, help='Name of the run.', required=True)
-parser.add_argument('-pdm','--precursor_definition_method', type=str, choices=['pasef','3did'], help='The method used to define the precursor cuboids.', required=True)
 parser.add_argument('-rl','--rt_lower', type=int, default='1650', help='Lower limit for retention time.', required=False)
 parser.add_argument('-ru','--rt_upper', type=int, default='2200', help='Upper limit for retention time.', required=False)
 parser.add_argument('-ini','--ini_file', type=str, default='./otf-peak-detect/pipeline/pasef-process-short-gradient.ini', help='Path to the config file.', required=False)
@@ -593,15 +584,11 @@ if not os.path.exists(EXPERIMENT_DIR):
     print("The experiment directory is required but doesn't exist: {}".format(EXPERIMENT_DIR))
     sys.exit(1)
 
-# check the converted databases directory exists
-CONVERTED_DATABASE_NAME = "{}/converted-databases/exp-{}-run-{}-converted.sqlite".format(EXPERIMENT_DIR, args.experiment_name, args.run_name)
-if not os.path.isfile(CONVERTED_DATABASE_NAME):
-    print("The converted database is required but doesn't exist: {}".format(CONVERTED_DATABASE_NAME))
+# check the raw database exists
+RAW_DATABASE_NAME = "{}/raw-databases/{}.d".format(EXPERIMENT_DIR, args.run_name)
+if not os.path.exists(RAW_DATABASE_NAME):
+    print("The raw database is required but doesn't exist: {}".format(RAW_DATABASE_NAME))
     sys.exit(1)
-
-# set up the indexes
-print('setting up indexes on {}'.format(CONVERTED_DATABASE_NAME))
-create_indexes(db_file_name=CONVERTED_DATABASE_NAME)
 
 # check the INI file exists
 if not os.path.isfile(args.ini_file):
@@ -644,13 +631,7 @@ with open(CUBOIDS_FILE, 'rb') as handle:
 precursor_cuboids_df = d['coords_df']
 
 # constrain the detection to the define RT limits
-if args.precursor_definition_method == 'pasef':
-    rt_lower_column = 'wide_ms1_rt_lower'
-    rt_upper_column = 'wide_ms1_rt_upper'
-else:
-    rt_lower_column = 'rt_lower'
-    rt_upper_column = 'rt_upper'
-precursor_cuboids_df = precursor_cuboids_df[(precursor_cuboids_df[rt_lower_column] > args.rt_lower) & (precursor_cuboids_df[rt_upper_column] < args.rt_upper)]
+precursor_cuboids_df = precursor_cuboids_df[(precursor_cuboids_df['wide_ms1_rt_lower'] > args.rt_lower) & (precursor_cuboids_df['wide_ms1_rt_upper'] < args.rt_upper)]
 print('loaded {} precursor cuboids within RT {}-{} from {}'.format(len(precursor_cuboids_df), args.rt_lower, args.rt_upper, CUBOIDS_FILE))
 
 # limit the cuboids to just the selected one
@@ -669,14 +650,14 @@ if not ray.is_initialized():
     else:
         ray.init(local_mode=True)
 
+# create the TimsTOF object
+data = alphatims.bruker.TimsTOF(RAW_DATABASE_NAME)
+
 # generate the mass defect windows
 mass_defect_bins = pd.IntervalIndex.from_tuples(generate_mass_defect_windows(100, 8000))
 
 # find the features in each precursor cuboid
-if args.precursor_definition_method == 'pasef':
-    features_l = ray.get([detect_features.remote(precursor_cuboid_d=get_common_cuboid_definition_from_pasef(row), converted_db_name=CONVERTED_DATABASE_NAME, mass_defect_bins=mass_defect_bins, visualise=(args.precursor_id is not None)) for row in precursor_cuboids_df.itertuples()])
-elif args.precursor_definition_method == '3did':
-    features_l = ray.get([detect_features.remote(precursor_cuboid_d=get_common_cuboid_definition_from_3did(row), converted_db_name=CONVERTED_DATABASE_NAME, mass_defect_bins=mass_defect_bins, visualise=(args.precursor_id is not None)) for row in precursor_cuboids_df.itertuples()])
+features_l = ray.get([detect_features.remote(precursor_cuboid_d=get_common_cuboid_definition_from_pasef(row), raw_data=data, mass_defect_bins=mass_defect_bins, visualise=(args.precursor_id is not None)) for row in precursor_cuboids_df.itertuples()])
 
 # join the list of dataframes into a single dataframe
 features_df = pd.concat(features_l, axis=0, sort=False, ignore_index=True)
