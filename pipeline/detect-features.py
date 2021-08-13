@@ -175,7 +175,7 @@ def determine_mono_characteristics(envelope, mono_mz_lower, mono_mz_upper, monoi
         # find the peak(s)
         peak_x_l = []
         try:
-            peak_idxs = peakutils.indexes(scan_df.filtered_intensity.values, thres=PEAKS_THRESHOLD_SCAN, min_dist=PEAKS_MIN_DIST_SCAN, thres_abs=False)
+            peak_idxs = peakutils.indexes(scan_df.filtered_intensity.values.astype(int), thres=PEAKS_THRESHOLD_SCAN, min_dist=PEAKS_MIN_DIST_SCAN, thres_abs=False)
             peak_x_l = scan_df.iloc[peak_idxs].scan.to_list()
         except:
             pass
@@ -192,7 +192,7 @@ def determine_mono_characteristics(envelope, mono_mz_lower, mono_mz_upper, monoi
         scan_apex = peaks_df.iloc[0].scan
 
         # find the valleys nearest the scan apex
-        valley_idxs = peakutils.indexes(-scan_df.filtered_intensity.values, thres=VALLEYS_THRESHOLD_SCAN, min_dist=VALLEYS_MIN_DIST_SCAN, thres_abs=False)
+        valley_idxs = peakutils.indexes(-scan_df.filtered_intensity.values.astype(int), thres=VALLEYS_THRESHOLD_SCAN, min_dist=VALLEYS_MIN_DIST_SCAN, thres_abs=False)
         valley_x_l = scan_df.iloc[valley_idxs].scan.to_list()
         valleys_df = scan_df[scan_df.scan.isin(valley_x_l)]
 
@@ -223,7 +223,7 @@ def determine_mono_characteristics(envelope, mono_mz_lower, mono_mz_upper, monoi
         # find the peak(s)
         peak_x_l = []
         try:
-            peak_idxs = peakutils.indexes(rt_df.filtered_intensity.values, thres=PEAKS_THRESHOLD_RT, min_dist=PEAKS_MIN_DIST_RT, thres_abs=False)
+            peak_idxs = peakutils.indexes(rt_df.filtered_intensity.values.astype(int), thres=PEAKS_THRESHOLD_RT, min_dist=PEAKS_MIN_DIST_RT, thres_abs=False)
             peak_x_l = rt_df.iloc[peak_idxs].retention_time_secs.to_list()
         except:
             pass
@@ -240,7 +240,7 @@ def determine_mono_characteristics(envelope, mono_mz_lower, mono_mz_upper, monoi
         rt_apex = peaks_df.iloc[0].retention_time_secs
 
         # find the valleys nearest the RT apex
-        valley_idxs = peakutils.indexes(-rt_df.filtered_intensity.values, thres=VALLEYS_THRESHOLD_RT, min_dist=VALLEYS_MIN_DIST_RT, thres_abs=False)
+        valley_idxs = peakutils.indexes(-rt_df.filtered_intensity.values.astype(int), thres=VALLEYS_THRESHOLD_RT, min_dist=VALLEYS_MIN_DIST_RT, thres_abs=False)
         valley_x_l = rt_df.iloc[valley_idxs].retention_time_secs.to_list()
         valleys_df = rt_df[rt_df.retention_time_secs.isin(valley_x_l)]
 
