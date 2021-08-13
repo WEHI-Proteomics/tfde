@@ -639,7 +639,7 @@ for row in precursor_cuboids_df.itertuples():
     ms2_df = data[
         {
             "frame_indices": slice(int(row.fe_ms2_frame_lower), int(row.fe_ms2_frame_upper+1)),
-            "scan_indices": slice(int(row.fe_scan_lower), int(row.fe_scan_upper)),
+            "scan_indices": slice(int(row.fe_scan_lower), int(row.fe_scan_upper+1)),
             "precursor_indices": slice(1, None)  # ms2 frames only
         }
     ][['mz_values','scan_indices','frame_indices','rt_values','intensity_values']]
