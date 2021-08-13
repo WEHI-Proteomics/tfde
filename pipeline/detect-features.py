@@ -472,7 +472,6 @@ def detect_features(precursor_cuboid_d, raw_data, mass_defect_bins, visualise):
 
         if len(ms2_points_df) == 0:
             print('found no ms2 points for this cuboid: {}'.format(precursor_cuboid_d))
-            sys.exit(0)
 
         # determine the feature attributes
         feature_l = []
