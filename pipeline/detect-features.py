@@ -468,7 +468,11 @@ def detect_features(precursor_cuboid_d, raw_data, mass_defect_bins, visualise):
         int_columns = ['frame_id','scan','intensity']
         ms2_points_df[int_columns] = ms2_points_df[int_columns].apply(pd.to_numeric, downcast="unsigned")
         float_columns = ['retention_time_secs']
-        ms2_points_df[float_columns] = ms2_points_df[float_columns].apply(pd.to_numeric, downcast="float")    
+        ms2_points_df[float_columns] = ms2_points_df[float_columns].apply(pd.to_numeric, downcast="float")
+
+        if len(ms2_points_df) == 0:
+            print('found no ms2 points for this cuboid: {}'.format(precursor_cuboid_d))
+            sys.exit(0)
 
         # determine the feature attributes
         feature_l = []
