@@ -401,7 +401,7 @@ def resolve_fragment_ions(feature_d, ms2_points_df, mass_defect_bins):
 
 # save visualisation data for later analysis of how feature detection works
 def save_visualisation(visualise_d):
-    precursor_cuboid_id = visualise_d['precursor_cuboid_d']['precursor_cuboid_id']
+    precursor_cuboid_id = visualise_d['precursor_cuboid'].precursor_cuboid_id
     VIS_FILE = '{}/feature-detection-pasef-visualisation-{}.pkl'.format(expanduser("~"), precursor_cuboid_id)
     print("writing feature detection visualisation data to {}".format(VIS_FILE))
     with open(VIS_FILE, 'wb') as handle:
@@ -409,26 +409,12 @@ def save_visualisation(visualise_d):
 
 # prepare the metadata and raw points for the feature detection
 @ray.remote
-def detect_features(precursor_cuboid_d, raw_data, mass_defect_bins, visualise):
+def detect_features(cuboid, mass_defect_bins, visualise):
     # load the raw points for this cuboid
-    wide_ms1_points_df = raw_data[
-        {
-            "rt_values": slice(float(precursor_cuboid_d['wide_ms1_rt_lower']), float(precursor_cuboid_d['wide_ms1_rt_upper'])),
-            "mz_values": slice(float(precursor_cuboid_d['wide_mz_lower']), float(precursor_cuboid_d['wide_mz_upper'])),
-            "scan_indices": slice(int(precursor_cuboid_d['wide_scan_lower']), int(precursor_cuboid_d['wide_scan_upper']+1)),
-            "precursor_indices": 0,  # ms1 frames only
-        }
-    ][['mz_values','scan_indices','frame_indices','rt_values','intensity_values']]
-    wide_ms1_points_df.rename(columns={'mz_values':'mz', 'scan_indices':'scan', 'frame_indices':'frame_id', 'rt_values':'retention_time_secs', 'intensity_values':'intensity'}, inplace=True)
-
-    # downcast the data types to minimise the memory used
-    int_columns = ['frame_id','scan','intensity']
-    wide_ms1_points_df[int_columns] = wide_ms1_points_df[int_columns].apply(pd.to_numeric, downcast="unsigned")
-    float_columns = ['retention_time_secs']
-    wide_ms1_points_df[float_columns] = wide_ms1_points_df[float_columns].apply(pd.to_numeric, downcast="float")    
-
+    wide_ms1_points_df = cuboid['ms1_df']
+    precursor_cuboid = cuboid['precursor_cuboid']
     # for deconvolution, constrain the CCS and RT dimensions to the fragmentation event
-    fe_ms1_points_df = wide_ms1_points_df[(wide_ms1_points_df.retention_time_secs >= precursor_cuboid_d['ms1_rt_lower']) & (wide_ms1_points_df.retention_time_secs <= precursor_cuboid_d['ms1_rt_upper']) & (wide_ms1_points_df.scan >= precursor_cuboid_d['scan_lower']) & (wide_ms1_points_df.scan <= precursor_cuboid_d['scan_upper'])]
+    fe_ms1_points_df = wide_ms1_points_df[(wide_ms1_points_df.retention_time_secs >= precursor_cuboid.ms1_rt_lower) & (wide_ms1_points_df.retention_time_secs <= precursor_cuboid.ms1_rt_upper) & (wide_ms1_points_df.scan >= precursor_cuboid.scan_lower) & (wide_ms1_points_df.scan <= precursor_cuboid.scan_upper)]
 
     # intensity descent
     raw_points_a = fe_ms1_points_df[['mz','intensity']].to_numpy()
@@ -455,23 +441,7 @@ def detect_features(precursor_cuboid_d, raw_data, mass_defect_bins, visualise):
         deconvolution_features_df = df.head(n=TARGET_NUMBER_OF_FEATURES_FOR_CUBOID)
 
         # load the ms2 data for the precursor
-        ms2_points_df = raw_data[
-            {
-                "frame_indices": slice(int(precursor_cuboid_d['ms2_frame_lower']), int(precursor_cuboid_d['ms2_frame_upper']+1)),
-                "scan_indices": slice(int(precursor_cuboid_d['scan_lower']), int(precursor_cuboid_d['scan_upper'])),
-                "precursor_indices": slice(1, None)  # ms2 frames only
-            }
-        ][['mz_values','scan_indices','frame_indices','rt_values','intensity_values']]
-        ms2_points_df.rename(columns={'mz_values':'mz', 'scan_indices':'scan', 'frame_indices':'frame_id', 'rt_values':'retention_time_secs', 'intensity_values':'intensity'}, inplace=True)
-
-        # downcast the data types to minimise the memory used
-        int_columns = ['frame_id','scan','intensity']
-        ms2_points_df[int_columns] = ms2_points_df[int_columns].apply(pd.to_numeric, downcast="unsigned")
-        float_columns = ['retention_time_secs']
-        ms2_points_df[float_columns] = ms2_points_df[float_columns].apply(pd.to_numeric, downcast="float")
-
-        if len(ms2_points_df) == 0:
-            print('found no ms2 points for this cuboid: {}'.format(precursor_cuboid_d))
+        ms2_points_df = cuboid['ms2_df']
 
         # determine the feature attributes
         feature_l = []
@@ -495,13 +465,13 @@ def detect_features(precursor_cuboid_d, raw_data, mass_defect_bins, visualise):
                 feature_d['isotope_count'] = len(row.envelope)
                 feature_d['deconvolution_score'] = row.score
                 # from the precursor cuboid
-                feature_d['precursor_cuboid_id'] = precursor_cuboid_d['precursor_cuboid_id']
+                feature_d['precursor_cuboid_id'] = precursor_cuboid.precursor_cuboid_id
                 # resolve the feature's fragment ions
                 ms2_resolution_d = resolve_fragment_ions(feature_d, ms2_points_df, mass_defect_bins)
                 feature_d['fragment_ions_l'] = json.dumps(ms2_resolution_d['deconvoluted_peaks_l'])
                 feature_d['fmdw_before_after_d'] = ms2_resolution_d['vis_d']
                 # assign a unique identifier to this feature
-                feature_d['feature_id'] = generate_feature_id(precursor_cuboid_d['precursor_cuboid_id'], idx+1)
+                feature_d['feature_id'] = generate_feature_id(precursor_cuboid.precursor_cuboid_id, idx+1)
                 # add it to the list
                 feature_l.append(feature_d)
         features_df = pd.DataFrame(feature_l)
@@ -512,7 +482,7 @@ def detect_features(precursor_cuboid_d, raw_data, mass_defect_bins, visualise):
     # gather the information for visualisation if required
     if visualise:
         visualisation_d = {
-            'precursor_cuboid_d':precursor_cuboid_d,
+            'precursor_cuboid_d':precursor_cuboid,
             'wide_ms1_points_df':wide_ms1_points_df,
             'fe_ms1_points_df':fe_ms1_points_df,
             'peaks_after_intensity_descent':peaks_a,
@@ -521,7 +491,7 @@ def detect_features(precursor_cuboid_d, raw_data, mass_defect_bins, visualise):
         }
         save_visualisation(visualisation_d)
 
-    print("found {} features for precursor {}".format(len(features_df), precursor_cuboid_d['precursor_cuboid_id']))
+    print("found {} features for precursor {}".format(len(features_df), precursor_cuboid.precursor_cuboid_id))
     return features_df
 
 # determine the number of workers based on the number of available cores and the proportion of the machine to be used
@@ -534,26 +504,6 @@ def number_of_workers():
 def generate_feature_id(precursor_id, feature_sequence_number):
     feature_id = (precursor_id * 100) + feature_sequence_number  # assumes there will not be more than 99 features found for a precursor
     return feature_id
-
-# map the pasef cuboid coordinates to the common form
-def get_common_cuboid_definition_from_pasef(precursor_cuboid_row):
-    d = {}
-    d['precursor_cuboid_id'] = precursor_cuboid_row.precursor_cuboid_id  # the precursor_id from the isolation window table
-    d['mz_lower'] = precursor_cuboid_row.window_mz_lower
-    d['mz_upper'] = precursor_cuboid_row.window_mz_upper
-    d['wide_mz_lower'] = precursor_cuboid_row.wide_mz_lower
-    d['wide_mz_upper'] = precursor_cuboid_row.wide_mz_upper
-    d['scan_lower'] = precursor_cuboid_row.fe_scan_lower
-    d['scan_upper'] = precursor_cuboid_row.fe_scan_upper
-    d['wide_scan_lower'] = precursor_cuboid_row.wide_scan_lower
-    d['wide_scan_upper'] = precursor_cuboid_row.wide_scan_upper
-    d['ms1_rt_lower'] = precursor_cuboid_row.fe_ms1_rt_lower
-    d['ms1_rt_upper'] = precursor_cuboid_row.fe_ms1_rt_upper
-    d['wide_ms1_rt_lower'] = precursor_cuboid_row.wide_ms1_rt_lower
-    d['wide_ms1_rt_upper'] = precursor_cuboid_row.wide_ms1_rt_upper
-    d['ms2_frame_lower'] = precursor_cuboid_row.fe_ms2_frame_lower
-    d['ms2_frame_upper'] = precursor_cuboid_row.fe_ms2_frame_upper
-    return d
 
 ###################################
 parser = argparse.ArgumentParser(description='Detect the features in a run\'s precursor cuboids.')
@@ -653,11 +603,47 @@ if not ray.is_initialized():
 # create the TimsTOF object
 data = alphatims.bruker.TimsTOF(RAW_DATABASE_NAME)
 
+print('loading the cuboids')
+cuboids_l = []
+for row in precursor_cuboids_df.itertuples():
+    # load the ms1 points for this cuboid
+    ms1_df = data[
+        {
+            "rt_values": slice(float(row.wide_ms1_rt_lower), float(row.wide_ms1_rt_upper)),
+            "mz_values": slice(float(row.wide_mz_lower), float(row.wide_mz_upper)),
+            "scan_indices": slice(int(row.wide_scan_lower), int(row.wide_scan_upper+1)),
+            "precursor_indices": 0,  # ms1 frames only
+        }
+    ][['mz_values','scan_indices','frame_indices','rt_values','intensity_values']]
+    ms1_df.rename(columns={'mz_values':'mz', 'scan_indices':'scan', 'frame_indices':'frame_id', 'rt_values':'retention_time_secs', 'intensity_values':'intensity'}, inplace=True)
+    # downcast the data types to minimise the memory used
+    int_columns = ['frame_id','scan','intensity']
+    ms1_df[int_columns] = ms1_df[int_columns].apply(pd.to_numeric, downcast="unsigned")
+    float_columns = ['retention_time_secs']
+    ms1_df[float_columns] = ms1_df[float_columns].apply(pd.to_numeric, downcast="float")
+    # load the ms2 points for this cuboid
+    ms2_df = data[
+        {
+            "frame_indices": slice(int(row.ms2_frame_lower), int(row.ms2_frame_upper+1)),
+            "scan_indices": slice(int(row.scan_lower), int(row.scan_upper)),
+            "precursor_indices": slice(1, None)  # ms2 frames only
+        }
+    ][['mz_values','scan_indices','frame_indices','rt_values','intensity_values']]
+    ms2_df.rename(columns={'mz_values':'mz', 'scan_indices':'scan', 'frame_indices':'frame_id', 'rt_values':'retention_time_secs', 'intensity_values':'intensity'}, inplace=True)
+    # downcast the data types to minimise the memory used
+    int_columns = ['frame_id','scan','intensity']
+    ms2_df[int_columns] = ms2_df[int_columns].apply(pd.to_numeric, downcast="unsigned")
+    float_columns = ['retention_time_secs']
+    ms2_df[float_columns] = ms2_df[float_columns].apply(pd.to_numeric, downcast="float")
+    # add them to the list
+    cuboids_l.append({'ms1_df':ms1_df, 'ms2_df':ms2_df, 'precursor_cuboid':row})
+
 # generate the mass defect windows
 mass_defect_bins = pd.IntervalIndex.from_tuples(generate_mass_defect_windows(100, 8000))
 
 # find the features in each precursor cuboid
-features_l = ray.get([detect_features.remote(precursor_cuboid_d=get_common_cuboid_definition_from_pasef(row), raw_data=data, mass_defect_bins=mass_defect_bins, visualise=(args.precursor_id is not None)) for row in precursor_cuboids_df.itertuples()])
+print('detecting features')
+features_l = ray.get([detect_features.remote(cuboid=cuboid, mass_defect_bins=mass_defect_bins, visualise=(args.precursor_id is not None)) for cuboid in cuboids_l])
 
 # join the list of dataframes into a single dataframe
 features_df = pd.concat(features_l, axis=0, sort=False, ignore_index=True)
