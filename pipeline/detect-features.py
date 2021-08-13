@@ -400,9 +400,9 @@ def resolve_fragment_ions(feature_d, ms2_points_df, mass_defect_bins):
     return {'deconvoluted_peaks_l':deconvoluted_peaks_l, 'vis_d':vis_d}
 
 # save visualisation data for later analysis of how feature detection works
-def save_visualisation(visualise_d, method):
+def save_visualisation(visualise_d):
     precursor_cuboid_id = visualise_d['precursor_cuboid_d']['precursor_cuboid_id']
-    VIS_FILE = '{}/feature-detection-{}-visualisation-{}.pkl'.format(expanduser("~"), method, precursor_cuboid_id)
+    VIS_FILE = '{}/feature-detection-pasef-visualisation-{}.pkl'.format(expanduser("~"), precursor_cuboid_id)
     print("writing feature detection visualisation data to {}".format(VIS_FILE))
     with open(VIS_FILE, 'wb') as handle:
         pickle.dump(visualise_d, handle)
@@ -494,12 +494,9 @@ def detect_features(precursor_cuboid_d, raw_data, mass_defect_bins, visualise):
                 # from the precursor cuboid
                 feature_d['precursor_cuboid_id'] = precursor_cuboid_d['precursor_cuboid_id']
                 # resolve the feature's fragment ions
-                if args.precursor_definition_method != '3did':
-                    ms2_resolution_d = resolve_fragment_ions(feature_d, ms2_points_df, mass_defect_bins)
-                    feature_d['fragment_ions_l'] = json.dumps(ms2_resolution_d['deconvoluted_peaks_l'])
-                    feature_d['fmdw_before_after_d'] = ms2_resolution_d['vis_d']
-                else:
-                    feature_d['fragment_ions_l'] = []
+                ms2_resolution_d = resolve_fragment_ions(feature_d, ms2_points_df, mass_defect_bins)
+                feature_d['fragment_ions_l'] = json.dumps(ms2_resolution_d['deconvoluted_peaks_l'])
+                feature_d['fmdw_before_after_d'] = ms2_resolution_d['vis_d']
                 # assign a unique identifier to this feature
                 feature_d['feature_id'] = generate_feature_id(precursor_cuboid_d['precursor_cuboid_id'], idx+1)
                 # add it to the list
@@ -519,7 +516,7 @@ def detect_features(precursor_cuboid_d, raw_data, mass_defect_bins, visualise):
             'deconvolution_features_df':deconvolution_features_df,
             'features_df':features_df
         }
-        save_visualisation(visualisation_d, method=args.precursor_definition_method)
+        save_visualisation(visualisation_d)
 
     # print("found {} features for precursor {}".format(len(features_df), precursor_cuboid_d['precursor_cuboid_id']))
     return features_df
