@@ -415,7 +415,7 @@ def detect_features(precursor_cuboid_d, raw_data, mass_defect_bins, visualise):
         {
             "rt_values": slice(float(precursor_cuboid_d['wide_ms1_rt_lower']), float(precursor_cuboid_d['wide_ms1_rt_upper'])),
             "mz_values": slice(float(precursor_cuboid_d['wide_mz_lower']), float(precursor_cuboid_d['wide_mz_upper'])),
-            "scan_indices": slice(int(precursor_cuboid_d['wide_scan_lower']), int(precursor_cuboid_d['wide_scan_upper'])),
+            "scan_indices": slice(int(precursor_cuboid_d['wide_scan_lower']), int(precursor_cuboid_d['wide_scan_upper']+1)),
             "precursor_indices": 0,  # ms1 frames only
         }
     ][['mz_values','scan_indices','frame_indices','rt_values','intensity_values']]
@@ -457,7 +457,7 @@ def detect_features(precursor_cuboid_d, raw_data, mass_defect_bins, visualise):
         # load the ms2 data for the precursor
         ms2_points_df = raw_data[
             {
-                "frame_indices": slice(int(precursor_cuboid_d['ms2_frame_lower']), int(precursor_cuboid_d['ms2_frame_upper'])),
+                "frame_indices": slice(int(precursor_cuboid_d['ms2_frame_lower']), int(precursor_cuboid_d['ms2_frame_upper']+1)),
                 "scan_indices": slice(int(precursor_cuboid_d['scan_lower']), int(precursor_cuboid_d['scan_upper'])),
                 "precursor_indices": slice(1, None)  # ms2 frames only
             }
