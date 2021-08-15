@@ -47,21 +47,12 @@ EXPERIMENT_DIR = "{}/{}".format(config['experiment_base_dir'], config['experimen
 start_run = time.time()
 
 
-
-####################
-# raw conversion (TO BE ADDED)
-####################
-
-
-
-
-
 ####################
 # feature extraction
 ####################
 def task_define_precursor_cuboids():
     # input
-    CONVERTED_DATABASE_NAME = "{}/converted-databases/exp-{}-run-{}-converted.sqlite".format(EXPERIMENT_DIR, config['experiment_name'], config['run_name'])
+    RAW_DATABASE_NAME = "{}/raw-databases/{}.d/analysis.tdf".format(EXPERIMENT_DIR, config['run_name'])
     # command
     cmd = 'python -u define-precursor-cuboids-pasef.py -eb {experiment_base} -en {experiment_name} -rn {run_name} -ini {INI_FILE} -rl {rl} -ru {ru} -rm cluster'.format(experiment_base=config['experiment_base_dir'], experiment_name=config['experiment_name'], run_name=config['run_name'], INI_FILE=config['ini_file'], rl=int(config['rt_lower']), ru=int(config['rt_upper']))
     # output
@@ -69,7 +60,7 @@ def task_define_precursor_cuboids():
     CUBOIDS_FILE = '{}/exp-{}-run-{}-precursor-cuboids-{}.pkl'.format(CUBOIDS_DIR, config['experiment_name'], config['run_name'], config['precursor_definition_method'])
 
     return {
-        'file_dep': [CONVERTED_DATABASE_NAME],
+        'file_dep': [RAW_DATABASE_NAME],
         'actions': [cmd],
         'targets': [CUBOIDS_FILE],
         'clean': ['rm -rf {}'.format(CUBOIDS_DIR)],
@@ -112,8 +103,6 @@ def task_remove_duplicate_features():
         'clean': ['rm -rf {}'.format(FEATURES_DIR)],
         'verbosity': 2
     }
-
-
 
 ####################
 # initial search
