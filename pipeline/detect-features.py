@@ -523,7 +523,7 @@ args = parser.parse_args()
 # print the arguments for the log
 info = {}
 for arg in vars(args):
-    info[arg] = getattr(args, arg)
+    info[arg] = str(getattr(args, arg))
 print(info)
 
 start_run = time.time()
@@ -670,7 +670,7 @@ features_df['run_name'] = args.run_name
 
 # write out all the features
 print("writing {} features to {}".format(len(features_df), FEATURES_FILE))
-info['total_running_time'] = round(time.time()-start_run,1)
+info['total_running_time'] = str(round(time.time()-start_run,1))
 info['processor'] = parser.prog
 info['processed'] = time.ctime()
 info_s = pd.Series(info)

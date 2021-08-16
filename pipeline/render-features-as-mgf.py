@@ -47,7 +47,7 @@ args = parser.parse_args()
 # Print the arguments for the log
 info = {}
 for arg in vars(args):
-    info[arg] = getattr(args, arg)
+    info[arg] = str(getattr(args, arg))
 print(info)
 
 start_run = time.time()

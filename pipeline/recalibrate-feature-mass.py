@@ -100,7 +100,7 @@ args = parser.parse_args()
 # Print the arguments for the log
 info = {}
 for arg in vars(args):
-    info[arg] = getattr(args, arg)
+    info[arg] = str(getattr(args, arg))
 print(info)
 
 start_run = time.time()
@@ -180,7 +180,7 @@ recal_features_df = pd.merge(features_df, adjusted_features_df, how='inner', lef
 for group_name,group_df in recal_features_df.groupby('run_name'):
     RECAL_FEATURES_FILE = '{}/exp-{}-run-{}-features-{}-recalibrated.pkl'.format(FEATURES_DIR, args.experiment_name, group_name, args.precursor_definition_method)
     print("writing {} recalibrated features to {}".format(len(recal_features_df), RECAL_FEATURES_FILE))
-    info['total_running_time'] = round(time.time()-start_run,1)
+    info['total_running_time'] = str(round(time.time()-start_run,1))
     info['processor'] = parser.prog
     info['processed'] = time.ctime()
     info_s = pd.Series(info)

@@ -38,7 +38,7 @@ args = parser.parse_args()
 # Print the arguments for the log
 info = {}
 for arg in vars(args):
-    info[arg] = getattr(args, arg)
+    info[arg] = str(getattr(args, arg))
 print(info)
 
 start_run = time.time()
@@ -172,7 +172,7 @@ else:
     IDENTIFICATIONS_FILE = '{}/exp-{}-identifications-{}-recalibrated.hdf'.format(IDENTIFICATIONS_DIR, args.experiment_name, args.precursor_definition_method)
 
 print("writing {} identifications to {}".format(len(identifications_df), IDENTIFICATIONS_FILE))
-info['total_running_time'] = round(time.time()-start_run,1)
+info['total_running_time'] = str(round(time.time()-start_run,1))
 info['processor'] = parser.prog
 info['processed'] = time.ctime()
 info_s = pd.Series(info)
