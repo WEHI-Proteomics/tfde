@@ -290,7 +290,7 @@ def determine_mono_characteristics(envelope, mono_mz_lower, mono_mz_upper, monoi
                 # measure it's elution similarity with the previous isotope
                 similarity_scan = measure_peak_similarity(pd.DataFrame(isotopes_l[idx-1]['scan_df']), scan_df, x_label='scan', scale=1) if idx > 0 else None
                 # add the isotope to the list
-                isotopes_l.append({'mz':iso_mz, 'mz_lower':iso_mz_lower, 'mz_upper':iso_mz_upper, 'intensity':summed_intensity, 'saturated':isotope_in_saturation, 'rt_df':rt_df.to_dict('records'), 'scan_df':scan_df.to_dict('records'), 'similarity_rt':similarity_rt, 'similarity_scan':similarity_scan})
+                isotopes_l.append({'mz':iso_mz, 'mz_lower':iso_mz_lower, 'mz_upper':iso_mz_upper, 'intensity':summed_intensity, 'saturated':isotope_in_saturation, 'rt_df':rt_df.to_json('records'), 'scan_df':scan_df.to_json('records'), 'similarity_rt':similarity_rt, 'similarity_scan':similarity_scan})
             else:
                 break
         isotopes_df = pd.DataFrame(isotopes_l)
@@ -340,11 +340,11 @@ def determine_mono_characteristics(envelope, mono_mz_lower, mono_mz_upper, monoi
         result_d['intensity_without_saturation_correction'] = isotopes_df.iloc[:3].intensity.sum()  # only take the first three isotopes for intensity, as the number of isotopes varies
         result_d['intensity_with_saturation_correction'] = isotopes_df.iloc[:3].inferred_intensity.sum()
         result_d['mono_intensity_adjustment_outcome'] = outcome
-        result_d['isotopic_peaks'] = isotopes_df.to_dict('records')
+        result_d['isotopic_peaks'] = isotopes_df.to_json('records')
         result_d['coelution_coefficient'] = coelution_coefficient
         result_d['mobility_coefficient'] = mobility_coefficient
-        result_d['scan_df'] = scan_df.to_dict('records')
-        result_d['rt_df'] = rt_df.to_dict('records')
+        result_d['scan_df'] = scan_df.to_json('records')
+        result_d['rt_df'] = rt_df.to_json('records')
     else:
         print('found no raw points where the mono peak should be')
         result_d = None
@@ -365,7 +365,7 @@ def generate_mass_defect_windows(mass_defect_window_da_min, mass_defect_window_d
 # returns a decharged peak list (neutral mass+proton mass, intensity)
 def resolve_fragment_ions(feature_d, ms2_points_df, mass_defect_bins):
     vis_d = {}
-    vis_d['ms2_points_l'] = ms2_points_df[['mz','intensity']].to_dict('records')
+    vis_d['ms2_points_l'] = ms2_points_df[['mz','intensity']].to_json('records')
     # perform intensity descent to resolve peaks
     raw_points_a = ms2_points_df[['mz','intensity']].to_numpy()
     peaks_a = intensity_descent(peaks_a=raw_points_a, peak_delta=None)
@@ -388,7 +388,7 @@ def resolve_fragment_ions(feature_d, ms2_points_df, mass_defect_bins):
         fragment_ions_df['bin'] = pd.cut(fragment_ions_df.neutral_mass, mass_defect_bins)
         filtered_fragment_ions_df = fragment_ions_df.dropna(subset = ['bin']).copy()
         filtered_fragment_ions_df.drop('bin', axis=1, inplace=True)
-        deconvoluted_peaks_l = filtered_fragment_ions_df.to_dict('records')
+        deconvoluted_peaks_l = filtered_fragment_ions_df.to_json('records')
 
         vis_d['after_fmdw'] = deconvoluted_peaks_l
 
