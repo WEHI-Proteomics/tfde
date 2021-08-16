@@ -212,7 +212,7 @@ coords_df = coords_df[(coords_df['fe_ms1_rt_lower'] >= args.rt_lower) & (coords_
 
 # write them out
 print('writing {} cuboid definitions to {}'.format(len(coords_df), CUBOIDS_FILE))
-info['total_running_time'] = round(time.time()-start_run,1)
+info['total_running_time'] = str(round(time.time()-start_run,1))
 info['processor'] = parser.prog
 info['processed'] = time.ctime()
 info_s = pd.Series(info)
