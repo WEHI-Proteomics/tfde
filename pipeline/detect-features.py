@@ -283,14 +283,14 @@ def determine_mono_characteristics(envelope, mono_mz_lower, mono_mz_upper, monoi
                 rt_df = isotope_df.groupby(['retention_time_secs'], as_index=False).intensity.sum()
                 rt_df.sort_values(by=['retention_time_secs'], ascending=True, inplace=True)
                 # measure it's elution similarity with the previous isotope
-                similarity_rt = measure_peak_similarity(pd.DataFrame(isotopes_l[idx-1]['rt_df']), rt_df, x_label='retention_time_secs', scale=100) if idx > 0 else None
+                similarity_rt = measure_peak_similarity(pd.read_json(isotopes_l[idx-1]['rt_df'], orient='records'), rt_df, x_label='retention_time_secs', scale=100) if idx > 0 else None
                 # determine the isotope's profile in mobility
                 scan_df = isotope_df.groupby(['scan'], as_index=False).intensity.sum()
                 scan_df.sort_values(by=['scan'], ascending=True, inplace=True)
                 # measure it's elution similarity with the previous isotope
-                similarity_scan = measure_peak_similarity(pd.DataFrame(isotopes_l[idx-1]['scan_df']), scan_df, x_label='scan', scale=1) if idx > 0 else None
+                similarity_scan = measure_peak_similarity(pd.read_json(isotopes_l[idx-1]['scan_df'], orient='records'), scan_df, x_label='scan', scale=1) if idx > 0 else None
                 # add the isotope to the list
-                isotopes_l.append({'mz':iso_mz, 'mz_lower':iso_mz_lower, 'mz_upper':iso_mz_upper, 'intensity':summed_intensity, 'saturated':isotope_in_saturation, 'rt_df':rt_df.to_json('records'), 'scan_df':scan_df.to_json('records'), 'similarity_rt':similarity_rt, 'similarity_scan':similarity_scan})
+                isotopes_l.append({'mz':iso_mz, 'mz_lower':iso_mz_lower, 'mz_upper':iso_mz_upper, 'intensity':summed_intensity, 'saturated':isotope_in_saturation, 'rt_df':rt_df.to_json(orient='records'), 'scan_df':scan_df.to_json(orient='records'), 'similarity_rt':similarity_rt, 'similarity_scan':similarity_scan})
             else:
                 break
         isotopes_df = pd.DataFrame(isotopes_l)
@@ -343,8 +343,8 @@ def determine_mono_characteristics(envelope, mono_mz_lower, mono_mz_upper, monoi
         result_d['isotopic_peaks'] = isotopes_df.to_json('records')
         result_d['coelution_coefficient'] = coelution_coefficient
         result_d['mobility_coefficient'] = mobility_coefficient
-        result_d['scan_df'] = scan_df.to_json('records')
-        result_d['rt_df'] = rt_df.to_json('records')
+        result_d['scan_df'] = scan_df.to_json(orient='records')
+        result_d['rt_df'] = rt_df.to_json(orient='records')
     else:
         print('found no raw points where the mono peak should be')
         result_d = None
@@ -365,7 +365,7 @@ def generate_mass_defect_windows(mass_defect_window_da_min, mass_defect_window_d
 # returns a decharged peak list (neutral mass+proton mass, intensity)
 def resolve_fragment_ions(feature_d, ms2_points_df, mass_defect_bins):
     vis_d = {}
-    vis_d['ms2_points_l'] = ms2_points_df[['mz','intensity']].to_json('records')
+    vis_d['ms2_points_l'] = ms2_points_df[['mz','intensity']].to_json(orient='records')
     # perform intensity descent to resolve peaks
     raw_points_a = ms2_points_df[['mz','intensity']].to_numpy()
     peaks_a = intensity_descent(peaks_a=raw_points_a, peak_delta=None)
@@ -388,7 +388,7 @@ def resolve_fragment_ions(feature_d, ms2_points_df, mass_defect_bins):
         fragment_ions_df['bin'] = pd.cut(fragment_ions_df.neutral_mass, mass_defect_bins)
         filtered_fragment_ions_df = fragment_ions_df.dropna(subset = ['bin']).copy()
         filtered_fragment_ions_df.drop('bin', axis=1, inplace=True)
-        deconvoluted_peaks_l = filtered_fragment_ions_df.to_json('records')
+        deconvoluted_peaks_l = filtered_fragment_ions_df.to_json(orient='records')
 
         vis_d['after_fmdw'] = deconvoluted_peaks_l
 
