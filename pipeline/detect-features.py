@@ -491,7 +491,7 @@ def detect_features(cuboid, mass_defect_bins, visualise):
         }
         save_visualisation(visualisation_d)
 
-    print("found {} features for precursor {}".format(len(features_df), precursor_cuboid.precursor_cuboid_id))
+    # print("found {} features for precursor {}".format(len(features_df), precursor_cuboid.precursor_cuboid_id))
     return features_df
 
 # determine the number of workers based on the number of available cores and the proportion of the machine to be used
