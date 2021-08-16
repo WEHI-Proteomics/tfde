@@ -36,9 +36,9 @@ parser.add_argument('-recal','--recalibration_mode', action='store_true', help='
 args = parser.parse_args()
 
 # Print the arguments for the log
-info = []
+info = {}
 for arg in vars(args):
-    info.append((arg, getattr(args, arg)))
+    info[arg] = getattr(args, arg)
 print(info)
 
 start_run = time.time()
@@ -129,14 +129,12 @@ percolator_df = pd.merge(psms_df, mapping_df, how='left', left_on=['file_idx'], 
 FEATURES_DIR = '{}/features-{}'.format(EXPERIMENT_DIR, args.precursor_definition_method)
 df_l = []
 if not args.recalibration_mode:
-    files_l = glob.glob('{}/exp-{}-run-*-features-*-dedup.pkl'.format(FEATURES_DIR, args.experiment_name))
+    files_l = glob.glob('{}/exp-{}-run-*-features-*-dedup.hdf'.format(FEATURES_DIR, args.experiment_name))
 else:
-    files_l = glob.glob('{}/exp-{}-run-*-features-*-recalibrated.pkl'.format(FEATURES_DIR, args.experiment_name))
+    files_l = glob.glob('{}/exp-{}-run-*-features-*-recalibrated.hdf'.format(FEATURES_DIR, args.experiment_name))
 
 for f in files_l:
-    with open(f, 'rb') as handle:
-        d = pickle.load(handle)
-    df_l.append(d['features_df'])
+    df_l.append(pd.read_pickle(f, key='features_df'))
 features_df = pd.concat(df_l, axis=0, sort=False, ignore_index=True)
 
 # merge the identifications with the features
@@ -169,16 +167,17 @@ if not os.path.exists(IDENTIFICATIONS_DIR):
 
 # write out the identifications
 if not args.recalibration_mode:
-    IDENTIFICATIONS_FILE = '{}/exp-{}-identifications-{}.pkl'.format(IDENTIFICATIONS_DIR, args.experiment_name, args.precursor_definition_method)
+    IDENTIFICATIONS_FILE = '{}/exp-{}-identifications-{}.hdf'.format(IDENTIFICATIONS_DIR, args.experiment_name, args.precursor_definition_method)
 else:
-    IDENTIFICATIONS_FILE = '{}/exp-{}-identifications-{}-recalibrated.pkl'.format(IDENTIFICATIONS_DIR, args.experiment_name, args.precursor_definition_method)
+    IDENTIFICATIONS_FILE = '{}/exp-{}-identifications-{}-recalibrated.hdf'.format(IDENTIFICATIONS_DIR, args.experiment_name, args.precursor_definition_method)
+
 print("writing {} identifications to {}".format(len(identifications_df), IDENTIFICATIONS_FILE))
-info.append(('total_running_time',round(time.time()-start_run,1)))
-info.append(('processor',parser.prog))
-info.append(('processed', time.ctime()))
-content_d = {'identifications_df':identifications_df, 'metadata':info}
-with open(IDENTIFICATIONS_FILE, 'wb') as handle:
-    pickle.dump(content_d, handle)
+info['total_running_time'] = round(time.time()-start_run,1)
+info['processor'] = parser.prog
+info['processed'] = time.ctime()
+info_s = pd.Series(info)
+identifications_df.to_hdf(IDENTIFICATIONS_FILE, key='identifications_df', format='table', mode='w')
+info_s.to_hdf(IDENTIFICATIONS_FILE, key='metadata', format='table', append=True, mode='a')
 
 # finish up
 stop_run = time.time()

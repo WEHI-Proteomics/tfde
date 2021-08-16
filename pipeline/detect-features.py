@@ -520,10 +520,10 @@ parser.add_argument('-cs','--correct_for_saturation', action='store_true', help=
 parser.add_argument('-fmdw','--filter_by_mass_defect', action='store_true', help='Filter fragment ions by mass defect windows.')
 args = parser.parse_args()
 
-# Print the arguments for the log
-info = []
+# print the arguments for the log
+info = {}
 for arg in vars(args):
-    info.append((arg, getattr(args, arg)))
+    info[arg] = getattr(args, arg)
 print(info)
 
 start_run = time.time()
@@ -565,11 +565,11 @@ CARBON_MASS_DIFFERENCE = cfg.getfloat('common', 'CARBON_MASS_DIFFERENCE')
 
 # input cuboids
 CUBOIDS_DIR = "{}/precursor-cuboids-pasef".format(EXPERIMENT_DIR)
-CUBOIDS_FILE = '{}/exp-{}-run-{}-precursor-cuboids-pasef.pkl'.format(CUBOIDS_DIR, args.experiment_name, args.run_name)
+CUBOIDS_FILE = '{}/exp-{}-run-{}-precursor-cuboids-pasef.hdf'.format(CUBOIDS_DIR, args.experiment_name, args.run_name)
 
 # output features
 FEATURES_DIR = "{}/features-pasef".format(EXPERIMENT_DIR)
-FEATURES_FILE = '{}/exp-{}-run-{}-features-pasef.pkl'.format(FEATURES_DIR, args.experiment_name, args.run_name)
+FEATURES_FILE = '{}/exp-{}-run-{}-features-pasef.hdf'.format(FEATURES_DIR, args.experiment_name, args.run_name)
 
 # check the cuboids file
 if not os.path.isfile(CUBOIDS_FILE):
@@ -577,9 +577,7 @@ if not os.path.isfile(CUBOIDS_FILE):
     sys.exit(1)
 
 # load the precursor cuboids
-with open(CUBOIDS_FILE, 'rb') as handle:
-    d = pickle.load(handle)
-precursor_cuboids_df = d['coords_df']
+precursor_cuboids_df = pd.read_hdf(CUBOIDS_FILE, key='coords_df')
 
 # constrain the detection to the define RT limits
 precursor_cuboids_df = precursor_cuboids_df[(precursor_cuboids_df['wide_ms1_rt_lower'] > args.rt_lower) & (precursor_cuboids_df['wide_ms1_rt_upper'] < args.rt_upper)]
@@ -672,12 +670,12 @@ features_df['run_name'] = args.run_name
 
 # write out all the features
 print("writing {} features to {}".format(len(features_df), FEATURES_FILE))
-info.append(('total_running_time',round(time.time()-start_run,1)))
-info.append(('processor',parser.prog))
-info.append(('processed', time.ctime()))
-content_d = {'features_df':features_df, 'metadata':info}
-with open(FEATURES_FILE, 'wb') as handle:
-    pickle.dump(content_d, handle)
+info['total_running_time'] = round(time.time()-start_run,1)
+info['processor'] = parser.prog
+info['processed'] = time.ctime()
+info_s = pd.Series(info)
+features_df.to_hdf(CUBOIDS_FILE, key='features_df', format='table', mode='w')
+info_s.to_hdf(CUBOIDS_FILE, key='metadata', format='table', append=True, mode='a')
 
 stop_run = time.time()
 print("total running time ({}): {} seconds".format(parser.prog, round(stop_run-start_run,1)))

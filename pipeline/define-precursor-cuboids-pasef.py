@@ -144,10 +144,10 @@ parser.add_argument('-ra','--redis_address', type=str, help='Address of the clus
 parser.add_argument('-pc','--proportion_of_cores_to_use', type=float, default=0.9, help='Proportion of the machine\'s cores to use for this program.', required=False)
 args = parser.parse_args()
 
-# Print the arguments for the log
-info = []
+# print the arguments for the log
+info = {}
 for arg in vars(args):
-    info.append((arg, getattr(args, arg)))
+    info[arg] = getattr(args, arg)
 print(info)
 
 start_run = time.time()
@@ -185,7 +185,7 @@ CUBOIDS_DIR = '{}/precursor-cuboids-pasef'.format(EXPERIMENT_DIR)
 if not os.path.exists(CUBOIDS_DIR):
     os.makedirs(CUBOIDS_DIR)
 
-CUBOIDS_FILE = '{}/exp-{}-run-{}-precursor-cuboids-pasef.pkl'.format(CUBOIDS_DIR, args.experiment_name, args.run_name)
+CUBOIDS_FILE = '{}/exp-{}-run-{}-precursor-cuboids-pasef.hdf'.format(CUBOIDS_DIR, args.experiment_name, args.run_name)
 
 # get the frame metadata
 print("loading the frames information")
@@ -212,12 +212,12 @@ coords_df = coords_df[(coords_df['fe_ms1_rt_lower'] >= args.rt_lower) & (coords_
 
 # write them out
 print('writing {} cuboid definitions to {}'.format(len(coords_df), CUBOIDS_FILE))
-info.append(('total_running_time',round(time.time()-start_run,1)))
-info.append(('processor',parser.prog))
-info.append(('processed', time.ctime()))
-content_d = {'coords_df':coords_df, 'metadata':info}
-with open(CUBOIDS_FILE, 'wb') as handle:
-    pickle.dump(content_d, handle)
+info['total_running_time'] = round(time.time()-start_run,1)
+info['processor'] = parser.prog
+info['processed'] = time.ctime()
+info_s = pd.Series(info)
+coords_df.to_hdf(CUBOIDS_FILE, key='coords_df', format='table', mode='w')
+info_s.to_hdf(CUBOIDS_FILE, key='metadata', format='table', append=True, mode='a')
 
 stop_run = time.time()
 print("total running time ({}): {} seconds".format(parser.prog, round(stop_run-start_run,1)))

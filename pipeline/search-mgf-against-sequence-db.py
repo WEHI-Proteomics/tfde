@@ -30,9 +30,9 @@ parser.add_argument('-ini','--ini_file', type=str, default='./otf-peak-detect/pi
 args = parser.parse_args()
 
 # Print the arguments for the log
-info = []
+info = {}
 for arg in vars(args):
-    info.append((arg, getattr(args, arg)))
+    info[arg] = getattr(args, arg)
 print(info)
 
 start_run = time.time()

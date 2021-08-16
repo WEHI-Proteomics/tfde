@@ -98,9 +98,9 @@ parser.add_argument('-snmp','--search_for_new_model_parameters', action='store_t
 args = parser.parse_args()
 
 # Print the arguments for the log
-info = []
+info = {}
 for arg in vars(args):
-    info.append((arg, getattr(args, arg)))
+    info[arg] = getattr(args, arg)
 print(info)
 
 start_run = time.time()
@@ -132,7 +132,7 @@ if not os.path.exists(IDENTIFICATIONS_DIR):
     sys.exit(1)
 
 # check the identifications file
-IDENTIFICATIONS_FILE = '{}/exp-{}-identifications-{}.pkl'.format(IDENTIFICATIONS_DIR, args.experiment_name, args.precursor_definition_method)
+IDENTIFICATIONS_FILE = '{}/exp-{}-identifications-{}.hdf'.format(IDENTIFICATIONS_DIR, args.experiment_name, args.precursor_definition_method)
 if not os.path.isfile(IDENTIFICATIONS_FILE):
     print("The identifications file doesn't exist: {}".format(IDENTIFICATIONS_FILE))
     sys.exit(1)
@@ -151,7 +151,7 @@ if len(idents_df) == 0:
 
 # load the features for recalibration
 FEATURES_DIR = '{}/features-{}'.format(EXPERIMENT_DIR, args.precursor_definition_method)
-feature_files = glob.glob("{}/exp-{}-run-*-features-{}-dedup.pkl".format(FEATURES_DIR, args.experiment_name, args.precursor_definition_method))
+feature_files = glob.glob("{}/exp-{}-run-*-features-{}-dedup.hdf".format(FEATURES_DIR, args.experiment_name, args.precursor_definition_method))
 features_l = []
 for f in feature_files:
     with open(f, 'rb') as handle:
@@ -180,12 +180,12 @@ recal_features_df = pd.merge(features_df, adjusted_features_df, how='inner', lef
 for group_name,group_df in recal_features_df.groupby('run_name'):
     RECAL_FEATURES_FILE = '{}/exp-{}-run-{}-features-{}-recalibrated.pkl'.format(FEATURES_DIR, args.experiment_name, group_name, args.precursor_definition_method)
     print("writing {} recalibrated features to {}".format(len(recal_features_df), RECAL_FEATURES_FILE))
-    info.append(('total_running_time',round(time.time()-start_run,1)))
-    info.append(('processor',parser.prog))
-    info.append(('processed', time.ctime()))
-    content_d = {'features_df':group_df, 'metadata':info}
-    with open(RECAL_FEATURES_FILE, 'wb') as handle:
-        pickle.dump(content_d, handle)
+    info['total_running_time'] = round(time.time()-start_run,1)
+    info['processor'] = parser.prog
+    info['processed'] = time.ctime()
+    info_s = pd.Series(info)
+    group_df.to_hdf(RECAL_FEATURES_FILE, key='features_df', format='table', mode='w')
+    info_s.to_hdf(RECAL_FEATURES_FILE, key='metadata', format='table', append=True, mode='a')
 
 # finish up
 stop_run = time.time()
