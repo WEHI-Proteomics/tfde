@@ -608,7 +608,6 @@ parser = argparse.ArgumentParser(description='Find all the features in a run wit
 parser.add_argument('-eb','--experiment_base_dir', type=str, default='./experiments', help='Path to the experiments directory.', required=False)
 parser.add_argument('-en','--experiment_name', type=str, help='Name of the experiment.', required=True)
 parser.add_argument('-rn','--run_name', type=str, help='Name of the run.', required=True)
-parser.add_argument('-rdn','--raw_database_name', type=str, help='The name of the \'.d\' folder.', required=True)
 parser.add_argument('-ml','--mz_lower', type=int, default='100', help='Lower limit for m/z.', required=False)
 parser.add_argument('-mu','--mz_upper', type=int, default='1700', help='Upper limit for m/z.', required=False)
 parser.add_argument('-mw','--mz_width_per_segment', type=int, default=20, help='Width in Da of the m/z processing window per segment.', required=False)
@@ -620,7 +619,7 @@ parser.add_argument('-rm','--ray_mode', type=str, choices=['local','cluster'], h
 parser.add_argument('-pc','--proportion_of_cores_to_use', type=float, default=0.9, help='Proportion of the machine\'s cores to use for this program.', required=False)
 args = parser.parse_args()
 
-# Print the arguments for the log
+# print the arguments for the log
 info = []
 for arg in vars(args):
     info.append((arg, getattr(args, arg)))
@@ -635,9 +634,9 @@ if not os.path.exists(EXPERIMENT_DIR):
     sys.exit(1)
 
 # check the raw database directory exists
-RAW_DATABASE_DIR = '{}/raw-databases/{}'.format(EXPERIMENT_DIR, args.raw_database_name)
+RAW_DATABASE_DIR = '{}/raw-databases/{}.d'.format(EXPERIMENT_DIR, args.run_name)
 if not os.path.exists(RAW_DATABASE_DIR):
-    print("The raw database analysis.tdf doesn't exist: {}".format(RAW_DATABASE_DIR))
+    print("The raw database doesn't exist: {}".format(RAW_DATABASE_DIR))
     sys.exit(1)
 
 # check the INI file exists
