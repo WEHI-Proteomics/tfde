@@ -674,8 +674,8 @@ info['total_running_time'] = str(round(time.time()-start_run,1))
 info['processor'] = parser.prog
 info['processed'] = time.ctime()
 info_s = pd.Series(info)
-features_df.to_hdf(CUBOIDS_FILE, key='features_df', format='table', mode='w')
-info_s.to_hdf(CUBOIDS_FILE, key='metadata', format='table', append=True, mode='a')
+features_df.to_hdf(FEATURES_FILE, key='features_df', format='table', mode='w')
+info_s.to_hdf(FEATURES_FILE, key='metadata', format='table', append=True, mode='a')
 
 stop_run = time.time()
 print("total running time ({}): {} seconds".format(parser.prog, round(stop_run-start_run,1)))
