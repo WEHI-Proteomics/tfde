@@ -12,7 +12,7 @@ import sys
 # default configuration file location
 ini_file = '{}/../pipeline/pasef-process-short-gradient.ini'.format(os.path.dirname(os.path.realpath(__file__)))
 
-# the function get_var() gets the named argument from the command line as a string; if it's not present it uses the specified default
+# the function get_var() gets the named argument from the command line as a string; if the argument is not present it uses the specified default
 config = {
     'experiment_base_dir': get_var('eb', '/media/big-ssd/experiments'),
     'experiment_name': get_var('en', None),
@@ -36,7 +36,7 @@ start_run = time.time()
 ####################
 def task_detect_features():
     # input
-    CONVERTED_DATABASE_NAME = "{experiment_dir}/converted-databases/exp-{experiment_name}-run-{run_name}-converted.sqlite".format(experiment_dir=EXPERIMENT_DIR, experiment_name=config['experiment_name'], run_name=config['run_name'])
+    RAW_DATABASE_NAME = "{experiment_dir}/raw-databases/{run_name}.d".format(experiment_dir=EXPERIMENT_DIR, run_name=config['run_name'])
     # command
     cmd = 'python -u detect-features-with-3did.py -eb {experiment_base} -en {experiment_name} -rdn {raw_database_name} -rn {run_name} -mw {mz_width_per_segment} -pc {proportion_of_cores_to_use} -ini {INI_FILE} -rm cluster -minvi {minvi}'.format(experiment_base=config['experiment_base_dir'], experiment_name=config['experiment_name'], raw_database_name=config['raw_database_name'], run_name=config['run_name'], mz_width_per_segment=config['mz_width_per_segment'], proportion_of_cores_to_use=config['proportion_of_cores_to_use'], INI_FILE=config['ini_file'], minvi=config['minvi'])
     # output
@@ -44,7 +44,7 @@ def task_detect_features():
     FEATURES_FILE = '{features_dir}/exp-{experiment_name}-run-{run_name}-features-3did.pkl'.format(features_dir=FEATURES_DIR, experiment_name=config['experiment_name'], run_name=config['run_name'])
 
     return {
-        'file_dep': [CONVERTED_DATABASE_NAME],
+        'file_dep': [RAW_DATABASE_NAME],
         'actions': [cmd],
         'targets': [FEATURES_FILE],
         'clean': ['rm -rf {}'.format(FEATURES_DIR)],
