@@ -469,7 +469,7 @@ def detect_features(cuboid, mass_defect_bins, visualise):
                 # resolve the feature's fragment ions
                 ms2_resolution_d = resolve_fragment_ions(feature_d, ms2_points_df, mass_defect_bins)
                 feature_d['fragment_ions_l'] = json.dumps(ms2_resolution_d['deconvoluted_peaks_l'])
-                feature_d['fmdw_before_after_d'] = ms2_resolution_d['vis_d']
+                feature_d['fmdw_before_after_d'] = json.dumps(ms2_resolution_d['vis_d'])
                 # assign a unique identifier to this feature
                 feature_d['feature_id'] = generate_feature_id(precursor_cuboid.precursor_cuboid_id, idx+1)
                 # add it to the list
