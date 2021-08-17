@@ -70,12 +70,12 @@ def task_define_precursor_cuboids():
 def task_detect_features():
     # input
     CUBOIDS_DIR = "{}/precursor-cuboids-{}".format(EXPERIMENT_DIR, config['precursor_definition_method'])
-    CUBOIDS_FILE = '{}/exp-{}-run-{}-precursor-cuboids-{}.hdf'.format(CUBOIDS_DIR, config['experiment_name'], config['run_name'], config['precursor_definition_method'])
+    CUBOIDS_FILE = '{}/exp-{}-run-{}-precursor-cuboids-{}.pkl'.format(CUBOIDS_DIR, config['experiment_name'], config['run_name'], config['precursor_definition_method'])
     # command
     cmd = 'python -u detect-features.py -eb {experiment_base} -en {experiment_name} -rn {run_name} -ini {INI_FILE} -rm cluster -pc {proportion_of_cores_to_use} -rl {rl} -ru {ru} {cs} {fmdw}'.format(experiment_base=config['experiment_base_dir'], experiment_name=config['experiment_name'], run_name=config['run_name'], INI_FILE=config['ini_file'], proportion_of_cores_to_use=config['proportion_of_cores_to_use'], rl=int(config['rt_lower']), ru=int(config['rt_upper']), cs=config['cs_flag'], fmdw=config['fmdw_flag'])
     # output
     FEATURES_DIR = "{}/features-{}".format(EXPERIMENT_DIR, config['precursor_definition_method'])
-    FEATURES_FILE = '{}/exp-{}-run-{}-features-{}.hdf'.format(FEATURES_DIR, config['experiment_name'], config['run_name'], config['precursor_definition_method'])
+    FEATURES_FILE = '{}/exp-{}-run-{}-features-{}.pkl'.format(FEATURES_DIR, config['experiment_name'], config['run_name'], config['precursor_definition_method'])
 
     return {
         'file_dep': [CUBOIDS_FILE],
@@ -88,11 +88,11 @@ def task_detect_features():
 def task_remove_duplicate_features():
     # input
     FEATURES_DIR = "{}/features-{}".format(EXPERIMENT_DIR, config['precursor_definition_method'])
-    FEATURES_FILE = '{}/exp-{}-run-{}-features-{}.hdf'.format(FEATURES_DIR, config['experiment_name'], config['run_name'], config['precursor_definition_method'])
+    FEATURES_FILE = '{}/exp-{}-run-{}-features-{}.pkl'.format(FEATURES_DIR, config['experiment_name'], config['run_name'], config['precursor_definition_method'])
     # command
     cmd = 'python -u remove-duplicate-features.py -eb {experiment_base} -en {experiment_name} -rn {run_name} -ini {INI_FILE} -pdm {precursor_definition_method}'.format(experiment_base=config['experiment_base_dir'], experiment_name=config['experiment_name'], run_name=config['run_name'], INI_FILE=config['ini_file'], precursor_definition_method=config['precursor_definition_method'])
     # output
-    FEATURES_DEDUP_FILE = '{}/exp-{}-run-{}-features-{}-dedup.hdf'.format(FEATURES_DIR, config['experiment_name'], config['run_name'], config['precursor_definition_method'])
+    FEATURES_DEDUP_FILE = '{}/exp-{}-run-{}-features-{}-dedup.pkl'.format(FEATURES_DIR, config['experiment_name'], config['run_name'], config['precursor_definition_method'])
     # pass-through command (no de-dup)
     # cmd = 'cp {} {}'.format(FEATURES_FILE, FEATURES_DEDUP_FILE)
 
@@ -111,7 +111,7 @@ def task_remove_duplicate_features():
 def task_render_mgf():
     # input
     FEATURES_DIR = '{}/features-{}'.format(EXPERIMENT_DIR, config['precursor_definition_method'])
-    FEATURES_FILE = '{}/exp-{}-run-{}-features-{}-dedup.hdf'.format(FEATURES_DIR, config['experiment_name'], config['run_name'], config['precursor_definition_method'])
+    FEATURES_FILE = '{}/exp-{}-run-{}-features-{}-dedup.pkl'.format(FEATURES_DIR, config['experiment_name'], config['run_name'], config['precursor_definition_method'])
     # command
     cmd = 'python -u render-features-as-mgf.py -eb {experiment_base} -en {experiment_name} -rn {run_name} -pdm {precursor_definition_method}'.format(experiment_base=config['experiment_base_dir'], experiment_name=config['experiment_name'], run_name=config['run_name'], precursor_definition_method=config['precursor_definition_method'])
     # output
@@ -150,7 +150,7 @@ def task_identify_searched_features():
     cmd = 'python -u identify-searched-features.py -eb {experiment_base} -en {experiment_name} -ini {INI_FILE} -ff {fasta_name} -pdm {precursor_definition_method}'.format(experiment_base=config['experiment_base_dir'], experiment_name=config['experiment_name'], INI_FILE=config['ini_file'], fasta_name=config['fasta_file_name'], precursor_definition_method=config['precursor_definition_method'])
     # output
     IDENTIFICATIONS_DIR = '{}/identifications-{}'.format(EXPERIMENT_DIR, config['precursor_definition_method'])
-    IDENTIFICATIONS_FILE = '{}/exp-{}-identifications-{}.hdf'.format(IDENTIFICATIONS_DIR, config['experiment_name'], config['precursor_definition_method'])
+    IDENTIFICATIONS_FILE = '{}/exp-{}-identifications-{}.pkl'.format(IDENTIFICATIONS_DIR, config['experiment_name'], config['precursor_definition_method'])
 
     return {
         'file_dep': [comet_output],
@@ -167,12 +167,12 @@ def task_identify_searched_features():
 def task_mass_recalibration():
     # input
     IDENTIFICATIONS_DIR = '{}/identifications-{}'.format(EXPERIMENT_DIR, config['precursor_definition_method'])
-    IDENTIFICATIONS_FILE = '{}/exp-{}-identifications-{}.hdf'.format(IDENTIFICATIONS_DIR, config['experiment_name'], config['precursor_definition_method'])
+    IDENTIFICATIONS_FILE = '{}/exp-{}-identifications-{}.pkl'.format(IDENTIFICATIONS_DIR, config['experiment_name'], config['precursor_definition_method'])
     # command
     cmd = 'python -u recalibrate-feature-mass.py -eb {experiment_base} -en {experiment_name} -ini {INI_FILE} -pdm {precursor_definition_method} -rm cluster'.format(experiment_base=config['experiment_base_dir'], experiment_name=config['experiment_name'], INI_FILE=config['ini_file'], precursor_definition_method=config['precursor_definition_method'])
     # output
     FEATURES_DIR = '{}/features-{}'.format(EXPERIMENT_DIR, config['precursor_definition_method'])
-    RECAL_FEATURES_FILE = '{}/exp-{}-run-{}-features-{}-recalibrated.hdf'.format(FEATURES_DIR, config['experiment_name'], config['run_name'], config['precursor_definition_method'])
+    RECAL_FEATURES_FILE = '{}/exp-{}-run-{}-features-{}-recalibrated.pkl'.format(FEATURES_DIR, config['experiment_name'], config['run_name'], config['precursor_definition_method'])
 
     return {
         'file_dep': [IDENTIFICATIONS_FILE],
@@ -189,7 +189,7 @@ def task_mass_recalibration():
 def task_render_mgf_recalibrated():
     # input
     FEATURES_DIR = '{}/features-{}'.format(EXPERIMENT_DIR, config['precursor_definition_method'])
-    FEATURES_FILE = '{}/exp-{}-run-{}-features-{}-recalibrated.hdf'.format(FEATURES_DIR, config['experiment_name'], config['run_name'], config['precursor_definition_method'])
+    FEATURES_FILE = '{}/exp-{}-run-{}-features-{}-recalibrated.pkl'.format(FEATURES_DIR, config['experiment_name'], config['run_name'], config['precursor_definition_method'])
     # command
     cmd = 'python -u render-features-as-mgf.py -eb {experiment_base} -en {experiment_name} -rn {run_name} -pdm {precursor_definition_method} -recal'.format(experiment_base=config['experiment_base_dir'], experiment_name=config['experiment_name'], run_name=config['run_name'], precursor_definition_method=config['precursor_definition_method'])
     # output
@@ -228,7 +228,7 @@ def task_identify_searched_features_recalibrated():
     cmd = 'python -u identify-searched-features.py -eb {experiment_base} -en {experiment_name} -ini {INI_FILE} -ff {fasta_name} -pdm {precursor_definition_method} -recal'.format(experiment_base=config['experiment_base_dir'], experiment_name=config['experiment_name'], INI_FILE=config['ini_file'], fasta_name=config['fasta_file_name'], precursor_definition_method=config['precursor_definition_method'])
     # output
     IDENTIFICATIONS_DIR = '{}/identifications-{}'.format(EXPERIMENT_DIR, config['precursor_definition_method'])
-    IDENTIFICATIONS_FILE = '{}/exp-{}-identifications-{}-recalibrated.hdf'.format(IDENTIFICATIONS_DIR, config['experiment_name'], config['precursor_definition_method'])
+    IDENTIFICATIONS_FILE = '{}/exp-{}-identifications-{}-recalibrated.pkl'.format(IDENTIFICATIONS_DIR, config['experiment_name'], config['precursor_definition_method'])
 
     return {
         'file_dep': [comet_output],

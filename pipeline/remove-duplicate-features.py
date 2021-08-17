@@ -17,10 +17,10 @@ parser.add_argument('-ini','--ini_file', type=str, default='./otf-peak-detect/pi
 parser.add_argument('-v','--verbose_mode', action='store_true', help='Verbose mode.')
 args = parser.parse_args()
 
-# print the arguments for the log
-info = {}
+# Print the arguments for the log
+info = []
 for arg in vars(args):
-    info[arg] = str(getattr(args, arg))
+    info.append((arg, getattr(args, arg)))
 print(info)
 
 start_run = time.time()
@@ -49,18 +49,18 @@ if args.precursor_definition_method == '3did':
     DUP_SCAN_TOLERANCE = cfg.getint('3did', 'DUP_SCAN_TOLERANCE')
     DUP_RT_TOLERANCE = cfg.getint('3did', 'DUP_RT_TOLERANCE')
     # input features
-    FEATURES_FILE = '{}/exp-{}-run-{}-features-3did-ident.hdf'.format(FEATURES_DIR, args.experiment_name, args.run_name)
+    FEATURES_FILE = '{}/exp-{}-run-{}-features-3did-ident.pkl'.format(FEATURES_DIR, args.experiment_name, args.run_name)
 else:
     DUP_MZ_TOLERANCE_PPM = cfg.getint('ms1', 'DUP_MZ_TOLERANCE_PPM')
     DUP_SCAN_TOLERANCE = cfg.getint('ms1', 'DUP_SCAN_TOLERANCE')
     DUP_RT_TOLERANCE = cfg.getint('ms1', 'DUP_RT_TOLERANCE')
     # input features
-    FEATURES_FILE = '{}/exp-{}-run-{}-features-{}.hdf'.format(FEATURES_DIR, args.experiment_name, args.run_name, args.precursor_definition_method)
+    FEATURES_FILE = '{}/exp-{}-run-{}-features-{}.pkl'.format(FEATURES_DIR, args.experiment_name, args.run_name, args.precursor_definition_method)
 
 print('removing duplicate features that are within +/- {} ppm m/z, {} scans, {} seconds'.format(DUP_MZ_TOLERANCE_PPM, DUP_SCAN_TOLERANCE, DUP_RT_TOLERANCE))
 
 # output features
-FEATURES_DEDUP_FILE = '{}/exp-{}-run-{}-features-{}-dedup.hdf'.format(FEATURES_DIR, args.experiment_name, args.run_name, args.precursor_definition_method)
+FEATURES_DEDUP_FILE = '{}/exp-{}-run-{}-features-{}-dedup.pkl'.format(FEATURES_DIR, args.experiment_name, args.run_name, args.precursor_definition_method)
 
 # check the features directory
 if not os.path.exists(FEATURES_DIR):
@@ -73,7 +73,8 @@ if not os.path.isfile(FEATURES_FILE):
     sys.exit(1)
 
 # load the features
-features_df = pd.read_hdf(FEATURES_FILE, key='features_df')
+with open(FEATURES_FILE, 'rb') as handle:
+    features_df = pickle.load(handle)['features_df']
 print('loaded {} features from {}'.format(len(features_df), FEATURES_FILE))
 
 # de-dup the features
@@ -134,12 +135,12 @@ else:
 
 # write out all the features
 print("writing {} de-duped features to {}".format(len(dedup_df), FEATURES_DEDUP_FILE))
-info['total_running_time'] = str(round(time.time()-start_run,1))
-info['processor'] = parser.prog
-info['processed'] = time.ctime()
-info_s = pd.Series(info)
-features_df.to_hdf(FEATURES_DEDUP_FILE, key='features_df', format='table', mode='w')
-info_s.to_hdf(FEATURES_DEDUP_FILE, key='metadata', format='table', append=True, mode='a')
+info.append(('total_running_time',round(time.time()-start_run,1)))
+info.append(('processor',parser.prog))
+info.append(('processed', time.ctime()))
+content_d = {'features_df':dedup_df, 'metadata':info}
+with open(FEATURES_DEDUP_FILE, 'wb') as handle:
+    pickle.dump(content_d, handle)
 
 stop_run = time.time()
 print("total running time ({}): {} seconds".format(parser.prog, round(stop_run-start_run,1)))

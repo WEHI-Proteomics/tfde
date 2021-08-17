@@ -45,9 +45,9 @@ parser.add_argument('-recal','--recalibration_mode', action='store_true', help='
 args = parser.parse_args()
 
 # Print the arguments for the log
-info = {}
+info = []
 for arg in vars(args):
-    info[arg] = str(getattr(args, arg))
+    info.append((arg, getattr(args, arg)))
 print(info)
 
 start_run = time.time()
@@ -58,13 +58,13 @@ MGF_DIR = "{}/mgf-{}".format(EXPERIMENT_DIR, args.precursor_definition_method)
 
 # handle whether or not this is for recalibrated features
 if not args.recalibration_mode:
-    FEATURES_FILE = '{}/exp-{}-run-{}-features-{}-dedup.hdf'.format(FEATURES_DIR, args.experiment_name, args.run_name, args.precursor_definition_method)
+    FEATURES_FILE = '{}/exp-{}-run-{}-features-{}-dedup.pkl'.format(FEATURES_DIR, args.experiment_name, args.run_name, args.precursor_definition_method)
     # the monoisotopic m/z to use
     monoisotopic_mz_column_name = 'monoisotopic_mz'
     # output MGF
     MGF_FILE = '{}/exp-{}-run-{}-features-{}.mgf'.format(MGF_DIR, args.experiment_name, args.run_name, args.precursor_definition_method)
 else:
-    FEATURES_FILE = '{}/exp-{}-run-{}-features-{}-recalibrated.hdf'.format(FEATURES_DIR, args.experiment_name, args.run_name, args.precursor_definition_method)
+    FEATURES_FILE = '{}/exp-{}-run-{}-features-{}-recalibrated.pkl'.format(FEATURES_DIR, args.experiment_name, args.run_name, args.precursor_definition_method)
     # the monoisotopic m/z to use
     monoisotopic_mz_column_name = 'recalibrated_monoisotopic_mz'
     # output MGF
@@ -74,7 +74,8 @@ if not os.path.isfile(FEATURES_FILE):
     print("The features file is required but doesn't exist: {}".format(FEATURES_FILE))
 
 # load the features
-features_df = pd.read_hdf(FEATURES_FILE, key='features_df')
+with open(FEATURES_FILE, 'rb') as handle:
+    features_df = pickle.load(handle)['features_df']
 
 # trim down the features to just those from the specified precursor_id
 if args.precursor_id is not None:

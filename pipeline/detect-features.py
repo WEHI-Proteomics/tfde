@@ -283,14 +283,14 @@ def determine_mono_characteristics(envelope, mono_mz_lower, mono_mz_upper, monoi
                 rt_df = isotope_df.groupby(['retention_time_secs'], as_index=False).intensity.sum()
                 rt_df.sort_values(by=['retention_time_secs'], ascending=True, inplace=True)
                 # measure it's elution similarity with the previous isotope
-                similarity_rt = measure_peak_similarity(pd.read_json(isotopes_l[idx-1]['rt_df'], orient='records'), rt_df, x_label='retention_time_secs', scale=100) if idx > 0 else None
+                similarity_rt = measure_peak_similarity(pd.DataFrame(isotopes_l[idx-1]['rt_df']), rt_df, x_label='retention_time_secs', scale=100) if idx > 0 else None
                 # determine the isotope's profile in mobility
                 scan_df = isotope_df.groupby(['scan'], as_index=False).intensity.sum()
                 scan_df.sort_values(by=['scan'], ascending=True, inplace=True)
                 # measure it's elution similarity with the previous isotope
-                similarity_scan = measure_peak_similarity(pd.read_json(isotopes_l[idx-1]['scan_df'], orient='records'), scan_df, x_label='scan', scale=1) if idx > 0 else None
+                similarity_scan = measure_peak_similarity(pd.DataFrame(isotopes_l[idx-1]['scan_df']), scan_df, x_label='scan', scale=1) if idx > 0 else None
                 # add the isotope to the list
-                isotopes_l.append({'mz':iso_mz, 'mz_lower':iso_mz_lower, 'mz_upper':iso_mz_upper, 'intensity':summed_intensity, 'saturated':isotope_in_saturation, 'rt_df':rt_df.to_json(orient='records'), 'scan_df':scan_df.to_json(orient='records'), 'similarity_rt':similarity_rt, 'similarity_scan':similarity_scan})
+                isotopes_l.append({'mz':iso_mz, 'mz_lower':iso_mz_lower, 'mz_upper':iso_mz_upper, 'intensity':summed_intensity, 'saturated':isotope_in_saturation, 'rt_df':rt_df.to_dict('records'), 'scan_df':scan_df.to_dict('records'), 'similarity_rt':similarity_rt, 'similarity_scan':similarity_scan})
             else:
                 break
         isotopes_df = pd.DataFrame(isotopes_l)
@@ -340,11 +340,11 @@ def determine_mono_characteristics(envelope, mono_mz_lower, mono_mz_upper, monoi
         result_d['intensity_without_saturation_correction'] = isotopes_df.iloc[:3].intensity.sum()  # only take the first three isotopes for intensity, as the number of isotopes varies
         result_d['intensity_with_saturation_correction'] = isotopes_df.iloc[:3].inferred_intensity.sum()
         result_d['mono_intensity_adjustment_outcome'] = outcome
-        result_d['isotopic_peaks'] = isotopes_df.to_json('records')
+        result_d['isotopic_peaks'] = isotopes_df.to_dict('records')
         result_d['coelution_coefficient'] = coelution_coefficient
         result_d['mobility_coefficient'] = mobility_coefficient
-        result_d['scan_df'] = scan_df.to_json(orient='records')
-        result_d['rt_df'] = rt_df.to_json(orient='records')
+        result_d['scan_df'] = scan_df.to_dict('records')
+        result_d['rt_df'] = rt_df.to_dict('records')
     else:
         print('found no raw points where the mono peak should be')
         result_d = None
@@ -365,7 +365,7 @@ def generate_mass_defect_windows(mass_defect_window_da_min, mass_defect_window_d
 # returns a decharged peak list (neutral mass+proton mass, intensity)
 def resolve_fragment_ions(feature_d, ms2_points_df, mass_defect_bins):
     vis_d = {}
-    vis_d['ms2_points_l'] = ms2_points_df[['mz','intensity']].to_json(orient='records')
+    vis_d['ms2_points_l'] = ms2_points_df[['mz','intensity']].to_dict('records')
     # perform intensity descent to resolve peaks
     raw_points_a = ms2_points_df[['mz','intensity']].to_numpy()
     peaks_a = intensity_descent(peaks_a=raw_points_a, peak_delta=None)
@@ -388,7 +388,7 @@ def resolve_fragment_ions(feature_d, ms2_points_df, mass_defect_bins):
         fragment_ions_df['bin'] = pd.cut(fragment_ions_df.neutral_mass, mass_defect_bins)
         filtered_fragment_ions_df = fragment_ions_df.dropna(subset = ['bin']).copy()
         filtered_fragment_ions_df.drop('bin', axis=1, inplace=True)
-        deconvoluted_peaks_l = filtered_fragment_ions_df.to_json(orient='records')
+        deconvoluted_peaks_l = filtered_fragment_ions_df.to_dict('records')
 
         vis_d['after_fmdw'] = deconvoluted_peaks_l
 
@@ -469,7 +469,7 @@ def detect_features(cuboid, mass_defect_bins, visualise):
                 # resolve the feature's fragment ions
                 ms2_resolution_d = resolve_fragment_ions(feature_d, ms2_points_df, mass_defect_bins)
                 feature_d['fragment_ions_l'] = json.dumps(ms2_resolution_d['deconvoluted_peaks_l'])
-                feature_d['fmdw_before_after_d'] = json.dumps(ms2_resolution_d['vis_d'])
+                feature_d['fmdw_before_after_d'] = ms2_resolution_d['vis_d']
                 # assign a unique identifier to this feature
                 feature_d['feature_id'] = generate_feature_id(precursor_cuboid.precursor_cuboid_id, idx+1)
                 # add it to the list
@@ -520,10 +520,10 @@ parser.add_argument('-cs','--correct_for_saturation', action='store_true', help=
 parser.add_argument('-fmdw','--filter_by_mass_defect', action='store_true', help='Filter fragment ions by mass defect windows.')
 args = parser.parse_args()
 
-# print the arguments for the log
-info = {}
+# Print the arguments for the log
+info = []
 for arg in vars(args):
-    info[arg] = str(getattr(args, arg))
+    info.append((arg, getattr(args, arg)))
 print(info)
 
 start_run = time.time()
@@ -565,11 +565,11 @@ CARBON_MASS_DIFFERENCE = cfg.getfloat('common', 'CARBON_MASS_DIFFERENCE')
 
 # input cuboids
 CUBOIDS_DIR = "{}/precursor-cuboids-pasef".format(EXPERIMENT_DIR)
-CUBOIDS_FILE = '{}/exp-{}-run-{}-precursor-cuboids-pasef.hdf'.format(CUBOIDS_DIR, args.experiment_name, args.run_name)
+CUBOIDS_FILE = '{}/exp-{}-run-{}-precursor-cuboids-pasef.pkl'.format(CUBOIDS_DIR, args.experiment_name, args.run_name)
 
 # output features
 FEATURES_DIR = "{}/features-pasef".format(EXPERIMENT_DIR)
-FEATURES_FILE = '{}/exp-{}-run-{}-features-pasef.hdf'.format(FEATURES_DIR, args.experiment_name, args.run_name)
+FEATURES_FILE = '{}/exp-{}-run-{}-features-pasef.pkl'.format(FEATURES_DIR, args.experiment_name, args.run_name)
 
 # check the cuboids file
 if not os.path.isfile(CUBOIDS_FILE):
@@ -577,7 +577,9 @@ if not os.path.isfile(CUBOIDS_FILE):
     sys.exit(1)
 
 # load the precursor cuboids
-precursor_cuboids_df = pd.read_hdf(CUBOIDS_FILE, key='coords_df')
+with open(CUBOIDS_FILE, 'rb') as handle:
+    d = pickle.load(handle)
+precursor_cuboids_df = d['coords_df']
 
 # constrain the detection to the define RT limits
 precursor_cuboids_df = precursor_cuboids_df[(precursor_cuboids_df['wide_ms1_rt_lower'] > args.rt_lower) & (precursor_cuboids_df['wide_ms1_rt_upper'] < args.rt_upper)]
@@ -670,12 +672,12 @@ features_df['run_name'] = args.run_name
 
 # write out all the features
 print("writing {} features to {}".format(len(features_df), FEATURES_FILE))
-info['total_running_time'] = str(round(time.time()-start_run,1))
-info['processor'] = parser.prog
-info['processed'] = time.ctime()
-info_s = pd.Series(info)
-features_df.to_hdf(FEATURES_FILE, key='features_df', format='table', mode='w')
-info_s.to_hdf(FEATURES_FILE, key='metadata', format='table', append=True, mode='a')
+info.append(('total_running_time',round(time.time()-start_run,1)))
+info.append(('processor',parser.prog))
+info.append(('processed', time.ctime()))
+content_d = {'features_df':features_df, 'metadata':info}
+with open(FEATURES_FILE, 'wb') as handle:
+    pickle.dump(content_d, handle)
 
 stop_run = time.time()
 print("total running time ({}): {} seconds".format(parser.prog, round(stop_run-start_run,1)))
