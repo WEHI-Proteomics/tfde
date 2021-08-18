@@ -633,10 +633,11 @@ if not os.path.exists(EXPERIMENT_DIR):
     print("The experiment directory is required but doesn't exist: {}".format(EXPERIMENT_DIR))
     sys.exit(1)
 
-# check the raw database directory exists
-RAW_DATABASE_DIR = '{}/raw-databases/{}.d'.format(EXPERIMENT_DIR, args.run_name)
-if not os.path.exists(RAW_DATABASE_DIR):
-    print("The raw database doesn't exist: {}".format(RAW_DATABASE_DIR))
+# check the raw database exists
+RAW_DATABASE_BASE_DIR = "{}/raw-databases".format(EXPERIMENT_DIR)
+RAW_DATABASE_NAME = "{}/{}.d".format(RAW_DATABASE_BASE_DIR, args.run_name)
+if not os.path.exists(RAW_DATABASE_NAME):
+    print("The raw database is required but doesn't exist: {}".format(RAW_DATABASE_NAME))
     sys.exit(1)
 
 # check the INI file exists
@@ -695,7 +696,6 @@ VALLEYS_MIN_DIST_SCAN = 10.0  # scans
 SCAN_FILTER_POLY_ORDER = 5
 RT_FILTER_POLY_ORDER = 5
 
-
 # set up the output features
 FEATURES_DIR = "{}/features-3did".format(EXPERIMENT_DIR)
 FEATURES_FILE = '{}/exp-{}-run-{}-features-3did.pkl'.format(FEATURES_DIR, args.experiment_name, args.run_name)
@@ -730,8 +730,20 @@ if not ray.is_initialized():
         ray.init(local_mode=True)
 
 # load the raw database
-print('loading the raw data from {}'.format(RAW_DATABASE_DIR))
-data = alphatims.bruker.TimsTOF(RAW_DATABASE_DIR)
+RAW_HDF_FILE = '{}.hdf'.format(args.run_name)
+RAW_HDF_PATH = '{}/{}'.format(RAW_DATABASE_BASE_DIR, RAW_HDF_FILE)
+if not os.path.isfile(RAW_HDF_PATH):
+    print('{} doesn\'t exist so loading the raw data from {}'.format(RAW_HDF_PATH, RAW_DATABASE_NAME))
+    data = alphatims.bruker.TimsTOF(RAW_DATABASE_NAME)
+    print('saving to {}'.format(RAW_HDF_PATH))
+    _ = data.save_as_hdf(
+        directory=RAW_DATABASE_BASE_DIR,
+        file_name=RAW_HDF_FILE,
+        overwrite=True
+    )
+else:
+    print('loading raw data from {}'.format(RAW_HDF_PATH))
+    data = alphatims.bruker.TimsTOF(RAW_HDF_PATH)
 
 # calculate the segments
 mz_range = args.mz_upper - args.mz_lower
