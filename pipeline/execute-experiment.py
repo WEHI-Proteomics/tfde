@@ -7,6 +7,8 @@ import glob
 
 # This is the set of tasks to take a raw instrument database and create a list of peptides
 
+# how to run it:
+# doit -f ./otf-peak-detect/pipeline/execute-run.py eb=/media/big-ssd/experiments en=P3856 rn=P3856_YHE211_1_Slot1-1_1_5104 cs=true fmdw=true pc=0.8 pdm=pasef
 
 def get_run_names(experiment_dir):
     # process all the runs
@@ -56,22 +58,13 @@ EXPERIMENT_DIR = "{}/{}".format(config['experiment_base_dir'], config['experimen
 start_run = time.time()
 
 
-
-####################
-# raw conversion (TO BE ADDED)
-####################
-
-
-
-
-
 ####################
 # feature extraction
 ####################
 def task_define_precursor_cuboids():
     # input
-    CONVERTED_DB_DIR = "{}/converted-databases".format(EXPERIMENT_DIR)
-    converted_database_file_list = glob.glob('{}/*-converted.sqlite'.format(CONVERTED_DB_DIR))
+    RAW_DB_DIR = "{}/raw-databases".format(EXPERIMENT_DIR)
+    raw_database_file_list = glob.glob('{}/*.d'.format(RAW_DB_DIR))
     # output directory
     CUBOIDS_DIR = '{}/precursor-cuboids-{}'.format(EXPERIMENT_DIR, config['precursor_definition_method'])
 
@@ -86,7 +79,7 @@ def task_define_precursor_cuboids():
         target_l.append(cuboids_file)
 
     return {
-        'file_dep': converted_database_file_list,
+        'file_dep': raw_database_file_list,
         'actions': cmd_l,
         'targets': target_l,
         'clean': ['rm -rf {}'.format(CUBOIDS_DIR)],
