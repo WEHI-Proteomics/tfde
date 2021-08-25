@@ -651,6 +651,7 @@ for row in precursor_cuboids_df.itertuples():
     ms2_df[float_columns] = ms2_df[float_columns].apply(pd.to_numeric, downcast="float")
     # add them to the list
     cuboids_l.append({'ms1_df':ms1_df, 'ms2_df':ms2_df, 'precursor_cuboid':row})
+del data
 
 # generate the mass defect windows
 mass_defect_bins = pd.IntervalIndex.from_tuples(generate_mass_defect_windows(100, 8000))
@@ -661,6 +662,7 @@ features_l = ray.get([detect_features.remote(cuboid=cuboid, mass_defect_bins=mas
 
 # join the list of dataframes into a single dataframe
 features_df = pd.concat(features_l, axis=0, sort=False, ignore_index=True)
+del features_l
 
 # check we got something
 if len(features_df) == 0:
