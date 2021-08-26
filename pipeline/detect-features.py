@@ -665,6 +665,7 @@ mass_defect_bins = pd.IntervalIndex.from_tuples(generate_mass_defect_windows(100
 # find the features in each precursor cuboid
 print('detecting features')
 features_l = ray.get([detect_features.remote(cuboid=cuboid, mass_defect_bins=mass_defect_bins, visualise=(args.precursor_id is not None)) for cuboid in cuboids_l])
+del cuboids_l
 
 # join the list of dataframes into a single dataframe
 features_df = pd.concat(features_l, axis=0, sort=False, ignore_index=True)
