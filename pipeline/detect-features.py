@@ -475,6 +475,12 @@ def detect_features(cuboid, mass_defect_bins, visualise):
                 # add it to the list
                 feature_l.append(feature_d)
         features_df = pd.DataFrame(feature_l)
+
+        # downcast the data types to minimise the memory used
+        int_columns = ['scan_lower','scan_upper','intensity_without_saturation_correction','intensity_with_saturation_correction','charge','feature_intensity','isotope_count','precursor_cuboid_id','feature_id']
+        features_df[int_columns] = features_df[int_columns].apply(pd.to_numeric, downcast="unsigned")
+        float_columns = ['mono_mz_lower','mono_mz_upper','scan_apex','rt_apex','rt_lower','rt_upper','coelution_coefficient','mobility_coefficient','monoisotopic_mz','monoisotopic_mass','deconvolution_score']
+        features_df[float_columns] = features_df[float_columns].apply(pd.to_numeric, downcast="float")    
     else:
         deconvolution_features_df = pd.DataFrame()
         features_df = pd.DataFrame()
