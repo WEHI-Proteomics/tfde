@@ -583,9 +583,7 @@ if not os.path.isfile(CUBOIDS_FILE):
     sys.exit(1)
 
 # load the precursor cuboids
-with open(CUBOIDS_FILE, 'rb') as handle:
-    d = pickle.load(handle)
-precursor_cuboids_df = d['coords_df']
+precursor_cuboids_df = pd.read_feather(CUBOIDS_FILE)
 
 # constrain the detection to the define RT limits
 precursor_cuboids_df = precursor_cuboids_df[(precursor_cuboids_df['wide_ms1_rt_lower'] > args.rt_lower) & (precursor_cuboids_df['wide_ms1_rt_upper'] < args.rt_upper)]
