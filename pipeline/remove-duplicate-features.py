@@ -6,6 +6,7 @@ import configparser
 from configparser import ExtendedInterpolation
 import pandas as pd
 import json
+import glob
 
 
 ###################################
@@ -73,8 +74,12 @@ if not os.path.isfile(FEATURES_FILE):
     print("The features file is required but doesn't exist: {}".format(FEATURES_FILE))
     sys.exit(1)
 
-# load the features
-features_df = pd.read_feather(FEATURES_FILE)
+# load the detected features
+feature_files = glob.glob('{}/exp-{}-run-{}-features-{}-*.feather'.format(FEATURES_DIR, args.experiment_name, args.run_name, args.precursor_definition_method))
+features_l = []
+for f in feature_files:
+    features_l.append(pd.read_feather(f))
+features_df = pd.concat(features_l, axis=0, sort=False, ignore_index=True)
 print('loaded {} features from {}'.format(len(features_df), FEATURES_FILE))
 
 # de-dup the features
