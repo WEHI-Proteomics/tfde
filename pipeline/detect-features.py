@@ -676,6 +676,9 @@ if len(features_df) == 0:
 # add the run name
 features_df['run_name'] = args.run_name
 
+# reset the index
+features_df.reset_index(drop=True, inplace=True)
+
 # write out all the features
 print("writing {} features to {}".format(len(features_df), FEATURES_DIR))
 chunk_size = 10000
