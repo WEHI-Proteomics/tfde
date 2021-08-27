@@ -9,10 +9,10 @@
 # echo
 
 # cs false, fmdw false
-echo "P3830, cs false, fmdw false"
-doit -f ./otf-peak-detect/pipeline/execute-run.py clean en=P3830
-doit -f ./otf-peak-detect/pipeline/execute-run.py pc=0.8 cs=false fmdw=false en=P3830 rn=P3830_YeastUPS2_01_Slot1-1_1_5082 rl=0 ru=3000 ff="~/otf-peak-detect/fasta/ups1-ups2-yeast.fasta"
-echo
+# echo "P3830, cs false, fmdw false"
+# doit -f ./otf-peak-detect/pipeline/execute-run.py clean en=P3830
+# doit -f ./otf-peak-detect/pipeline/execute-run.py pc=0.8 cs=false fmdw=false en=P3830 rn=P3830_YeastUPS2_01_Slot1-1_1_5082 rl=0 ru=3000 ff="~/otf-peak-detect/fasta/ups1-ups2-yeast.fasta"
+# echo
 
 # cs true, fmdw true
 echo "P3830, cs true, fmdw true"
