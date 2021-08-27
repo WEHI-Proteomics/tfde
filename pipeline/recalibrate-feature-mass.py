@@ -172,6 +172,7 @@ adjusted_features_l = ray.get([adjust_features.remote(run_name=group_name, ident
 # join the list of dataframes into a single dataframe
 adjusted_features_df = pd.concat(adjusted_features_l, axis=0, sort=False, ignore_index=True)
 recal_features_df = pd.merge(features_df, adjusted_features_df, how='inner', left_on=['run_name','feature_id'], right_on=['run_name','feature_id'])
+recal_features_df.reset_index(drop=True, inplace=True)
 
 # write out the recalibrated features, one file for each run
 for group_name,group_df in recal_features_df.groupby('run_name'):

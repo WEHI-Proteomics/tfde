@@ -171,6 +171,7 @@ if not args.recalibration_mode:
 else:
     IDENTIFICATIONS_FILE = '{}/exp-{}-identifications-{}-recalibrated.feather'.format(IDENTIFICATIONS_DIR, args.experiment_name, args.precursor_definition_method)
 print("writing {} identifications to {}".format(len(identifications_df), IDENTIFICATIONS_FILE))
+identifications_df.reset_index(drop=True, inplace=True)
 identifications_df.to_feather(IDENTIFICATIONS_FILE)
 
 # write the metadata
