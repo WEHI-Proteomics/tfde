@@ -209,6 +209,7 @@ coords_df = coords_df[(coords_df['fe_ms1_rt_lower'] >= args.rt_lower) & (coords_
 
 # write them out
 print('writing {} cuboid definitions to {}'.format(len(coords_df), CUBOIDS_FILE))
+coords_df.reset_index(drop=True, inplace=True)
 coords_df.to_feather(CUBOIDS_FILE)
 
 # write the metadata
