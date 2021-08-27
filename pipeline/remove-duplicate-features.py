@@ -74,8 +74,13 @@ if not os.path.isfile(FEATURES_FILE):
     print("The features file is required but doesn't exist: {}".format(FEATURES_FILE))
     sys.exit(1)
 
-# load the detected features
+# check we have some to process
 feature_files = glob.glob('{}/exp-{}-run-{}-features-{}-*.feather'.format(FEATURES_DIR, args.experiment_name, args.run_name, args.precursor_definition_method))
+if len(feature_files) == 0:
+    print("The features files are required but doesn't exist: {}".format(FEATURES_DIR))
+    sys.exit(1)
+
+# load the detected features
 features_l = []
 for f in feature_files:
     features_l.append(pd.read_feather(f))
