@@ -18,6 +18,7 @@ from scipy import signal
 import math
 from sklearn.metrics.pairwise import cosine_similarity
 import alphatims.bruker
+import gc
 
 
 # peak and valley detection parameters
@@ -658,6 +659,7 @@ for row in precursor_cuboids_df.itertuples():
     # add them to the list
     cuboids_l.append({'ms1_df':ms1_df, 'ms2_df':ms2_df, 'precursor_cuboid':row})
 del data
+gc.collect()
 
 # generate the mass defect windows
 mass_defect_bins = pd.IntervalIndex.from_tuples(generate_mass_defect_windows(100, 8000))
@@ -666,10 +668,12 @@ mass_defect_bins = pd.IntervalIndex.from_tuples(generate_mass_defect_windows(100
 print('detecting features')
 features_l = ray.get([detect_features.remote(cuboid=cuboid, mass_defect_bins=mass_defect_bins, visualise=(args.precursor_id is not None)) for cuboid in cuboids_l])
 del cuboids_l[:]
+gc.collect()
 
 # join the list of dataframes into a single dataframe
 features_df = pd.concat(features_l, axis=0, sort=False, ignore_index=True)
 del features_l[:]
+gc.collect()
 
 # check we got something
 if len(features_df) == 0:
