@@ -135,6 +135,7 @@ else:
 
 # write out all the features
 print("writing {} de-duped features to {}".format(len(dedup_df), FEATURES_DEDUP_FILE))
+dedup_df.reset_index(drop=True, inplace=True)
 dedup_df.to_feather(FEATURES_DEDUP_FILE)
 
 # write the metadata
