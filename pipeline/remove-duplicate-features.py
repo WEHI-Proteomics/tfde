@@ -77,6 +77,7 @@ for f in feature_files:
     features_l.append(pd.read_feather(f))
 features_df = pd.concat(features_l, axis=0, sort=False, ignore_index=True)
 print('loaded {} features in {} chunks from {}'.format(len(features_df), len(feature_files), FEATURES_DIR))
+del features_l[:]
 
 # de-dup the features
 if (len(features_df) > 2):
