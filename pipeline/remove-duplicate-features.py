@@ -69,11 +69,6 @@ if not os.path.exists(FEATURES_DIR):
     print("The features directory is required but doesn't exist: {}".format(FEATURES_DIR))
     sys.exit(1)
 
-# check the features file
-if not os.path.isfile(FEATURES_FILE):
-    print("The features file is required but doesn't exist: {}".format(FEATURES_FILE))
-    sys.exit(1)
-
 # check we have some to process
 feature_files = glob.glob('{}/exp-{}-run-{}-features-{}-*.feather'.format(FEATURES_DIR, args.experiment_name, args.run_name, args.precursor_definition_method))
 if len(feature_files) == 0:
