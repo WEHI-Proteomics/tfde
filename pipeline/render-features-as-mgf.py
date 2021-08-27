@@ -1,14 +1,10 @@
 import pandas as pd
 import numpy as np
-import sqlite3
 import json
 import time
 import argparse
 import os
-import pickle
 from pyteomics import mgf
-import shutil
-import sys
 
 # collate the feature attributes for MGF rendering
 def collate_spectra_for_feature(feature_d, monoisotopic_mz_column_name, run_name):
@@ -58,13 +54,13 @@ MGF_DIR = "{}/mgf-{}".format(EXPERIMENT_DIR, args.precursor_definition_method)
 
 # handle whether or not this is for recalibrated features
 if not args.recalibration_mode:
-    FEATURES_FILE = '{}/exp-{}-run-{}-features-{}-dedup.pkl'.format(FEATURES_DIR, args.experiment_name, args.run_name, args.precursor_definition_method)
+    FEATURES_FILE = '{}/exp-{}-run-{}-features-{}-dedup.feather'.format(FEATURES_DIR, args.experiment_name, args.run_name, args.precursor_definition_method)
     # the monoisotopic m/z to use
     monoisotopic_mz_column_name = 'monoisotopic_mz'
     # output MGF
     MGF_FILE = '{}/exp-{}-run-{}-features-{}.mgf'.format(MGF_DIR, args.experiment_name, args.run_name, args.precursor_definition_method)
 else:
-    FEATURES_FILE = '{}/exp-{}-run-{}-features-{}-recalibrated.pkl'.format(FEATURES_DIR, args.experiment_name, args.run_name, args.precursor_definition_method)
+    FEATURES_FILE = '{}/exp-{}-run-{}-features-{}-recalibrated.feather'.format(FEATURES_DIR, args.experiment_name, args.run_name, args.precursor_definition_method)
     # the monoisotopic m/z to use
     monoisotopic_mz_column_name = 'recalibrated_monoisotopic_mz'
     # output MGF
@@ -74,8 +70,7 @@ if not os.path.isfile(FEATURES_FILE):
     print("The features file is required but doesn't exist: {}".format(FEATURES_FILE))
 
 # load the features
-with open(FEATURES_FILE, 'rb') as handle:
-    features_df = pickle.load(handle)['features_df']
+features_df = pd.read_feather(FEATURES_FILE)
 
 # trim down the features to just those from the specified precursor_id
 if args.precursor_id is not None:

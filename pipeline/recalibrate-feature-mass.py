@@ -1,11 +1,9 @@
 import glob
 import os
-import shutil
 import time
 import argparse
 import sys
 import pandas as pd
-import pickle
 import configparser
 from configparser import ExtendedInterpolation
 from sklearn.ensemble import GradientBoostingRegressor
@@ -14,6 +12,7 @@ from sklearn.model_selection import train_test_split
 import numpy as np
 import ray
 import multiprocessing as mp
+import json
 
 # convert the monoisotopic mass to the monoisotopic m/z
 def mono_mass_to_mono_mz(monoisotopic_mass, charge):
@@ -132,14 +131,13 @@ if not os.path.exists(IDENTIFICATIONS_DIR):
     sys.exit(1)
 
 # check the identifications file
-IDENTIFICATIONS_FILE = '{}/exp-{}-identifications-{}.pkl'.format(IDENTIFICATIONS_DIR, args.experiment_name, args.precursor_definition_method)
+IDENTIFICATIONS_FILE = '{}/exp-{}-identifications-{}.feather'.format(IDENTIFICATIONS_DIR, args.experiment_name, args.precursor_definition_method)
 if not os.path.isfile(IDENTIFICATIONS_FILE):
     print("The identifications file doesn't exist: {}".format(IDENTIFICATIONS_FILE))
     sys.exit(1)
 
 # load the identifications to use for the training set
-with open(IDENTIFICATIONS_FILE, 'rb') as handle:
-    idents_df = pickle.load(handle)['identifications_df']
+idents_df = pd.read_feather(IDENTIFICATIONS_FILE)
 idents_df = idents_df[(idents_df['percolator q-value'] <= MAXIMUM_Q_VALUE_FOR_RECAL_TRAINING_SET)]
 idents_df = idents_df[['run_name','monoisotopic_mz','scan_apex','rt_apex','feature_intensity','mass_error']]
 print('loaded {} identifications with percolator q-value less than {} from {}'.format(len(idents_df), MAXIMUM_Q_VALUE_FOR_RECAL_TRAINING_SET, IDENTIFICATIONS_FILE))
@@ -151,11 +149,10 @@ if len(idents_df) == 0:
 
 # load the features for recalibration
 FEATURES_DIR = '{}/features-{}'.format(EXPERIMENT_DIR, args.precursor_definition_method)
-feature_files = glob.glob("{}/exp-{}-run-*-features-{}-dedup.pkl".format(FEATURES_DIR, args.experiment_name, args.precursor_definition_method))
+feature_files = glob.glob("{}/exp-{}-run-*-features-{}-dedup.feather".format(FEATURES_DIR, args.experiment_name, args.precursor_definition_method))
 features_l = []
 for f in feature_files:
-    with open(f, 'rb') as handle:
-        features_l.append(pickle.load(handle)['features_df'])
+    features_l.append(pd.read_feather(f))
 features_df = pd.concat(features_l, axis=0, sort=False, ignore_index=True)
 print('loaded {} features from {} files for recalibration'.format(len(features_df), len(feature_files)))
 
@@ -178,14 +175,18 @@ recal_features_df = pd.merge(features_df, adjusted_features_df, how='inner', lef
 
 # write out the recalibrated features, one file for each run
 for group_name,group_df in recal_features_df.groupby('run_name'):
-    RECAL_FEATURES_FILE = '{}/exp-{}-run-{}-features-{}-recalibrated.pkl'.format(FEATURES_DIR, args.experiment_name, group_name, args.precursor_definition_method)
-    print("writing {} recalibrated features to {}".format(len(recal_features_df), RECAL_FEATURES_FILE))
+    RECAL_FEATURES_FILE = '{}/exp-{}-run-{}-features-{}-recalibrated.feather'.format(FEATURES_DIR, args.experiment_name, group_name, args.precursor_definition_method)
+
+    # write out all the features
+    print("writing {} features to {}".format(len(features_df), RECAL_FEATURES_FILE))
+    group_df.to_feather(RECAL_FEATURES_FILE)
+
+    # write the metadata
     info.append(('total_running_time',round(time.time()-start_run,1)))
     info.append(('processor',parser.prog))
     info.append(('processed', time.ctime()))
-    content_d = {'features_df':group_df, 'metadata':info}
-    with open(RECAL_FEATURES_FILE, 'wb') as handle:
-        pickle.dump(content_d, handle)
+    with open(RECAL_FEATURES_FILE.replace('.feather','-metadata.json'), 'w') as handle:
+        json.dump(info, handle)
 
 # finish up
 stop_run = time.time()

@@ -5,10 +5,10 @@ import time
 import argparse
 import sys
 import pandas as pd
-import pickle
 import configparser
 from configparser import ExtendedInterpolation
 from os.path import expanduser
+import json
 
 # run the command in a shell
 def run_process(process):
@@ -129,14 +129,12 @@ percolator_df = pd.merge(psms_df, mapping_df, how='left', left_on=['file_idx'], 
 FEATURES_DIR = '{}/features-{}'.format(EXPERIMENT_DIR, args.precursor_definition_method)
 df_l = []
 if not args.recalibration_mode:
-    files_l = glob.glob('{}/exp-{}-run-*-features-*-dedup.pkl'.format(FEATURES_DIR, args.experiment_name))
+    files_l = glob.glob('{}/exp-{}-run-*-features-*-dedup.feather'.format(FEATURES_DIR, args.experiment_name))
 else:
-    files_l = glob.glob('{}/exp-{}-run-*-features-*-recalibrated.pkl'.format(FEATURES_DIR, args.experiment_name))
+    files_l = glob.glob('{}/exp-{}-run-*-features-*-recalibrated.feather'.format(FEATURES_DIR, args.experiment_name))
 
 for f in files_l:
-    with open(f, 'rb') as handle:
-        d = pickle.load(handle)
-    df_l.append(d['features_df'])
+    df_l.append(pd.read_feather(f))
 features_df = pd.concat(df_l, axis=0, sort=False, ignore_index=True)
 
 # merge the identifications with the features
@@ -169,16 +167,18 @@ if not os.path.exists(IDENTIFICATIONS_DIR):
 
 # write out the identifications
 if not args.recalibration_mode:
-    IDENTIFICATIONS_FILE = '{}/exp-{}-identifications-{}.pkl'.format(IDENTIFICATIONS_DIR, args.experiment_name, args.precursor_definition_method)
+    IDENTIFICATIONS_FILE = '{}/exp-{}-identifications-{}.feather'.format(IDENTIFICATIONS_DIR, args.experiment_name, args.precursor_definition_method)
 else:
-    IDENTIFICATIONS_FILE = '{}/exp-{}-identifications-{}-recalibrated.pkl'.format(IDENTIFICATIONS_DIR, args.experiment_name, args.precursor_definition_method)
+    IDENTIFICATIONS_FILE = '{}/exp-{}-identifications-{}-recalibrated.feather'.format(IDENTIFICATIONS_DIR, args.experiment_name, args.precursor_definition_method)
 print("writing {} identifications to {}".format(len(identifications_df), IDENTIFICATIONS_FILE))
+identifications_df.to_feather(IDENTIFICATIONS_FILE)
+
+# write the metadata
 info.append(('total_running_time',round(time.time()-start_run,1)))
 info.append(('processor',parser.prog))
 info.append(('processed', time.ctime()))
-content_d = {'identifications_df':identifications_df, 'metadata':info}
-with open(IDENTIFICATIONS_FILE, 'wb') as handle:
-    pickle.dump(content_d, handle)
+with open(IDENTIFICATIONS_FILE.replace('.feather','-metadata.json'), 'w') as handle:
+    json.dump(info, handle)
 
 # finish up
 stop_run = time.time()

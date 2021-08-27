@@ -18,7 +18,6 @@ from scipy import signal
 import math
 from sklearn.metrics.pairwise import cosine_similarity
 import alphatims.bruker
-import gc
 
 
 # peak and valley detection parameters
@@ -403,7 +402,7 @@ def resolve_fragment_ions(feature_d, ms2_points_df, mass_defect_bins):
 # save visualisation data for later analysis of how feature detection works
 def save_visualisation(visualise_d):
     precursor_cuboid_id = visualise_d['precursor_cuboid'].precursor_cuboid_id
-    VIS_FILE = '{}/feature-detection-pasef-visualisation-{}.pkl'.format(expanduser("~"), precursor_cuboid_id)
+    VIS_FILE = '{}/feature-detection-pasef-visualisation-{}.feather'.format(expanduser("~"), precursor_cuboid_id)
     print("writing feature detection visualisation data to {}".format(VIS_FILE))
     with open(VIS_FILE, 'wb') as handle:
         pickle.dump(visualise_d, handle)
@@ -576,7 +575,7 @@ CUBOIDS_FILE = '{}/exp-{}-run-{}-precursor-cuboids-pasef.pkl'.format(CUBOIDS_DIR
 
 # output features
 FEATURES_DIR = "{}/features-pasef".format(EXPERIMENT_DIR)
-FEATURES_FILE = '{}/exp-{}-run-{}-features-pasef.pkl'.format(FEATURES_DIR, args.experiment_name, args.run_name)
+FEATURES_FILE = '{}/exp-{}-run-{}-features-pasef.feather'.format(FEATURES_DIR, args.experiment_name, args.run_name)
 
 # check the cuboids file
 if not os.path.isfile(CUBOIDS_FILE):
@@ -659,7 +658,6 @@ for row in precursor_cuboids_df.itertuples():
     # add them to the list
     cuboids_l.append({'ms1_df':ms1_df, 'ms2_df':ms2_df, 'precursor_cuboid':row})
 del data
-gc.collect()
 
 # generate the mass defect windows
 mass_defect_bins = pd.IntervalIndex.from_tuples(generate_mass_defect_windows(100, 8000))
@@ -668,12 +666,10 @@ mass_defect_bins = pd.IntervalIndex.from_tuples(generate_mass_defect_windows(100
 print('detecting features')
 features_l = ray.get([detect_features.remote(cuboid=cuboid, mass_defect_bins=mass_defect_bins, visualise=(args.precursor_id is not None)) for cuboid in cuboids_l])
 del cuboids_l[:]
-gc.collect()
 
 # join the list of dataframes into a single dataframe
 features_df = pd.concat(features_l, axis=0, sort=False, ignore_index=True)
 del features_l[:]
-gc.collect()
 
 # check we got something
 if len(features_df) == 0:
@@ -685,12 +681,14 @@ features_df['run_name'] = args.run_name
 
 # write out all the features
 print("writing {} features to {}".format(len(features_df), FEATURES_FILE))
+features_df.to_feather(FEATURES_FILE)
+
+# write the metadata
 info.append(('total_running_time',round(time.time()-start_run,1)))
 info.append(('processor',parser.prog))
 info.append(('processed', time.ctime()))
-content_d = {'features_df':features_df, 'metadata':info}
-with open(FEATURES_FILE, 'wb') as handle:
-    pickle.dump(content_d, handle)
+with open(FEATURES_FILE.replace('.feather','-metadata.json'), 'w') as handle:
+    json.dump(info, handle)
 
 stop_run = time.time()
 print("total running time ({}): {} seconds".format(parser.prog, round(stop_run-start_run,1)))

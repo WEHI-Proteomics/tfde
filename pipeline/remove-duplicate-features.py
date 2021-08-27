@@ -2,10 +2,11 @@ import sys
 import os.path
 import argparse
 import time
-import pickle
 import configparser
 from configparser import ExtendedInterpolation
 import pandas as pd
+import json
+
 
 ###################################
 parser = argparse.ArgumentParser(description='Remove duplicate features.')
@@ -49,18 +50,18 @@ if args.precursor_definition_method == '3did':
     DUP_SCAN_TOLERANCE = cfg.getint('3did', 'DUP_SCAN_TOLERANCE')
     DUP_RT_TOLERANCE = cfg.getint('3did', 'DUP_RT_TOLERANCE')
     # input features
-    FEATURES_FILE = '{}/exp-{}-run-{}-features-3did-ident.pkl'.format(FEATURES_DIR, args.experiment_name, args.run_name)
+    FEATURES_FILE = '{}/exp-{}-run-{}-features-3did-ident.feather'.format(FEATURES_DIR, args.experiment_name, args.run_name)
 else:
     DUP_MZ_TOLERANCE_PPM = cfg.getint('ms1', 'DUP_MZ_TOLERANCE_PPM')
     DUP_SCAN_TOLERANCE = cfg.getint('ms1', 'DUP_SCAN_TOLERANCE')
     DUP_RT_TOLERANCE = cfg.getint('ms1', 'DUP_RT_TOLERANCE')
     # input features
-    FEATURES_FILE = '{}/exp-{}-run-{}-features-{}.pkl'.format(FEATURES_DIR, args.experiment_name, args.run_name, args.precursor_definition_method)
+    FEATURES_FILE = '{}/exp-{}-run-{}-features-{}.feather'.format(FEATURES_DIR, args.experiment_name, args.run_name, args.precursor_definition_method)
 
 print('removing duplicate features that are within +/- {} ppm m/z, {} scans, {} seconds'.format(DUP_MZ_TOLERANCE_PPM, DUP_SCAN_TOLERANCE, DUP_RT_TOLERANCE))
 
 # output features
-FEATURES_DEDUP_FILE = '{}/exp-{}-run-{}-features-{}-dedup.pkl'.format(FEATURES_DIR, args.experiment_name, args.run_name, args.precursor_definition_method)
+FEATURES_DEDUP_FILE = '{}/exp-{}-run-{}-features-{}-dedup.feather'.format(FEATURES_DIR, args.experiment_name, args.run_name, args.precursor_definition_method)
 
 # check the features directory
 if not os.path.exists(FEATURES_DIR):
@@ -73,8 +74,7 @@ if not os.path.isfile(FEATURES_FILE):
     sys.exit(1)
 
 # load the features
-with open(FEATURES_FILE, 'rb') as handle:
-    features_df = pickle.load(handle)['features_df']
+features_df = pd.read_feather(FEATURES_FILE)
 print('loaded {} features from {}'.format(len(features_df), FEATURES_FILE))
 
 # de-dup the features
@@ -135,12 +135,14 @@ else:
 
 # write out all the features
 print("writing {} de-duped features to {}".format(len(dedup_df), FEATURES_DEDUP_FILE))
+dedup_df.to_feather(FEATURES_DEDUP_FILE)
+
+# write the metadata
 info.append(('total_running_time',round(time.time()-start_run,1)))
 info.append(('processor',parser.prog))
 info.append(('processed', time.ctime()))
-content_d = {'features_df':dedup_df, 'metadata':info}
-with open(FEATURES_DEDUP_FILE, 'wb') as handle:
-    pickle.dump(content_d, handle)
+with open(FEATURES_DEDUP_FILE.replace('.feather','-metadata.json'), 'w') as handle:
+    json.dump(info, handle)
 
 stop_run = time.time()
 print("total running time ({}): {} seconds".format(parser.prog, round(stop_run-start_run,1)))

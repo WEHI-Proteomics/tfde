@@ -1,16 +1,13 @@
 import os
-import numpy as np
 import pandas as pd
 import sqlite3
 import argparse
 import time
-import shutil
 import json
 import configparser
 from configparser import ExtendedInterpolation
 import multiprocessing as mp
 import ray
-import pickle
 import sys
 
 # determine the number of workers based on the number of available cores and the proportion of the machine to be used
@@ -185,7 +182,7 @@ CUBOIDS_DIR = '{}/precursor-cuboids-pasef'.format(EXPERIMENT_DIR)
 if not os.path.exists(CUBOIDS_DIR):
     os.makedirs(CUBOIDS_DIR)
 
-CUBOIDS_FILE = '{}/exp-{}-run-{}-precursor-cuboids-pasef.pkl'.format(CUBOIDS_DIR, args.experiment_name, args.run_name)
+CUBOIDS_FILE = '{}/exp-{}-run-{}-precursor-cuboids-pasef.feather'.format(CUBOIDS_DIR, args.experiment_name, args.run_name)
 
 # get the frame metadata
 print("loading the frames information")
@@ -212,12 +209,14 @@ coords_df = coords_df[(coords_df['fe_ms1_rt_lower'] >= args.rt_lower) & (coords_
 
 # write them out
 print('writing {} cuboid definitions to {}'.format(len(coords_df), CUBOIDS_FILE))
+coords_df.to_feather(CUBOIDS_FILE)
+
+# write the metadata
 info.append(('total_running_time',round(time.time()-start_run,1)))
 info.append(('processor',parser.prog))
 info.append(('processed', time.ctime()))
-content_d = {'coords_df':coords_df, 'metadata':info}
-with open(CUBOIDS_FILE, 'wb') as handle:
-    pickle.dump(content_d, handle)
+with open(CUBOIDS_FILE.replace('.feather','-metadata.json'), 'w') as handle:
+    json.dump(info, handle)
 
 stop_run = time.time()
 print("total running time ({}): {} seconds".format(parser.prog, round(stop_run-start_run,1)))
