@@ -575,7 +575,6 @@ CUBOIDS_FILE = '{}/exp-{}-run-{}-precursor-cuboids-pasef.feather'.format(CUBOIDS
 
 # output features
 FEATURES_DIR = "{}/features-pasef".format(EXPERIMENT_DIR)
-FEATURES_FILE = '{}/exp-{}-run-{}-features-pasef.feather'.format(FEATURES_DIR, args.experiment_name, args.run_name)
 
 # check the cuboids file
 if not os.path.isfile(CUBOIDS_FILE):
@@ -678,8 +677,14 @@ if len(features_df) == 0:
 features_df['run_name'] = args.run_name
 
 # write out all the features
-print("writing {} features to {}".format(len(features_df), FEATURES_FILE))
-features_df.to_feather(FEATURES_FILE)
+print("writing {} features to {}".format(len(features_df), FEATURES_DIR))
+chunk_size = 10000
+num_chunks = len(features_df)
+if len(features_df) % chunk_size != 0:
+    num_chunks += 1
+for i in range(num_chunks):
+    FEATURES_FILE = '{}/exp-{}-run-{}-features-pasef-{:03d}.feather'.format(FEATURES_DIR, args.experiment_name, args.run_name, i)
+    features_df[i*chunk_size:(i + 1) * chunk_size].to_feather(FEATURES_FILE)
 
 # write the metadata
 info.append(('total_running_time',round(time.time()-start_run,1)))
