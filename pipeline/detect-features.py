@@ -678,7 +678,7 @@ features_df['run_name'] = args.run_name
 
 # write out all the features
 print("writing {} features to {}".format(len(features_df), FEATURES_DIR))
-chunk_size = 10000
+chunk_size = 1000
 num_chunks = len(features_df)
 if len(features_df) % chunk_size != 0:
     num_chunks += 1
