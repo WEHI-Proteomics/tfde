@@ -50,14 +50,10 @@ if args.precursor_definition_method == '3did':
     DUP_MZ_TOLERANCE_PPM = cfg.getint('3did', 'DUP_MZ_TOLERANCE_PPM')
     DUP_SCAN_TOLERANCE = cfg.getint('3did', 'DUP_SCAN_TOLERANCE')
     DUP_RT_TOLERANCE = cfg.getint('3did', 'DUP_RT_TOLERANCE')
-    # input features
-    FEATURES_FILE = '{}/exp-{}-run-{}-features-3did-ident.feather'.format(FEATURES_DIR, args.experiment_name, args.run_name)
 else:
     DUP_MZ_TOLERANCE_PPM = cfg.getint('ms1', 'DUP_MZ_TOLERANCE_PPM')
     DUP_SCAN_TOLERANCE = cfg.getint('ms1', 'DUP_SCAN_TOLERANCE')
     DUP_RT_TOLERANCE = cfg.getint('ms1', 'DUP_RT_TOLERANCE')
-    # input features
-    FEATURES_FILE = '{}/exp-{}-run-{}-features-{}.feather'.format(FEATURES_DIR, args.experiment_name, args.run_name, args.precursor_definition_method)
 
 print('removing duplicate features that are within +/- {} ppm m/z, {} scans, {} seconds'.format(DUP_MZ_TOLERANCE_PPM, DUP_SCAN_TOLERANCE, DUP_RT_TOLERANCE))
 
@@ -80,7 +76,7 @@ features_l = []
 for f in feature_files:
     features_l.append(pd.read_feather(f))
 features_df = pd.concat(features_l, axis=0, sort=False, ignore_index=True)
-print('loaded {} features from {}'.format(len(features_df), FEATURES_FILE))
+print('loaded {} features in {} chunks from {}'.format(len(features_df), len(feature_files), FEATURES_DIR))
 
 # de-dup the features
 if (len(features_df) > 2):
