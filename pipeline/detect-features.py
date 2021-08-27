@@ -676,9 +676,6 @@ if len(features_df) == 0:
 # add the run name
 features_df['run_name'] = args.run_name
 
-# reset the index
-features_df.reset_index(drop=True, inplace=True)
-
 # write out all the features
 print("writing {} features to {}".format(len(features_df), FEATURES_DIR))
 chunk_size = 10000
@@ -687,7 +684,7 @@ if len(features_df) % chunk_size != 0:
     num_chunks += 1
 for i in range(num_chunks):
     FEATURES_FILE = '{}/exp-{}-run-{}-features-pasef-{:03d}.feather'.format(FEATURES_DIR, args.experiment_name, args.run_name, i)
-    features_df[i*chunk_size:(i + 1) * chunk_size].to_feather(FEATURES_FILE)
+    features_df[i*chunk_size:(i + 1) * chunk_size].reset_index().to_feather(FEATURES_FILE)
 
 # write the metadata
 info.append(('total_running_time',round(time.time()-start_run,1)))
