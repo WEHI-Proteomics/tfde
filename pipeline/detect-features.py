@@ -402,7 +402,7 @@ def resolve_fragment_ions(feature_d, ms2_points_df, mass_defect_bins):
 # save visualisation data for later analysis of how feature detection works
 def save_visualisation(visualise_d):
     precursor_cuboid_id = visualise_d['precursor_cuboid'].precursor_cuboid_id
-    VIS_FILE = '{}/feature-detection-pasef-visualisation-{}.feather'.format(expanduser("~"), precursor_cuboid_id)
+    VIS_FILE = '{}/feature-detection-pasef-visualisation-{}.pkl'.format(expanduser("~"), precursor_cuboid_id)
     print("writing feature detection visualisation data to {}".format(VIS_FILE))
     with open(VIS_FILE, 'wb') as handle:
         pickle.dump(visualise_d, handle)
@@ -571,7 +571,7 @@ CARBON_MASS_DIFFERENCE = cfg.getfloat('common', 'CARBON_MASS_DIFFERENCE')
 
 # input cuboids
 CUBOIDS_DIR = "{}/precursor-cuboids-pasef".format(EXPERIMENT_DIR)
-CUBOIDS_FILE = '{}/exp-{}-run-{}-precursor-cuboids-pasef.pkl'.format(CUBOIDS_DIR, args.experiment_name, args.run_name)
+CUBOIDS_FILE = '{}/exp-{}-run-{}-precursor-cuboids-pasef.feather'.format(CUBOIDS_DIR, args.experiment_name, args.run_name)
 
 # output features
 FEATURES_DIR = "{}/features-pasef".format(EXPERIMENT_DIR)
