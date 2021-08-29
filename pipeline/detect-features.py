@@ -489,7 +489,7 @@ def detect_features(cuboid, mass_defect_bins, visualise):
     # gather the information for visualisation if required
     if visualise:
         visualisation_d = {
-            'precursor_cuboid_d':precursor_cuboid.to_dict(),
+            'precursor_cuboid_d':precursor_cuboid._asdict(),
             # 'wide_ms1_points_df':wide_ms1_points_df,
             # 'fe_ms1_points_df':fe_ms1_points_df,
             # 'peaks_after_intensity_descent':peaks_a,
