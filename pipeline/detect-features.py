@@ -401,7 +401,7 @@ def resolve_fragment_ions(feature_d, ms2_points_df, mass_defect_bins):
 
 # save visualisation data for later analysis of how feature detection works
 def save_visualisation(visualise_d):
-    precursor_cuboid_id = visualise_d['precursor_cuboid'].precursor_cuboid_id
+    precursor_cuboid_id = visualise_d['precursor_cuboid_d'].precursor_cuboid_id
     VIS_FILE = '{}/feature-detection-pasef-visualisation-{}.pkl'.format(expanduser("~"), precursor_cuboid_id)
     print("writing feature detection visualisation data to {}".format(VIS_FILE))
     with open(VIS_FILE, 'wb') as handle:
