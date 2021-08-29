@@ -591,6 +591,9 @@ print('loaded {} precursor cuboids within RT {}-{} from {}'.format(len(precursor
 # limit the cuboids to just the selected one
 if args.precursor_id is not None:
     precursor_cuboids_df = precursor_cuboids_df[(precursor_cuboids_df.precursor_cuboid_id == args.precursor_id)]
+    if len(precursor_cuboids_df) == 0:
+        print("The cuboids file doesn't contain precursor ID: {}".format(args.precursor_id))
+        sys.exit(1)
 
 # set up the output directory
 if not os.path.exists(FEATURES_DIR):
