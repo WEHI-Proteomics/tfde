@@ -33,7 +33,7 @@ def generate_estimator(X_train, X_test, y_train, y_test):
             'max_features':["log2", "sqrt"],
             }
         # cross-validation splitting strategy uses 'cv' folds in a (Stratified)KFold
-        rsearch = RandomizedSearchCV(GradientBoostingRegressor(), parameter_search_space, n_iter=100, n_jobs=-1, random_state=10, cv=5, scoring='neg_mean_absolute_error')
+        rsearch = RandomizedSearchCV(GradientBoostingRegressor(), parameter_search_space, n_iter=100, n_jobs=-1, random_state=10, cv=5, scoring='mean_absolute_error')
         print('fitting to the training set')
         # find the best fit within the parameter search space
         rsearch.fit(X_train, y_train)
