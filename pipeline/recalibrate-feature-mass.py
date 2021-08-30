@@ -61,21 +61,21 @@ def generate_estimator(X_train, X_test, y_train, y_test):
 def adjust_features(run_name, idents_for_training_df, run_features_df):
     print("processing {} features for run {}, {} examples for the training set".format(len(run_features_df), run_name, len(idents_for_training_df)))
 
-    # X = idents_for_training_df[['monoisotopic_mz','scan_apex','rt_apex','feature_intensity']].to_numpy()
-    X = idents_for_training_df[['monoisotopic_mz','rt_apex','feature_intensity']].to_numpy()
+    X = idents_for_training_df[['monoisotopic_mz','scan_apex','rt_apex','feature_intensity']].to_numpy()
     y = idents_for_training_df[['mass_error']].to_numpy()[:,0]
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.05)
     best_estimator = generate_estimator(X_train, X_test, y_train, y_test)
 
     # use the trained model to predict the mass error for all the detected features
-    # X = run_features_df[['monoisotopic_mz','scan_apex','rt_apex','feature_intensity']].to_numpy()
-    X = run_features_df[['monoisotopic_mz','rt_apex','feature_intensity']].to_numpy()
+    X = run_features_df[['monoisotopic_mz','scan_apex','rt_apex','feature_intensity']].to_numpy()
     y = best_estimator.predict(X)
 
     # collate the recalibrated feature attributes
     run_features_df['predicted_mass_error'] = y
     run_features_df['recalibrated_monoisotopic_mass'] = run_features_df.monoisotopic_mass - run_features_df.predicted_mass_error
     run_features_df['recalibrated_monoisotopic_mz'] = run_features_df.apply(lambda row: mono_mass_to_mono_mz(row.recalibrated_monoisotopic_mass, row.charge), axis=1)
+
+    print(run_features_df[['feature_id','mass_error','predicted_mass_error','recalibrated_monoisotopic_mass']])
 
     # just return the minimum to recombine
     adjusted_df = run_features_df[['run_name','feature_id','predicted_mass_error','recalibrated_monoisotopic_mass','recalibrated_monoisotopic_mz']]
