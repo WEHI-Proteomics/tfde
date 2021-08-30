@@ -75,7 +75,7 @@ def adjust_features(run_name, idents_for_training_df, run_features_df):
     run_features_df['recalibrated_monoisotopic_mass'] = run_features_df.monoisotopic_mass - run_features_df.predicted_mass_error
     run_features_df['recalibrated_monoisotopic_mz'] = run_features_df.apply(lambda row: mono_mass_to_mono_mz(row.recalibrated_monoisotopic_mass, row.charge), axis=1)
 
-    print(run_features_df[['feature_id','mass_error','predicted_mass_error','recalibrated_monoisotopic_mass']])
+    print(run_features_df[['feature_id','mass_error','predicted_mass_error','recalibrated_monoisotopic_mass']].sample(n=5))
 
     # just return the minimum to recombine
     adjusted_df = run_features_df[['run_name','feature_id','predicted_mass_error','recalibrated_monoisotopic_mass','recalibrated_monoisotopic_mz']]
