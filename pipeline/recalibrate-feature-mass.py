@@ -38,7 +38,7 @@ def generate_estimator(X_train, X_test, y_train, y_test):
         # find the best fit within the parameter search space
         rsearch.fit(X_train, y_train)
         best_estimator = rsearch.best_estimator_
-        print('best score: {}'.format(round(best_estimator.best_score_, 2)))
+        print('best score from the search: {}'.format(round(rsearch.best_score_, 2)))
         best_params = rsearch.best_params_
         print(best_params)
     else:
