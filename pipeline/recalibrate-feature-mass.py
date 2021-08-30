@@ -33,12 +33,12 @@ def generate_estimator(X_train, X_test, y_train, y_test):
             'max_features':["log2", "sqrt"],
             }
         # cross-validation splitting strategy uses 'cv' folds in a (Stratified)KFold
-        rsearch = RandomizedSearchCV(GradientBoostingRegressor(), parameter_search_space, n_iter=100, n_jobs=-1, random_state=10, cv=5, scoring='neg_mean_squared_error', verbose=1)  # All scorer objects follow the convention that higher return values are better than lower return values, so we want the negated version for error metrics
+        rsearch = RandomizedSearchCV(GradientBoostingRegressor(), parameter_search_space, n_iter=100, n_jobs=-1, random_state=10, cv=5, scoring='r2', verbose=1)  # All scorer objects follow the convention that higher return values are better than lower return values, so we want the negated version for error metrics
         print('fitting to the training set')
         # find the best fit within the parameter search space
         rsearch.fit(X_train, y_train)
         best_estimator = rsearch.best_estimator_
-        print('best score from the search: {}'.format(round(rsearch.best_score_, 2)))
+        print('best score from the search: {}'.format(round(rsearch.best_score_, 4)))
         best_params = rsearch.best_params_
         print(best_params)
     else:
