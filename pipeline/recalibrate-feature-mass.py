@@ -49,10 +49,10 @@ def generate_estimator(X_train, X_test, y_train, y_test):
         best_estimator.fit(X_train, y_train)  # find the best fit within the parameter search space
 
     # calculate the estimator's score on the train and test sets
-    print('training data is fitted')
-    train_score = best_estimator.score(X_train, y_train)
-    test_score = best_estimator.score(X_test, y_test)
-    print("R-squared for training set: {}, test set: {}".format(round(train_score,2), round(test_score,2)))
+    print('evaluating against the training and test set')
+    y_train_pred = best_estimator.predict(X_train)
+    y_test_pred = best_estimator.predict(X_test)
+    print("mean absolute error for training set: {}, test set: {}".format(round(np.abs(y_train-y_train_pred).mean(),4), round(np.abs(y_test-y_test_pred).mean(),4)))
     return best_estimator
 
 # train a model on the features that gave the best identifications to predict the mass error, so we can predict the mass error for all the features 
