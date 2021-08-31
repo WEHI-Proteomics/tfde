@@ -388,7 +388,7 @@ def resolve_fragment_ions(feature_d, ms2_points_df, mass_defect_bins):
         fragment_ions_df['bin'] = pd.cut(fragment_ions_df.neutral_mass, mass_defect_bins)
         filtered_fragment_ions_df = fragment_ions_df.dropna(subset = ['bin']).copy()
         filtered_fragment_ions_df.drop('bin', axis=1, inplace=True)
-        deconvoluted_peaks_l = filtered_fragment_ions_df.to_json(orient='records')
+        deconvoluted_peaks_l = filtered_fragment_ions_df.to_dict(orient='records')
 
         vis_d['after_fmdw'] = deconvoluted_peaks_l
 
