@@ -292,8 +292,8 @@ def determine_mono_characteristics(envelope, mono_mz_lower, mono_mz_upper, monoi
                 similarity_scan = measure_peak_similarity(pd.read_json(isotopes_l[idx-1]['scan_df']), iso_scan_df, x_label='scan', scale=1) if idx > 0 else None
                 # add the isotope to the list
                 isotopes_l.append({'mz':iso_mz, 'mz_lower':iso_mz_lower, 'mz_upper':iso_mz_upper, 'intensity':summed_intensity, 'saturated':isotope_in_saturation, 'rt_df':iso_rt_df.to_json('records'), 'scan_df':iso_scan_df.to_json('records'), 'similarity_rt':similarity_rt, 'similarity_scan':similarity_scan})
-                print(iso_rt_df)
-                print(iso_scan_df)
+                print(iso_rt_df.to_json('records'))
+                print(iso_scan_df.to_json('records'))
             else:
                 break
         isotopes_df = pd.DataFrame(isotopes_l)
