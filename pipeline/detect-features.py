@@ -263,7 +263,6 @@ def determine_mono_characteristics(envelope, mono_mz_lower, mono_mz_upper, monoi
         # calculate the isotope intensities from the constrained raw points
         isotopes_l = []
         for idx,isotope in enumerate(envelope):
-            print('isotope index {}'.format(idx))
             # gather the points that belong to this isotope
             iso_mz = isotope[0]
             iso_intensity = isotope[1]
