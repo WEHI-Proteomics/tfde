@@ -283,12 +283,12 @@ def determine_mono_characteristics(envelope, mono_mz_lower, mono_mz_upper, monoi
                 iso_rt_df = isotope_df.groupby(['retention_time_secs'], as_index=False).intensity.sum()
                 iso_rt_df.sort_values(by=['retention_time_secs'], ascending=True, inplace=True)
                 # measure it's elution similarity with the previous isotope
-                similarity_rt = measure_peak_similarity(pd.DataFrame(isotopes_l[idx-1]['rt_df']), iso_rt_df, x_label='retention_time_secs', scale=100) if idx > 0 else None
+                similarity_rt = measure_peak_similarity(pd.read_json(isotopes_l[idx-1]['rt_df']), iso_rt_df, x_label='retention_time_secs', scale=100) if idx > 0 else None
                 # determine the isotope's profile in mobility
                 iso_scan_df = isotope_df.groupby(['scan'], as_index=False).intensity.sum()
                 iso_scan_df.sort_values(by=['scan'], ascending=True, inplace=True)
                 # measure it's elution similarity with the previous isotope
-                similarity_scan = measure_peak_similarity(pd.DataFrame(isotopes_l[idx-1]['scan_df']), iso_scan_df, x_label='scan', scale=1) if idx > 0 else None
+                similarity_scan = measure_peak_similarity(pd.read_json(isotopes_l[idx-1]['scan_df']), iso_scan_df, x_label='scan', scale=1) if idx > 0 else None
                 # add the isotope to the list
                 isotopes_l.append({'mz':iso_mz, 'mz_lower':iso_mz_lower, 'mz_upper':iso_mz_upper, 'intensity':summed_intensity, 'saturated':isotope_in_saturation, 'rt_df':iso_rt_df.to_json('records'), 'scan_df':iso_scan_df.to_json('records'), 'similarity_rt':similarity_rt, 'similarity_scan':similarity_scan})
             else:
