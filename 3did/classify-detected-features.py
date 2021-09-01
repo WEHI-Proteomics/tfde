@@ -1,5 +1,4 @@
 import sys
-import pickle
 import time
 import os
 import argparse
@@ -9,6 +8,9 @@ from keras.models import Sequential
 from keras.layers import Dense, BatchNormalization, Dropout
 from tensorflow.keras import layers
 from tensorflow.keras.layers.experimental import preprocessing
+import json
+import pandas as pd
+
 
 #######################
 parser = argparse.ArgumentParser(description='Use the trained model to classify the 3DID features detected for their identifiability.')
@@ -37,12 +39,19 @@ if not os.path.exists(FEATURES_DIR):
     print("The features directory is required but doesn't exist: {}".format(FEATURES_DIR))
     sys.exit(1)
 
-FEATURES_FILE = '{}/exp-{}-run-{}-features-3did.pkl'.format(FEATURES_DIR, args.experiment_name, args.run_name)
+FEATURES_FILE = '{}/exp-{}-run-{}-features-3did.feather'.format(FEATURES_DIR, args.experiment_name, args.run_name)
 if not os.path.isfile(FEATURES_FILE):
     print("The detected features file is required but doesn't exist: {}".format(FEATURES_FILE))
     sys.exit(1)
 
-FEATURES_IDENT_FILE = '{}/exp-{}-run-{}-features-3did-ident.pkl'.format(FEATURES_DIR, args.experiment_name, args.run_name)
+FEATURES_METADATA_FILE = '{}/exp-{}-run-{}-features-3did.json'.format(FEATURES_DIR, args.experiment_name, args.run_name)
+if not os.path.isfile(FEATURES_METADATA_FILE):
+    print("The detected features metadata file is required but doesn't exist: {}".format(FEATURES_METADATA_FILE))
+    sys.exit(1)
+
+# output files
+FEATURES_IDENT_FILE = '{}/exp-{}-run-{}-features-3did-ident.feather'.format(FEATURES_DIR, args.experiment_name, args.run_name)
+FEATURES_IDENT_METADATA_FILE = '{}/exp-{}-run-{}-features-3did-ident-metadata.json'.format(FEATURES_DIR, args.experiment_name, args.run_name)
 
 # check the trained model
 MODEL_DIR = '{}/features-3did-classifier'.format(EXPERIMENT_DIR)
@@ -55,11 +64,11 @@ print('loading the trained model from {}'.format(MODEL_DIR))
 model = keras.models.load_model(MODEL_DIR)
 
 # load the features detected
-with open(FEATURES_FILE, 'rb') as handle:
-    d = pickle.load(handle)
-features_df = d['features_df']
-features_metadata = d['metadata']
+features_df = pd.read_feather(FEATURES_FILE)
 features_df.fillna(0, inplace=True)
+# ... and the features metadata
+with open(FEATURES_METADATA_FILE) as handle:
+    features_metadata = json.load(handle)
 
 # use the model to predict their identifiability
 input_names = ['deconvolution_score','coelution_coefficient','mobility_coefficient','isotope_count']
@@ -67,9 +76,12 @@ predictions = model.predict(features_df[input_names].to_numpy())
 features_df['prediction'] = predictions
 features_df['identification_predicted'] = features_df.apply(lambda row: row.prediction >= 0.5, axis=1)
 
-# update the detected features with the predictions
+# update the original detected features file with the predictions for later analysis
 print('updating {} features with predictions: {}'.format(len(features_df), FEATURES_FILE))
-# strip out previous predictions entry
+# save the features
+features_df.to_feather(FEATURES_FILE)
+
+# strip out previous predictions entry in the features metadata
 features_metadata = [x for x in features_metadata if 'predictions' != x[0]]
 # add predictions entry to metadata
 l = []
@@ -77,23 +89,25 @@ l.append(('processor', parser.prog))
 l.append(('processed', time.ctime()))
 l.append(('model', MODEL_DIR))
 features_metadata.append(('predictions',l))
-# save the features
-content_d = {'features_df':features_df, 'metadata':features_metadata}
-with open(FEATURES_FILE, 'wb') as handle:
-    pickle.dump(content_d, handle)
+# save the metadata file
+with open(FEATURES_METADATA_FILE, 'w') as handle:
+    json.dump(features_metadata, handle)
 
 # filter out the features unlikely to be identified
 features_df = features_df[(features_df.identification_predicted == True)]
 
+# ... and write them to the output file
 print()
 print('saving {} features classified as identifiable to {}'.format(len(features_df), FEATURES_IDENT_FILE))
+features_df.to_feather(FEATURES_IDENT_FILE)
+
 info.append(('total_running_time',round(time.time()-start_run,1)))
 info.append(('processor', parser.prog))
 info.append(('processed', time.ctime()))
 info.append(('model', MODEL_DIR))
-content_d = {'features_df':features_df, 'metadata':info}
-with open(FEATURES_IDENT_FILE, 'wb') as handle:
-    pickle.dump(content_d, handle)
+# save the metadata file
+with open(FEATURES_IDENT_METADATA_FILE, 'w') as handle:
+    json.dump(features_metadata, handle)
 
 stop_run = time.time()
 print("total running time ({}): {} seconds".format(parser.prog, round(stop_run-start_run,1)))
