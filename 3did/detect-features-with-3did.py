@@ -800,11 +800,11 @@ features_df['feature_id'] = features_df.index
 
 # ... and save them in a file
 print()
-print('saving {} features to {}'.format(len(features_df), FEATURES_FILE))
 chunk_size = 1000
 num_chunks = len(features_df) // chunk_size
 if len(features_df) % chunk_size != 0:
     num_chunks += 1
+print("writing {} features in {} chunks to {}".format(len(features_df), num_chunks, FEATURES_DIR))
 for i in range(num_chunks):
     FEATURES_FILE = '{}/exp-{}-run-{}-features-3did-{:03d}.feather'.format(FEATURES_DIR, args.experiment_name, args.run_name, i)
     features_df[i*chunk_size:(i + 1) * chunk_size].reset_index().to_feather(FEATURES_FILE)
