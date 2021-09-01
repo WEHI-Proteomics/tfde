@@ -693,7 +693,8 @@ for i in range(num_chunks):
 info.append(('total_running_time',round(time.time()-start_run,1)))
 info.append(('processor',parser.prog))
 info.append(('processed', time.ctime()))
-with open(FEATURES_FILE.replace('.feather','-metadata.json'), 'w') as handle:
+FEATURES_METADATA_FILE = '{}/exp-{}-run-{}-features-pasef.json'.format(FEATURES_DIR, args.experiment_name, args.run_name)
+with open(FEATURES_METADATA_FILE, 'w') as handle:
     json.dump(info, handle)
 
 stop_run = time.time()
