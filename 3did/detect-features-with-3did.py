@@ -9,7 +9,6 @@ import argparse
 import ray
 import multiprocessing as mp
 import sys
-import pickle
 import configparser
 from configparser import ExtendedInterpolation
 import json
@@ -18,9 +17,7 @@ import warnings
 from scipy.optimize import OptimizeWarning
 from sklearn.metrics.pairwise import cosine_similarity
 import shutil
-import pathlib
 import alphatims.bruker
-import alphatims.utils
 
 
 # determine the number of workers based on the number of available cores and the proportion of the machine to be used
@@ -804,12 +801,14 @@ features_df['feature_id'] = features_df.index
 # ... and save them in a file
 print()
 print('saving {} features to {}'.format(len(features_df), FEATURES_FILE))
+features_df.to_feather(FEATURES_FILE)
+
+# write the metadata
 info.append(('total_running_time',round(time.time()-start_run,1)))
 info.append(('processor',parser.prog))
 info.append(('processed', time.ctime()))
-content_d = {'features_df':features_df, 'metadata':info}
-with open(FEATURES_FILE, 'wb') as handle:
-    pickle.dump(content_d, handle)
+with open(FEATURES_FILE.replace('.feather','-metadata.json'), 'w') as handle:
+    json.dump(info, handle)
 
 stop_run = time.time()
 print("total running time ({}): {} seconds".format(parser.prog, round(stop_run-start_run,1)))
