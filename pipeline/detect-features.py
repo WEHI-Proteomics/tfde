@@ -72,7 +72,7 @@ def intensity_descent(peaks_a, peak_delta=None):
 # find 3sigma for a specified m/z
 def calculate_peak_delta(mz):
     delta_m = mz / INSTRUMENT_RESOLUTION  # FWHM of the peak
-    sigma = delta_m / 2.35482  # std dev is FWHM / 2.35482. See https://en.wikipedia.org/wiki/Full_width_at_half_maximum
+    sigma = delta_m / 2.35482  # std dev is FWHM / 2.35482. See https://mathworld.wolfram.com/GaussianFunction.html
     peak_delta = 3 * sigma  # 99.7% of values fall within +/- 3 sigma
     return peak_delta
 
