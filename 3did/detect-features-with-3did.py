@@ -410,8 +410,8 @@ def find_features(segment_d):
                         lower_x = scan_apex - (SCAN_BASE_PEAK_WIDTH / 2)
 
                     # mobility extent of the isotope
-                    iso_scan_lower = lower_x
-                    iso_scan_upper = upper_x
+                    iso_scan_lower = np.uint16(lower_x)
+                    iso_scan_upper = np.uint16(upper_x)
 
                     # gather the isotope points constrained by m/z and CCS, and the peak search extent in RT
                     region_rt_lower = voxel_rt_lower - RT_BASE_PEAK_WIDTH
@@ -461,8 +461,8 @@ def find_features(segment_d):
                         lower_x = rt_apex - (RT_BASE_PEAK_WIDTH / 2)
 
                     # RT extent of the isotope
-                    iso_rt_lower = lower_x
-                    iso_rt_upper = upper_x
+                    iso_rt_lower = np.float32(lower_x)
+                    iso_rt_upper = np.float32(upper_x)
 
                     # clip the filtered intensity to zero
                     scan_df['clipped_filtered_intensity'] = scan_df['filtered_intensity'].clip(lower=1, inplace=False)
