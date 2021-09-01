@@ -801,7 +801,7 @@ features_df['feature_id'] = features_df.index
 # ... and save them in a file
 print()
 FEATURES_FILE = '{}/exp-{}-run-{}-features-3did.feather'.format(FEATURES_DIR, args.experiment_name, args.run_name)
-features_df.reset_index().to_feather(FEATURES_FILE)
+features_df.reset_index(drop=True).to_feather(FEATURES_FILE)
 
 # write the metadata
 info.append(('total_running_time',round(time.time()-start_run,1)))
