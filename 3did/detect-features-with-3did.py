@@ -230,7 +230,7 @@ def determine_isotope_characteristics(envelope, rt_apex, monoisotopic_mass, feat
     result_d['intensity_without_saturation_correction'] = isotopes_df.iloc[:3].intensity.sum()  # only take the first three isotopes for intensity, as the number of isotopes varies
     result_d['intensity_with_saturation_correction'] = isotopes_df.iloc[:3].inferred_intensity.sum()
     result_d['mono_intensity_adjustment_outcome'] = outcome
-    result_d['isotopic_peaks'] = isotopes_df.to_dict('records')
+    result_d['isotopic_peaks'] = isotopes_df.to_json(orient='records')
     result_d['isotope_count'] = len(isotopes_df)
     result_d['envelope'] = json.dumps([tuple(e) for e in envelope[:result_d['isotope_count']]])  # modify the envelope according to how many similar isotopes we found
     result_d['coelution_coefficient'] = coelution_coefficient
@@ -565,13 +565,13 @@ def find_features(segment_d):
                                         feature_d['deconvolution_envelope'] = json.dumps([tuple(e) for e in feature.envelope])
                                         feature_d['deconvolution_score'] = feature.score
                                         # record the feature region where we found this feature
-                                        feature_d['feature_region_3d_extent'] = feature_region_3d_extent_d
+                                        feature_d['feature_region_3d_extent'] = json.dumps(feature_region_3d_extent_d)
                                         # record the voxel from where we derived the initial isotope
                                         feature_d['voxel_id'] = voxel.voxel_id
-                                        feature_d['voxel_metadata_d'] = voxel_metadata_d
-                                        feature_d['scan_df'] = scan_df.to_dict('records')
+                                        feature_d['voxel_metadata_d'] = json.dumps(voxel_metadata_d)
+                                        feature_d['scan_df'] = scan_df.to_json(orient='records')
                                         feature_d['scan_r_squared'] = scan_r_squared
-                                        feature_d['rt_df'] = rt_df.to_dict('records')
+                                        feature_d['rt_df'] = rt_df.to_json(orient='records')
                                         feature_d['rt_r_squared'] = rt_r_squared
                                         # add it to the list
                                         features_l.append(feature_d)
