@@ -79,7 +79,7 @@ features_df['identification_predicted'] = features_df.apply(lambda row: row.pred
 # update the original detected features file with the predictions for later analysis
 print('updating {} features with predictions: {}'.format(len(features_df), FEATURES_FILE))
 # save the features
-features_df.reset_index().to_feather(FEATURES_FILE)
+features_df.reset_index(drop=True).to_feather(FEATURES_FILE)
 
 # strip out previous predictions entry in the features metadata
 features_metadata = [x for x in features_metadata if 'predictions' != x[0]]
@@ -99,7 +99,7 @@ features_df = features_df[(features_df.identification_predicted == True)]
 # ... and write them to the output file
 print()
 print('saving {} features classified as identifiable to {}'.format(len(features_df), FEATURES_IDENT_FILE))
-features_df.reset_index().to_feather(FEATURES_IDENT_FILE)
+features_df.reset_index(drop=True).to_feather(FEATURES_IDENT_FILE)
 
 info.append(('total_running_time',round(time.time()-start_run,1)))
 info.append(('processor', parser.prog))
