@@ -504,7 +504,7 @@ def find_features(segment_d):
                         region_mz_upper = voxel_mz_midpoint + ANCHOR_POINT_MZ_UPPER_OFFSET
 
                         # gather the raw points for the feature's 3D region (i.e. the region in which deconvolution will be performed)
-                        feature_region_3d_extent_d = {'mz_lower':region_mz_lower, 'mz_upper':region_mz_upper, 'scan_lower':iso_scan_lower, 'scan_upper':iso_scan_upper, 'rt_lower':iso_rt_lower, 'rt_upper':iso_rt_upper}
+                        feature_region_3d_extent_d = {'mz_lower':region_mz_lower, 'mz_upper':region_mz_upper, 'scan_lower':int(iso_scan_lower), 'scan_upper':int(iso_scan_upper), 'rt_lower':iso_rt_lower, 'rt_upper':iso_rt_upper}
                         feature_region_3d_df = segment_df[(segment_df.mz >= region_mz_lower) & (segment_df.mz <= region_mz_upper) & iso_scan_condition & iso_rt_condition]
 
                         # intensity descent
