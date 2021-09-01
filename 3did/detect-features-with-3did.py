@@ -249,7 +249,7 @@ def voxels_for_points(points_df):
     df = points_df.groupby(['voxel_id'], as_index=False, sort=False).voxel_proportion.agg(['sum']).reset_index()
     # if the points comprise most of a voxel's intensity, we don't need to process that voxel later on
     df = df[(df['sum'] >= INTENSITY_PROPORTION_FOR_VOXEL_TO_BE_REMOVED)]
-    return set(df.voxel_id.tolist())
+    return set(df.voxel_id.astype(int).tolist())
 
 # generate a unique feature_id from the precursor id and the feature sequence number found for that precursor
 def generate_voxel_id(segment_id, voxel_sequence_number):
@@ -556,7 +556,9 @@ def find_features(segment_d):
                                 if isotope_characteristics_d is not None:
                                     # add the characteristics to the feature dictionary
                                     feature_d = {**feature_d, **isotope_characteristics_d}
-                                    # only include the feature if it has a minimum number of isotopes
+                                    # add the voxels included in the feature's isotopes to the set of voxels already processed
+                                    voxels_processed.update(feature_d['voxels_processed'])
+                                    # only add the feature to the list if it has a minimum number of isotopes
                                     if feature_d['isotope_count'] >= MINIMUM_NUMBER_OF_ISOTOPES:
                                         feature_d['monoisotopic_mz'] = feature.mono_mz
                                         feature_d['charge'] = feature.charge
@@ -573,11 +575,9 @@ def find_features(segment_d):
                                         feature_d['scan_r_squared'] = scan_r_squared
                                         feature_d['rt_df'] = rt_df.to_json(orient='records')
                                         feature_d['rt_r_squared'] = rt_r_squared
+                                        feature_d['voxels_processed'] = json.dumps(feature_d['voxels_processed'])
                                         # add it to the list
                                         features_l.append(feature_d)
-
-                                    # add the voxels included in the feature's isotopes to the list of voxels already processed
-                                    voxels_processed.update(feature_d['voxels_processed'])
     else:
         print('no raw points were found in segment {} ({}-{} m/z)'.format(segment_d['segment_id'], round(segment_d['mz_lower']), round(segment_d['mz_upper'])))
         
@@ -589,8 +589,8 @@ def find_features(segment_d):
         float_columns = ['mono_mz_lower','mono_mz_upper','scan_apex','scan_lower','scan_upper','rt_apex','rt_lower','rt_upper','coelution_coefficient','mobility_coefficient','monoisotopic_mz','monoisotopic_mass','deconvolution_score','scan_r_squared','rt_r_squared']
         features_df[float_columns] = features_df[float_columns].apply(pd.to_numeric, downcast="float")    
     # save these features until we have all the segments processed
-    interim_df_name = '{}/features-segment-{}.pkl'.format(INTERIM_FEATURES_DIR, segment_d['segment_id'])
-    features_df.to_pickle(interim_df_name)
+    interim_df_name = '{}/features-segment-{}.feather'.format(INTERIM_FEATURES_DIR, segment_d['segment_id'])
+    features_df.to_feather(interim_df_name)
     return interim_df_name
 
 # remove the isotopic peak profiles to save space
@@ -695,7 +695,7 @@ RT_FILTER_POLY_ORDER = 5
 
 # set up the output features
 FEATURES_DIR = "{}/features-3did".format(EXPERIMENT_DIR)
-FEATURES_FILE = '{}/exp-{}-run-{}-features-3did.pkl'.format(FEATURES_DIR, args.experiment_name, args.run_name)
+FEATURES_FILE = '{}/exp-{}-run-{}-features-3did.feather'.format(FEATURES_DIR, args.experiment_name, args.run_name)
 # set up the output directory
 if not os.path.exists(FEATURES_DIR):
     os.makedirs(FEATURES_DIR)
@@ -788,7 +788,7 @@ segment_packages_l = None
 print('collating the detected features')
 features_l = []
 for segment_file_name in interim_names_l:
-    df = pd.read_pickle(segment_file_name)
+    df = pd.read_feather(segment_file_name)
     if len(df) > 0:
         df['isotopic_peaks'] = df.apply(lambda row: strip_peaks(row.isotopic_peaks), axis=1)
         features_l.append(df)
