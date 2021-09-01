@@ -595,9 +595,9 @@ def find_features(segment_d):
 
 # remove the isotopic peak profiles to save space
 def strip_peaks(peaks_l):
-    df = pd.DataFrame(peaks_l)
+    df = pd.read_json(peaks_l)
     df.drop(['scan_df','rt_df'], axis=1, inplace=True)
-    return df.to_dict('records')
+    return df.to_json(orient='records')
 
 
 #######################
