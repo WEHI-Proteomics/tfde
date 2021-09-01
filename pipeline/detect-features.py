@@ -680,11 +680,11 @@ if len(features_df) == 0:
 features_df['run_name'] = args.run_name
 
 # write out all the features
-print("writing {} features to {}".format(len(features_df), FEATURES_DIR))
 chunk_size = 1000
 num_chunks = len(features_df) // chunk_size
 if len(features_df) % chunk_size != 0:
     num_chunks += 1
+print("writing {} features in {} chunks to {}".format(len(features_df), num_chunks, FEATURES_DIR))
 for i in range(num_chunks):
     FEATURES_FILE = '{}/exp-{}-run-{}-features-pasef-{:03d}.feather'.format(FEATURES_DIR, args.experiment_name, args.run_name, i)
     features_df[i*chunk_size:(i + 1) * chunk_size].reset_index().to_feather(FEATURES_FILE)
