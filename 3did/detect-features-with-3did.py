@@ -590,7 +590,7 @@ def find_features(segment_d):
         features_df[float_columns] = features_df[float_columns].apply(pd.to_numeric, downcast="float")    
     # save these features until we have all the segments processed
     interim_df_name = '{}/features-segment-{}.feather'.format(INTERIM_FEATURES_DIR, segment_d['segment_id'])
-    features_df.to_feather(interim_df_name)
+    features_df.reset_index().to_feather(interim_df_name)
     return interim_df_name
 
 # remove the isotopic peak profiles to save space
@@ -801,7 +801,7 @@ features_df['feature_id'] = features_df.index
 # ... and save them in a file
 print()
 FEATURES_FILE = '{}/exp-{}-run-{}-features-3did.feather'.format(FEATURES_DIR, args.experiment_name, args.run_name)
-features_df.to_feather(FEATURES_FILE)
+features_df.reset_index().to_feather(FEATURES_FILE)
 
 # write the metadata
 info.append(('total_running_time',round(time.time()-start_run,1)))
