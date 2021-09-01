@@ -360,9 +360,9 @@ def find_features(segment_d):
                 frame_region_scan_upper = voxel_scan_midpoint + ANCHOR_POINT_SCAN_UPPER_OFFSET
 
                 # record information about the voxel and the isotope we derived from it
-                voxel_metadata_d = {'mz_lower':voxel_mz_lower, 'mz_upper':voxel_mz_upper, 'scan_lower':voxel_scan_lower, 'scan_upper':voxel_scan_upper, 'rt_lower':voxel_rt_lower, 'rt_upper':voxel_rt_upper, 'mz_centroid':voxel_mz_centroid, 
-                                    'iso_mz_lower':iso_mz_lower, 'iso_mz_upper':iso_mz_upper, 'voxel_scan_midpoint':voxel_scan_midpoint, 'voxel_rt_midpoint':voxel_rt_midpoint, 
-                                    'frame_region_scan_lower':frame_region_scan_lower, 'frame_region_scan_upper':frame_region_scan_upper, 'summed_intensity':voxel.voxel_intensity, 'point_count':voxel.point_count}
+                voxel_metadata_d = {'mz_lower':voxel_mz_lower, 'mz_upper':voxel_mz_upper, 'scan_lower':int(voxel_scan_lower), 'scan_upper':int(voxel_scan_upper), 'rt_lower':voxel_rt_lower, 'rt_upper':voxel_rt_upper, 'mz_centroid':voxel_mz_centroid, 
+                                    'iso_mz_lower':iso_mz_lower, 'iso_mz_upper':iso_mz_upper, 'voxel_scan_midpoint':int(voxel_scan_midpoint), 'voxel_rt_midpoint':voxel_rt_midpoint, 
+                                    'frame_region_scan_lower':int(frame_region_scan_lower), 'frame_region_scan_upper':int(frame_region_scan_upper), 'summed_intensity':int(voxel.voxel_intensity), 'point_count':int(voxel.point_count)}
 
                 # find the mobility extent of the isotope in this frame
                 iso_mz_condition = (segment_df.mz >= iso_mz_lower) & (segment_df.mz <= iso_mz_upper)
