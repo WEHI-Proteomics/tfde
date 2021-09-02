@@ -65,19 +65,23 @@ if not os.path.exists(FEATURES_DIR):
     print("The features directory is required but doesn't exist: {}".format(FEATURES_DIR))
     sys.exit(1)
 
-# check we have some to process
-feature_files = glob.glob('{}/exp-{}-run-{}-features-{}-*.feather'.format(FEATURES_DIR, args.experiment_name, args.run_name, args.precursor_definition_method))
-if len(feature_files) == 0:
-    print("The features files are required but doesn't exist: {}".format(FEATURES_DIR))
-    sys.exit(1)
+if args.precursor_definition_method == 'pasef':
+    # check we have some to process
+    feature_files = glob.glob('{}/exp-{}-run-{}-features-pasef-*.feather'.format(FEATURES_DIR, args.experiment_name, args.run_name))
+    if len(feature_files) == 0:
+        print("The features files are required but doesn't exist: {}".format(FEATURES_DIR))
+        sys.exit(1)
 
-# load the detected features
-features_l = []
-for f in feature_files:
-    features_l.append(pd.read_feather(f))
-features_df = pd.concat(features_l, axis=0, sort=False, ignore_index=True)
-print('loaded {} features in {} chunks from {}'.format(len(features_df), len(feature_files), FEATURES_DIR))
-del features_l[:]
+    # load the detected features
+    features_l = []
+    for f in feature_files:
+        features_l.append(pd.read_feather(f))
+    features_df = pd.concat(features_l, axis=0, sort=False, ignore_index=True)
+    print('loaded {} features in {} chunks from {}'.format(len(features_df), len(feature_files), FEATURES_DIR))
+    del features_l[:]
+else:
+    FEATURES_IDENT_FILE = '{}/exp-{}-run-{}-features-3did-ident.feather'.format(FEATURES_DIR, args.experiment_name, args.run_name)
+    features_df = pd.read_feather(FEATURES_IDENT_FILE)
 
 # de-dup the features
 if (len(features_df) > 2):
@@ -137,8 +141,7 @@ else:
 
 # write out all the features
 print("writing {} de-duped features to {}".format(len(dedup_df), FEATURES_DEDUP_FILE))
-dedup_df.reset_index(drop=True, inplace=True)
-dedup_df.to_feather(FEATURES_DEDUP_FILE)
+dedup_df.reset_index(drop=True).to_feather(FEATURES_DEDUP_FILE)
 
 # write the metadata
 info.append(('total_running_time',round(time.time()-start_run,1)))
