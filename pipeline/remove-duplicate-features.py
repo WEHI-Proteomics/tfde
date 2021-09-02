@@ -82,6 +82,7 @@ if args.precursor_definition_method == 'pasef':
 else:
     FEATURES_IDENT_FILE = '{}/exp-{}-run-{}-features-3did-ident.feather'.format(FEATURES_DIR, args.experiment_name, args.run_name)
     features_df = pd.read_feather(FEATURES_IDENT_FILE)
+    print('loaded {} features from {}'.format(len(features_df), FEATURES_IDENT_FILE))
 
 # de-dup the features
 if (len(features_df) > 2):
