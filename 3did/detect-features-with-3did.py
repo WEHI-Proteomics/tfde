@@ -284,6 +284,7 @@ def measure_curve(x, y):
 def find_features(segment_d):
     # segment_df = pd.read_pickle(segment_d['segment_name'])
     segment_df = segment_d['segment_df'].copy()
+    segment_id = segment_d['segment_id']
     features_l = []
     if len(segment_df) > 0:
         # assign each point a unique identifier
