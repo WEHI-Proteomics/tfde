@@ -77,7 +77,7 @@ features_df['prediction'] = predictions
 features_df['identification_predicted'] = features_df.apply(lambda row: row.prediction >= 0.5, axis=1)
 
 # update the original detected features file with the predictions for later analysis
-print('updating {} features with predictions: {}'.format(len(features_df), FEATURES_FILE))
+print('updating {} features with predictions, {}% as identifiable: {}'.format(len(features_df), round(len(features_df[(features_df.identification_predicted == True)])/len(features_df)*100), FEATURES_FILE))
 # save the features
 features_df.reset_index(drop=True).to_feather(FEATURES_FILE)
 
