@@ -591,7 +591,7 @@ def find_features(segment_d):
         features_df[float_columns] = features_df[float_columns].apply(pd.to_numeric, downcast="float")    
     # save these features until we have all the segments processed
     interim_df_name = '{}/features-segment-{}.feather'.format(INTERIM_FEATURES_DIR, segment_d['segment_id'])
-    features_df.reset_index().to_feather(interim_df_name)
+    features_df.reset_index(drop=True).to_feather(interim_df_name)
     return interim_df_name
 
 # remove the isotopic peak profiles to save space
