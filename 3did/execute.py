@@ -1,13 +1,20 @@
 from doit import get_var
 from doit.action import CmdAction
-from os.path import expanduser
 import datetime
 import time
-import shutil
 import os
-import sys
+
 
 # This is the set of tasks to run 3DID on a raw instrument database
+
+# To run from a clean state:
+# doit -f ./otf-peak-detect/3did/execute.py clean en=P3856 rn=P3856_YHE211_1_Slot1-1_1_5104
+# doit -f ./otf-peak-detect/3did/execute.py pc=0.8 en=P3856 rdn=P3856_YHE211_1_Slot1-1_1_5104.d rn=P3856_YHE211_1_Slot1-1_1_5104 minvi=5000 mw=10
+
+# To run a single task, for example 'classify_features':
+# doit -f ./otf-peak-detect/3did/execute.py clean classify_features pc=0.8 en=P3856 rdn=P3856_YHE211_1_Slot1-1_1_5104.d rn=P3856_YHE211_1_Slot1-1_1_5104 minvi=5000 mw=10
+# doit -f ./otf-peak-detect/3did/execute.py classify_features pc=0.8 en=P3856 rdn=P3856_YHE211_1_Slot1-1_1_5104.d rn=P3856_YHE211_1_Slot1-1_1_5104 minvi=5000 mw=10
+
 
 # default configuration file location
 ini_file = '{}/../pipeline/pasef-process-short-gradient.ini'.format(os.path.dirname(os.path.realpath(__file__)))
