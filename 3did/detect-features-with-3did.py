@@ -580,17 +580,17 @@ def find_features(segment_d):
                                         # add it to the list
                                         features_l.append(feature_d)
                                     else:
-                                        print('not enough isotopes ({}) were found for the feature derived from voxel {}'.format(feature_d['isotope_count'], voxel.voxel_id))
+                                        print('not enough isotopes ({}) were found for the feature derived from voxel {}'.format(feature_d['isotope_count'], voxel.voxel_id)) if args.verbose else None
                                 else:
-                                    print('no feature characteristics were determined for voxel {}'.format(voxel.voxel_id))
+                                    print('no feature characteristics were determined for voxel {}'.format(voxel.voxel_id)) if args.verbose else None
                         else:
-                            print('deconvolution yielded no features for voxel {}'.format(voxel.voxel_id))
+                            print('deconvolution yielded no features for voxel {}'.format(voxel.voxel_id)) if args.verbose else None
                     else:
-                        print('the base peak formed from voxel {} does not include it'.format(voxel.voxel_id))
+                        print('the base peak formed from voxel {} does not include it'.format(voxel.voxel_id)) if args.verbose else None
                 else:
-                    print('the base peak for voxel {} does not have enough points in the mobility dimension ({})'.format(voxel.voxel_id, len(scan_df)))
+                    print('the base peak for voxel {} does not have enough points in the mobility dimension ({})'.format(voxel.voxel_id, len(scan_df))) if args.verbose else None
             else:
-                print('voxel {} has already been used by another feature'.format(voxel.voxel_id))
+                print('voxel {} has already been used by another feature'.format(voxel.voxel_id)) if args.verbose else None
     else:
         print('no raw points were found in segment {} ({}-{} m/z)'.format(segment_d['segment_id'], round(segment_d['mz_lower']), round(segment_d['mz_upper'])))
         
@@ -627,6 +627,7 @@ parser.add_argument('-minvi','--minimum_voxel_intensity', type=int, default='250
 parser.add_argument('-ini','--ini_file', type=str, default='./otf-peak-detect/pipeline/pasef-process-short-gradient.ini', help='Path to the config file.', required=False)
 parser.add_argument('-rm','--ray_mode', type=str, choices=['local','cluster'], help='The Ray mode to use.', required=True)
 parser.add_argument('-pc','--proportion_of_cores_to_use', type=float, default=0.9, help='Proportion of the machine\'s cores to use for this program.', required=False)
+parser.add_argument('-v','--verbose', action='store_true', help='Print more information during processing.')
 args = parser.parse_args()
 
 # print the arguments for the log
