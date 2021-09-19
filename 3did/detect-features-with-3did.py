@@ -581,8 +581,8 @@ def find_features(segment_d):
                                         features_l.append(feature_d)
                                     else:
                                         print('not enough isotopes ({}) were found for the feature derived from voxel {}'.format(feature_d['isotope_count'], voxel.voxel_id))
-                            else:
-                                print('no feature characteristics were determined for voxel {}'.format(voxel.voxel_id))
+                                else:
+                                    print('no feature characteristics were determined for voxel {}'.format(voxel.voxel_id))
                         else:
                             print('deconvolution yielded no features for voxel {}'.format(voxel.voxel_id))
                     else:
