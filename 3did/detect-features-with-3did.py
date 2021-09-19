@@ -579,6 +579,18 @@ def find_features(segment_d):
                                         feature_d['voxels_processed'] = json.dumps(list(feature_d['voxels_processed']))
                                         # add it to the list
                                         features_l.append(feature_d)
+                                    else:
+                                        print('not enough isotopes ({}) were found for the feature derived from voxel {}'.format(feature_d['isotope_count'], voxel.voxel_id))
+                            else:
+                                print('no feature characteristics were determined for voxel {}'.format(voxel.voxel_id))
+                        else:
+                            print('deconvolution yielded no features for voxel {}'.format(voxel.voxel_id))
+                    else:
+                        print('the base peak formed from voxel {} does not include it'.format(voxel.voxel_id))
+                else:
+                    print('the base peak for voxel {} does not have enough points in the mobility dimension ({})'.format(voxel.voxel_id, len(scan_df)))
+            else:
+                print('voxel {} has already been used by another feature'.format(voxel.voxel_id))
     else:
         print('no raw points were found in segment {} ({}-{} m/z)'.format(segment_d['segment_id'], round(segment_d['mz_lower']), round(segment_d['mz_upper'])))
         
