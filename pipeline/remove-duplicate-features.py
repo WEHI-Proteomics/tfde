@@ -113,7 +113,7 @@ if (len(features_df) > 2):
         features_df.sort_values(by=['deconvolution_score'], ascending=False, ignore_index=True, inplace=True)
     elif args.precursor_definition_method == '3did':
         # sort by decreasing identifiability score
-        features_df.sort_values(by=['prediction'], ascending=False, ignore_index=True, inplace=True)
+        features_df.sort_values(by=['voxel_id'], ascending=True, ignore_index=True, inplace=True)
 
     # see if any detections have a duplicate
     keep_l = []
