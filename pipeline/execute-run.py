@@ -17,7 +17,6 @@ fasta_file_name = '{}/../fasta/Human_Yeast_Ecoli.fasta'.format(os.path.dirname(o
 config = {
     'experiment_base_dir': get_var('eb', '/media/big-ssd/experiments'),
     'experiment_name': get_var('en', None),
-    'run_name': get_var('rn', None),
     'fasta_file_name': get_var('ff', fasta_file_name),
     'ini_file': get_var('ini', ini_file),
     'precursor_definition_method': get_var('pdm', 'pasef'),
@@ -29,6 +28,11 @@ config = {
     }
 
 print('execution arguments: {}'.format(config))
+
+# the names of the runs to process
+run_names_l = [
+    'P3856_YHE211_1_Slot1-1_1_5104',
+]
 
 # correct for saturation
 if config['correct_for_saturation'] == 'true':
@@ -51,55 +55,76 @@ start_run = time.time()
 # feature extraction
 ####################
 def task_define_precursor_cuboids():
-    # input
-    RAW_DATABASE_NAME = "{}/raw-databases/{}.d/analysis.tdf".format(EXPERIMENT_DIR, config['run_name'])
-    # command
-    cmd = 'python -u define-precursor-cuboids-pasef.py -eb {experiment_base} -en {experiment_name} -rn {run_name} -ini {INI_FILE} -rl {rl} -ru {ru} -rm cluster'.format(experiment_base=config['experiment_base_dir'], experiment_name=config['experiment_name'], run_name=config['run_name'], INI_FILE=config['ini_file'], rl=int(config['rt_lower']), ru=int(config['rt_upper']))
-    # output
+    depend_l = []
+    cmd_l = []
+    target_l = []
     CUBOIDS_DIR = '{}/precursor-cuboids-{}'.format(EXPERIMENT_DIR, config['precursor_definition_method'])
-    CUBOIDS_FILE = '{}/exp-{}-run-{}-precursor-cuboids-{}.feather'.format(CUBOIDS_DIR, config['experiment_name'], config['run_name'], config['precursor_definition_method'])
+    for run_name in run_names_l:
+        # input
+        RAW_DATABASE_NAME = "{}/raw-databases/{}.d/analysis.tdf".format(EXPERIMENT_DIR, run_name)
+        depend_l.append(RAW_DATABASE_NAME)
+        # command
+        cmd = 'python -u define-precursor-cuboids-pasef.py -eb {experiment_base} -en {experiment_name} -rn {run_name} -ini {INI_FILE} -rl {rl} -ru {ru} -rm cluster'.format(experiment_base=config['experiment_base_dir'], experiment_name=config['experiment_name'], run_name=run_name, INI_FILE=config['ini_file'], rl=int(config['rt_lower']), ru=int(config['rt_upper']))
+        cmd_l.append(cmd)
+        # output
+        CUBOIDS_FILE = '{}/exp-{}-run-{}-precursor-cuboids-{}.feather'.format(CUBOIDS_DIR, config['experiment_name'], run_name, config['precursor_definition_method'])
+        target_l.append(CUBOIDS_FILE)
 
     return {
-        'file_dep': [RAW_DATABASE_NAME],
-        'actions': [cmd],
-        'targets': [CUBOIDS_FILE],
+        'file_dep': depend_l,
+        'actions': cmd_l,
+        'targets': target_l,
         'clean': ['rm -rf {}'.format(CUBOIDS_DIR)],
         'verbosity': 2
     }
 
 def task_detect_features():
-    # input
+    depend_l = []
+    cmd_l = []
+    target_l = []
     CUBOIDS_DIR = "{}/precursor-cuboids-{}".format(EXPERIMENT_DIR, config['precursor_definition_method'])
-    CUBOIDS_FILE = '{}/exp-{}-run-{}-precursor-cuboids-{}.feather'.format(CUBOIDS_DIR, config['experiment_name'], config['run_name'], config['precursor_definition_method'])
-    # command
-    cmd = 'python -u detect-features.py -eb {experiment_base} -en {experiment_name} -rn {run_name} -ini {INI_FILE} -rm cluster -pc {proportion_of_cores_to_use} -rl {rl} -ru {ru} {cs} {fmdw}'.format(experiment_base=config['experiment_base_dir'], experiment_name=config['experiment_name'], run_name=config['run_name'], INI_FILE=config['ini_file'], proportion_of_cores_to_use=config['proportion_of_cores_to_use'], rl=int(config['rt_lower']), ru=int(config['rt_upper']), cs=config['cs_flag'], fmdw=config['fmdw_flag'])
-    # output
     FEATURES_DIR = "{}/features-{}".format(EXPERIMENT_DIR, config['precursor_definition_method'])
-    FEATURES_FILE = '{}/exp-{}-run-{}-features-{}.pkl'.format(FEATURES_DIR, config['experiment_name'], config['run_name'], config['precursor_definition_method'])
+    for run_name in run_names_l:
+        # input
+        CUBOIDS_FILE = '{}/exp-{}-run-{}-precursor-cuboids-{}.feather'.format(CUBOIDS_DIR, config['experiment_name'], run_name, config['precursor_definition_method'])
+        depend_l.append(CUBOIDS_FILE)
+        # command
+        cmd = 'python -u detect-features.py -eb {experiment_base} -en {experiment_name} -rn {run_name} -ini {INI_FILE} -rm cluster -pc {proportion_of_cores_to_use} -rl {rl} -ru {ru} {cs} {fmdw}'.format(experiment_base=config['experiment_base_dir'], experiment_name=config['experiment_name'], run_name=run_name, INI_FILE=config['ini_file'], proportion_of_cores_to_use=config['proportion_of_cores_to_use'], rl=int(config['rt_lower']), ru=int(config['rt_upper']), cs=config['cs_flag'], fmdw=config['fmdw_flag'])
+        cmd_l.append(cmd)
+        # output
+        FEATURES_FILE = '{}/chunks/exp-{}-run-{}-features-{}-000.feather'.format(FEATURES_DIR, config['experiment_name'], run_name, config['precursor_definition_method'])
+        target_l.append(FEATURES_FILE)
 
     return {
-        'file_dep': [CUBOIDS_FILE],
-        'actions': [cmd],
-        'targets': [FEATURES_FILE],
+        'file_dep': depend_l,
+        'actions': cmd_l,
+        'targets': target_l,
         'clean': ['rm -rf {}'.format(FEATURES_DIR)],
         'verbosity': 2
     }
 
 def task_remove_duplicate_features():
-    # input
+    depend_l = []
+    cmd_l = []
+    target_l = []
     FEATURES_DIR = "{}/features-{}".format(EXPERIMENT_DIR, config['precursor_definition_method'])
-    FEATURES_FILE = '{}/chunks/exp-{}-run-{}-features-{}-000.feather'.format(FEATURES_DIR, config['experiment_name'], config['run_name'], config['precursor_definition_method'])
-    # command
-    cmd = 'python -u remove-duplicate-features.py -eb {experiment_base} -en {experiment_name} -rn {run_name} -ini {INI_FILE} -pdm {precursor_definition_method}'.format(experiment_base=config['experiment_base_dir'], experiment_name=config['experiment_name'], run_name=config['run_name'], INI_FILE=config['ini_file'], precursor_definition_method=config['precursor_definition_method'])
-    # output
-    FEATURES_DEDUP_FILE = '{}/exp-{}-run-{}-features-{}-dedup.feather'.format(FEATURES_DIR, config['experiment_name'], config['run_name'], config['precursor_definition_method'])
-    # pass-through command (no de-dup)
-    # cmd = 'cp {} {}'.format(FEATURES_FILE, FEATURES_DEDUP_FILE)
+    for run_name in run_names_l:
+        # input
+        FEATURES_FILE = '{}/chunks/exp-{}-run-{}-features-{}-000.feather'.format(FEATURES_DIR, config['experiment_name'], run_name, config['precursor_definition_method'])
+        depend_l.append(FEATURES_FILE)
+        # command
+        cmd = 'python -u remove-duplicate-features.py -eb {experiment_base} -en {experiment_name} -rn {run_name} -ini {INI_FILE} -pdm {precursor_definition_method}'.format(experiment_base=config['experiment_base_dir'], experiment_name=config['experiment_name'], run_name=run_name, INI_FILE=config['ini_file'], precursor_definition_method=config['precursor_definition_method'])
+        cmd_l.append(cmd)
+        # output
+        FEATURES_DEDUP_FILE = '{}/exp-{}-run-{}-features-{}-dedup.feather'.format(FEATURES_DIR, config['experiment_name'], run_name, config['precursor_definition_method'])
+        target_l.append(FEATURES_DEDUP_FILE)
+        # pass-through command (no de-dup)
+        # cmd = 'cp {} {}'.format(FEATURES_FILE, FEATURES_DEDUP_FILE)
 
     return {
-        'file_dep': [FEATURES_FILE],
-        'actions': [cmd],
-        'targets': [FEATURES_DEDUP_FILE],
+        'file_dep': depend_l,
+        'actions': cmd_l,
+        'targets': target_l,
         'clean': ['rm -rf {}'.format(FEATURES_DIR)],
         'verbosity': 2
     }
@@ -109,53 +134,74 @@ def task_remove_duplicate_features():
 ####################
 
 def task_render_mgf():
-    # input
+    depend_l = []
+    cmd_l = []
+    target_l = []
     FEATURES_DIR = '{}/features-{}'.format(EXPERIMENT_DIR, config['precursor_definition_method'])
-    FEATURES_FILE = '{}/exp-{}-run-{}-features-{}-dedup.feather'.format(FEATURES_DIR, config['experiment_name'], config['run_name'], config['precursor_definition_method'])
-    # command
-    cmd = 'python -u render-features-as-mgf.py -eb {experiment_base} -en {experiment_name} -rn {run_name} -pdm {precursor_definition_method}'.format(experiment_base=config['experiment_base_dir'], experiment_name=config['experiment_name'], run_name=config['run_name'], precursor_definition_method=config['precursor_definition_method'])
-    # output
     MGF_DIR = "{}/mgf-{}".format(EXPERIMENT_DIR, config['precursor_definition_method'])
-    MGF_FILE = '{}/exp-{}-run-{}-features-{}.mgf'.format(MGF_DIR, config['experiment_name'], config['run_name'], config['precursor_definition_method'])
+    for run_name in run_names_l:
+        # input
+        FEATURES_FILE = '{}/exp-{}-run-{}-features-{}-dedup.feather'.format(FEATURES_DIR, config['experiment_name'], run_name, config['precursor_definition_method'])
+        depend_l.append(FEATURES_FILE)
+        # command
+        cmd = 'python -u render-features-as-mgf.py -eb {experiment_base} -en {experiment_name} -rn {run_name} -pdm {precursor_definition_method}'.format(experiment_base=config['experiment_base_dir'], experiment_name=config['experiment_name'], run_name=run_name, precursor_definition_method=config['precursor_definition_method'])
+        cmd_l.append(cmd)
+        # output
+        MGF_FILE = '{}/exp-{}-run-{}-features-{}.mgf'.format(MGF_DIR, config['experiment_name'], run_name, config['precursor_definition_method'])
+        target_l.append(MGF_FILE)
 
     return {
-        'file_dep': [FEATURES_FILE],
-        'actions': [cmd],
-        'targets': [MGF_FILE],
+        'file_dep': depend_l,
+        'actions': cmd_l,
+        'targets': target_l,
         'clean': ['rm -rf {}'.format(MGF_DIR)],
         'verbosity': 2
     }
 
 def task_search_mgf():
-    # input
+    depend_l = []
+    cmd_l = []
+    target_l = []
     MGF_DIR = "{}/mgf-{}".format(EXPERIMENT_DIR, config['precursor_definition_method'])
-    MGF_FILE = '{}/exp-{}-run-{}-features-{}.mgf'.format(MGF_DIR, config['experiment_name'], config['run_name'], config['precursor_definition_method'])
-    # cmd
-    cmd = 'python -u search-mgf-against-sequence-db.py -eb {experiment_base} -en {experiment_name} -rn {run_name} -ini {INI_FILE} -ff {fasta_name} -pdm {precursor_definition_method}'.format(experiment_base=config['experiment_base_dir'], experiment_name=config['experiment_name'], run_name=config['run_name'], INI_FILE=config['ini_file'], fasta_name=config['fasta_file_name'], precursor_definition_method=config['precursor_definition_method'])
-    # output
-    comet_output = '{experiment_base}/comet-output-pasef/{run_name}.comet.log.txt'.format(experiment_base=EXPERIMENT_DIR, run_name=config['run_name'])
+    for run_name in run_names_l:
+        # input
+        MGF_FILE = '{}/exp-{}-run-{}-features-{}.mgf'.format(MGF_DIR, config['experiment_name'], run_name, config['precursor_definition_method'])
+        depend_l.append(MGF_FILE)
+        # cmd
+        cmd = 'python -u search-mgf-against-sequence-db.py -eb {experiment_base} -en {experiment_name} -rn {run_name} -ini {INI_FILE} -ff {fasta_name} -pdm {precursor_definition_method}'.format(experiment_base=config['experiment_base_dir'], experiment_name=config['experiment_name'], run_name=run_name, INI_FILE=config['ini_file'], fasta_name=config['fasta_file_name'], precursor_definition_method=config['precursor_definition_method'])
+        cmd_l.append(cmd)
+        # output
+        comet_output = '{experiment_base}/comet-output-pasef/{run_name}.comet.log.txt'.format(experiment_base=EXPERIMENT_DIR, run_name=run_name)
+        target_l.append(comet_output)
 
     return {
-        'file_dep': [MGF_FILE],
-        'actions': [cmd],
-        'targets': [comet_output],
+        'file_dep': depend_l,
+        'actions': cmd_l,
+        'targets': target_l,
         'clean': ['rm -rf {experiment_base}/comet-output-pasef'.format(experiment_base=EXPERIMENT_DIR)],
         'verbosity': 2
     }
 
 def task_identify_searched_features():
+    depend_l = []
+    cmd_l = []
+    target_l = []
     # input
-    comet_output = '{experiment_base}/comet-output-pasef/{run_name}.comet.log.txt'.format(experiment_base=EXPERIMENT_DIR, run_name=config['run_name'])
+    for run_name in run_names_l:
+        comet_output = '{experiment_base}/comet-output-pasef/{run_name}.comet.log.txt'.format(experiment_base=EXPERIMENT_DIR, run_name=run_name)
+        depend_l.append(comet_output)
     # cmd
     cmd = 'python -u identify-searched-features.py -eb {experiment_base} -en {experiment_name} -ini {INI_FILE} -ff {fasta_name} -pdm {precursor_definition_method}'.format(experiment_base=config['experiment_base_dir'], experiment_name=config['experiment_name'], INI_FILE=config['ini_file'], fasta_name=config['fasta_file_name'], precursor_definition_method=config['precursor_definition_method'])
+    cmd_l.append(cmd)
     # output
     IDENTIFICATIONS_DIR = '{}/identifications-{}'.format(EXPERIMENT_DIR, config['precursor_definition_method'])
     IDENTIFICATIONS_FILE = '{}/exp-{}-identifications-{}.feather'.format(IDENTIFICATIONS_DIR, config['experiment_name'], config['precursor_definition_method'])
+    target_l.append(IDENTIFICATIONS_FILE)
 
     return {
-        'file_dep': [comet_output],
-        'actions': [cmd],
-        'targets': [IDENTIFICATIONS_FILE],
+        'file_dep': depend_l,
+        'actions': cmd_l,
+        'targets': target_l,
         'clean': ['rm -rf {}'.format(IDENTIFICATIONS_DIR), 'rm -rf {experiment_base}/percolator-output-pasef'.format(experiment_base=EXPERIMENT_DIR)],
         'verbosity': 2
     }
@@ -165,19 +211,26 @@ def task_identify_searched_features():
 ####################
 
 def task_mass_recalibration():
+    depend_l = []
+    cmd_l = []
+    target_l = []
     # input
     IDENTIFICATIONS_DIR = '{}/identifications-{}'.format(EXPERIMENT_DIR, config['precursor_definition_method'])
     IDENTIFICATIONS_FILE = '{}/exp-{}-identifications-{}.feather'.format(IDENTIFICATIONS_DIR, config['experiment_name'], config['precursor_definition_method'])
+    depend_l.append(IDENTIFICATIONS_FILE)
     # command
     cmd = 'python -u recalibrate-feature-mass.py -eb {experiment_base} -en {experiment_name} -ini {INI_FILE} -pdm {precursor_definition_method} -rm cluster'.format(experiment_base=config['experiment_base_dir'], experiment_name=config['experiment_name'], INI_FILE=config['ini_file'], precursor_definition_method=config['precursor_definition_method'])
+    cmd_l.append(cmd)
     # output
     FEATURES_DIR = '{}/features-{}'.format(EXPERIMENT_DIR, config['precursor_definition_method'])
-    RECAL_FEATURES_FILE = '{}/exp-{}-run-{}-features-{}-recalibrated.feather'.format(FEATURES_DIR, config['experiment_name'], config['run_name'], config['precursor_definition_method'])
+    for run_name in run_names_l:
+        RECAL_FEATURES_FILE = '{}/exp-{}-run-{}-features-{}-recalibrated.feather'.format(FEATURES_DIR, config['experiment_name'], run_name, config['precursor_definition_method'])
+        target_l.append(RECAL_FEATURES_FILE)
 
     return {
-        'file_dep': [IDENTIFICATIONS_FILE],
-        'actions': [cmd],
-        'targets': [RECAL_FEATURES_FILE],
+        'file_dep': depend_l,
+        'actions': cmd_l,
+        'targets': target_l,
         'clean': ['rm -rf {}'.format(FEATURES_DIR)],
         'verbosity': 2
     }
@@ -187,31 +240,45 @@ def task_mass_recalibration():
 ####################
 
 def task_render_mgf_recalibrated():
-    # input
+    depend_l = []
+    cmd_l = []
+    target_l = []
     FEATURES_DIR = '{}/features-{}'.format(EXPERIMENT_DIR, config['precursor_definition_method'])
-    FEATURES_FILE = '{}/exp-{}-run-{}-features-{}-recalibrated.feather'.format(FEATURES_DIR, config['experiment_name'], config['run_name'], config['precursor_definition_method'])
-    # command
-    cmd = 'python -u render-features-as-mgf.py -eb {experiment_base} -en {experiment_name} -rn {run_name} -pdm {precursor_definition_method} -recal'.format(experiment_base=config['experiment_base_dir'], experiment_name=config['experiment_name'], run_name=config['run_name'], precursor_definition_method=config['precursor_definition_method'])
-    # output
     MGF_DIR = "{}/mgf-{}".format(EXPERIMENT_DIR, config['precursor_definition_method'])
-    MGF_FILE = '{}/exp-{}-run-{}-features-{}-recalibrated.mgf'.format(MGF_DIR, config['experiment_name'], config['run_name'], config['precursor_definition_method'])
+    for run_name in run_names_l:
+        # input
+        FEATURES_FILE = '{}/exp-{}-run-{}-features-{}-recalibrated.feather'.format(FEATURES_DIR, config['experiment_name'], run_name, config['precursor_definition_method'])
+        depend_l.append(FEATURES_FILE)
+        # command
+        cmd = 'python -u render-features-as-mgf.py -eb {experiment_base} -en {experiment_name} -rn {run_name} -pdm {precursor_definition_method} -recal'.format(experiment_base=config['experiment_base_dir'], experiment_name=config['experiment_name'], run_name=run_name, precursor_definition_method=config['precursor_definition_method'])
+        cmd_l.append(cmd)
+        # output
+        MGF_FILE = '{}/exp-{}-run-{}-features-{}-recalibrated.mgf'.format(MGF_DIR, config['experiment_name'], run_name, config['precursor_definition_method'])
+        target_l.append(MGF_FILE)
 
     return {
-        'file_dep': [FEATURES_FILE],
-        'actions': [cmd],
-        'targets': [MGF_FILE],
+        'file_dep': depend_l,
+        'actions': cmd_l,
+        'targets': target_l,
         'clean': ['rm -rf {}'.format(MGF_DIR)],
         'verbosity': 2
     }
 
 def task_search_mgf_recalibrated():
-    # input
+    depend_l = []
+    cmd_l = []
+    target_l = []
     MGF_DIR = "{}/mgf-{}".format(EXPERIMENT_DIR, config['precursor_definition_method'])
-    MGF_FILE = '{}/exp-{}-run-{}-features-{}-recalibrated.mgf'.format(MGF_DIR, config['experiment_name'], config['run_name'], config['precursor_definition_method'])
-    # cmd
-    cmd = 'python -u search-mgf-against-sequence-db.py -eb {experiment_base} -en {experiment_name} -rn {run_name} -ini {INI_FILE} -ff {fasta_name} -pdm {precursor_definition_method} -recal'.format(experiment_base=config['experiment_base_dir'], experiment_name=config['experiment_name'], run_name=config['run_name'], INI_FILE=config['ini_file'], fasta_name=config['fasta_file_name'], precursor_definition_method=config['precursor_definition_method'])
-    # output
-    comet_output = '{experiment_base}/comet-output-pasef-recalibrated/{run_name}.comet.log.txt'.format(experiment_base=EXPERIMENT_DIR, run_name=config['run_name'])
+    for run_name in run_names_l:
+        # input
+        MGF_FILE = '{}/exp-{}-run-{}-features-{}-recalibrated.mgf'.format(MGF_DIR, config['experiment_name'], run_name, config['precursor_definition_method'])
+        depend_l.append(MGF_FILE)
+        # cmd
+        cmd = 'python -u search-mgf-against-sequence-db.py -eb {experiment_base} -en {experiment_name} -rn {run_name} -ini {INI_FILE} -ff {fasta_name} -pdm {precursor_definition_method} -recal'.format(experiment_base=config['experiment_base_dir'], experiment_name=config['experiment_name'], run_name=run_name, INI_FILE=config['ini_file'], fasta_name=config['fasta_file_name'], precursor_definition_method=config['precursor_definition_method'])
+        cmd_l.append(cmd)
+        # output
+        comet_output = '{experiment_base}/comet-output-pasef-recalibrated/{run_name}.comet.log.txt'.format(experiment_base=EXPERIMENT_DIR, run_name=run_name)
+        target_l.append(comet_output)
 
     return {
         'file_dep': [MGF_FILE],
@@ -222,18 +289,25 @@ def task_search_mgf_recalibrated():
     }
 
 def task_identify_searched_features_recalibrated():
+    depend_l = []
+    cmd_l = []
+    target_l = []
     # input
-    comet_output = '{experiment_base}/comet-output-pasef-recalibrated/{run_name}.comet.log.txt'.format(experiment_base=EXPERIMENT_DIR, run_name=config['run_name'])
+    for run_name in run_names_l:
+        comet_output = '{experiment_base}/comet-output-pasef-recalibrated/{run_name}.comet.log.txt'.format(experiment_base=EXPERIMENT_DIR, run_name=run_name)
+        depend_l.append(comet_output)
     # cmd
     cmd = 'python -u identify-searched-features.py -eb {experiment_base} -en {experiment_name} -ini {INI_FILE} -ff {fasta_name} -pdm {precursor_definition_method} -recal'.format(experiment_base=config['experiment_base_dir'], experiment_name=config['experiment_name'], INI_FILE=config['ini_file'], fasta_name=config['fasta_file_name'], precursor_definition_method=config['precursor_definition_method'])
+    cmd_l.append(cmd)
     # output
     IDENTIFICATIONS_DIR = '{}/identifications-{}'.format(EXPERIMENT_DIR, config['precursor_definition_method'])
     IDENTIFICATIONS_FILE = '{}/exp-{}-identifications-{}-recalibrated.feather'.format(IDENTIFICATIONS_DIR, config['experiment_name'], config['precursor_definition_method'])
+    target_l.append(IDENTIFICATIONS_FILE)
 
     return {
-        'file_dep': [comet_output],
-        'actions': [cmd],
-        'targets': [IDENTIFICATIONS_FILE],
+        'file_dep': depend_l,
+        'actions': cmd_l,
+        'targets': target_l,
         'clean': ['rm -rf {}'.format(IDENTIFICATIONS_DIR), 'rm -rf {experiment_base}/percolator-output-pasef-recalibrated'.format(experiment_base=EXPERIMENT_DIR)],
         'verbosity': 2
     }
@@ -245,7 +319,7 @@ def task_make_copies():
         nonlocal target_directory_name
         # set up copy directory
         d = datetime.datetime.now()
-        target_directory_name = '/media/big-ssd/results-{}/{}-cs-{}-fmdw-{}-{}'.format(config['experiment_name'], config['run_name'], config['correct_for_saturation'], config['filter_by_mass_defect'], d.strftime("%Y-%m-%d-%H-%M-%S"))
+        target_directory_name = '/media/big-ssd/results-{}/cs-{}-fmdw-{}-{}'.format(config['experiment_name'], config['correct_for_saturation'], config['filter_by_mass_defect'], d.strftime("%Y-%m-%d-%H-%M-%S"))
         if not os.path.exists(target_directory_name):
             os.makedirs(target_directory_name)
         print('copying results to {}'.format(target_directory_name))
