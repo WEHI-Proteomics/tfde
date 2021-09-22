@@ -67,9 +67,10 @@ if not os.path.exists(FEATURES_DIR):
 
 if args.precursor_definition_method == 'pasef':
     # check we have some to process
-    feature_files = glob.glob('{}/exp-{}-run-{}-features-pasef-*.feather'.format(FEATURES_DIR, args.experiment_name, args.run_name))
+    FEATURE_CHUNKS_DIR = '{}/chunks'.format(FEATURES_DIR)
+    feature_files = glob.glob('{}/exp-{}-run-{}-features-pasef-*.feather'.format(FEATURE_CHUNKS_DIR, args.experiment_name, args.run_name))
     if len(feature_files) == 0:
-        print("The features files are required but doesn't exist: {}".format(FEATURES_DIR))
+        print("The features files are required but doesn't exist: {}".format(FEATURE_CHUNKS_DIR))
         sys.exit(1)
 
     # load the detected features
@@ -77,7 +78,7 @@ if args.precursor_definition_method == 'pasef':
     for f in feature_files:
         features_l.append(pd.read_feather(f))
     features_df = pd.concat(features_l, axis=0, sort=False, ignore_index=True)
-    print('loaded {} features in {} chunks from {}'.format(len(features_df), len(feature_files), FEATURES_DIR))
+    print('loaded {} features in {} chunks from {}'.format(len(features_df), len(feature_files), FEATURE_CHUNKS_DIR))
     del features_l[:]
 else:
     FEATURES_IDENT_FILE = '{}/exp-{}-run-{}-features-3did-ident.feather'.format(FEATURES_DIR, args.experiment_name, args.run_name)
