@@ -18,6 +18,7 @@ from scipy import signal
 import math
 from sklearn.metrics.pairwise import cosine_similarity
 import alphatims.bruker
+import glob
 
 
 # peak and valley detection parameters
@@ -689,7 +690,8 @@ FEATURE_CHUNKS_DIR = '{}/chunks'.format(FEATURES_DIR)
 if not os.path.exists(FEATURE_CHUNKS_DIR):
     os.makedirs(FEATURE_CHUNKS_DIR)
 else:
-    os.remove('{}/exp-{}-run-{}-features-pasef-*.feather'.format(FEATURE_CHUNKS_DIR, args.experiment_name, args.run_name))
+    for f in glob.glob('{}/exp-{}-run-{}-features-pasef-*.feather'.format(FEATURE_CHUNKS_DIR, args.experiment_name, args.run_name)):
+        os.remove(f)
 
 print("writing {} features in {} chunks to {}".format(len(features_df), num_chunks, FEATURE_CHUNKS_DIR))
 for i in range(num_chunks):
