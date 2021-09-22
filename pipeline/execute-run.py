@@ -17,6 +17,7 @@ fasta_file_name = '{}/../fasta/Human_Yeast_Ecoli.fasta'.format(os.path.dirname(o
 config = {
     'experiment_base_dir': get_var('eb', '/media/big-ssd/experiments'),
     'experiment_name': get_var('en', None),
+    'run_names': get_var('runs', None),
     'fasta_file_name': get_var('ff', fasta_file_name),
     'ini_file': get_var('ini', ini_file),
     'precursor_definition_method': get_var('pdm', 'pasef'),
@@ -30,9 +31,7 @@ config = {
 print('execution arguments: {}'.format(config))
 
 # the names of the runs to process
-run_names_l = [
-    'P3856_YHE211_1_Slot1-1_1_5104',
-]
+run_names_l = config['run_names'].split(',')
 
 # correct for saturation
 if config['correct_for_saturation'] == 'true':
