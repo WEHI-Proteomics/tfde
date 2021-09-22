@@ -684,7 +684,13 @@ chunk_size = 1000
 num_chunks = len(features_df) // chunk_size
 if len(features_df) % chunk_size != 0:
     num_chunks += 1
+
 FEATURE_CHUNKS_DIR = '{}/chunks'.format(FEATURES_DIR)
+if not os.path.exists(FEATURE_CHUNKS_DIR):
+    os.makedirs(FEATURE_CHUNKS_DIR)
+else:
+    os.remove('{}/exp-{}-run-{}-features-pasef-*.feather'.format(FEATURE_CHUNKS_DIR, args.experiment_name, args.run_name))
+
 print("writing {} features in {} chunks to {}".format(len(features_df), num_chunks, FEATURE_CHUNKS_DIR))
 for i in range(num_chunks):
     FEATURES_FILE = '{}/exp-{}-run-{}-features-pasef-{:03d}.feather'.format(FEATURE_CHUNKS_DIR, args.experiment_name, args.run_name, i)
