@@ -17,7 +17,7 @@ fasta_file_name = '{}/../fasta/Human_Yeast_Ecoli.fasta'.format(os.path.dirname(o
 config = {
     'experiment_base_dir': get_var('eb', '/media/big-ssd/experiments'),
     'experiment_name': get_var('en', None),
-    'run_names': get_var('runs', None),
+    'run_names': get_var('rn', None),
     'fasta_file_name': get_var('ff', fasta_file_name),
     'ini_file': get_var('ini', ini_file),
     'precursor_definition_method': get_var('pdm', 'pasef'),
