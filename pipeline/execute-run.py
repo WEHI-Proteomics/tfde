@@ -283,9 +283,9 @@ def task_search_mgf_recalibrated():
         target_l.append(comet_output)
 
     return {
-        'file_dep': [MGF_FILE],
-        'actions': [cmd],
-        'targets': [comet_output],
+        'file_dep': depend_l,
+        'actions': cmd_l,
+        'targets': target_l,
         'clean': ['rm -rf {experiment_base}/comet-output-pasef-recalibrated'.format(experiment_base=EXPERIMENT_DIR)],
         'verbosity': 2
     }
