@@ -31,7 +31,10 @@ config = {
 print('execution arguments: {}'.format(config))
 
 # the names of the runs to process
-run_names_l = config['run_names'].split(',')
+if config['run_names'] is None:
+    run_names_l = []
+else:
+    run_names_l = config['run_names'].split(',')
 
 # correct for saturation
 if config['correct_for_saturation'] == 'true':
