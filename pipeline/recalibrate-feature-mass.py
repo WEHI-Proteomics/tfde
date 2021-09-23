@@ -179,7 +179,7 @@ for group_name,group_df in recal_features_df.groupby('run_name'):
     RECAL_FEATURES_FILE = '{}/exp-{}-run-{}-features-{}-recalibrated.feather'.format(FEATURES_DIR, args.experiment_name, group_name, args.precursor_definition_method)
 
     # write out all the features
-    print("writing {} features to {}".format(len(features_df), RECAL_FEATURES_FILE))
+    print("writing {} recalibrated features to {}".format(len(group_df), RECAL_FEATURES_FILE))
     group_df.reset_index(drop=True, inplace=True)
     group_df.to_feather(RECAL_FEATURES_FILE)
 
