@@ -176,7 +176,7 @@ for run_name in run_names_l:
                               min_impurity_decrease=0.0, min_impurity_split=None,
                               min_samples_leaf=5, min_samples_split=2,
                               min_weight_fraction_leaf=0.0, n_estimators=500,
-                              n_iter_no_change=None, presort='auto',
+                              n_iter_no_change=None,
                               random_state=None, subsample=1.0, tol=0.0001,
                               validation_fraction=0.1, verbose=0, warm_start=False)
 
@@ -201,7 +201,7 @@ for run_name in run_names_l:
                               min_impurity_decrease=0.0, min_impurity_split=None,
                               min_samples_leaf=5, min_samples_split=2,
                               min_weight_fraction_leaf=0.0, n_estimators=500,
-                              n_iter_no_change=None, presort='auto',
+                              n_iter_no_change=None,
                               random_state=None, subsample=1.0, tol=0.0001,
                               validation_fraction=0.1, verbose=0, warm_start=False)
 
@@ -226,7 +226,7 @@ for run_name in run_names_l:
                               min_impurity_decrease=0.0, min_impurity_split=None,
                               min_samples_leaf=5, min_samples_split=2,
                               min_weight_fraction_leaf=0.0, n_estimators=500,
-                              n_iter_no_change=None, presort='auto',
+                              n_iter_no_change=None,
                               random_state=None, subsample=1.0, tol=0.0001,
                               validation_fraction=0.1, verbose=0, warm_start=False)
 
