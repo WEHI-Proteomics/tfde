@@ -9,6 +9,15 @@ import sys
 
 # This is the set of tasks to take a raw instrument database and create a list of peptides
 
+# To run from a clean state:
+# doit -f ./otf-peak-detect/pipeline/execute-run.py clean pc=0.8 cs=true fmdw=true en=P3856 rn=P3856_YHE211_1_Slot1-1_1_5104,P3856_YHE211_2_Slot1-1_1_5105,P3856_YHE211_3_Slot1-1_1_5106,P3856_YHE211_4_Slot1-1_1_5107,P3856_YHE211_5_Slot1-1_1_5108,P3856_YHE211_6_Slot1-1_1_5109,P3856_YHE211_7_Slot1-1_1_5110,P3856_YHE211_8_Slot1-1_1_5111,P3856_YHE211_9_Slot1-1_1_5112,P3856_YHE211_10_Slot1-1_1_5113 rl=1650 ru=2200 ff="/home/daryl/otf-peak-detect/fasta/Human_Yeast_Ecoli.fasta"
+# doit -f ./otf-peak-detect/pipeline/execute-run.py pc=0.8 cs=true fmdw=true en=P3856 rn=P3856_YHE211_1_Slot1-1_1_5104,P3856_YHE211_2_Slot1-1_1_5105,P3856_YHE211_3_Slot1-1_1_5106,P3856_YHE211_4_Slot1-1_1_5107,P3856_YHE211_5_Slot1-1_1_5108,P3856_YHE211_6_Slot1-1_1_5109,P3856_YHE211_7_Slot1-1_1_5110,P3856_YHE211_8_Slot1-1_1_5111,P3856_YHE211_9_Slot1-1_1_5112,P3856_YHE211_10_Slot1-1_1_5113 rl=1650 ru=2200 ff="/home/daryl/otf-peak-detect/fasta/Human_Yeast_Ecoli.fasta"
+
+# To run a single task, for example 'identify_searched_features':
+# doit -f ./otf-peak-detect/pipeline/execute-run.py clean identify_searched_features pc=0.8 cs=true fmdw=true en=P3856 rn=P3856_YHE211_1_Slot1-1_1_5104,P3856_YHE211_2_Slot1-1_1_5105,P3856_YHE211_3_Slot1-1_1_5106,P3856_YHE211_4_Slot1-1_1_5107,P3856_YHE211_5_Slot1-1_1_5108,P3856_YHE211_6_Slot1-1_1_5109,P3856_YHE211_7_Slot1-1_1_5110,P3856_YHE211_8_Slot1-1_1_5111,P3856_YHE211_9_Slot1-1_1_5112,P3856_YHE211_10_Slot1-1_1_5113 rl=1650 ru=2200 ff="/home/daryl/otf-peak-detect/fasta/Human_Yeast_Ecoli.fasta"
+# doit -f ./otf-peak-detect/pipeline/execute-run.py identify_searched_features pc=0.8 cs=true fmdw=true en=P3856 rn=P3856_YHE211_1_Slot1-1_1_5104,P3856_YHE211_2_Slot1-1_1_5105,P3856_YHE211_3_Slot1-1_1_5106,P3856_YHE211_4_Slot1-1_1_5107,P3856_YHE211_5_Slot1-1_1_5108,P3856_YHE211_6_Slot1-1_1_5109,P3856_YHE211_7_Slot1-1_1_5110,P3856_YHE211_8_Slot1-1_1_5111,P3856_YHE211_9_Slot1-1_1_5112,P3856_YHE211_10_Slot1-1_1_5113 rl=1650 ru=2200 ff="/home/daryl/otf-peak-detect/fasta/Human_Yeast_Ecoli.fasta"
+
+
 ini_file = '{}/pasef-process-short-gradient.ini'.format(os.path.dirname(os.path.realpath(__file__)))
 fasta_file_name = '{}/../fasta/Human_Yeast_Ecoli.fasta'.format(os.path.dirname(os.path.realpath(__file__)))
 
