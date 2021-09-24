@@ -45,11 +45,6 @@ print("The sequence library directory was created: {}".format(SEQUENCE_LIBRARY_D
 
 SEQUENCE_LIBRARY_FILE_NAME = "{}/sequence-library.feather".format(SEQUENCE_LIBRARY_DIR)
 
-RECALIBRATED_FEATURES_DIR = "{}/recalibrated-features".format(EXPERIMENT_DIR)
-if not os.path.exists(RECALIBRATED_FEATURES_DIR):
-    print("The recalibrated features directory is required but doesn't exist: {}".format(RECALIBRATED_FEATURES_DIR))
-    sys.exit(1)
-
 IDENTIFICATIONS_DIR = '{}/identifications-pasef'.format(EXPERIMENT_DIR)
 if not os.path.exists(IDENTIFICATIONS_DIR):
     print("The identifications directory is required but doesn't exist: {}".format(IDENTIFICATIONS_DIR))
