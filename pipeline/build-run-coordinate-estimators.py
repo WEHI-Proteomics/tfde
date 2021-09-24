@@ -184,7 +184,7 @@ for run_name in run_names_l:
     mz_estimator.fit(X_train, y_train_delta_mz_ppm)
     y_train_pred = mz_estimator.predict(X_train)
     y_test_pred = mz_estimator.predict(X_test)
-    print("m/z estimator: mean absolute error for training set: {}, test set: {}".format(round(np.abs(y_train-y_train_pred).mean(),4), round(np.abs(y_test-y_test_pred).mean(),4)))
+    print("m/z estimator: mean absolute error for training set: {}, test set: {}".format(round(np.abs(y_train_delta_mz_ppm-y_train_pred).mean(),4), round(np.abs(y_test_delta_mz_ppm-y_test_pred).mean(),4)))
 
     # save the trained model
     ESTIMATOR_MODEL_FILE_NAME = "{}/run-{}-{}-estimator.pkl".format(COORDINATE_ESTIMATORS_DIR, run_name, 'mz')
@@ -209,7 +209,7 @@ for run_name in run_names_l:
     scan_estimator.fit(X_train, y_train_delta_scan)
     y_train_pred = scan_estimator.predict(X_train)
     y_test_pred = scan_estimator.predict(X_test)
-    print("scan estimator: mean absolute error for training set: {}, test set: {}".format(round(np.abs(y_train-y_train_pred).mean(),4), round(np.abs(y_test-y_test_pred).mean(),4)))
+    print("scan estimator: mean absolute error for training set: {}, test set: {}".format(round(np.abs(y_train_delta_scan-y_train_pred).mean(),4), round(np.abs(y_test_delta_scan-y_test_pred).mean(),4)))
 
     # save the trained model
     ESTIMATOR_MODEL_FILE_NAME = "{}/run-{}-{}-estimator.pkl".format(COORDINATE_ESTIMATORS_DIR, run_name, 'scan')
@@ -234,7 +234,7 @@ for run_name in run_names_l:
     rt_estimator.fit(X_train, y_train_delta_rt)
     y_train_pred = rt_estimator.predict(X_train)
     y_test_pred = rt_estimator.predict(X_test)
-    print("RT estimator: mean absolute error for training set: {}, test set: {}".format(round(np.abs(y_train-y_train_pred).mean(),4), round(np.abs(y_test-y_test_pred).mean(),4)))
+    print("RT estimator: mean absolute error for training set: {}, test set: {}".format(round(np.abs(y_train_delta_rt-y_train_pred).mean(),4), round(np.abs(y_test_delta_rt-y_test_pred).mean(),4)))
 
     # save the trained model
     ESTIMATOR_MODEL_FILE_NAME = "{}/run-{}-{}-estimator.pkl".format(COORDINATE_ESTIMATORS_DIR, run_name, 'rt')
