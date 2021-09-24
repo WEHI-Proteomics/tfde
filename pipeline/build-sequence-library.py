@@ -68,9 +68,6 @@ start_run = time.time()
 identifications_df = pd.read_feather(IDENTIFICATIONS_FILE)
 print('loaded {} identifications from {}'.format(len(identifications_df), IDENTIFICATIONS_FILE))
 
-NUMBER_OF_RUNS_IN_EXPERIMENT = identifications_df.run_name.unique()
-MINIMUM_NUMBER_OF_FILES_SEQUENCE_IDENTIFIED = round(NUMBER_OF_RUNS_IN_EXPERIMENT / 2)
-
 # find the experiment-average for each sequence-charge identified
 experiment_sequences_l = []
 for group_name,group_df in identifications_df.groupby(['sequence','charge'], as_index=False):
