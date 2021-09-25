@@ -136,9 +136,11 @@ else:
 for f in files_l:
     df_l.append(pd.read_feather(f))
 features_df = pd.concat(df_l, axis=0, sort=False, ignore_index=True)
+del df_l[:]
 
 # merge the identifications with the features
 identifications_df = pd.merge(features_df, percolator_df, how='left', left_on=['run_name','feature_id'], right_on=['run_name','feature_id'])
+del features_df
 
 # remove any features that were not identified
 identifications_df.dropna(subset=['sequence'], inplace=True)
