@@ -10,7 +10,6 @@ from sklearn.ensemble import GradientBoostingRegressor
 from sklearn.model_selection import RandomizedSearchCV
 from sklearn.model_selection import train_test_split
 import numpy as np
-import multiprocessing as mp
 import json
 
 # convert the monoisotopic mass to the monoisotopic m/z
@@ -77,12 +76,6 @@ def adjust_features(run_name, idents_for_training_df, run_features_df):
     adjusted_df = run_features_df[['run_name','feature_id','predicted_mass_error','recalibrated_monoisotopic_mass','recalibrated_monoisotopic_mz']]
     return adjusted_df
 
-# determine the number of workers based on the number of available cores and the proportion of the machine to be used
-def number_of_workers():
-    number_of_cores = mp.cpu_count()
-    number_of_workers = round(args.proportion_of_cores_to_use * number_of_cores)
-    return number_of_workers
-
 
 ################################
 parser = argparse.ArgumentParser(description='Use high-quality identifications to recalibrate the mass of detected features.')
@@ -90,8 +83,6 @@ parser.add_argument('-eb','--experiment_base_dir', type=str, default='./experime
 parser.add_argument('-en','--experiment_name', type=str, help='Name of the experiment.', required=True)
 parser.add_argument('-pdm','--precursor_definition_method', type=str, choices=['pasef','3did'], help='The method used to define the precursor cuboids.', required=True)
 parser.add_argument('-ini','--ini_file', type=str, default='./otf-peak-detect/pipeline/pasef-process-short-gradient.ini', help='Path to the config file.', required=False)
-parser.add_argument('-rm','--ray_mode', type=str, choices=['local','cluster'], help='The Ray mode to use.', required=True)
-parser.add_argument('-pc','--proportion_of_cores_to_use', type=float, default=0.9, help='Proportion of the machine\'s cores to use for this program.', required=False)
 parser.add_argument('-snmp','--search_for_new_model_parameters', action='store_true', help='Search for new model parameters.')
 args = parser.parse_args()
 
