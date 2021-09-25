@@ -159,7 +159,7 @@ for run_name in run_names_l:
     # filter out rows not to be used in this training set
     X = estimator_training_set_df[['theoretical_mz','experiment_rt_mean','experiment_rt_std_dev','experiment_scan_mean','experiment_scan_std_dev','experiment_intensity_mean','experiment_intensity_std_dev']].values
     y = estimator_training_set_df[['delta_mz_ppm','delta_scan','delta_rt','run_mz','run_scan','run_rt']].values
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.1)
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.02)
     print('there are {} examples in the training set, {} in the test set'.format(len(X_train), len(X_test)))
 
     # save the test set so we can evaluate performance
@@ -170,15 +170,8 @@ for run_name in run_names_l:
     y_train_delta_mz_ppm = y_train[:,0]
     y_test_delta_mz_ppm = y_test[:,0]
 
-    mz_estimator = GradientBoostingRegressor(alpha=0.9, criterion='friedman_mse', init=None,
-                              learning_rate=0.1, loss='ls', max_depth=10,
-                              max_features=1.0, max_leaf_nodes=None,
-                              min_impurity_decrease=0.0, min_impurity_split=None,
-                              min_samples_leaf=5, min_samples_split=2,
-                              min_weight_fraction_leaf=0.0, n_estimators=500,
-                              n_iter_no_change=None,
-                              random_state=None, subsample=1.0, tol=0.0001,
-                              validation_fraction=0.1, verbose=0, warm_start=False)
+    mz_params = {'subsample': 0.6, 'n_estimators': 280, 'min_samples_split': 400, 'min_samples_leaf': 10, 'max_features': 'log2', 'max_depth': 11, 'loss': 'lad', 'learning_rate': 0.05}
+    mz_estimator = GradientBoostingRegressor(**mz_params)
 
     # use the best parameters to train the model
     mz_estimator.fit(X_train, y_train_delta_mz_ppm)
