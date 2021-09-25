@@ -8,41 +8,48 @@ import time
 import argparse
 import peakutils
 from sklearn.ensemble import GradientBoostingRegressor
-from sklearn.model_selection import GridSearchCV,ShuffleSplit
+from sklearn.model_selection import RandomizedSearchCV
 from sklearn.model_selection import train_test_split
 import configparser
 from configparser import ExtendedInterpolation
 
 
-def GradientBooster(param_grid, n_jobs, X_train, y_train):
-    estimator = GradientBoostingRegressor()
-    cv = ShuffleSplit(n_splits=10, train_size=0.8, test_size=0.2, random_state=0)
-    classifier = GridSearchCV(estimator=estimator, cv=cv, param_grid=param_grid, n_jobs=n_jobs)
-    classifier.fit(X_train, y_train)
-    print('best estimator found by grid search: {}'.format(classifier.best_estimator_))
-    return cv, classifier.best_estimator_
+def generate_estimator(X_train, X_test, y_train, y_test):
+    if args.search_for_new_model_parameters:
+        # do a randomised search to find the best regressor dimensions
+        print('setting up randomised search')
+        parameter_search_space = {
+            "loss": ['ls','lad','huber'],
+            "learning_rate": [0.01, 0.05, 0.1, 0.2],
+            'n_estimators': range(20,510,10),
+            'max_depth':range(5,30,2), 
+            'min_samples_split':range(100,1001,100),
+            'subsample':list(np.arange(0.2,0.9,0.1)),
+            'min_samples_leaf':range(10,71,10),
+            'max_features':["log2", "sqrt"],
+            }
+        # cross-validation splitting strategy uses 'cv' folds in a (Stratified)KFold
+        rsearch = RandomizedSearchCV(GradientBoostingRegressor(), parameter_search_space, n_iter=100, n_jobs=-1, random_state=10, cv=5, scoring='r2', verbose=1)  # All scorer objects follow the convention that higher return values are better than lower return values, so we want the negated version for error metrics
+        print('fitting to the training set')
+        # find the best fit within the parameter search space
+        rsearch.fit(X_train, y_train)
+        best_estimator = rsearch.best_estimator_
+        print('best score from the search: {}'.format(round(rsearch.best_score_, 4)))
+        best_params = rsearch.best_params_
+        print(best_params)
+    else:
+        print('fitting the estimator to the training data')
+        # use the model parameters we found previously
+        best_params = {'subsample': 0.6, 'n_estimators': 280, 'min_samples_split': 400, 'min_samples_leaf': 10, 'max_features': 'log2', 'max_depth': 11, 'loss': 'lad', 'learning_rate': 0.05}
+        best_estimator = GradientBoostingRegressor(**best_params)
+        best_estimator.fit(X_train, y_train)  # find the best fit within the parameter search space
 
-# use the coordinate estimators to estimate the target coordinates for the given sequence-charge attributes
-def estimate_target_coordinates(row_as_series, mz_estimator, scan_estimator, rt_estimator):
-    sequence_estimation_attribs_s = row_as_series[['theoretical_mz','experiment_rt_mean','experiment_rt_std_dev','experiment_scan_mean','experiment_scan_std_dev','experiment_intensity_mean','experiment_intensity_std_dev']]
-    sequence_estimation_attribs = np.reshape(sequence_estimation_attribs_s.values, (1, -1))  # make it 2D
-
-    # estimate the raw monoisotopic m/z
-    mz_delta_ppm_estimated = mz_estimator.predict(sequence_estimation_attribs)[0]
-    theoretical_mz = sequence_estimation_attribs_s.theoretical_mz
-    estimated_monoisotopic_mz = (mz_delta_ppm_estimated / 1e6 * theoretical_mz) + theoretical_mz
-
-    # estimate the raw monoisotopic scan
-    estimated_scan_delta = scan_estimator.predict(sequence_estimation_attribs)[0]
-    experiment_scan_mean = sequence_estimation_attribs_s.experiment_scan_mean
-    estimated_scan_apex = (estimated_scan_delta * experiment_scan_mean) + experiment_scan_mean
-
-    # estimate the raw monoisotopic RT
-    estimated_rt_delta = rt_estimator.predict(sequence_estimation_attribs)[0]
-    experiment_rt_mean = sequence_estimation_attribs_s.experiment_rt_mean
-    estimated_rt_apex = (estimated_rt_delta * experiment_rt_mean) + experiment_rt_mean
-
-    return (estimated_monoisotopic_mz, estimated_scan_apex, estimated_rt_apex)
+    # calculate the estimator's score on the train and test sets
+    print('evaluating against the training and test set')
+    y_train_pred = best_estimator.predict(X_train)
+    y_test_pred = best_estimator.predict(X_test)
+    print("mean absolute error for training set: {}, test set: {}".format(round(np.abs(y_train-y_train_pred).mean(),4), round(np.abs(y_test-y_test_pred).mean(),4)))
+    return best_estimator
 
 
 ####################################################################
@@ -53,6 +60,7 @@ parser = argparse.ArgumentParser(description='Using the library sequences, build
 parser.add_argument('-eb','--experiment_base_dir', type=str, default='./experiments', help='Path to the experiments directory.', required=False)
 parser.add_argument('-en','--experiment_name', type=str, help='Name of the experiment.', required=True)
 parser.add_argument('-ini','--ini_file', type=str, default='./otf-peak-detect/pipeline/pasef-process-short-gradient.ini', help='Path to the config file.', required=False)
+parser.add_argument('-snmp','--search_for_new_model_parameters', action='store_true', help='Search for new model parameters.')
 args = parser.parse_args()
 
 # Print the arguments for the log
@@ -167,69 +175,28 @@ for run_name in run_names_l:
     np.save('{}/run-{}-y_test.npy'.format(COORDINATE_ESTIMATORS_DIR, run_name), y_test)
 
     # build the m/z delta estimation model - estimate the m/z delta ppm as a proportion of the experiment-wide value
-    y_train_delta_mz_ppm = y_train[:,0]
-    y_test_delta_mz_ppm = y_test[:,0]
+    print('training the m/z model')
+    mz_estimator = generate_estimator(X_train, X_test, y_train[:,0], y_test[:,0])
 
-    mz_params = {'subsample': 0.6, 'n_estimators': 280, 'min_samples_split': 400, 'min_samples_leaf': 10, 'max_features': 'log2', 'max_depth': 11, 'loss': 'lad', 'learning_rate': 0.05}
-    mz_estimator = GradientBoostingRegressor(**mz_params)
-
-    # use the best parameters to train the model
-    mz_estimator.fit(X_train, y_train_delta_mz_ppm)
-    y_train_pred = mz_estimator.predict(X_train)
-    y_test_pred = mz_estimator.predict(X_test)
-    print("m/z estimator: mean absolute error for training set: {}, test set: {}".format(round(np.abs(y_train_delta_mz_ppm-y_train_pred).mean(),4), round(np.abs(y_test_delta_mz_ppm-y_test_pred).mean(),4)))
-
-    # save the trained model
+    # save the trained m/z model
     ESTIMATOR_MODEL_FILE_NAME = "{}/run-{}-{}-estimator.pkl".format(COORDINATE_ESTIMATORS_DIR, run_name, 'mz')
     with open(ESTIMATOR_MODEL_FILE_NAME, 'wb') as file:
         pickle.dump(mz_estimator, file)
 
     # build the scan estimation model - estimate the delta scan as a proportion of the experiment-wide value
-    y_train_delta_scan = y_train[:,1]
-    y_test_delta_scan = y_test[:,1]
+    print('training the scan model')
+    scan_estimator = generate_estimator(X_train, X_test, y_train[:,1], y_test[:,1])
 
-    scan_estimator = GradientBoostingRegressor(alpha=0.9, criterion='friedman_mse', init=None,
-                              learning_rate=0.1, loss='ls', max_depth=10,
-                              max_features=1.0, max_leaf_nodes=None,
-                              min_impurity_decrease=0.0, min_impurity_split=None,
-                              min_samples_leaf=5, min_samples_split=2,
-                              min_weight_fraction_leaf=0.0, n_estimators=500,
-                              n_iter_no_change=None,
-                              random_state=None, subsample=1.0, tol=0.0001,
-                              validation_fraction=0.1, verbose=0, warm_start=False)
-
-    # use the best parameters to train the model
-    scan_estimator.fit(X_train, y_train_delta_scan)
-    y_train_pred = scan_estimator.predict(X_train)
-    y_test_pred = scan_estimator.predict(X_test)
-    print("scan estimator: mean absolute error for training set: {}, test set: {}".format(round(np.abs(y_train_delta_scan-y_train_pred).mean(),4), round(np.abs(y_test_delta_scan-y_test_pred).mean(),4)))
-
-    # save the trained model
+    # save the trained scan model
     ESTIMATOR_MODEL_FILE_NAME = "{}/run-{}-{}-estimator.pkl".format(COORDINATE_ESTIMATORS_DIR, run_name, 'scan')
     with open(ESTIMATOR_MODEL_FILE_NAME, 'wb') as file:
         pickle.dump(scan_estimator, file)
 
     # RT estimation model - estimate the RT delta as a proportion of the experiment-wide value
-    y_train_delta_rt = y_train[:,2]
-    y_test_delta_rt = y_test[:,2]
+    print('training the RT model')
+    rt_estimator = generate_estimator(X_train, X_test, y_train[:,2], y_test[:,2])
 
-    rt_estimator = GradientBoostingRegressor(alpha=0.9, criterion='friedman_mse', init=None,
-                              learning_rate=0.1, loss='ls', max_depth=10,
-                              max_features=1.0, max_leaf_nodes=None,
-                              min_impurity_decrease=0.0, min_impurity_split=None,
-                              min_samples_leaf=5, min_samples_split=2,
-                              min_weight_fraction_leaf=0.0, n_estimators=500,
-                              n_iter_no_change=None,
-                              random_state=None, subsample=1.0, tol=0.0001,
-                              validation_fraction=0.1, verbose=0, warm_start=False)
-
-    # use the best parameters to train the model
-    rt_estimator.fit(X_train, y_train_delta_rt)
-    y_train_pred = rt_estimator.predict(X_train)
-    y_test_pred = rt_estimator.predict(X_test)
-    print("RT estimator: mean absolute error for training set: {}, test set: {}".format(round(np.abs(y_train_delta_rt-y_train_pred).mean(),4), round(np.abs(y_test_delta_rt-y_test_pred).mean(),4)))
-
-    # save the trained model
+    # save the trained RT model
     ESTIMATOR_MODEL_FILE_NAME = "{}/run-{}-{}-estimator.pkl".format(COORDINATE_ESTIMATORS_DIR, run_name, 'rt')
     with open(ESTIMATOR_MODEL_FILE_NAME, 'wb') as file:
         pickle.dump(rt_estimator, file)
