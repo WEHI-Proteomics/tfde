@@ -57,7 +57,7 @@ def generate_estimator(X_train, X_test, y_train, y_test):
 
 # train a model on the features that gave the best identifications to predict the mass error, so we can predict the mass error for all the features 
 # detected (not just those with high quality identifications), and adjust their calculated mass to give zero mass error.
-@ray.remote
+# @ray.remote
 def adjust_features(run_name, idents_for_training_df, run_features_df):
     print("processing {} features for run {}, {} examples for the training set".format(len(run_features_df), run_name, len(idents_for_training_df)))
 
