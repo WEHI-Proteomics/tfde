@@ -124,6 +124,8 @@ psms_df = psms_df[psms_df['peptide mass'] > 0]
 
 # add the run names
 percolator_df = pd.merge(psms_df, mapping_df, how='left', left_on=['file_idx'], right_on=['file_idx'])
+del psms_df
+del mapping_df
 
 # load the detected features
 FEATURES_DIR = '{}/features-{}'.format(EXPERIMENT_DIR, args.precursor_definition_method)
@@ -133,12 +135,14 @@ if not args.recalibration_mode:
 else:
     files_l = glob.glob('{}/exp-{}-run-*-features-*-recalibrated.feather'.format(FEATURES_DIR, args.experiment_name))
 
+print('loading the detected features')
 for f in files_l:
     df_l.append(pd.read_feather(f))
 features_df = pd.concat(df_l, axis=0, sort=False, ignore_index=True)
 del df_l[:]
 
 # merge the identifications with the features
+print('merging the feature detections and the identifications')
 identifications_df = pd.merge(features_df, percolator_df, how='left', left_on=['run_name','feature_id'], right_on=['run_name','feature_id'])
 del features_df
 
@@ -155,6 +159,7 @@ identifications_df['mass_accuracy_ppm'] = (identifications_df['observed_monoisot
 identifications_df['mass_error'] = identifications_df['observed_monoisotopic_mass'] - identifications_df['theoretical_peptide_mass']
 
 # count how many unique peptides were identified
+print('counting unique peptides')
 sequences_l = []
 for group_name,group_df in identifications_df.groupby(['sequence','charge'], as_index=False):
     if group_df['percolator q-value'].min() <= MAXIMUM_Q_VALUE:
