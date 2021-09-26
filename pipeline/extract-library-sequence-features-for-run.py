@@ -16,7 +16,7 @@ import math
 import multiprocessing as mp
 import glob
 import json
-import alphatims
+import alphatims.bruker
 
 
 MAXIMUM_Q_VALUE = 0.005  # build the classifier with only the best identifications
