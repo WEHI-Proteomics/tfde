@@ -14,29 +14,8 @@ import multiprocessing as mp
 import json
 import alphatims.bruker
 import sqlite3
-
-
-MAXIMUM_Q_VALUE = 0.005  # build the classifier with only the best identifications
-ADD_C_CYSTEINE_DA = 57.021464  # from Unimod.org
-PROTON_MASS = 1.007276
-
-# Mass difference between Carbon-12 and Carbon-13 isotopes, in Da. For calculating the spacing between isotopic peaks.
-CARBON_MASS_DIFFERENCE = 1.003355
-
-# frame types for PASEF mode
-FRAME_TYPE_MS1 = 0
-FRAME_TYPE_MS2 = 8
-
-# the level of intensity at which the detector is in saturation
-SATURATION_INTENSITY = 3000
-
-# the number of isotopes to look for in the m/z dimension - the theoretical model includes 7 (the monoisotopic plus 6 isotopes)
-NUMBER_OF_ISOTOPES = 7
-MINIMUM_NUMBER_OF_ISOTOPES_FOR_VIABLE_FEATURE = 3
-
-# parameters for the peak proportion method
-TOP_CCS_PROPORTION_TO_INCLUDE = 0.1
-TOP_RT_PROPORTION_TO_INCLUDE = 0.8
+import configparser
+from configparser import ExtendedInterpolation
 
 
 class FixedDict(object):
@@ -65,7 +44,7 @@ class NpEncoder(json.JSONEncoder):
 # load the ms1 frame ids
 def load_ms1_frame_ids(raw_db_name):
     db_conn = sqlite3.connect('{}/analysis.tdf'.format(raw_db_name))
-    ms1_frame_properties_df = pd.read_sql_query("select Id,Time from frame_properties where MsMsType == {} order by Time".format(FRAME_TYPE_MS1), db_conn)
+    ms1_frame_properties_df = pd.read_sql_query("select Id,Time from Frames where MsMsType == {} order by Time".format(FRAME_TYPE_MS1), db_conn)
     db_conn.close()
     return ms1_frame_properties_df
 
@@ -1131,6 +1110,7 @@ parser.add_argument('-ssseq','--small_set_sequence', type=str, help='Only extrac
 parser.add_argument('-sschr','--small_set_charge', type=int, help='The charge for the selected sequence.', required=False)
 parser.add_argument('-mpwrt','--max_peak_width_rt', type=int, default=10, help='Maximum peak width tolerance for the extraction from the estimated coordinate in RT.', required=False)
 parser.add_argument('-mpwccs','--max_peak_width_ccs', type=int, default=20, help='Maximum peak width tolerance for the extraction from the estimated coordinate in CCS.', required=False)
+parser.add_argument('-ini','--ini_file', type=str, default='./otf-peak-detect/pipeline/pasef-process-short-gradient.ini', help='Path to the config file.', required=False)
 parser.add_argument('-pc','--proportion_of_cores_to_use', type=float, default=0.9, help='Proportion of the machine\'s cores to use for this program.', required=False)
 args = parser.parse_args()
 
@@ -1209,6 +1189,29 @@ LIBRARY_SEQUENCES_WITH_METRICS_FILENAME = '{}/library-sequences-in-run-{}.feathe
 if os.path.isfile(LIBRARY_SEQUENCES_WITH_METRICS_FILENAME):
     os.remove(LIBRARY_SEQUENCES_WITH_METRICS_FILENAME)
 
+# check the INI file exists
+if not os.path.isfile(args.ini_file):
+    print("The configuration file doesn't exist: {}".format(args.ini_file))
+    sys.exit(1)
+
+# load the INI file
+cfg = configparser.ConfigParser(interpolation=ExtendedInterpolation())
+cfg.read(args.ini_file)
+
+# set up constants
+FRAME_TYPE_MS1 = cfg.getint('common','FRAME_TYPE_MS1')
+ADD_C_CYSTEINE_DA = cfg.getfloat('common','ADD_C_CYSTEINE_DA')
+PROTON_MASS = cfg.getfloat('common','PROTON_MASS')
+CARBON_MASS_DIFFERENCE = cfg.getfloat('common','CARBON_MASS_DIFFERENCE')
+SATURATION_INTENSITY = cfg.getint('common','SATURATION_INTENSITY')
+
+MAXIMUM_Q_VALUE_FOR_CLASSIFIER_TRAINING_SET = cfg.getfloat('extraction','MAXIMUM_Q_VALUE_FOR_CLASSIFIER_TRAINING_SET')
+NUMBER_OF_ISOTOPES = cfg.getint('extraction','NUMBER_OF_ISOTOPES')
+MINIMUM_NUMBER_OF_ISOTOPES_FOR_VIABLE_FEATURE = cfg.getint('extraction','MINIMUM_NUMBER_OF_ISOTOPES_FOR_VIABLE_FEATURE')
+TOP_CCS_PROPORTION_TO_INCLUDE = cfg.getfloat('extraction','TOP_CCS_PROPORTION_TO_INCLUDE')
+TOP_RT_PROPORTION_TO_INCLUDE = cfg.getfloat('extraction','TOP_RT_PROPORTION_TO_INCLUDE')
+
+
 ##################################################
 
 print("Setting up Ray")
@@ -1220,8 +1223,8 @@ if not ray.is_initialized():
     else:
         ray.init(local_mode=True)
 
-# filter the library sequences for this run
-library_sequences_for_this_run_df['run_name'] = args.run_name  # we are looking for all the library sequences in all the runs, so set all the sequences with the run name
+# set all the sequences with this run name to match the metrics we extract for each
+library_sequences_for_this_run_df['run_name'] = args.run_name
 
 print("calculating the feature metrics for the library sequences in run {}".format(args.run_name))
 
