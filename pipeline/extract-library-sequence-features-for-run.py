@@ -5,18 +5,15 @@ import pickle
 import peakutils
 from scipy import signal
 import random
-from numba import njit
 import ray
 import argparse
 import os
 import time
-import shutil
-import scipy
 import math
 import multiprocessing as mp
-import glob
 import json
 import alphatims.bruker
+import sqlite3
 
 
 MAXIMUM_Q_VALUE = 0.005  # build the classifier with only the best identifications
