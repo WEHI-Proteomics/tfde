@@ -39,34 +39,6 @@ TOP_CCS_PROPORTION_TO_INCLUDE = 0.1
 TOP_RT_PROPORTION_TO_INCLUDE = 0.8
 
 
-def run_process(process):
-    print("Executing: {}".format(process))
-    os.system(process)
-
-# determine the mapping between the percolator index and the run file name
-def get_percolator_run_mapping(mapping_file_name):
-    df = pd.read_csv(mapping_file_name)
-    mapping_l = [tuple(r) for r in df.to_numpy()]
-    return mapping_l
-
-def file_idx_for_run(run_name):
-    result = None
-    mapping_l = get_percolator_run_mapping(MAPPING_FILE_NAME)
-    for m in mapping_l:
-        if m[1] == run_name:
-            result = m[0]
-            break
-    return result
-
-def run_name_for_file_idx(file_idx):
-    result = None
-    mapping_l = get_percolator_run_mapping(MAPPING_FILE_NAME)
-    for m in mapping_l:
-        if m[0] == file_idx:
-            result = m[1]
-            break
-    return result
-
 class FixedDict(object):
     def __init__(self, dictionary):
         self._dictionary = dictionary
@@ -1097,23 +1069,23 @@ def extract_feature_metrics_at_coords(coordinates_d, data_obj, run_name, sequenc
                             print()
                     else:
                         if args.small_set_mode:
-                            print("extract_feature_metrics_at_coords failed for mode {}: no L2 candidate peaks were found, sequence {}, charge {}, run {}, file_id {}.".format("target" if target_mode else "decoy", sequence, charge, run_name, file_idx_for_run(run_name)))
+                            print("extract_feature_metrics_at_coords failed for mode {}: no L2 candidate peaks were found, sequence {}, charge {}, run {}.".format("target" if target_mode else "decoy", sequence, charge, run_name))
                         feature_metrics_attributes_l = []
                 else:
                     if args.small_set_mode:
-                        print("extract_feature_metrics_at_coords failed for mode {}: no L1 candidate peaks were found, sequence {}, charge {}, run {}, file_id {}.".format("target" if target_mode else "decoy", sequence, charge, run_name, file_idx_for_run(run_name)))
+                        print("extract_feature_metrics_at_coords failed for mode {}: no L1 candidate peaks were found, sequence {}, charge {}, run {}.".format("target" if target_mode else "decoy", sequence, charge, run_name))
                     feature_metrics_attributes_l = []
             else:
                 if args.small_set_mode:
-                    print("extract_feature_metrics_at_coords failed for mode {}: no peaks were found in the monoisotopic peak flattened to the RT dimension, sequence {}, charge {}, run {}, file_id {}.".format("target" if target_mode else "decoy", sequence, charge, run_name, file_idx_for_run(run_name)))
+                    print("extract_feature_metrics_at_coords failed for mode {}: no peaks were found in the monoisotopic peak flattened to the RT dimension, sequence {}, charge {}, run {}.".format("target" if target_mode else "decoy", sequence, charge, run_name))
                 feature_metrics_attributes_l = []
         else:
             if args.small_set_mode:
-                print("extract_feature_metrics_at_coords failed for mode {}: only found {} isotopes, sequence {}, charge {}, run {}, file_id {}.".format("target" if target_mode else "decoy", len(isotope_peaks_df), sequence, charge, run_name, file_idx_for_run(run_name)))
+                print("extract_feature_metrics_at_coords failed for mode {}: only found {} isotopes, sequence {}, charge {}, run {}.".format("target" if target_mode else "decoy", len(isotope_peaks_df), sequence, charge, run_name))
             feature_metrics_attributes_l = []
     else:
         if args.small_set_mode:
-            print("extract_feature_metrics_at_coords failed for mode {}: no points were found in the feature extraction region, sequence {}, charge {}, run {}, file_id {}.".format("target" if target_mode else "decoy", sequence, charge, run_name, file_idx_for_run(run_name)))
+            print("extract_feature_metrics_at_coords failed for mode {}: no points were found in the feature extraction region, sequence {}, charge {}, run {}.".format("target" if target_mode else "decoy", sequence, charge, run_name))
         feature_metrics_attributes_l = []
 
     # time_stop = time.time()
