@@ -1128,6 +1128,28 @@ if not os.path.exists(EXPERIMENT_DIR):
     print("The experiment directory is required but doesn't exist: {}".format(EXPERIMENT_DIR))
     sys.exit(1)
 
+# check the INI file exists
+if not os.path.isfile(args.ini_file):
+    print("The configuration file doesn't exist: {}".format(args.ini_file))
+    sys.exit(1)
+
+# load the INI file
+cfg = configparser.ConfigParser(interpolation=ExtendedInterpolation())
+cfg.read(args.ini_file)
+
+# set up constants
+FRAME_TYPE_MS1 = cfg.getint('common','FRAME_TYPE_MS1')
+ADD_C_CYSTEINE_DA = cfg.getfloat('common','ADD_C_CYSTEINE_DA')
+PROTON_MASS = cfg.getfloat('common','PROTON_MASS')
+CARBON_MASS_DIFFERENCE = cfg.getfloat('common','CARBON_MASS_DIFFERENCE')
+SATURATION_INTENSITY = cfg.getint('common','SATURATION_INTENSITY')
+
+MAXIMUM_Q_VALUE_FOR_CLASSIFIER_TRAINING_SET = cfg.getfloat('extraction','MAXIMUM_Q_VALUE_FOR_CLASSIFIER_TRAINING_SET')
+NUMBER_OF_ISOTOPES = cfg.getint('extraction','NUMBER_OF_ISOTOPES')
+MINIMUM_NUMBER_OF_ISOTOPES_FOR_VIABLE_FEATURE = cfg.getint('extraction','MINIMUM_NUMBER_OF_ISOTOPES_FOR_VIABLE_FEATURE')
+TOP_CCS_PROPORTION_TO_INCLUDE = cfg.getfloat('extraction','TOP_CCS_PROPORTION_TO_INCLUDE')
+TOP_RT_PROPORTION_TO_INCLUDE = cfg.getfloat('extraction','TOP_RT_PROPORTION_TO_INCLUDE')
+
 # check the raw database exists
 RAW_DATABASE_BASE_DIR = "{}/raw-databases".format(EXPERIMENT_DIR)
 RAW_DATABASE_NAME = "{}/{}.d".format(RAW_DATABASE_BASE_DIR, args.run_name)
@@ -1188,28 +1210,6 @@ if not os.path.exists(TARGET_DECOY_MODEL_DIR):
 LIBRARY_SEQUENCES_WITH_METRICS_FILENAME = '{}/library-sequences-in-run-{}.feather'.format(TARGET_DECOY_MODEL_DIR, args.run_name)
 if os.path.isfile(LIBRARY_SEQUENCES_WITH_METRICS_FILENAME):
     os.remove(LIBRARY_SEQUENCES_WITH_METRICS_FILENAME)
-
-# check the INI file exists
-if not os.path.isfile(args.ini_file):
-    print("The configuration file doesn't exist: {}".format(args.ini_file))
-    sys.exit(1)
-
-# load the INI file
-cfg = configparser.ConfigParser(interpolation=ExtendedInterpolation())
-cfg.read(args.ini_file)
-
-# set up constants
-FRAME_TYPE_MS1 = cfg.getint('common','FRAME_TYPE_MS1')
-ADD_C_CYSTEINE_DA = cfg.getfloat('common','ADD_C_CYSTEINE_DA')
-PROTON_MASS = cfg.getfloat('common','PROTON_MASS')
-CARBON_MASS_DIFFERENCE = cfg.getfloat('common','CARBON_MASS_DIFFERENCE')
-SATURATION_INTENSITY = cfg.getint('common','SATURATION_INTENSITY')
-
-MAXIMUM_Q_VALUE_FOR_CLASSIFIER_TRAINING_SET = cfg.getfloat('extraction','MAXIMUM_Q_VALUE_FOR_CLASSIFIER_TRAINING_SET')
-NUMBER_OF_ISOTOPES = cfg.getint('extraction','NUMBER_OF_ISOTOPES')
-MINIMUM_NUMBER_OF_ISOTOPES_FOR_VIABLE_FEATURE = cfg.getint('extraction','MINIMUM_NUMBER_OF_ISOTOPES_FOR_VIABLE_FEATURE')
-TOP_CCS_PROPORTION_TO_INCLUDE = cfg.getfloat('extraction','TOP_CCS_PROPORTION_TO_INCLUDE')
-TOP_RT_PROPORTION_TO_INCLUDE = cfg.getfloat('extraction','TOP_RT_PROPORTION_TO_INCLUDE')
 
 
 ##################################################
