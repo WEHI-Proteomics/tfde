@@ -1087,21 +1087,13 @@ def extract_feature_metrics_at_coords(coordinates_d, data_obj, run_name, sequenc
 
     return feature_metrics_attributes_l
 
-# determine the number of workers based on the number of available cores and the proportion of the machine to be used
-def number_of_workers():
-    number_of_cores = mp.cpu_count()
-    number_of_workers = int(args.proportion_of_cores_to_use * number_of_cores)
-    return number_of_workers
-
 
 ####################################################################
-
 
 parser = argparse.ArgumentParser(description='Using the run-specific coordinate estimators, for each of the library sequences, from each run, extract metrics for feature targets and decoys to collate a training set.')
 parser.add_argument('-eb','--experiment_base_dir', type=str, default='./experiments', help='Path to the experiments directory.', required=False)
 parser.add_argument('-en','--experiment_name', type=str, help='Name of the experiment.', required=True)
 parser.add_argument('-rn','--run_name', type=str, help='Name of the run.', required=True)
-parser.add_argument('-rm','--ray_mode', type=str, choices=['local','cluster'], help='The Ray mode to use.', required=True)
 parser.add_argument('-ssm','--small_set_mode', action='store_true', help='A small subset of the data for testing purposes.', required=False)
 parser.add_argument('-ssms','--small_set_mode_size', type=int, default='100', help='The number of identifications to sample for small set mode.', required=False)
 parser.add_argument('-ssseq','--small_set_sequence', type=str, help='Only extract this sequence.', required=False)
@@ -1109,7 +1101,6 @@ parser.add_argument('-sschr','--small_set_charge', type=int, help='The charge fo
 parser.add_argument('-mpwrt','--max_peak_width_rt', type=int, default=10, help='Maximum peak width tolerance for the extraction from the estimated coordinate in RT.', required=False)
 parser.add_argument('-mpwccs','--max_peak_width_ccs', type=int, default=20, help='Maximum peak width tolerance for the extraction from the estimated coordinate in CCS.', required=False)
 parser.add_argument('-ini','--ini_file', type=str, default='./otf-peak-detect/pipeline/pasef-process-short-gradient.ini', help='Path to the config file.', required=False)
-parser.add_argument('-pc','--proportion_of_cores_to_use', type=float, default=0.9, help='Proportion of the machine\'s cores to use for this program.', required=False)
 args = parser.parse_args()
 
 # Print the arguments for the log
@@ -1208,16 +1199,6 @@ if not os.path.exists(TARGET_DECOY_MODEL_DIR):
 LIBRARY_SEQUENCES_WITH_METRICS_FILENAME = '{}/library-sequences-in-run-{}.feather'.format(TARGET_DECOY_MODEL_DIR, args.run_name)
 if os.path.isfile(LIBRARY_SEQUENCES_WITH_METRICS_FILENAME):
     os.remove(LIBRARY_SEQUENCES_WITH_METRICS_FILENAME)
-
-
-##################################################
-
-print("Setting up Ray")
-if not ray.is_initialized():
-    if args.ray_mode == "cluster":
-        ray.init(num_cpus=number_of_workers())
-    else:
-        ray.init(local_mode=True)
 
 # set all the sequences with this run name to match the metrics we extract for each
 library_sequences_for_this_run_df['run_name'] = args.run_name
