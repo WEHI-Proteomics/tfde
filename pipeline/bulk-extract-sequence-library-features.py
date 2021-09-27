@@ -79,7 +79,7 @@ else:
     small_set_flags = ""
 
 # set up the processing pool
-pool = Pool(processes=6)
+pool = Pool(processes=4)
 
 run_names_l = args.run_names.split(',')
 print("{} runs to process: {}".format(len(run_names_l), run_names_l))
