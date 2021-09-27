@@ -1247,6 +1247,12 @@ library_sequences_for_this_run_df = pd.merge(library_sequences_with_target_metri
 # remove the rubbish target_metrics and attributes
 library_sequences_for_this_run_df = library_sequences_for_this_run_df[(library_sequences_for_this_run_df.target_metrics.notna()) & (library_sequences_for_this_run_df.attributes.notna())]
 
+# downcast the data types to minimise the memory used
+int_columns = ['charge','number_of_runs_identified','peak_idx']
+library_sequences_for_this_run_df[int_columns] = library_sequences_for_this_run_df[int_columns].apply(pd.to_numeric, downcast="unsigned")
+float_columns = ['experiment_scan_mean','experiment_scan_std_dev','experiment_scan_peak_width','experiment_rt_mean','experiment_rt_std_dev','experiment_rt_peak_width','experiment_intensity_mean','experiment_intensity_std_dev','q_value']
+library_sequences_for_this_run_df[float_columns] = library_sequences_for_this_run_df[float_columns].apply(pd.to_numeric, downcast="float")
+
 # save the metrics for this run
 print("writing {} metrics & attributes for the library sequences to {}".format(len(library_sequences_for_this_run_df), LIBRARY_SEQUENCES_WITH_METRICS_FILENAME))
 library_sequences_for_this_run_df.to_pickle(LIBRARY_SEQUENCES_WITH_METRICS_FILENAME)
