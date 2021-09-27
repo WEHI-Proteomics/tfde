@@ -5,6 +5,7 @@ import time
 import argparse
 import sys
 import pandas as pd
+import numpy as np
 import sqlite3
 import json
 from multiprocessing import Pool
@@ -12,6 +13,17 @@ from multiprocessing import Pool
 def run_process(process):
     print("Executing: {}".format(process))
     os.system(process)
+
+class NpEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, np.integer):
+            return int(obj)
+        elif isinstance(obj, np.floating):
+            return float(obj)
+        elif isinstance(obj, np.ndarray):
+            return obj.tolist()
+        else:
+            return super(NpEncoder, self).default(obj)
 
 # nohup python -u ./open-path/pda/bulk-cuboid-extract.py -en dwm-test > bulk-cuboid-extract.log 2>&1 &
 
@@ -89,11 +101,11 @@ db_conn = sqlite3.connect(METRICS_DB_NAME)
 for file in run_sequence_files:
     df = pd.read_pickle(file)
     # convert the lists and dictionaries to strings
-    df.target_coords = df.apply(lambda row: json.dumps(row.target_coords), axis=1)
-    df.decoy_coords = df.apply(lambda row: json.dumps(row.decoy_coords), axis=1)
-    df.target_metrics = df.apply(lambda row: json.dumps(row.target_metrics), axis=1)
-    df.decoy_metrics = df.apply(lambda row: json.dumps(row.decoy_metrics), axis=1)
-    df.attributes = df.apply(lambda row: json.dumps(row.attributes), axis=1)
+    df.target_coords = df.apply(lambda row: json.dumps(row.target_coords, cls=NpEncoder), axis=1)
+    df.decoy_coords = df.apply(lambda row: json.dumps(row.decoy_coords, cls=NpEncoder), axis=1)
+    df.target_metrics = df.apply(lambda row: json.dumps(row.target_metrics, cls=NpEncoder), axis=1)
+    df.decoy_metrics = df.apply(lambda row: json.dumps(row.decoy_metrics, cls=NpEncoder), axis=1)
+    df.attributes = df.apply(lambda row: json.dumps(row.attributes, cls=NpEncoder), axis=1)
     # count the sequence peak instances
     peak_counts_l = []
     for group_name,group_df in df.groupby(['sequence','charge','run_name'], as_index=False):
