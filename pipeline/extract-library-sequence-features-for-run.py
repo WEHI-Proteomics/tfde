@@ -1196,7 +1196,7 @@ if not os.path.exists(TARGET_DECOY_MODEL_DIR):
     print("The target-decoy classifier directory does not exist: {}".format(TARGET_DECOY_MODEL_DIR))
 
 # remove the output file if it exists
-LIBRARY_SEQUENCES_WITH_METRICS_FILENAME = '{}/library-sequences-in-run-{}.feather'.format(TARGET_DECOY_MODEL_DIR, args.run_name)
+LIBRARY_SEQUENCES_WITH_METRICS_FILENAME = '{}/library-sequences-in-run-{}.pkl'.format(TARGET_DECOY_MODEL_DIR, args.run_name)
 if os.path.isfile(LIBRARY_SEQUENCES_WITH_METRICS_FILENAME):
     os.remove(LIBRARY_SEQUENCES_WITH_METRICS_FILENAME)
 
@@ -1249,7 +1249,7 @@ library_sequences_for_this_run_df = library_sequences_for_this_run_df[(library_s
 
 # save the metrics for this run
 print("writing {} metrics & attributes for the library sequences to {}".format(len(library_sequences_for_this_run_df), LIBRARY_SEQUENCES_WITH_METRICS_FILENAME))
-library_sequences_for_this_run_df.to_feather(LIBRARY_SEQUENCES_WITH_METRICS_FILENAME)
+library_sequences_for_this_run_df.to_pickle(LIBRARY_SEQUENCES_WITH_METRICS_FILENAME)
 
 stop_run = time.time()
 print("total running time ({}): {} seconds".format(parser.prog, round(stop_run-start_run,1)))

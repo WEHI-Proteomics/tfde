@@ -82,7 +82,7 @@ for run_name in run_names_l:
 pool.map(run_process, extract_cmd_l)
 
 # load the run-based metrics into a single experiment-based dataframe
-run_sequence_files = glob.glob('{}/library-sequences-in-run-*.feather'.format(TARGET_DECOY_MODEL_DIR))
+run_sequence_files = glob.glob('{}/library-sequences-in-run-*.pkl'.format(TARGET_DECOY_MODEL_DIR))
 print("found {} sequence files to consolidate into an experiment set and stored in {}.".format(len(run_sequence_files), METRICS_DB_NAME))
 # load the run-lavel metrics into a database
 db_conn = sqlite3.connect(METRICS_DB_NAME)
