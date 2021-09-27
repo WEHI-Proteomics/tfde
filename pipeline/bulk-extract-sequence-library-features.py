@@ -77,7 +77,7 @@ for run_name in run_names_l:
     print("processing {}".format(run_name))
     LOG_FILE_NAME = "{}/extract-library-sequence-features-for-run-{}.log".format(LOG_DIR, run_name)
     current_directory = os.path.abspath(os.path.dirname(__file__))
-    cmd = "python -u {}/extract-library-sequence-features-for-run.py -eb {} -en {} -rn {} -rm cluster -pc {} -mpwrt {} -mpwccs {} {} > {} 2>&1".format(current_directory, args.experiment_base_dir, args.experiment_name, run_name, args.proportion_of_cores_to_use, args.max_peak_width_rt, args.max_peak_width_ccs, small_set_flags, LOG_FILE_NAME)
+    cmd = "python -u {}/extract-library-sequence-features-for-run.py -eb {} -en {} -rn {} -mpwrt {} -mpwccs {} {} > {} 2>&1".format(current_directory, args.experiment_base_dir, args.experiment_name, run_name, args.max_peak_width_rt, args.max_peak_width_ccs, small_set_flags, LOG_FILE_NAME)
     extract_cmd_l.append(cmd)
 pool.map(run_process, extract_cmd_l)
 
