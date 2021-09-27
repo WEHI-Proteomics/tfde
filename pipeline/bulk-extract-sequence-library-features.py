@@ -87,7 +87,7 @@ print("found {} sequence files to consolidate into an experiment set and stored 
 # load the run-lavel metrics into a database
 db_conn = sqlite3.connect(METRICS_DB_NAME)
 for file in run_sequence_files:
-    df = pd.read_feather(file)
+    df = pd.read_pickle(file)
     # convert the lists and dictionaries to strings
     df.target_coords = df.apply(lambda row: json.dumps(row.target_coords), axis=1)
     df.decoy_coords = df.apply(lambda row: json.dumps(row.decoy_coords), axis=1)
