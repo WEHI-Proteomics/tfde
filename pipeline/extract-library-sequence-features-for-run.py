@@ -1143,6 +1143,7 @@ ADD_C_CYSTEINE_DA = cfg.getfloat('common','ADD_C_CYSTEINE_DA')
 PROTON_MASS = cfg.getfloat('common','PROTON_MASS')
 CARBON_MASS_DIFFERENCE = cfg.getfloat('common','CARBON_MASS_DIFFERENCE')
 SATURATION_INTENSITY = cfg.getint('common','SATURATION_INTENSITY')
+MAXIMUM_Q_VALUE = cfg.getfloat('common','MAXIMUM_Q_VALUE')
 
 MAXIMUM_Q_VALUE_FOR_CLASSIFIER_TRAINING_SET = cfg.getfloat('extraction','MAXIMUM_Q_VALUE_FOR_CLASSIFIER_TRAINING_SET')
 NUMBER_OF_ISOTOPES = cfg.getint('extraction','NUMBER_OF_ISOTOPES')
@@ -1190,7 +1191,8 @@ if not os.path.isfile(SEQUENCE_LIBRARY_FILE_NAME):
     sys.exit(1)
 else:
     library_sequences_for_this_run_df = pd.read_feather(SEQUENCE_LIBRARY_FILE_NAME)
-    print("loaded {} sequences from the library".format(len(library_sequences_for_this_run_df)))
+    library_sequences_for_this_run_df = library_sequences_for_this_run_df[(library_sequences_for_this_run_df.q_value <= MAXIMUM_Q_VALUE)]
+    print("loaded {} sequences with q-value less than {} from the library {}".format(len(library_sequences_for_this_run_df), MAXIMUM_Q_VALUE, SEQUENCE_LIBRARY_FILE_NAME))
     # for small set mode, randomly select some sequences
     if args.small_set_mode:
         if args.small_set_sequence is None:
