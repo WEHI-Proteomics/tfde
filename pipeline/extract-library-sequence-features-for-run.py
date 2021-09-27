@@ -15,6 +15,8 @@ import alphatims.bruker
 import sqlite3
 import configparser
 from configparser import ExtendedInterpolation
+import ray
+import multiprocessing as mp
 
 
 class FixedDict(object):
@@ -39,6 +41,12 @@ class NpEncoder(json.JSONEncoder):
             return obj.tolist()
         else:
             return super(NpEncoder, self).default(obj)
+
+# determine the number of workers based on the number of available cores and the proportion of the machine to be used
+def number_of_workers():
+    number_of_cores = mp.cpu_count()
+    number_of_workers = int(args.proportion_of_cores_to_use * number_of_cores)
+    return number_of_workers
 
 # load the ms1 frame ids
 def load_ms1_frame_ids(raw_db_name):
@@ -742,6 +750,7 @@ def calculate_feature_attributes(isotope_raw_points_l, rt_0_metrics, scan_0_metr
 
     return feature_attributes
 
+@ray.remote
 def extract_feature_metrics_at_coords(coordinates_d, data_obj, run_name, sequence, charge, target_mode):
     feature_metrics_attributes_l = []
 
@@ -1101,6 +1110,7 @@ parser.add_argument('-sschr','--small_set_charge', type=int, help='The charge fo
 parser.add_argument('-mpwrt','--max_peak_width_rt', type=int, default=10, help='Maximum peak width tolerance for the extraction from the estimated coordinate in RT.', required=False)
 parser.add_argument('-mpwccs','--max_peak_width_ccs', type=int, default=20, help='Maximum peak width tolerance for the extraction from the estimated coordinate in CCS.', required=False)
 parser.add_argument('-ini','--ini_file', type=str, default='./otf-peak-detect/pipeline/pasef-process-short-gradient.ini', help='Path to the config file.', required=False)
+parser.add_argument('-pc','--proportion_of_cores_to_use', type=float, default=0.9, help='Proportion of the machine\'s cores to use for this program.', required=False)
 args = parser.parse_args()
 
 # Print the arguments for the log
@@ -1225,9 +1235,16 @@ library_sequences_for_this_run_df['target_coords'] = library_sequences_for_this_
 print("calculating the decoy coordinates for each sequence-charge")
 library_sequences_for_this_run_df['decoy_coords'] = library_sequences_for_this_run_df.apply(lambda row: calculate_decoy_coordinates(row), axis=1)
 
+print("Setting up Ray")
+if not ray.is_initialized():
+    if args.ray_mode == "cluster":
+        ray.init(num_cpus=number_of_workers())
+    else:
+        ray.init(local_mode=True)
+
 # extract feature metrics from the target coordinates for each sequence in the run
 print("extracting feature metrics from the target coordinates")
-target_metrics_l = [extract_feature_metrics_at_coords(coordinates_d=row.target_coords, data_obj=data, run_name=args.run_name, sequence=row.sequence, charge=row.charge, target_mode=True) for row in library_sequences_for_this_run_df.itertuples()]
+target_metrics_l = ray.get([extract_feature_metrics_at_coords(coordinates_d=row.target_coords, data_obj=data, run_name=args.run_name, sequence=row.sequence, charge=row.charge, target_mode=True) for row in library_sequences_for_this_run_df.itertuples()])
 flattened_target_metrics_l = [item for sublist in target_metrics_l for item in sublist]  # target_metrics_l is a list of lists, so we need to flatten it
 target_metrics_df = pd.DataFrame(flattened_target_metrics_l, columns=['sequence','charge','peak_idx','target_metrics','attributes'])
 # merge the target results with the library sequences for this run
@@ -1235,7 +1252,7 @@ library_sequences_with_target_metrics_df = pd.merge(library_sequences_for_this_r
 
 # extract feature metrics from the decoy coordinates for each sequence in the run
 print("extracting feature metrics from the decoy coordinates")
-decoy_metrics_l = [extract_feature_metrics_at_coords(coordinates_d=row.decoy_coords, data_obj=data, run_name=args.run_name, sequence=row.sequence, charge=row.charge, target_mode=False) for row in library_sequences_for_this_run_df.itertuples()]
+decoy_metrics_l = ray.get([extract_feature_metrics_at_coords(coordinates_d=row.decoy_coords, data_obj=data, run_name=args.run_name, sequence=row.sequence, charge=row.charge, target_mode=False) for row in library_sequences_for_this_run_df.itertuples()])
 flattened_decoy_metrics_l = [item for sublist in decoy_metrics_l for item in sublist]  # decoy_metrics_l is a list of lists, so we need to flatten it
 decoy_metrics_df = pd.DataFrame(flattened_decoy_metrics_l, columns=['sequence','charge','peak_idx','decoy_metrics','attributes'])
 # don't include the attributes because we're not interested in the decoy's attributes
