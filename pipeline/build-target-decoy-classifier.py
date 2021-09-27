@@ -6,20 +6,51 @@ import sqlite3
 import argparse
 import os
 import time
-from packaged.utils import get_run_names
 from sklearn.ensemble import GradientBoostingClassifier
-from sklearn.model_selection import GridSearchCV,ShuffleSplit,RandomizedSearchCV
-from sklearn.metrics import classification_report, confusion_matrix, roc_curve, auc
+from sklearn.model_selection import RandomizedSearchCV
+from sklearn.metrics import classification_report, confusion_matrix
 from sklearn.model_selection import train_test_split
 import json
 import math
-import glob
 
-MAXIMUM_Q_VALUE = 0.005  # build the classifier with only the best identifications
 
-# frame types for PASEF mode
-FRAME_TYPE_MS1 = 0
-FRAME_TYPE_MS2 = 8
+def generate_estimator(X_train, X_test, y_train, y_test):
+    if args.search_for_new_model_parameters:
+        # do a randomised search to find the best classifier
+        print('setting up randomised search')
+        parameters = {
+            "loss":["deviance"],
+            "learning_rate": [0.01, 0.05, 0.1, 0.2],
+            # "min_samples_split": np.linspace(0.1, 0.5, 6),
+            # "min_samples_leaf": np.linspace(0.1, 0.5, 6),
+            "max_depth":[3, 5, 8, 20, 100],
+            "max_features":["log2","sqrt"],
+            "criterion": ["friedman_mse",  "mae"],
+            "subsample":[0.6, 0.8, 1.0],
+            "n_estimators":[50, 100, 1000, 2000]
+            }
+        # cross-validation splitting strategy uses 'cv' folds in a (Stratified)KFold
+        rsearch = RandomizedSearchCV(GradientBoostingClassifier(), parameters, n_iter=100, n_jobs=-1, random_state=10, cv=5, scoring='accuracy', verbose=1)  # All scorer objects follow the convention that higher return values are better than lower return values, so we want the negated version for error metrics
+        print('fitting to the training set')
+        # find the best fit within the parameter search space
+        rsearch.fit(X_train, y_train)
+        best_estimator = rsearch.best_estimator_
+        print('best score from the search: {}'.format(round(rsearch.best_score_, 4)))
+        best_params = rsearch.best_params_
+        print(best_params)
+    else:
+        print('fitting the estimator to the training data')
+        # use the model parameters we found previously
+        best_params = {'subsample': 0.6, 'n_estimators': 280, 'min_samples_split': 400, 'min_samples_leaf': 10, 'max_features': 'log2', 'max_depth': 11, 'loss': 'lad', 'learning_rate': 0.05}
+        best_estimator = GradientBoostingClassifier(**best_params)
+        best_estimator.fit(X_train, y_train)  # find the best fit within the parameter search space
+
+    # calculate the estimator's score on the train and test sets
+    print('evaluating against the training and test set')
+    train_score = best_estimator.score(X_train, y_train)
+    test_score = best_estimator.score(X_test, y_test)
+    print("R-squared for training set: {}, test set: {}".format(round(train_score,2), round(test_score,2)))
+    return best_estimator
 
 
 ####################################################################
@@ -55,16 +86,8 @@ if not os.path.isfile(METRICS_DB_NAME):
     print("The experiment sequence metrics file doesn't exist: {}".format(METRICS_DB_NAME))
     sys.exit(1)
 
-# get the run names for the experiment
-run_names = get_run_names(EXPERIMENT_DIR)
-
-runs_processed_l = glob.glob("{}/library-sequences-in-run-*.pkl".format(TARGET_DECOY_MODEL_DIR))
-print("found {} runs for this experiment".format(len(runs_processed_l)))
-
-##################################################
-
-db_conn = sqlite3.connect(METRICS_DB_NAME)
 # create the index if it's not already there
+db_conn = sqlite3.connect(METRICS_DB_NAME)
 print("creating index in {}".format(METRICS_DB_NAME))
 src_c = db_conn.cursor()
 src_c.execute("create index if not exists idx_extracted_metrics_1 on extracted_metrics (number_of_runs_identified)")
@@ -130,45 +153,7 @@ if len(metrics_df) > 0:
     np.save('{}/y_test.npy'.format(TARGET_DECOY_MODEL_DIR), y_test)
     np.save('{}/feature_names.npy'.format(TARGET_DECOY_MODEL_DIR), np.array(metrics_names))
 
-    if args.search_for_new_model_parameters:
-        # do a grid search to find the best classifier dimensions
-        parameters = {
-            "loss":["deviance"],
-            "learning_rate": [0.01, 0.05, 0.1, 0.2],
-            # "min_samples_split": np.linspace(0.1, 0.5, 6),
-            # "min_samples_leaf": np.linspace(0.1, 0.5, 6),
-            "max_depth":[3, 5, 8, 20, 100],
-            "max_features":["log2","sqrt"],
-            "criterion": ["friedman_mse",  "mae"],
-            "subsample":[0.6, 0.8, 1.0],
-            "n_estimators":[50, 100, 1000, 2000]
-            }
-
-        print('setting up grid search')
-        gbc = GridSearchCV(GradientBoostingClassifier(), parameters, cv=2, scoring='accuracy', verbose=10, n_jobs=-1)   # cross-validation splitting strategy uses 'cv' folds in a (Stratified)KFold; folds are made by preserving the percentage of samples for each class
-                                                                                                                                                # use all processors
-        print('fitting to the training set')
-        gbc.fit(X_train, y_train)  # find the best fit within the parameter search space
-
-        best_estimator = gbc.best_estimator_
-        best_params = gbc.best_params_
-        print(best_params)
-    else:
-        # use the model parameters we found previously
-        best_estimator = GradientBoostingClassifier(
-                loss = 'deviance',
-                learning_rate = 0.05,
-                max_depth = 8,
-                max_features = 'sqrt',
-                criterion = 'friedman_mse',
-                subsample = 1.0,
-                n_estimators = 2000
-        )
-        best_estimator.fit(X_train, y_train)  # find the best fit within the parameter search space
-
-    train_score = best_estimator.score(X_train, y_train)
-    test_score = best_estimator.score(X_test, y_test)
-    print("R-squared for training set: {}, test set: {}".format(round(train_score,2), round(test_score,2)))
+    best_estimator = generate_estimator(X_train, X_test, y_train, y_test)
 
     # save the classifier
     CLASSIFIER_FILE_NAME = "{}/target-decoy-classifier.pkl".format(TARGET_DECOY_MODEL_DIR)
