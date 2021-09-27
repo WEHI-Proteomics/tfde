@@ -1217,9 +1217,7 @@ if os.path.isfile(LIBRARY_SEQUENCES_WITH_METRICS_FILENAME):
 print("Setting up Ray")
 if not ray.is_initialized():
     if args.ray_mode == "cluster":
-        ray.init(object_store_memory=20000000000,
-                    redis_max_memory=25000000000,
-                    num_cpus=number_of_workers())
+        ray.init(num_cpus=number_of_workers())
     else:
         ray.init(local_mode=True)
 
