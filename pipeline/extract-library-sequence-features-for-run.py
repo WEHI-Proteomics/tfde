@@ -17,6 +17,7 @@ import configparser
 from configparser import ExtendedInterpolation
 import ray
 import multiprocessing as mp
+import line_profiler
 
 
 class FixedDict(object):
@@ -750,7 +751,8 @@ def calculate_feature_attributes(isotope_raw_points_l, rt_0_metrics, scan_0_metr
 
     return feature_attributes
 
-@ray.remote
+# @ray.remote
+@profile
 def extract_feature_metrics_at_coords(coordinates_d, data_obj, run_name, sequence, charge, target_mode):
     feature_metrics_attributes_l = []
 
@@ -1247,7 +1249,8 @@ if not ray.is_initialized():
 
 # extract feature metrics from the target coordinates for each sequence in the run
 print("extracting feature metrics from the target coordinates")
-target_metrics_l = ray.get([extract_feature_metrics_at_coords.remote(coordinates_d=row.target_coords, data_obj=data, run_name=args.run_name, sequence=row.sequence, charge=row.charge, target_mode=True) for row in library_sequences_for_this_run_df.itertuples()])
+# target_metrics_l = ray.get([extract_feature_metrics_at_coords.remote(coordinates_d=row.target_coords, data_obj=data, run_name=args.run_name, sequence=row.sequence, charge=row.charge, target_mode=True) for row in library_sequences_for_this_run_df.itertuples()])
+target_metrics_l = [extract_feature_metrics_at_coords(coordinates_d=row.target_coords, data_obj=data, run_name=args.run_name, sequence=row.sequence, charge=row.charge, target_mode=True) for row in library_sequences_for_this_run_df.itertuples()]
 flattened_target_metrics_l = [item for sublist in target_metrics_l for item in sublist]  # target_metrics_l is a list of lists, so we need to flatten it
 target_metrics_df = pd.DataFrame(flattened_target_metrics_l, columns=['sequence','charge','peak_idx','target_metrics','attributes'])
 # merge the target results with the library sequences for this run
@@ -1255,7 +1258,8 @@ library_sequences_with_target_metrics_df = pd.merge(library_sequences_for_this_r
 
 # extract feature metrics from the decoy coordinates for each sequence in the run
 print("extracting feature metrics from the decoy coordinates")
-decoy_metrics_l = ray.get([extract_feature_metrics_at_coords.remote(coordinates_d=row.decoy_coords, data_obj=data, run_name=args.run_name, sequence=row.sequence, charge=row.charge, target_mode=False) for row in library_sequences_for_this_run_df.itertuples()])
+# decoy_metrics_l = ray.get([extract_feature_metrics_at_coords.remote(coordinates_d=row.decoy_coords, data_obj=data, run_name=args.run_name, sequence=row.sequence, charge=row.charge, target_mode=False) for row in library_sequences_for_this_run_df.itertuples()])
+decoy_metrics_l = [extract_feature_metrics_at_coords(coordinates_d=row.decoy_coords, data_obj=data, run_name=args.run_name, sequence=row.sequence, charge=row.charge, target_mode=False) for row in library_sequences_for_this_run_df.itertuples()]
 flattened_decoy_metrics_l = [item for sublist in decoy_metrics_l for item in sublist]  # decoy_metrics_l is a list of lists, so we need to flatten it
 decoy_metrics_df = pd.DataFrame(flattened_decoy_metrics_l, columns=['sequence','charge','peak_idx','decoy_metrics','attributes'])
 # don't include the attributes because we're not interested in the decoy's attributes
