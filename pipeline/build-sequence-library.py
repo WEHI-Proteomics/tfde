@@ -54,6 +54,11 @@ if not os.path.isfile(IDENTIFICATIONS_FILE):
     print("The identifications file doesn't exist: {}".format(IDENTIFICATIONS_FILE))
     sys.exit(1)
 
+# check the INI file exists
+if not os.path.isfile(args.ini_file):
+    print("The configuration file doesn't exist: {}".format(args.ini_file))
+    sys.exit(1)
+
 # load the INI file
 cfg = configparser.ConfigParser(interpolation=ExtendedInterpolation())
 cfg.read(args.ini_file)
