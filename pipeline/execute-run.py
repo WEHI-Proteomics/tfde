@@ -397,12 +397,12 @@ def task_extract_features_for_library_sequences():
     # input
     SEQUENCE_LIBRARY_DIR = "{}/sequence-library".format(EXPERIMENT_DIR)
     SEQUENCE_LIBRARY_FILE_NAME = "{}/sequence-library.feather".format(SEQUENCE_LIBRARY_DIR)
-    target_l = [SEQUENCE_LIBRARY_FILE_NAME]
+    depend_l = [SEQUENCE_LIBRARY_FILE_NAME]
     COORDINATE_ESTIMATORS_DIR = "{}/coordinate-estimators".format(EXPERIMENT_DIR)
     for run_name in run_names_l:
         for dim in ['mz','scan','rt']:
             ESTIMATOR_MODEL_FILE_NAME = "{}/run-{}-{}-estimator.pkl".format(COORDINATE_ESTIMATORS_DIR, run_name, dim)
-            target_l.append(ESTIMATOR_MODEL_FILE_NAME)
+            depend_l.append(ESTIMATOR_MODEL_FILE_NAME)
     # cmd
     cmd = 'python -u bulk-extract-sequence-library-features.py -eb {experiment_base} -en {experiment_name} -rn {run_names}'.format(experiment_base=config['experiment_base_dir'], experiment_name=config['experiment_name'], run_names=config['run_names'])
     cmd_l.append(cmd)
