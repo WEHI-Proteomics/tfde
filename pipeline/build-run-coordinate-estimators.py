@@ -109,6 +109,11 @@ print("The coordinate estimators directory was created: {}".format(COORDINATE_ES
 RUN_SEQUENCES_FILE_NAME = "{}/run-sequence-attribs.feather".format(COORDINATE_ESTIMATORS_DIR)
 MERGED_RUN_LIBRARY_SEQUENCES_FILE_NAME = "{}/merged-run-library-sequence-attribs.feather".format(COORDINATE_ESTIMATORS_DIR)
 
+# check the INI file exists
+if not os.path.isfile(args.ini_file):
+    print("The configuration file doesn't exist: {}".format(args.ini_file))
+    sys.exit(1)
+
 # load the INI file
 cfg = configparser.ConfigParser(interpolation=ExtendedInterpolation())
 cfg.read(args.ini_file)
