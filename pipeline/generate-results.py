@@ -1,6 +1,5 @@
 import pandas as pd
 import sys
-import pickle
 import sqlite3
 import argparse
 import os
