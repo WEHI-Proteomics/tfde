@@ -35,6 +35,7 @@ parser.add_argument('-ssm','--small_set_mode', action='store_true', help='A smal
 parser.add_argument('-ssms','--small_set_mode_size', type=int, default='100', help='The number of identifications to sample for small set mode.', required=False)
 parser.add_argument('-mpwrt','--max_peak_width_rt', type=int, default=10, help='Maximum peak width tolerance for the extraction from the estimated coordinate in RT.', required=False)
 parser.add_argument('-mpwccs','--max_peak_width_ccs', type=int, default=20, help='Maximum peak width tolerance for the extraction from the estimated coordinate in CCS.', required=False)
+parser.add_argument('-ini','--ini_file', type=str, default='./otf-peak-detect/pipeline/pasef-process-short-gradient.ini', help='Path to the config file.', required=False)
 args = parser.parse_args()
 
 # print the arguments for the log
@@ -88,7 +89,7 @@ for run_name in run_names_l:
     print("processing {}".format(run_name))
     LOG_FILE_NAME = "{}/extract-library-sequence-features-for-run-{}.log".format(LOG_DIR, run_name)
     current_directory = os.path.abspath(os.path.dirname(__file__))
-    cmd = "python -u {}/extract-library-sequence-features-for-run.py -eb {} -en {} -rn {} -mpwrt {} -mpwccs {} {} > {} 2>&1".format(current_directory, args.experiment_base_dir, args.experiment_name, run_name, args.max_peak_width_rt, args.max_peak_width_ccs, small_set_flags, LOG_FILE_NAME)
+    cmd = "python -u {}/extract-library-sequence-features-for-run.py -eb {} -en {} -rn {} -ini {} -mpwrt {} -mpwccs {} {} > {} 2>&1".format(current_directory, args.experiment_base_dir, args.experiment_name, run_name, args.ini_file, args.max_peak_width_rt, args.max_peak_width_ccs, small_set_flags, LOG_FILE_NAME)
     extract_cmd_l.append(cmd)
 pool.map(run_process, extract_cmd_l)
 
