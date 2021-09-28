@@ -80,7 +80,7 @@ for run_name in run_names_l:
     src_c = db_conn.cursor()
     src_c.execute("create index if not exists idx_extracted_metrics_2 on extracted_metrics (run_name)")
     # read the sequences for this run
-    sequences_df = pd.read_sql_query('select sequence,charge,run_name,peak_idx,target_coords,target_metrics,attributes,theoretical_mz,q_value from extracted_metrics where run_name == {} {}'.format(run_name, small_set_flags), db_conn)
+    sequences_df = pd.read_sql_query('select sequence,charge,run_name,peak_idx,target_coords,target_metrics,attributes,theoretical_mz,q_value from extracted_metrics where run_name == \'{}\' {}'.format(run_name, small_set_flags), db_conn)
     db_conn.close()
     print("loaded {} feature metrics from {}".format(len(sequences_df), METRICS_DB_NAME))
 
