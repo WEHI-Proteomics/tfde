@@ -404,7 +404,7 @@ def task_extract_features_for_library_sequences():
             ESTIMATOR_MODEL_FILE_NAME = "{}/run-{}-{}-estimator.pkl".format(COORDINATE_ESTIMATORS_DIR, run_name, dim)
             depend_l.append(ESTIMATOR_MODEL_FILE_NAME)
     # cmd
-    cmd = 'python -u bulk-extract-sequence-library-features.py -eb {experiment_base} -en {experiment_name} -rn {run_names}'.format(experiment_base=config['experiment_base_dir'], experiment_name=config['experiment_name'], run_names=config['run_names'])
+    cmd = 'python -u bulk-extract-sequence-library-features.py -eb {experiment_base} -en {experiment_name} -rn {run_names} -ini {INI_FILE}'.format(experiment_base=config['experiment_base_dir'], experiment_name=config['experiment_name'], run_names=config['run_names'], INI_FILE=config['ini_file'])
     cmd_l.append(cmd)
     # output
     TARGET_DECOY_MODEL_DIR = "{}/target-decoy-models".format(EXPERIMENT_DIR)
