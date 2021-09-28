@@ -20,17 +20,15 @@ def generate_estimator(X_train, X_test, y_train, y_test):
         print('setting up randomised search')
         parameters = {
             "loss":["deviance"],
-            "learning_rate": [0.01, 0.05, 0.1, 0.2],
-            # "min_samples_split": np.linspace(0.1, 0.5, 6),
-            # "min_samples_leaf": np.linspace(0.1, 0.5, 6),
+            "learning_rate": [0.01, 0.05, 0.1],
             "max_depth":[3, 5, 8, 20, 100],
             "max_features":["log2","sqrt"],
-            "criterion": ["friedman_mse",  "mse"],
+            "criterion": ["friedman_mse"],
             "subsample":[0.6, 0.8, 1.0],
-            "n_estimators":[50, 100, 1000, 2000]
+            "n_estimators":[50, 100, 500]
             }
         # cross-validation splitting strategy uses 'cv' folds in a (Stratified)KFold
-        rsearch = RandomizedSearchCV(GradientBoostingClassifier(), parameters, n_iter=100, n_jobs=-1, random_state=10, cv=5, scoring='accuracy', verbose=1)  # All scorer objects follow the convention that higher return values are better than lower return values, so we want the negated version for error metrics
+        rsearch = RandomizedSearchCV(GradientBoostingClassifier(), parameters, n_iter=20, n_jobs=-1, random_state=10, cv=2, scoring='accuracy', verbose=1)
         print('fitting to the training set')
         # find the best fit within the parameter search space
         rsearch.fit(X_train, y_train)
