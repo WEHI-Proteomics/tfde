@@ -75,6 +75,8 @@ extractions_df = pd.DataFrame(extractions_l, columns=['sequence','charge','extra
 # merge them
 print('merging the identifications and extractions')
 results_df = pd.merge(identifications_df, extractions_df, how='outer', left_on=['sequence','charge'], right_on=['sequence','charge'])
+del identifications_df
+del extractions_df
 
 RESULTS_DIR = "{}/summarised-results".format(EXPERIMENT_DIR)
 if os.path.exists(RESULTS_DIR):
