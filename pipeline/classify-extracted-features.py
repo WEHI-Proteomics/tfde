@@ -84,112 +84,116 @@ for run_name in run_names_l:
     db_conn.close()
     print("loaded {} feature metrics from {}".format(len(sequences_df), METRICS_DB_NAME))
 
-    # fix up types
-    sequences_df.peak_idx = sequences_df.peak_idx.astype(int)
+    if len(sequences_df) > 0:
+        # fix up types
+        sequences_df.peak_idx = sequences_df.peak_idx.astype(int)
 
-    # unpack the target metrics from each sequence
-    print("unpacking metrics")
-    metrics = []
-    metric_names = [key for key in sorted(json.loads(sequences_df.iloc[0].target_metrics))]
+        # unpack the target metrics from each sequence
+        print("unpacking metrics")
+        metrics = []
+        metric_names = [key for key in sorted(json.loads(sequences_df.iloc[0].target_metrics))]
 
-    for row in sequences_df.itertuples():
-        # target metric values
-        d = json.loads(row.target_metrics)
-        if ((d is not None) and (isinstance(d, dict))):
-            l = []
-            l.append(row.sequence)
-            l.append(row.charge)
-            l.append(row.run_name)
-            l.append(int(row.peak_idx))
-            l += [d[key] for key in sorted(d)]
-            metrics.append(tuple(l))
+        for row in sequences_df.itertuples():
+            # target metric values
+            d = json.loads(row.target_metrics)
+            if ((d is not None) and (isinstance(d, dict))):
+                l = []
+                l.append(row.sequence)
+                l.append(row.charge)
+                l.append(row.run_name)
+                l.append(int(row.peak_idx))
+                l += [d[key] for key in sorted(d)]
+                metrics.append(tuple(l))
 
-    # drop the metrics column because we no longer need it
-    sequences_df.drop('target_metrics', axis=1, inplace=True)
+        # drop the metrics column because we no longer need it
+        sequences_df.drop('target_metrics', axis=1, inplace=True)
 
-    # create a dataframe with the expanded metrics
-    columns = ['sequence','charge','run_name','peak_idx']
-    columns += metric_names
-    metrics_df = pd.DataFrame(metrics, columns=columns)
-    # del metrics[:]  # no longer needed
+        # create a dataframe with the expanded metrics
+        columns = ['sequence','charge','run_name','peak_idx']
+        columns += metric_names
+        metrics_df = pd.DataFrame(metrics, columns=columns)
+        # del metrics[:]  # no longer needed
 
-    # tidy up any attributes that will upset the model training
-    metrics_df.fillna(value=0.0, inplace=True)
-    metrics_df.r_squared_phr.replace((-np.inf, 0), inplace=True)
+        # tidy up any attributes that will upset the model training
+        metrics_df.fillna(value=0.0, inplace=True)
+        metrics_df.r_squared_phr.replace((-np.inf, 0), inplace=True)
 
-    print("merging unpacked metrics")
-    sequences_df = pd.merge(sequences_df, metrics_df, how='left', left_on=['sequence','charge','run_name','peak_idx'], right_on=['sequence','charge','run_name','peak_idx'])
-    # metrics_df = metrics_df.iloc[0:0]  # no longer needed
+        print("merging unpacked metrics")
+        sequences_df = pd.merge(sequences_df, metrics_df, how='left', left_on=['sequence','charge','run_name','peak_idx'], right_on=['sequence','charge','run_name','peak_idx'])
+        # metrics_df = metrics_df.iloc[0:0]  # no longer needed
 
-    # classify the sequences
-    sequences_df['classed_as'] = gbc.predict(sequences_df[metric_names].values).tolist()
-    class_probabilities = gbc.predict_proba(sequences_df[metric_names].values)
-    class_probabilities_df = pd.DataFrame(class_probabilities, columns=['prob_decoy','prob_target'])
-    sequences_df = pd.concat([sequences_df, class_probabilities_df], axis=1)
+        # classify the sequences
+        sequences_df['classed_as'] = gbc.predict(sequences_df[metric_names].values).tolist()
+        class_probabilities = gbc.predict_proba(sequences_df[metric_names].values)
+        class_probabilities_df = pd.DataFrame(class_probabilities, columns=['prob_decoy','prob_target'])
+        sequences_df = pd.concat([sequences_df, class_probabilities_df], axis=1)
 
-    # filter out the features that were not classified as targets
-    # sequences_df = sequences_df[(sequences_df.classed_as == 'target')]
-    # print("trimmed to {} features classified as targets".format(len(sequences_df)))
+        # filter out the features that were not classified as targets
+        # sequences_df = sequences_df[(sequences_df.classed_as == 'target')]
+        # print("trimmed to {} features classified as targets".format(len(sequences_df)))
 
-    # unpack the attributes from each sequence
-    print("unpacking attributes")
-    attributes = []
-    attribute_names = [key for key in sorted(json.loads(sequences_df.iloc[0].attributes))]
+        # unpack the attributes from each sequence
+        print("unpacking attributes")
+        attributes = []
+        attribute_names = [key for key in sorted(json.loads(sequences_df.iloc[0].attributes))]
 
-    for row in sequences_df.itertuples():
-        # attribute values
-        d = json.loads(row.attributes)
-        if ((d is not None) and (isinstance(d, dict))):
-            l = []
-            l.append(row.sequence)
-            l.append(row.charge)
-            l.append(row.run_name)
-            l.append(int(row.peak_idx))
-            l += [d[key] for key in sorted(d)]
-            attributes.append(tuple(l))
+        for row in sequences_df.itertuples():
+            # attribute values
+            d = json.loads(row.attributes)
+            if ((d is not None) and (isinstance(d, dict))):
+                l = []
+                l.append(row.sequence)
+                l.append(row.charge)
+                l.append(row.run_name)
+                l.append(int(row.peak_idx))
+                l += [d[key] for key in sorted(d)]
+                attributes.append(tuple(l))
 
-    # drop the attributes column because we no longer need it
-    sequences_df.drop('attributes', axis=1, inplace=True)
+        # drop the attributes column because we no longer need it
+        sequences_df.drop('attributes', axis=1, inplace=True)
 
-    # create a dataframe with the expanded attributes
-    columns = ['sequence','charge','run_name','peak_idx']
-    columns += attribute_names
-    attributes_df = pd.DataFrame(attributes, columns=columns)
-    # del attributes[:]  # no longer needed
+        # create a dataframe with the expanded attributes
+        columns = ['sequence','charge','run_name','peak_idx']
+        columns += attribute_names
+        attributes_df = pd.DataFrame(attributes, columns=columns)
+        # del attributes[:]  # no longer needed
 
-    print("merging unpacked attributes")
-    sequences_df = pd.merge(sequences_df, attributes_df, how='left', left_on=['sequence','charge','run_name','peak_idx'], right_on=['sequence','charge','run_name','peak_idx'])
-    # attributes_df = attributes_df.iloc[0:0]  # no longer needed
+        print("merging unpacked attributes")
+        sequences_df = pd.merge(sequences_df, attributes_df, how='left', left_on=['sequence','charge','run_name','peak_idx'], right_on=['sequence','charge','run_name','peak_idx'])
+        # attributes_df = attributes_df.iloc[0:0]  # no longer needed
 
-    # filter out any sequences that have no intensity
-    sequences_df = sequences_df[(sequences_df.intensity > 0)]
+        # filter out any sequences that have no intensity
+        sequences_df = sequences_df[(sequences_df.intensity > 0)]
 
-    # convert the lists to JSON so we can store them in SQLite
-    print("converting diagnostic info to JSON")
-    sequences_df.mono_filtered_points_l = sequences_df.apply(lambda row: json.dumps(row.mono_filtered_points_l), axis=1)
-    sequences_df.mono_rt_bounds = sequences_df.apply(lambda row: json.dumps(row.mono_rt_bounds), axis=1)
-    sequences_df.mono_scan_bounds = sequences_df.apply(lambda row: json.dumps(row.mono_scan_bounds), axis=1)
+        # convert the lists to JSON so we can store them in SQLite
+        print("converting diagnostic info to JSON")
+        sequences_df.mono_filtered_points_l = sequences_df.apply(lambda row: json.dumps(row.mono_filtered_points_l), axis=1)
+        sequences_df.mono_rt_bounds = sequences_df.apply(lambda row: json.dumps(row.mono_rt_bounds), axis=1)
+        sequences_df.mono_scan_bounds = sequences_df.apply(lambda row: json.dumps(row.mono_scan_bounds), axis=1)
 
-    sequences_df.isotope_1_filtered_points_l = sequences_df.apply(lambda row: json.dumps(row.isotope_1_filtered_points_l), axis=1)
-    sequences_df.isotope_1_rt_bounds = sequences_df.apply(lambda row: json.dumps(row.isotope_1_rt_bounds), axis=1)
-    sequences_df.isotope_1_scan_bounds = sequences_df.apply(lambda row: json.dumps(row.isotope_1_scan_bounds), axis=1)
+        sequences_df.isotope_1_filtered_points_l = sequences_df.apply(lambda row: json.dumps(row.isotope_1_filtered_points_l), axis=1)
+        sequences_df.isotope_1_rt_bounds = sequences_df.apply(lambda row: json.dumps(row.isotope_1_rt_bounds), axis=1)
+        sequences_df.isotope_1_scan_bounds = sequences_df.apply(lambda row: json.dumps(row.isotope_1_scan_bounds), axis=1)
 
-    sequences_df.isotope_2_filtered_points_l = sequences_df.apply(lambda row: json.dumps(row.isotope_2_filtered_points_l), axis=1)
-    sequences_df.isotope_2_rt_bounds = sequences_df.apply(lambda row: json.dumps(row.isotope_2_rt_bounds), axis=1)
-    sequences_df.isotope_2_scan_bounds = sequences_df.apply(lambda row: json.dumps(row.isotope_2_scan_bounds), axis=1)
+        sequences_df.isotope_2_filtered_points_l = sequences_df.apply(lambda row: json.dumps(row.isotope_2_filtered_points_l), axis=1)
+        sequences_df.isotope_2_rt_bounds = sequences_df.apply(lambda row: json.dumps(row.isotope_2_rt_bounds), axis=1)
+        sequences_df.isotope_2_scan_bounds = sequences_df.apply(lambda row: json.dumps(row.isotope_2_scan_bounds), axis=1)
 
-    sequences_df.isotope_intensities_l = sequences_df.apply(lambda row: json.dumps(row.isotope_intensities_l), axis=1)
+        sequences_df.isotope_intensities_l = sequences_df.apply(lambda row: json.dumps(row.isotope_intensities_l), axis=1)
 
-    sequences_df.peak_proportions = sequences_df.apply(lambda row: json.dumps(row.peak_proportions), axis=1)
+        sequences_df.peak_proportions = sequences_df.apply(lambda row: json.dumps(row.peak_proportions), axis=1)
 
-    # fix up some types
-    sequences_df.inferred = sequences_df.inferred.astype(bool)
+        # fix up some types
+        sequences_df.inferred = sequences_df.inferred.astype(bool)
 
-    # write out the results for analysis
-    print("writing out the extracted sequences to {}".format(EXTRACTED_FEATURES_DB_NAME))
-    db_conn = sqlite3.connect(EXTRACTED_FEATURES_DB_NAME)
-    sequences_df.to_sql(name='features', con=db_conn, if_exists='append', index=False)
-    db_conn.close()
+        # write out the results for analysis
+        print("writing out the extracted sequences to {}".format(EXTRACTED_FEATURES_DB_NAME))
+        db_conn = sqlite3.connect(EXTRACTED_FEATURES_DB_NAME)
+        sequences_df.to_sql(name='features', con=db_conn, if_exists='append', index=False)
+        db_conn.close()
+    else:
+        print("The metrics database {} has no records for the specified run {}".format(METRICS_DB_NAME, run_name))
+        sys.exit(1)
 
 # finish up
 stop_run = time.time()
