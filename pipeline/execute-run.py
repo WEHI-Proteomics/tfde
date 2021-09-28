@@ -337,7 +337,7 @@ def task_build_sequence_library():
     IDENTIFICATIONS_FILE = '{}/exp-{}-identifications-pasef-recalibrated.feather'.format(IDENTIFICATIONS_DIR, config['experiment_name'])
     depend_l = [IDENTIFICATIONS_FILE]
     # cmd
-    cmd = 'python -u build-sequence-library.py -eb {experiment_base} -en {experiment_name}'.format(experiment_base=config['experiment_base_dir'], experiment_name=config['experiment_name'])
+    cmd = 'python -u build-sequence-library.py -eb {experiment_base} -en {experiment_name} -ini {INI_FILE}'.format(experiment_base=config['experiment_base_dir'], experiment_name=config['experiment_name'], INI_FILE=config['ini_file'])
     cmd_l.append(cmd)
     # output
     SEQUENCE_LIBRARY_DIR = "{}/sequence-library".format(EXPERIMENT_DIR)
@@ -368,7 +368,7 @@ def task_build_coordinate_estimators():
     IDENTIFICATIONS_FILE = '{}/exp-{}-identifications-pasef-recalibrated.feather'.format(IDENTIFICATIONS_DIR, config['experiment_name'])
     depend_l = [SEQUENCE_LIBRARY_FILE_NAME,IDENTIFICATIONS_FILE]
     # cmd
-    cmd = 'python -u build-run-coordinate-estimators.py -eb {experiment_base} -en {experiment_name} -snmp'.format(experiment_base=config['experiment_base_dir'], experiment_name=config['experiment_name'])
+    cmd = 'python -u build-run-coordinate-estimators.py -eb {experiment_base} -en {experiment_name} -ini {INI_FILE} -snmp'.format(experiment_base=config['experiment_base_dir'], experiment_name=config['experiment_name'], INI_FILE=config['ini_file'])
     cmd_l.append(cmd)
     # output
     COORDINATE_ESTIMATORS_DIR = "{}/coordinate-estimators".format(EXPERIMENT_DIR)
