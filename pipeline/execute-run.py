@@ -323,6 +323,195 @@ def task_identify_searched_features_recalibrated():
         'verbosity': 2
     }
 
+
+####################################
+# build the peptide sequence library
+####################################
+
+def task_build_sequence_library():
+    depend_l = []
+    cmd_l = []
+    target_l = []
+    # input
+    IDENTIFICATIONS_DIR = '{}/identifications-pasef'.format(EXPERIMENT_DIR)
+    IDENTIFICATIONS_FILE = '{}/exp-{}-identifications-pasef-recalibrated.feather'.format(IDENTIFICATIONS_DIR, config['experiment_name'])
+    depend_l = [IDENTIFICATIONS_FILE]
+    # cmd
+    cmd = 'python -u build-sequence-library.py -eb {experiment_base} -en {experiment_name}'.format(experiment_base=config['experiment_base_dir'], experiment_name=config['experiment_name'])
+    cmd_l.append(cmd)
+    # output
+    SEQUENCE_LIBRARY_DIR = "{}/sequence-library".format(EXPERIMENT_DIR)
+    SEQUENCE_LIBRARY_FILE_NAME = "{}/sequence-library.feather".format(SEQUENCE_LIBRARY_DIR)
+    target_l.append(SEQUENCE_LIBRARY_FILE_NAME)
+
+    return {
+        'file_dep': depend_l,
+        'actions': cmd_l,
+        'targets': target_l,
+        'clean': ['rm -rf {}'.format(SEQUENCE_LIBRARY_DIR)],
+        'verbosity': 2
+    }
+
+
+#############################
+# build coordinate estimators
+#############################
+
+def task_build_coordinate_estimators():
+    depend_l = []
+    cmd_l = []
+    target_l = []
+    # input
+    SEQUENCE_LIBRARY_DIR = "{}/sequence-library".format(EXPERIMENT_DIR)
+    SEQUENCE_LIBRARY_FILE_NAME = "{}/sequence-library.feather".format(SEQUENCE_LIBRARY_DIR)
+    IDENTIFICATIONS_DIR = '{}/identifications-pasef'.format(EXPERIMENT_DIR)
+    IDENTIFICATIONS_FILE = '{}/exp-{}-identifications-pasef-recalibrated.feather'.format(IDENTIFICATIONS_DIR, config['experiment_name'])
+    depend_l = [SEQUENCE_LIBRARY_FILE_NAME,IDENTIFICATIONS_FILE]
+    # cmd
+    cmd = 'python -u build-run-coordinate-estimators.py -eb {experiment_base} -en {experiment_name} -snmp'.format(experiment_base=config['experiment_base_dir'], experiment_name=config['experiment_name'])
+    cmd_l.append(cmd)
+    # output
+    COORDINATE_ESTIMATORS_DIR = "{}/coordinate-estimators".format(EXPERIMENT_DIR)
+    for run_name in run_names_l:
+        for dim in ['mz','scan','rt']:
+            ESTIMATOR_MODEL_FILE_NAME = "{}/run-{}-{}-estimator.pkl".format(COORDINATE_ESTIMATORS_DIR, run_name, dim)
+            target_l.append(ESTIMATOR_MODEL_FILE_NAME)
+
+    return {
+        'file_dep': depend_l,
+        'actions': cmd_l,
+        'targets': target_l,
+        'clean': ['rm -rf {}'.format(COORDINATE_ESTIMATORS_DIR)],
+        'verbosity': 2
+    }
+
+
+########################################
+# extract features for library sequences
+########################################
+
+def task_extract_features_for_library_sequences():
+    depend_l = []
+    cmd_l = []
+    target_l = []
+    # input
+    SEQUENCE_LIBRARY_DIR = "{}/sequence-library".format(EXPERIMENT_DIR)
+    SEQUENCE_LIBRARY_FILE_NAME = "{}/sequence-library.feather".format(SEQUENCE_LIBRARY_DIR)
+    target_l = [SEQUENCE_LIBRARY_FILE_NAME]
+    COORDINATE_ESTIMATORS_DIR = "{}/coordinate-estimators".format(EXPERIMENT_DIR)
+    for run_name in run_names_l:
+        for dim in ['mz','scan','rt']:
+            ESTIMATOR_MODEL_FILE_NAME = "{}/run-{}-{}-estimator.pkl".format(COORDINATE_ESTIMATORS_DIR, run_name, dim)
+            target_l.append(ESTIMATOR_MODEL_FILE_NAME)
+    # cmd
+    cmd = 'python -u bulk-extract-sequence-library-features.py -eb {experiment_base} -en {experiment_name} -rn {run_names}'.format(experiment_base=config['experiment_base_dir'], experiment_name=config['experiment_name'], run_names=config['run_names'])
+    cmd_l.append(cmd)
+    # output
+    TARGET_DECOY_MODEL_DIR = "{}/target-decoy-models".format(EXPERIMENT_DIR)
+    METRICS_DB_NAME = "{}/experiment-metrics-for-library-sequences.sqlite".format(TARGET_DECOY_MODEL_DIR)
+    target_l = [METRICS_DB_NAME]
+
+    return {
+        'file_dep': depend_l,
+        'actions': cmd_l,
+        'targets': target_l,
+        'clean': ['rm {}'.format(METRICS_DB_NAME)],
+        'verbosity': 2
+    }
+
+
+#########################
+# build target classifier
+#########################
+
+def task_build_target_classifier():
+    depend_l = []
+    cmd_l = []
+    target_l = []
+    # input
+    TARGET_DECOY_MODEL_DIR = "{}/target-decoy-models".format(EXPERIMENT_DIR)
+    METRICS_DB_NAME = "{}/experiment-metrics-for-library-sequences.sqlite".format(TARGET_DECOY_MODEL_DIR)
+    depend_l = [METRICS_DB_NAME]
+    # cmd
+    cmd = 'python -u build-target-decoy-classifier.py -eb {experiment_base} -en {experiment_name} --minimum_number_files 5 --training_set_multiplier 1 -snmp'.format(experiment_base=config['experiment_base_dir'], experiment_name=config['experiment_name'])
+    cmd_l.append(cmd)
+    # output
+    CLASSIFIER_FILE_NAME = "{}/target-decoy-classifier.pkl".format(TARGET_DECOY_MODEL_DIR)
+    target_l = [CLASSIFIER_FILE_NAME]
+
+    return {
+        'file_dep': depend_l,
+        'actions': cmd_l,
+        'targets': target_l,
+        'clean': ['rm {}'.format(CLASSIFIER_FILE_NAME)],
+        'verbosity': 2
+    }
+
+
+#############################
+# classify extracted features
+#############################
+
+def task_classify_extracted_features():
+    depend_l = []
+    cmd_l = []
+    target_l = []
+    # input
+    TARGET_DECOY_MODEL_DIR = "{}/target-decoy-models".format(EXPERIMENT_DIR)
+    CLASSIFIER_FILE_NAME = "{}/target-decoy-classifier.pkl".format(TARGET_DECOY_MODEL_DIR)
+    METRICS_DB_NAME = "{}/experiment-metrics-for-library-sequences.sqlite".format(TARGET_DECOY_MODEL_DIR)
+    depend_l = [CLASSIFIER_FILE_NAME,METRICS_DB_NAME]
+    # cmd
+    cmd = 'python -u classify-extracted-features.py -eb {experiment_base} -en {experiment_name} -rn {run_names}'.format(experiment_base=config['experiment_base_dir'], experiment_name=config['experiment_name'], run_names=config['run_names'])
+    cmd_l.append(cmd)
+    # output
+    EXTRACTED_FEATURES_DIR = "{}/extracted-features".format(EXPERIMENT_DIR)
+    EXTRACTED_FEATURES_DB_NAME = "{}/extracted-features.sqlite".format(EXTRACTED_FEATURES_DIR)
+    target_l = [EXTRACTED_FEATURES_DB_NAME]
+
+    return {
+        'file_dep': depend_l,
+        'actions': cmd_l,
+        'targets': target_l,
+        'clean': ['rm -rf {}'.format(EXTRACTED_FEATURES_DIR)],
+        'verbosity': 2
+    }
+
+
+#############################
+# generate summarised results
+#############################
+
+def task_summarise_results():
+    depend_l = []
+    cmd_l = []
+    target_l = []
+    # input
+    IDENTIFICATIONS_DIR = '{}/identifications-pasef'.format(EXPERIMENT_DIR)
+    IDENTIFICATIONS_FILE = '{}/exp-{}-identifications-pasef-recalibrated.feather'.format(IDENTIFICATIONS_DIR, config['experiment_name'])
+    EXTRACTED_FEATURES_DB_NAME = '{}/extracted-features/extracted-features.sqlite'.format(EXPERIMENT_DIR)
+    depend_l = [IDENTIFICATIONS_FILE,EXTRACTED_FEATURES_DB_NAME]
+    # cmd
+    cmd = 'python -u generate-results.py -eb {experiment_base} -en {experiment_name}'.format(experiment_base=config['experiment_base_dir'], experiment_name=config['experiment_name'])
+    cmd_l.append(cmd)
+    # output
+    RESULTS_DIR = "{}/summarised-results".format(EXPERIMENT_DIR)
+    RESULTS_DB_FILE_NAME = '{}/results.sqlite'.format(RESULTS_DIR)
+    target_l.append(RESULTS_DB_FILE_NAME)
+
+    return {
+        'file_dep': depend_l,
+        'actions': cmd_l,
+        'targets': target_l,
+        'clean': ['rm -rf {}'.format(RESULTS_DIR)],
+        'verbosity': 2
+    }
+
+
+###################
+# backup everything
+###################
+
 def task_make_copies():
     target_directory_name = ''
 
@@ -339,30 +528,16 @@ def task_make_copies():
         stop_run = time.time()
         print("total running time ({}): {} seconds".format(config, round(stop_run-start_run,1)))
 
-    def create_features_cmd_string():
-        # copy features
-        source_features_dir = '{}/features-{}'.format(EXPERIMENT_DIR, config['precursor_definition_method'])
-        cmd = 'cp -r {}/ {}/'.format(source_features_dir, target_directory_name)
-        return cmd
-
-    def create_mgfs_cmd_string():
-        # copy MGFs
-        source_features_dir = '{}/mgf-{}'.format(EXPERIMENT_DIR, config['precursor_definition_method'])
-        cmd = 'cp -r {}/ {}/'.format(source_features_dir, target_directory_name)
-        return cmd
-
-    def create_idents_cmd_string():
-        # copy identifications
-        source_identifications_dir = '{}/identifications-{}'.format(EXPERIMENT_DIR, config['precursor_definition_method'])
-        cmd = 'cp -r {}/ {}/'.format(source_identifications_dir, target_directory_name)
+    def create_cmd_string():
+        cmd = 'cp -r {}/ {}/'.format(EXPERIMENT_DIR, target_directory_name)
         return cmd
 
     # input
-    IDENTIFICATIONS_DIR = '{}/identifications-{}'.format(EXPERIMENT_DIR, config['precursor_definition_method'])
-    IDENTIFICATIONS_RECAL_FILE = '{}/exp-{}-identifications-{}-recalibrated.feather'.format(IDENTIFICATIONS_DIR, config['experiment_name'], config['precursor_definition_method'])
+    RESULTS_DIR = "{}/summarised-results".format(EXPERIMENT_DIR)
+    RESULTS_DB_FILE_NAME = '{}/results.sqlite'.format(RESULTS_DIR)
 
     return {
-        'file_dep': [IDENTIFICATIONS_RECAL_FILE],
-        'actions': [set_up_target_dir, CmdAction(create_features_cmd_string), CmdAction(create_mgfs_cmd_string), CmdAction(create_idents_cmd_string), finish_up],
+        'file_dep': [RESULTS_DB_FILE_NAME],
+        'actions': [set_up_target_dir, CmdAction(create_cmd_string), finish_up],
         'verbosity': 2
     }
