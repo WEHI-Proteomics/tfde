@@ -340,6 +340,9 @@ peptide_mass_units=2
 # Available for comet.
 mass_type_parent=1
 
+# 0=average masses, 1=monoisotopic masses
+mass_type_fragment=1
+
 # 0=singly charged peptide mass, 1=precursor m/z.
 # Available for comet.
 precursor_tolerance_type=1
