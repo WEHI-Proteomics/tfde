@@ -370,7 +370,9 @@ def resolve_fragment_ions(feature_d, ms2_points_df, mass_defect_bins):
     # perform intensity descent to resolve peaks
     raw_points_a = ms2_points_df[['mz','intensity']].to_numpy()
     peaks_a = intensity_descent(peaks_a=raw_points_a, peak_delta=None)
-    # deconvolution - see https://mobiusklein.github.io/ms_deisotope/docs/_build/html/deconvolution/deconvolution.html
+    # deconvolution
+    # for details on deconvolute_peaks see https://mobiusklein.github.io/ms_deisotope/docs/_build/html/deconvolution/deconvolution.html
+    # returns a list of DeconvolutedPeak - see https://github.com/mobiusklein/ms_deisotope/blob/bce522a949579a5f54465eab24194eb5693f40ef/ms_deisotope/peak_set.py#L78
     peaks_l = list(map(tuple, peaks_a))
     maximum_neutral_mass = 1700*feature_d['charge']  # give the deconvolution a reasonable upper limit to search within
     deconvoluted_peaks, _ = deconvolute_peaks(peaks_l, use_quick_charge=True, averagine=averagine.peptide, scorer=scoring.PenalizedMSDeconVFitter(minimum_score=20., penalty_factor=3.0), truncate_after=0.95, ignore_below=0.0, charge_range=(1,feature_d['charge']), retention_strategy=peak_retention_strategy.TopNRetentionStrategy(n_peaks=100, base_peak_coefficient=1e-6, max_mass=maximum_neutral_mass))
