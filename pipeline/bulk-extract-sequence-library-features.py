@@ -52,11 +52,6 @@ if not os.path.exists(EXPERIMENT_DIR):
     print("The experiment directory is required but doesn't exist: {}".format(EXPERIMENT_DIR))
     sys.exit(1)
 
-CONVERTED_DB_DIR = '{}/converted-databases'.format(EXPERIMENT_DIR)
-if not os.path.exists(CONVERTED_DB_DIR):
-    print("The converted databases directory is required but doesn't exist: {}".format(CONVERTED_DB_DIR))
-    sys.exit(1)
-
 # check the log directory exists
 LOG_DIR = "{}/logs".format(EXPERIMENT_DIR)
 if not os.path.exists(LOG_DIR):
