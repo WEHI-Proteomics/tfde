@@ -165,7 +165,7 @@ for group_name,group_df in recal_features_df.groupby('run_name'):
     # write out all the features
     print("writing {} recalibrated features to {}".format(len(group_df), RECAL_FEATURES_FILE))
     group_df.reset_index(drop=True, inplace=True)
-    group_df.to_feather(RECAL_FEATURES_FILE)
+    group_df.to_feather(RECAL_FEATURES_FILE, compression_level=None, chunksize=500)
 
     # write the metadata
     info.append(('total_running_time',round(time.time()-start_run,1)))
