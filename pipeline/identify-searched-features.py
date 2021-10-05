@@ -120,7 +120,7 @@ psms_df.rename(columns={'scan': 'feature_id'}, inplace=True)
 psms_df.drop(['charge'], axis=1, inplace=True)
 
 # remove the poor quality identifications
-psms_df = psms_df[psms_df['peptide mass'] > 0]
+psms_df = psms_df[(psms_df['peptide mass'] > 0) & (psms_df['percolator q-value'] <= MAXIMUM_Q_VALUE)]
 
 # add the run names
 percolator_df = pd.merge(psms_df, mapping_df, how='left', left_on=['file_idx'], right_on=['file_idx'])
