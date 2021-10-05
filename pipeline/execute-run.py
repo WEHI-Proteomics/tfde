@@ -3,6 +3,7 @@ from doit.action import CmdAction
 import datetime
 import time
 import os
+from os.path import expanduser
 
 # This is the set of tasks to take a raw instrument database and create a list of peptides
 
@@ -529,12 +530,16 @@ def task_make_copies():
         cmd = 'cp -r {}/ {}/'.format(EXPERIMENT_DIR, target_directory_name)
         return cmd
 
+    def create_copy_log_cmd_string():
+        cmd = 'cp {}/bulk-run.log {}/'.format(expanduser('~'), target_directory_name)
+        return cmd
+
     # input
     RESULTS_DIR = "{}/summarised-results".format(EXPERIMENT_DIR)
     RESULTS_DB_FILE_NAME = '{}/results.sqlite'.format(RESULTS_DIR)
 
     return {
         'file_dep': [RESULTS_DB_FILE_NAME],
-        'actions': [set_up_target_dir, CmdAction(create_cmd_string), finish_up],
+        'actions': [set_up_target_dir, CmdAction(create_cmd_string), CmdAction(create_copy_log_cmd_string), finish_up],
         'verbosity': 2
     }
