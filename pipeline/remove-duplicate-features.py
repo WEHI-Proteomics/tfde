@@ -80,7 +80,6 @@ if args.precursor_definition_method == 'pasef':
     features_df = pd.concat(features_l, axis=0, sort=False, ignore_index=True)
     print('loaded {} features in {} chunks from {}'.format(len(features_df), len(feature_files), FEATURE_CHUNKS_DIR))
     del features_l[:]
-    features_df.drop(['index'], axis=1, inplace=True)  # should do this in detect-features.py L701 but this will do for now
 else:
     FEATURES_IDENT_FILE = '{}/exp-{}-run-{}-features-3did-ident.feather'.format(FEATURES_DIR, args.experiment_name, args.run_name)
     features_df = pd.read_feather(FEATURES_IDENT_FILE)

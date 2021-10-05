@@ -698,7 +698,7 @@ else:
 print("writing {} features in {} chunks to {}".format(len(features_df), num_chunks, FEATURE_CHUNKS_DIR))
 for i in range(num_chunks):
     FEATURES_FILE = '{}/exp-{}-run-{}-features-pasef-{:03d}.feather'.format(FEATURE_CHUNKS_DIR, args.experiment_name, args.run_name, i)
-    features_df[i*chunk_size:(i + 1) * chunk_size].reset_index().to_feather(FEATURES_FILE)
+    features_df[i*chunk_size:(i + 1) * chunk_size].reset_index(drop=True).to_feather(FEATURES_FILE)
 
 # write the metadata
 info.append(('total_running_time',round(time.time()-start_run,1)))
