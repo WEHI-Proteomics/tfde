@@ -519,7 +519,7 @@ def task_make_copies():
         nonlocal target_directory_name
         # set up copy directory
         d = datetime.datetime.now()
-        target_directory_name = '/media/big-ssd/results-{}/{}'.format(config['experiment_name'], d.strftime("%Y-%m-%d-%H-%M-%S"))
+        target_directory_name = '/media/data-4t-a/results-{}/{}'.format(config['experiment_name'], d.strftime("%Y-%m-%d-%H-%M-%S"))
         if not os.path.exists(target_directory_name):
             os.makedirs(target_directory_name)
         print('copying results to {}'.format(target_directory_name))
