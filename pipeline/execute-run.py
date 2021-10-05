@@ -1,11 +1,8 @@
 from doit import get_var
 from doit.action import CmdAction
-from os.path import expanduser
 import datetime
 import time
-import shutil
 import os
-import sys
 
 # This is the set of tasks to take a raw instrument database and create a list of peptides
 
