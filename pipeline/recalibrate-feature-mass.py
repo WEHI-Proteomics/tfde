@@ -55,8 +55,8 @@ def generate_estimator(X_train, X_test, y_train, y_test):
 
 # train a model on the features that gave the best identifications to predict the mass error, so we can predict the mass error for all the features 
 # detected (not just those with high quality identifications), and adjust their calculated mass to give zero mass error.
-def adjust_features(run_name, idents_for_training_df, run_features_df):
-    print("processing {} features for run {}, {} examples for the training set".format(len(run_features_df), run_name, len(idents_for_training_df)))
+def adjust_features(idents_for_training_df, run_features_df):
+    print("processing {} features, {} examples for the training set".format(len(run_features_df), len(idents_for_training_df)))
 
     X = idents_for_training_df[['monoisotopic_mz','scan_apex','rt_apex','feature_intensity']].to_numpy()
     y = idents_for_training_df[['mass_error']].to_numpy()[:,0]
@@ -72,9 +72,7 @@ def adjust_features(run_name, idents_for_training_df, run_features_df):
     run_features_df['recalibrated_monoisotopic_mass'] = run_features_df.monoisotopic_mass - run_features_df.predicted_mass_error
     run_features_df['recalibrated_monoisotopic_mz'] = run_features_df.apply(lambda row: mono_mass_to_mono_mz(row.recalibrated_monoisotopic_mass, row.charge), axis=1)
 
-    # just return the minimum to recombine
-    adjusted_df = run_features_df[['run_name','feature_id','predicted_mass_error','recalibrated_monoisotopic_mass','recalibrated_monoisotopic_mz']]
-    return adjusted_df
+    return run_features_df
 
 
 ################################
@@ -138,34 +136,23 @@ if len(idents_df) == 0:
     sys.exit(1)
 
 # load the features for recalibration
+# for each run, produce a model that estimates the mass error from a feature's characteristics, and generate a revised feature file with adjusted mass, 
+# to get a smaller mass error on a second Comet search with tighter mass tolerance.
 FEATURES_DIR = '{}/features-{}'.format(EXPERIMENT_DIR, args.precursor_definition_method)
 feature_files = glob.glob("{}/exp-{}-run-*-features-{}-dedup.feather".format(FEATURES_DIR, args.experiment_name, args.precursor_definition_method))
 features_l = []
 for f in feature_files:
-    features_l.append(pd.read_feather(f))
-features_df = pd.concat(features_l, axis=0, sort=False, ignore_index=True)
-del features_l[:]
-print('loaded {} features from {} files for recalibration'.format(len(features_df), len(feature_files)))
+    features_df = pd.read_feather(f)
+    run_name = features_df.iloc[0].run_name
+    print('loaded {} features for run {} from {} for recalibration'.format(len(features_df), run_name, f))
+    print("training models and adjusting monoisotopic mass for each feature")
+    adjusted_features_df = adjust_features(idents_for_training_df=idents_df[(idents_df.run_name == run_name)], run_features_df=features_df)
 
-# for each run, produce a model that estimates the mass error from a feature's characteristics, and generate a revised feature file with adjusted mass, 
-# to get a smaller mass error on a second Comet search with tighter mass tolerance.
-print("training models and adjusting monoisotopic mass for each feature")
-adjusted_features_l = [adjust_features(run_name=group_name, idents_for_training_df=group_df, run_features_df=features_df[features_df.run_name == group_name][['run_name','feature_id','monoisotopic_mass','monoisotopic_mz','scan_apex','rt_apex','feature_intensity','charge']]) for group_name,group_df in idents_df.groupby('run_name')]
-
-# join the list of dataframes into a single dataframe
-adjusted_features_df = pd.concat(adjusted_features_l, axis=0, sort=False, ignore_index=True)
-recal_features_df = pd.merge(features_df, adjusted_features_df, how='inner', left_on=['run_name','feature_id'], right_on=['run_name','feature_id'])
-del features_df
-del adjusted_features_df
-
-# write out the recalibrated features, one file for each run
-for group_name,group_df in recal_features_df.groupby('run_name'):
-    RECAL_FEATURES_FILE = '{}/exp-{}-run-{}-features-{}-recalibrated.feather'.format(FEATURES_DIR, args.experiment_name, group_name, args.precursor_definition_method)
-
-    # write out all the features
-    print("writing {} recalibrated features to {}".format(len(group_df), RECAL_FEATURES_FILE))
-    group_df.reset_index(drop=True, inplace=True)
-    group_df.to_feather(RECAL_FEATURES_FILE, compression_level=None, chunksize=500)
+    # write out the recalibrated features, one file for each run
+    RECAL_FEATURES_FILE = '{}/exp-{}-run-{}-features-{}-recalibrated.feather'.format(FEATURES_DIR, args.experiment_name, run_name, args.precursor_definition_method)
+    print("writing {} recalibrated features to {}".format(len(adjusted_features_df), RECAL_FEATURES_FILE))
+    adjusted_features_df.reset_index(drop=True, inplace=True)
+    adjusted_features_df.to_feather(RECAL_FEATURES_FILE, compression_level=None, chunksize=500)
 
     # write the metadata
     info.append(('total_running_time',round(time.time()-start_run,1)))
