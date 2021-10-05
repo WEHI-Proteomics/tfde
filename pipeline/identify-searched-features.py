@@ -135,19 +135,15 @@ if not args.recalibration_mode:
 else:
     files_l = glob.glob('{}/exp-{}-run-*-features-*-recalibrated.feather'.format(FEATURES_DIR, args.experiment_name))
 
-print('loading the detected features')
+print('loading the detected features and merging them with the identifications')
 for f in files_l:
-    df_l.append(pd.read_feather(f))
-features_df = pd.concat(df_l, axis=0, sort=False, ignore_index=True)
+    df = pd.merge(pd.read_feather(f), percolator_df, how='inner', left_on=['run_name','feature_id'], right_on=['run_name','feature_id'])
+    df_l.append(df)
+identifications_df = pd.concat(df_l, axis=0, sort=False, ignore_index=True)
 del df_l[:]
 
-# merge the identifications with the features
-print('merging the feature detections and the identifications')
-identifications_df = pd.merge(features_df, percolator_df, how='inner', left_on=['run_name','feature_id'], right_on=['run_name','feature_id'])
-del features_df
-del percolator_df
-
 # add the mass of cysteine carbamidomethylation to the theoretical peptide mass from percolator, for the fixed modification of carbamidomethyl
+print('calculating mass error for identifications')
 identifications_df['observed_monoisotopic_mass'] = calculate_monoisotopic_mass_from_mz(identifications_df[monoisotopic_mz_column_name], identifications_df.charge)
 identifications_df['theoretical_peptide_mass'] = identifications_df['peptide mass'] + (identifications_df.sequence.str.count('C') * ADD_C_CYSTEINE_DA)
 
