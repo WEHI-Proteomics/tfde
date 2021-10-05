@@ -143,11 +143,9 @@ del df_l[:]
 
 # merge the identifications with the features
 print('merging the feature detections and the identifications')
-identifications_df = pd.merge(features_df, percolator_df, how='left', left_on=['run_name','feature_id'], right_on=['run_name','feature_id'])
+identifications_df = pd.merge(features_df, percolator_df, how='inner', left_on=['run_name','feature_id'], right_on=['run_name','feature_id'])
 del features_df
-
-# remove any features that were not identified
-identifications_df.dropna(subset=['sequence'], inplace=True)
+del percolator_df
 
 # add the mass of cysteine carbamidomethylation to the theoretical peptide mass from percolator, for the fixed modification of carbamidomethyl
 identifications_df['observed_monoisotopic_mass'] = calculate_monoisotopic_mass_from_mz(identifications_df[monoisotopic_mz_column_name], identifications_df.charge)
