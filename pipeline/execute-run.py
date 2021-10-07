@@ -539,10 +539,10 @@ def task_make_copies():
         # create the list of actions
         actions_l = []
         for source_dir in directory_l:
-            actions_l.append(CmdAction('cp -r {}/ {}/'.format(source_dir, target_directory_name)))
+            actions_l.append('cp -r {}/ {}/'.format(source_dir, target_directory_name))
 
         # copy the log
-        actions_l.append(CmdAction('cp {}/bulk-run.log {}/'.format(expanduser('~'), target_directory_name)))
+        actions_l.append('cp {}/bulk-run.log {}/'.format(expanduser('~'), target_directory_name))
         return actions_l
 
     # input
