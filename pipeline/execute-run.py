@@ -526,13 +526,32 @@ def task_make_copies():
         stop_run = time.time()
         print("total running time ({}): {} seconds".format(config, round(stop_run-start_run,1)))
 
-    def create_cmd_string():
-        cmd = 'cp -r {}/ {}/'.format(EXPERIMENT_DIR, target_directory_name)
-        return cmd
-
     def create_copy_log_cmd_string():
+        # display the run tim before we copy the log
+        stop_run = time.time()
+        print("total running time ({}): {} seconds".format(config, round(stop_run-start_run,1)))
+        # copy the log
         cmd = 'cp {}/bulk-run.log {}/'.format(expanduser('~'), target_directory_name)
         return cmd
+
+    def create_actions_list():
+        # directories to backup
+        directory_l = []
+        directory_l.append('{}/features-{}'.format(EXPERIMENT_DIR, config['precursor_definition_method']))
+        directory_l.append('{}/mgf-{}'.format(EXPERIMENT_DIR, config['precursor_definition_method']))
+        directory_l.append('{}/identifications-{}'.format(EXPERIMENT_DIR, config['precursor_definition_method']))
+        directory_l.append('{}/extracted-features'.format(EXPERIMENT_DIR))
+        directory_l.append('{}/sequence-library'.format(EXPERIMENT_DIR))
+        directory_l.append('{}/summarised-results'.format(EXPERIMENT_DIR))
+
+        # create the list of actions
+        actions_l = []
+        actions_l.append(set_up_target_dir)
+        for source_dir in directory_l:
+            actions_l.append(CmdAction('cp -r {}/ {}/'.format(source_dir, target_directory_name)))
+        actions_l.append(CmdAction(create_copy_log_cmd_string))
+        actions_l.append(finish_up)
+        return actions_l
 
     # input
     RESULTS_DIR = "{}/summarised-results".format(EXPERIMENT_DIR)
@@ -540,6 +559,6 @@ def task_make_copies():
 
     return {
         'file_dep': [RESULTS_DB_FILE_NAME],
-        'actions': [set_up_target_dir, CmdAction(create_cmd_string), CmdAction(create_copy_log_cmd_string), finish_up],
+        'actions': create_actions_list(),
         'verbosity': 2
     }
