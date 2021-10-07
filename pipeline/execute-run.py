@@ -548,5 +548,5 @@ def task_make_copies():
     return {
         # 'file_dep': [RESULTS_DB_FILE_NAME],
         'actions': create_actions_list(),
-        'verbosity': 10
+        'verbosity': 2
     }
