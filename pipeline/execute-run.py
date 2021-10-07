@@ -511,15 +511,22 @@ def task_summarise_results():
 ###################
 
 def task_make_copies():
+    target_directory_name = ''
 
-    def create_actions_list():
+    def set_up():
+        nonlocal target_directory_name
+
+        # display total running time
+        stop_run = time.time()
+        print("total running time ({}): {} seconds".format(config, round(stop_run-start_run,1)))
+
         # set up copy directory
         d = datetime.datetime.now()
         target_directory_name = '/media/data-4t-a/results-{}/{}'.format(config['experiment_name'], d.strftime("%Y-%m-%d-%H-%M-%S"))
-        if not os.path.exists(target_directory_name):
-            os.makedirs(target_directory_name)
+        os.makedirs(target_directory_name)
         print('copying results to {}'.format(target_directory_name))
 
+    def create_actions_list():
         # directories to backup
         directory_l = []
         directory_l.append('{}/features-{}'.format(EXPERIMENT_DIR, config['precursor_definition_method']))
@@ -534,9 +541,6 @@ def task_make_copies():
         for source_dir in directory_l:
             actions_l.append(CmdAction('cp -r {}/ {}/'.format(source_dir, target_directory_name)))
 
-        stop_run = time.time()
-        print("total running time ({}): {} seconds".format(config, round(stop_run-start_run,1)))
-
         # copy the log
         actions_l.append(CmdAction('cp {}/bulk-run.log {}/'.format(expanduser('~'), target_directory_name)))
         return actions_l
@@ -547,6 +551,6 @@ def task_make_copies():
 
     return {
         'file_dep': [RESULTS_DB_FILE_NAME],
-        'actions': create_actions_list(),
+        'actions': [set_up]+create_actions_list(),
         'verbosity': 2
     }
