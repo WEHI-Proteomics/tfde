@@ -511,8 +511,11 @@ def task_summarise_results():
 ###################
 
 def task_make_copies():
+    target_directory_name = ''
 
-    def create_actions_list():
+    def setup_target():
+        nonlocal target_directory_name
+
         # display total running time
         stop_run = time.time()
         print("total running time ({}): {} seconds".format(config, round(stop_run-start_run,1)))
@@ -523,6 +526,7 @@ def task_make_copies():
         os.makedirs(target_directory_name)
         print('copying results to {}'.format(target_directory_name))
 
+    def create_actions_list():
         # directories to backup
         directory_l = []
         directory_l.append('{}/features-{}'.format(EXPERIMENT_DIR, config['precursor_definition_method']))
@@ -547,6 +551,6 @@ def task_make_copies():
 
     return {
         # 'file_dep': [RESULTS_DB_FILE_NAME],
-        'actions': create_actions_list(),
+        'actions': [setup_target]+create_actions_list(),
         'verbosity': 2
     }
