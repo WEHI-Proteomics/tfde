@@ -94,15 +94,16 @@ def task_detect_features():
     CUBOIDS_DIR = "{}/precursor-cuboids-{}".format(EXPERIMENT_DIR, config['precursor_definition_method'])
     FEATURES_DIR = "{}/features-{}".format(EXPERIMENT_DIR, config['precursor_definition_method'])
     for run_name in run_names_l:
-        # input
         CUBOIDS_FILE = '{}/exp-{}-run-{}-precursor-cuboids-{}.feather'.format(CUBOIDS_DIR, config['experiment_name'], run_name, config['precursor_definition_method'])
-        depend_l.append(CUBOIDS_FILE)
-        # command
-        cmd = 'python -u detect-features.py -eb {experiment_base} -en {experiment_name} -rn {run_name} -ini {INI_FILE} -rm cluster -pc {proportion_of_cores_to_use} -rl {rl} -ru {ru} {cs} {fmdw}'.format(experiment_base=config['experiment_base_dir'], experiment_name=config['experiment_name'], run_name=run_name, INI_FILE=config['ini_file'], proportion_of_cores_to_use=config['proportion_of_cores_to_use'], rl=int(config['rt_lower']), ru=int(config['rt_upper']), cs=config['cs_flag'], fmdw=config['fmdw_flag'])
-        cmd_l.append(cmd)
-        # output
         FEATURES_FILE = '{}/chunks/exp-{}-run-{}-features-{}-000.feather'.format(FEATURES_DIR, config['experiment_name'], run_name, config['precursor_definition_method'])
-        target_l.append(FEATURES_FILE)
+        if not os.path.isfile(FEATURES_FILE):
+            # input
+            depend_l.append(CUBOIDS_FILE)
+            # command
+            cmd = 'python -u detect-features.py -eb {experiment_base} -en {experiment_name} -rn {run_name} -ini {INI_FILE} -rm cluster -pc {proportion_of_cores_to_use} -rl {rl} -ru {ru} {cs} {fmdw}'.format(experiment_base=config['experiment_base_dir'], experiment_name=config['experiment_name'], run_name=run_name, INI_FILE=config['ini_file'], proportion_of_cores_to_use=config['proportion_of_cores_to_use'], rl=int(config['rt_lower']), ru=int(config['rt_upper']), cs=config['cs_flag'], fmdw=config['fmdw_flag'])
+            cmd_l.append(cmd)
+            # output
+            target_l.append(FEATURES_FILE)
 
     return {
         'file_dep': depend_l,
