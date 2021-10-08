@@ -560,7 +560,7 @@ def task_make_copies():
     RESULTS_DB_FILE_NAME = '{}/results.sqlite'.format(RESULTS_DIR)
 
     return {
-        # 'file_dep': [RESULTS_DB_FILE_NAME],
+        'file_dep': [RESULTS_DB_FILE_NAME],
         'actions': [setup_target, CmdAction(features_cmd), CmdAction(mgf_cmd), CmdAction(identifications_cmd), CmdAction(extracted_features_cmd), CmdAction(sequence_library_cmd), CmdAction(log_cmd)],
         'verbosity': 2
     }
