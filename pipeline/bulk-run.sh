@@ -55,7 +55,7 @@ set -e
 # echo
 
 echo "P3830_YUPS1"
-doit -f ./otf-peak-detect/pipeline/execute-run.py clean en=P3830_YUPS1
+# doit -f ./otf-peak-detect/pipeline/execute-run.py clean en=P3830_YUPS1
 doit -f ./otf-peak-detect/pipeline/execute-run.py pc=0.8 cs=true fmdw=true en=P3830_YUPS1 rn=P3830_YeastUPS1_01_Slot1-1_1_5066,P3830_YeastUPS1_02_Slot1-1_1_5067,P3830_YeastUPS1_03_Slot1-1_1_5068,P3830_YeastUPS1_04_Slot1-1_1_5069,P3830_YeastUPS1_05_Slot1-1_1_5070,P3830_YeastUPS1_06_Slot1-1_1_5076,P3830_YeastUPS1_07_Slot1-1_1_5077,P3830_YeastUPS1_08_Slot1-1_1_5078,P3830_YeastUPS1_09_Slot1-1_1_5079,P3830_YeastUPS1_10_Slot1-1_1_5080 rl=0 ru=3000 ff="/home/daryl/otf-peak-detect/fasta/ups1-ups2-yeast.fasta" ini='/home/daryl/otf-peak-detect/pipeline/pasef-process-short-gradient.ini'
 echo
 
