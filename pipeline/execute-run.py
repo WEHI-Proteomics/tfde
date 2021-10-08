@@ -526,24 +526,34 @@ def task_make_copies():
         os.makedirs(target_directory_name)
         print('copying results to {}'.format(target_directory_name))
 
-    def create_actions_list():
-        # directories to backup
-        directory_l = []
-        directory_l.append('{}/features-{}'.format(EXPERIMENT_DIR, config['precursor_definition_method']))
-        directory_l.append('{}/mgf-{}'.format(EXPERIMENT_DIR, config['precursor_definition_method']))
-        directory_l.append('{}/identifications-{}'.format(EXPERIMENT_DIR, config['precursor_definition_method']))
-        directory_l.append('{}/extracted-features'.format(EXPERIMENT_DIR))
-        directory_l.append('{}/sequence-library'.format(EXPERIMENT_DIR))
-        directory_l.append('{}/summarised-results'.format(EXPERIMENT_DIR))
+    def features_cmd():
+        source_dir = '{}/features-{}'.format(EXPERIMENT_DIR, config['precursor_definition_method'])
+        cmd = 'cp -r {}/ {}/'.format(source_dir, target_directory_name)
+        return cmd
 
-        # create the list of actions
-        actions_l = []
-        for source_dir in directory_l:
-            actions_l.append('cp -r {}/ {}/'.format(source_dir, target_directory_name))
+    def mgf_cmd():
+        source_dir = '{}/mgf-{}'.format(EXPERIMENT_DIR, config['precursor_definition_method'])
+        cmd = 'cp -r {}/ {}/'.format(source_dir, target_directory_name)
+        return cmd
 
-        # copy the log
-        actions_l.append('cp {}/bulk-run.log {}/'.format(expanduser('~'), target_directory_name))
-        return actions_l
+    def identifications_cmd():
+        source_dir = '{}/identifications-{}'.format(EXPERIMENT_DIR, config['precursor_definition_method'])
+        cmd = 'cp -r {}/ {}/'.format(source_dir, target_directory_name)
+        return cmd
+
+    def extracted_features_cmd():
+        source_dir = '{}/extracted-features'.format(EXPERIMENT_DIR)
+        cmd = 'cp -r {}/ {}/'.format(source_dir, target_directory_name)
+        return cmd
+
+    def sequence_library_cmd():
+        source_dir = '{}/summarised-results'.format(EXPERIMENT_DIR)
+        cmd = 'cp -r {}/ {}/'.format(source_dir, target_directory_name)
+        return cmd
+
+    def log_cmd():
+        cmd = 'cp {}/bulk-run.log {}/'.format(expanduser('~'), target_directory_name)
+        return cmd
 
     # input
     RESULTS_DIR = "{}/summarised-results".format(EXPERIMENT_DIR)
@@ -551,6 +561,6 @@ def task_make_copies():
 
     return {
         # 'file_dep': [RESULTS_DB_FILE_NAME],
-        'actions': [setup_target]+create_actions_list(),
+        'actions': [setup_target, CmdAction(features_cmd), CmdAction(mgf_cmd), CmdAction(identifications_cmd), CmdAction(extracted_features_cmd), CmdAction(sequence_library_cmd), CmdAction(log_cmd)],
         'verbosity': 2
     }
