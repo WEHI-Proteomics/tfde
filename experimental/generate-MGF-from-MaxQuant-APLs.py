@@ -74,6 +74,10 @@ if not os.path.exists(BASE_MAXQUANT_DIR):
 if not os.path.exists(MGF_DIR):
     os.makedirs(MGF_DIR)
 
+# check the features directory
+if not os.path.exists(FEATURES_DIR):
+    os.makedirs(FEATURES_DIR)
+
 # load the allPeptides table
 print('loading the allPeptides table from {}'.format(ALLPEPTIDES_FILENAME))
 allpeptides_df = pd.read_csv(ALLPEPTIDES_FILENAME, sep='\t')
