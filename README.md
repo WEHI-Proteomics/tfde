@@ -1,5 +1,5 @@
 # TFD/E
-This is a repository for algorithms for targeted detection, extraction, and characterisation of peptide features in timsTOF data.
+This is a repository for algorithms for targeted detection, extraction, and characterisation of peptide features in [timsTOF](https://www.bruker.com/en/products-and-solutions/mass-spectrometry/timstof/timstof.html) data.
 
 There are a couple of approaches to feature detection here.
 
