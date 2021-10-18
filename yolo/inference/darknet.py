@@ -518,4 +518,4 @@ if __name__ == "__main__":
     # print(performDetect())
     #Uncomment the following line to see batch inference working 
     #print(performBatchDetect())
-    performBatchDetect(thresh= 0.25, configPath = "../otf-peak-detect/yolo-feature-detection/models/yolov3-tiny_3l-peptides.cfg", weightPath = "/data/yolov3-tiny_3l-peptides_best.weights", metaPath= "./data/peptides/peptides-obj.data", hier_thresh=.5, nms=.45, batch_size=3)
+    performBatchDetect(thresh= 0.25, configPath = "../tfde/yolo-feature-detection/models/yolov3-tiny_3l-peptides.cfg", weightPath = "/data/yolov3-tiny_3l-peptides_best.weights", metaPath= "./data/peptides/peptides-obj.data", hier_thresh=.5, nms=.45, batch_size=3)

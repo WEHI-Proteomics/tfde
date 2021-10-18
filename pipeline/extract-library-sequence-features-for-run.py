@@ -1100,7 +1100,7 @@ parser.add_argument('-ssseq','--small_set_sequence', type=str, help='Only extrac
 parser.add_argument('-sschr','--small_set_charge', type=int, help='The charge for the selected sequence.', required=False)
 parser.add_argument('-mpwrt','--max_peak_width_rt', type=int, default=10, help='Maximum peak width tolerance for the extraction from the estimated coordinate in RT.', required=False)
 parser.add_argument('-mpwccs','--max_peak_width_ccs', type=int, default=20, help='Maximum peak width tolerance for the extraction from the estimated coordinate in CCS.', required=False)
-parser.add_argument('-ini','--ini_file', type=str, default='./otf-peak-detect/pipeline/pasef-process-short-gradient.ini', help='Path to the config file.', required=False)
+parser.add_argument('-ini','--ini_file', type=str, default='./tfde/pipeline/pasef-process-short-gradient.ini', help='Path to the config file.', required=False)
 args = parser.parse_args()
 
 # Print the arguments for the log

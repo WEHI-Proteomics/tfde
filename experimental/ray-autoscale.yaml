@@ -100,7 +100,7 @@ worker_nodes:
 file_mounts: {
    "/home/ubuntu/HeLa_20KInt-rt-4340-4580-denoised/HeLa_20KInt.sqlite": "/Users/darylwilding-mcbride/Downloads/HeLa_20KInt-rt-4340-4580-denoised/HeLa_20KInt.sqlite",
    "/home/ubuntu/denoised-HeLa_20KInt_2KIT_Slot1-46_01_1179.d/analysis.tdf": "/Users/darylwilding-mcbride/Downloads/denoised-HeLa_20KInt_2KIT_Slot1-46_01_1179.d/analysis.tdf",
-   "/home/ubuntu/feature-extraction-from-PASEF-isolation-windows.py": "/Users/darylwilding-mcbride/Documents/otf-peak-detect/experiments/feature-extraction-from-PASEF-isolation-windows.py"
+   "/home/ubuntu/feature-extraction-from-PASEF-isolation-windows.py": "/Users/darylwilding-mcbride/Documents/tfde/experiments/feature-extraction-from-PASEF-isolation-windows.py"
 }
 
 # List of commands that will be run before `setup_commands`. If docker is

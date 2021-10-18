@@ -624,7 +624,7 @@ parser.add_argument('-mw','--mz_width_per_segment', type=int, default=20, help='
 parser.add_argument('-rl','--rt_lower', type=int, default='1650', help='Lower limit for retention time.', required=False)
 parser.add_argument('-ru','--rt_upper', type=int, default='2200', help='Upper limit for retention time.', required=False)
 parser.add_argument('-minvi','--minimum_voxel_intensity', type=int, default='2500', help='The minimum voxel intensity to analyse.', required=False)
-parser.add_argument('-ini','--ini_file', type=str, default='./otf-peak-detect/pipeline/pasef-process-short-gradient.ini', help='Path to the config file.', required=False)
+parser.add_argument('-ini','--ini_file', type=str, default='./tfde/pipeline/pasef-process-short-gradient.ini', help='Path to the config file.', required=False)
 parser.add_argument('-rm','--ray_mode', type=str, choices=['local','cluster'], help='The Ray mode to use.', required=True)
 parser.add_argument('-pc','--proportion_of_cores_to_use', type=float, default=0.9, help='Proportion of the machine\'s cores to use for this program.', required=False)
 parser.add_argument('-v','--verbose', action='store_true', help='Print more information during processing.')

@@ -409,7 +409,7 @@ def tile_list(run_name, tile_id):
 # retrieve the via annotation tool
 @app.route('/via')
 def via():
-    via_file_name = 'otf-peak-detect/yolo-feature-detection/via/via.html'
+    via_file_name = 'tfde/yolo-feature-detection/via/via.html'
     home = str(Path.home())
     response = send_file("{}/{}".format(home, via_file_name))
     return response

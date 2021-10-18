@@ -15,7 +15,7 @@ parser.add_argument('-eb','--experiment_base_dir', type=str, default='./experime
 parser.add_argument('-en','--experiment_name', type=str, help='Name of the experiment.', required=True)
 parser.add_argument('-rn','--run_name', type=str, help='Name of the run.', required=True)
 parser.add_argument('-pdm','--precursor_definition_method', type=str, choices=['pasef','3did','mq'], help='The method used to define the precursor cuboids.', required=True)
-parser.add_argument('-ini','--ini_file', type=str, default='./otf-peak-detect/pipeline/pasef-process-short-gradient.ini', help='Path to the config file.', required=False)
+parser.add_argument('-ini','--ini_file', type=str, default='./tfde/pipeline/pasef-process-short-gradient.ini', help='Path to the config file.', required=False)
 parser.add_argument('-v','--verbose_mode', action='store_true', help='Verbose mode.')
 args = parser.parse_args()
 

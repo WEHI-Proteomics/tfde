@@ -134,7 +134,7 @@ parser.add_argument('-ml','--mz_lower', type=int, default='100', help='Lower lim
 parser.add_argument('-mu','--mz_upper', type=int, default='1700', help='Upper limit for m/z.', required=False)
 parser.add_argument('-rl','--rt_lower', type=int, default='1650', help='Lower limit for retention time.', required=False)
 parser.add_argument('-ru','--rt_upper', type=int, default='2200', help='Upper limit for retention time.', required=False)
-parser.add_argument('-ini','--ini_file', type=str, default='./otf-peak-detect/pipeline/pasef-process-short-gradient.ini', help='Path to the config file.', required=False)
+parser.add_argument('-ini','--ini_file', type=str, default='./tfde/pipeline/pasef-process-short-gradient.ini', help='Path to the config file.', required=False)
 parser.add_argument('-ssm','--small_set_mode', action='store_true', help='A small subset of the data for testing purposes.')
 parser.add_argument('-rm','--ray_mode', type=str, choices=['cluster','join','local'], help='The Ray mode to use.', required=True)
 parser.add_argument('-ra','--redis_address', type=str, help='Address of the cluster to join.', required=False)

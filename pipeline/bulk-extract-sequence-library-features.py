@@ -35,7 +35,7 @@ parser.add_argument('-ssm','--small_set_mode', action='store_true', help='A smal
 parser.add_argument('-ssms','--small_set_mode_size', type=int, default='100', help='The number of identifications to sample for small set mode.', required=False)
 parser.add_argument('-mpwrt','--max_peak_width_rt', type=int, default=10, help='Maximum peak width tolerance for the extraction from the estimated coordinate in RT.', required=False)
 parser.add_argument('-mpwccs','--max_peak_width_ccs', type=int, default=20, help='Maximum peak width tolerance for the extraction from the estimated coordinate in CCS.', required=False)
-parser.add_argument('-ini','--ini_file', type=str, default='./otf-peak-detect/pipeline/pasef-process-short-gradient.ini', help='Path to the config file.', required=False)
+parser.add_argument('-ini','--ini_file', type=str, default='./tfde/pipeline/pasef-process-short-gradient.ini', help='Path to the config file.', required=False)
 args = parser.parse_args()
 
 # print the arguments for the log

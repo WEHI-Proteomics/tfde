@@ -14,7 +14,7 @@ from cmcrameri import cm
 
 
 # Create a set of tiles without labels for training purposes. This version uses Mk3 of the tile rendering algorithm.
-# Example: python ./otf-peak-detect/yolo-feature-detection/training/create-raw-data-tiles.py -eb ~/Downloads/experiments -en 190719_Hela_Ecoli -rn 190719_Hela_Ecoli_1to3_06 -tidx 33 34
+# Example: python ./tfde/yolo-feature-detection/training/create-raw-data-tiles.py -eb ~/Downloads/experiments -en 190719_Hela_Ecoli -rn 190719_Hela_Ecoli_1to3_06 -tidx 33 34
 
 PIXELS_X = 910
 PIXELS_Y = 910

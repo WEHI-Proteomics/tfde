@@ -21,7 +21,7 @@ def calculate_mono_mz(peptide_mass, charge):
 parser = argparse.ArgumentParser(description='Build a library of sequence attributes based on all the identifications in all the runs in an experiment.')
 parser.add_argument('-eb','--experiment_base_dir', type=str, default='./experiments', help='Path to the experiments directory.', required=False)
 parser.add_argument('-en','--experiment_name', type=str, help='Name of the experiment.', required=True)
-parser.add_argument('-ini','--ini_file', type=str, default='./otf-peak-detect/pipeline/pasef-process-short-gradient.ini', help='Path to the config file.', required=False)
+parser.add_argument('-ini','--ini_file', type=str, default='./tfde/pipeline/pasef-process-short-gradient.ini', help='Path to the config file.', required=False)
 args = parser.parse_args()
 
 # Print the arguments for the log
