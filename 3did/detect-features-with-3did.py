@@ -645,7 +645,7 @@ if not os.path.exists(EXPERIMENT_DIR):
     sys.exit(1)
 
 # check the raw database exists
-RAW_DATABASE_BASE_DIR = "{}/raw-databases".format(EXPERIMENT_DIR)
+RAW_DATABASE_BASE_DIR = "{}/raw-databases/denoised".format(EXPERIMENT_DIR)
 RAW_DATABASE_NAME = "{}/{}.d".format(RAW_DATABASE_BASE_DIR, args.run_name)
 if not os.path.exists(RAW_DATABASE_NAME):
     print("The raw database is required but doesn't exist: {}".format(RAW_DATABASE_NAME))
