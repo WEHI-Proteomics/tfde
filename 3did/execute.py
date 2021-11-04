@@ -27,6 +27,8 @@ config = {
     'ini_file': get_var('ini', ini_file),
     'proportion_of_cores_to_use': get_var('pc', 0.8),
     'mz_width_per_segment': get_var('mw', 20),
+    'rt_lower': get_var('rl', 1650),
+    'rt_upper': get_var('ru', 2200),
     'minvi': get_var('minvi', 3000)
     }
 
@@ -44,7 +46,7 @@ def task_detect_features():
     # input
     RAW_DATABASE_NAME = "{experiment_dir}/raw-databases/denoised/{run_name}.d/analysis.tdf".format(experiment_dir=EXPERIMENT_DIR, run_name=config['run_name'])
     # command
-    cmd = 'python -u detect-features-with-3did.py -eb {experiment_base} -en {experiment_name} -rn {run_name} -mw {mz_width_per_segment} -pc {proportion_of_cores_to_use} -ini {INI_FILE} -rm cluster -minvi {minvi}'.format(experiment_base=config['experiment_base_dir'], experiment_name=config['experiment_name'], run_name=config['run_name'], mz_width_per_segment=config['mz_width_per_segment'], proportion_of_cores_to_use=config['proportion_of_cores_to_use'], INI_FILE=config['ini_file'], minvi=config['minvi'])
+    cmd = 'python -u detect-features-with-3did.py -eb {experiment_base} -en {experiment_name} -rn {run_name} -mw {mz_width_per_segment} -pc {proportion_of_cores_to_use} -ini {INI_FILE} -rm cluster -minvi {minvi} -rl {rl} -ru {ru}'.format(experiment_base=config['experiment_base_dir'], experiment_name=config['experiment_name'], run_name=config['run_name'], mz_width_per_segment=config['mz_width_per_segment'], proportion_of_cores_to_use=config['proportion_of_cores_to_use'], INI_FILE=config['ini_file'], minvi=config['minvi'], rl=int(config['rt_lower']), ru=int(config['rt_upper']))
     # output
     FEATURES_DIR = '{experiment_dir}/features-3did'.format(experiment_dir=EXPERIMENT_DIR)
     FEATURES_FILE = '{features_dir}/exp-{experiment_name}-run-{run_name}-features-3did.feather'.format(features_dir=FEATURES_DIR, experiment_name=config['experiment_name'], run_name=config['run_name'])
