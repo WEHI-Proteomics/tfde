@@ -312,8 +312,10 @@ def find_features(segment_d):
         summary_df.sort_values(by=['voxel_intensity'], ascending=False, inplace=True)
         summary_df.reset_index(drop=True, inplace=True)
         summary_df['voxel_id'] = summary_df.index
-        summary_df['voxel_id'] = summary_df.apply(lambda row: generate_voxel_id(segment_id, row.voxel_id+1), axis=1)
         summary_df_name = '{}/summary-{}-{}.pkl'.format(SUMMARY_DIR, round(segment_d['mz_lower']), round(segment_d['mz_upper']))
+        summary_df.to_pickle(summary_df_name)
+        summary_df['voxel_id'] = summary_df.apply(lambda row: generate_voxel_id(segment_id, row.voxel_id+1), axis=1)
+        # summary_df_name = '{}/summary-{}-{}.pkl'.format(SUMMARY_DIR, round(segment_d['mz_lower']), round(segment_d['mz_upper']))
         summary_df.to_pickle(summary_df_name)
 
         # assign each raw point with their voxel ID
