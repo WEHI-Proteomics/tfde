@@ -565,7 +565,7 @@ def find_features(segment_d):
                                         if feature_d['isotope_count'] >= MINIMUM_NUMBER_OF_ISOTOPES:
                                             feature_d['monoisotopic_mz'] = feature.mono_mz
                                             feature_d['charge'] = feature.charge
-                                            feature_d['monoisotopic_mass'] = calculate_monoisotopic_mass_from_mz(monoisotopic_mz=feature_d['monoisotopic_mz'], charge=feature_d['charge'])
+                                            feature_d['monoisotopic_mass'] = feature.neutral_mass
                                             feature_d['feature_intensity'] = isotope_characteristics_d['intensity_with_saturation_correction'] if (isotope_characteristics_d['intensity_with_saturation_correction'] > isotope_characteristics_d['intensity_without_saturation_correction']) else isotope_characteristics_d['intensity_without_saturation_correction']
                                             feature_d['deconvolution_envelope'] = json.dumps([tuple(e) for e in feature.envelope])
                                             feature_d['deconvolution_score'] = feature.score
