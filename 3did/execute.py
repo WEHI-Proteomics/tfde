@@ -9,7 +9,7 @@ import os
 
 # To run from a clean state:
 # doit -f ./tfde/3did/execute.py clean en=P3856 rn=P3856_YHE211_1_Slot1-1_1_5104
-# doit -f ./tfde/3did/execute.py pc=0.8 en=P3856 rdn=P3856_YHE211_1_Slot1-1_1_5104.d rn=P3856_YHE211_1_Slot1-1_1_5104 minvi=5000 mw=10
+# doit -f ./tfde/3did/execute.py pc=0.8 en=P3856 rdn=P3856_YHE211_1_Slot1-1_1_5104.d rn=P3856_YHE211_1_Slot1-1_1_5104 minvi=3000 mw=10 rl=10 ru=2880
 
 # To run a single task, for example 'classify_features':
 # doit -f ./tfde/3did/execute.py clean classify_features pc=0.8 en=P3856 rdn=P3856_YHE211_1_Slot1-1_1_5104.d rn=P3856_YHE211_1_Slot1-1_1_5104 minvi=5000 mw=10
