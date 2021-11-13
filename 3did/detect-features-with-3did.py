@@ -17,7 +17,8 @@ import warnings
 from scipy.optimize import OptimizeWarning
 from sklearn.metrics.pairwise import cosine_similarity
 import shutil
-import alphatims.bruker
+import pathlib
+from opentimspy.opentims import OpenTIMS
 
 
 # determine the number of workers based on the number of available cores and the proportion of the machine to be used
@@ -565,7 +566,8 @@ def find_features(segment_d):
                                         if feature_d['isotope_count'] >= MINIMUM_NUMBER_OF_ISOTOPES:
                                             feature_d['monoisotopic_mz'] = feature.mono_mz
                                             feature_d['charge'] = feature.charge
-                                            feature_d['monoisotopic_mass'] = feature.neutral_mass
+                                            feature_d['neutral_mass'] = feature.neutral_mass
+                                            feature_d['monoisotopic_mass'] = calculate_monoisotopic_mass_from_mz(feature.mono_mz, feature.charge)
                                             feature_d['feature_intensity'] = isotope_characteristics_d['intensity_with_saturation_correction'] if (isotope_characteristics_d['intensity_with_saturation_correction'] > isotope_characteristics_d['intensity_without_saturation_correction']) else isotope_characteristics_d['intensity_without_saturation_correction']
                                             feature_d['deconvolution_envelope'] = json.dumps([tuple(e) for e in feature.envelope])
                                             feature_d['deconvolution_score'] = feature.score
@@ -745,20 +747,19 @@ if not ray.is_initialized():
         ray.init(local_mode=True)
 
 # load the raw database
-RAW_HDF_FILE = '{}.hdf'.format(args.run_name)
-RAW_HDF_PATH = '{}/{}'.format(RAW_DATABASE_BASE_DIR, RAW_HDF_FILE)
-if not os.path.isfile(RAW_HDF_PATH):
-    print('{} doesn\'t exist so loading the raw data from {}'.format(RAW_HDF_PATH, RAW_DATABASE_NAME))
-    data = alphatims.bruker.TimsTOF(RAW_DATABASE_NAME)
-    print('saving to {}'.format(RAW_HDF_PATH))
-    _ = data.save_as_hdf(
-        directory=RAW_DATABASE_BASE_DIR,
-        file_name=RAW_HDF_FILE,
-        overwrite=True
-    )
-else:
-    print('loading raw data from {}'.format(RAW_HDF_PATH))
-    data = alphatims.bruker.TimsTOF(RAW_HDF_PATH)
+print('loading raw MS1 data from {}'.format(RAW_DATABASE_NAME))
+path = pathlib.Path(RAW_DATABASE_NAME)
+D = OpenTIMS(path) # get data handle
+
+df_l = []
+for idx,d in enumerate(D.query_iter(D.ms1_frames, columns=('frame','mz','scan','intensity','retention_time'))):
+    d['frame'] = d['frame'].astype(np.uint16, copy=False)
+    d['mz'] = d['mz'].astype(np.float64, copy=False)
+    d['scan'] = d['scan'].astype(np.uint16, copy=False)
+    d['intensity'] = d['intensity'].astype(np.uint16, copy=False)
+    d['retention_time'] = d['retention_time'].astype(np.float64, copy=False)
+    df_l.append(pd.DataFrame(d))
+ms1_df = pd.concat(df_l, axis=0, sort=False, ignore_index=True)
 
 # calculate the segments
 mz_range = args.mz_upper - args.mz_lower
@@ -772,34 +773,21 @@ for i in range(NUMBER_OF_MZ_SEGMENTS):
     mz_upper=float(args.mz_lower+(i*args.mz_width_per_segment)+args.mz_width_per_segment)
     rt_lower=float(args.rt_lower)
     rt_upper=float(args.rt_upper)
-    scan_limit = scan_coords_for_single_charge_region(mz_lower=mz_lower, mz_upper=mz_upper)['scan_for_mz_upper']
+
     segment_id=i+1
     # extract the raw points for this segment
-    segment_df = data[
-        {
-            "rt_values": slice(rt_lower, rt_upper),
-            "mz_values": slice(mz_lower, mz_upper+SEGMENT_EXTENSION),
-            "scan_indices": slice(scan_limit, None),
-            "precursor_indices": 0,
-        }
-    ][['mz_values','scan_indices','frame_indices','rt_values','intensity_values']]
-    segment_df.rename(columns={'mz_values':'mz', 'scan_indices':'scan', 'frame_indices':'frame_id', 'rt_values':'retention_time_secs', 'intensity_values':'intensity'}, inplace=True)
-    # downcast the data types to minimise the memory used
-    int_columns = ['frame_id','scan','intensity']
-    segment_df[int_columns] = segment_df[int_columns].apply(pd.to_numeric, downcast="unsigned")
-    float_columns = ['retention_time_secs']
-    segment_df[float_columns] = segment_df[float_columns].apply(pd.to_numeric, downcast="float")    
+    segment_df = ms1_df[(ms1_df.retention_time >= rt_lower) & (ms1_df.retention_time <= rt_upper) & (ms1_df.mz >= mz_lower) & (ms1_df.mz <= mz_upper)].copy()
+    segment_df.rename(columns={'frame':'frame_id', 'retention_time':'retention_time_secs'}, inplace=True)
     # save the segment
     # segment_name = '{}/segment-{}.pkl'.format(SEGMENTS_DIR, segment_id)
     # segment_df.to_pickle(segment_name)
     # segment_packages_l.append({'mz_lower':mz_lower, 'mz_upper':mz_upper, 'rt_lower':rt_lower, 'rt_upper':rt_upper, 'scan_limit':scan_limit, 'segment_id':segment_id, 'segment_name':segment_name})
-    segment_packages_l.append({'mz_lower':mz_lower, 'mz_upper':mz_upper, 'rt_lower':rt_lower, 'rt_upper':rt_upper, 'scan_limit':scan_limit, 'segment_id':segment_id, 'segment_df':segment_df})
-del data
+    segment_packages_l.append({'mz_lower':mz_lower, 'mz_upper':mz_upper, 'rt_lower':rt_lower, 'rt_upper':rt_upper, 'segment_id':segment_id, 'segment_df':segment_df})
+del ms1_df
 
 # find all the features
 print('finding features')
 interim_names_l = ray.get([find_features.remote(segment_d=sp) for sp in segment_packages_l])
-# interim_names_l = [find_features(segment_d=sp) for sp in segment_packages_l]
 segment_packages_l = None
 
 # join the list of dataframes into a single dataframe
