@@ -634,6 +634,7 @@ parser.add_argument('-ini','--ini_file', type=str, default='./tfde/pipeline/pase
 parser.add_argument('-rm','--ray_mode', type=str, choices=['local','cluster'], help='The Ray mode to use.', required=True)
 parser.add_argument('-pc','--proportion_of_cores_to_use', type=float, default=0.9, help='Proportion of the machine\'s cores to use for this program.', required=False)
 parser.add_argument('-v','--verbose', action='store_true', help='Print more information during processing.')
+parser.add_argument('-d','--denoised', action='store_true', help='Use the denoised version of the raw database.')
 args = parser.parse_args()
 
 # print the arguments for the log
@@ -651,7 +652,10 @@ if not os.path.exists(EXPERIMENT_DIR):
     sys.exit(1)
 
 # check the raw database exists
-RAW_DATABASE_BASE_DIR = "{}/raw-databases/denoised".format(EXPERIMENT_DIR)
+if args.denoised:
+    RAW_DATABASE_BASE_DIR = "{}/raw-databases/denoised".format(EXPERIMENT_DIR)
+else:
+    RAW_DATABASE_BASE_DIR = "{}/raw-databases".format(EXPERIMENT_DIR)
 RAW_DATABASE_NAME = "{}/{}.d".format(RAW_DATABASE_BASE_DIR, args.run_name)
 if not os.path.exists(RAW_DATABASE_NAME):
     print("The raw database is required but doesn't exist: {}".format(RAW_DATABASE_NAME))
