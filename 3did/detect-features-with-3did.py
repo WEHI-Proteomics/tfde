@@ -365,7 +365,7 @@ def find_features(segment_d):
                     iso_mz_condition = (segment_df.mz >= iso_mz_lower) & (segment_df.mz <= iso_mz_upper)
                     isotope_2d_df = segment_df[iso_mz_condition & (segment_df.scan >= frame_region_scan_lower) & (segment_df.scan <= frame_region_scan_upper) & voxel_rt_condition]
                     # collapsing the monoisotopic's summed points onto the mobility dimension
-                    scan_df = isotope_2d_df.groupby(['scan'], as_index=False).intensity.sum()
+                    scan_df = isotope_2d_df.groupby(['scan','inverse_k0'], as_index=False).intensity.sum()
                     scan_df.sort_values(by=['scan'], ascending=True, inplace=True)
                     if len(scan_df) >= MINIMUM_NUMBER_OF_SCANS_IN_BASE_PEAK:
 
@@ -393,6 +393,7 @@ def find_features(segment_d):
                         peaks_df['delta'] = abs(peaks_df.scan - voxel_scan_midpoint)
                         peaks_df.sort_values(by=['delta'], ascending=True, inplace=True)
                         scan_apex = peaks_df.iloc[0].scan
+                        inverse_k0_apex = peaks_df.iloc[0].inverse_k0
 
                         # find the valleys nearest the scan apex
                         valley_idxs = peakutils.indexes(-scan_df.filtered_intensity.values.astype(int), thres=VALLEYS_THRESHOLD_SCAN, min_dist=VALLEYS_MIN_DIST_SCAN, thres_abs=False)
@@ -544,6 +545,8 @@ def find_features(segment_d):
                                     feature_d['scan_apex'] = scan_apex
                                     feature_d['scan_lower'] = iso_scan_lower
                                     feature_d['scan_upper'] = iso_scan_upper
+
+                                    feature_d['inverse_k0_apex'] = inverse_k0_apex
 
                                     feature_d['rt_apex'] = rt_apex
                                     feature_d['rt_lower'] = iso_rt_lower
@@ -782,12 +785,12 @@ for i in range(NUMBER_OF_MZ_SEGMENTS):
             "intensity_values": slice(args.minimum_point_intensity, None),
             "precursor_indices": 0,
         }
-    ][['mz_values','scan_indices','frame_indices','rt_values','intensity_values']]
-    segment_df.rename(columns={'mz_values':'mz', 'scan_indices':'scan', 'frame_indices':'frame_id', 'rt_values':'retention_time_secs', 'intensity_values':'intensity'}, inplace=True)
+    ][['mz_values','scan_indices','mobility_values','frame_indices','rt_values','intensity_values']]
+    segment_df.rename(columns={'mz_values':'mz', 'scan_indices':'scan', 'mobility_values':'inverse_k0', 'frame_indices':'frame_id', 'rt_values':'retention_time_secs', 'intensity_values':'intensity'}, inplace=True)
     # downcast the data types to minimise the memory used
     int_columns = ['frame_id','scan','intensity']
     segment_df[int_columns] = segment_df[int_columns].apply(pd.to_numeric, downcast="unsigned")
-    float_columns = ['retention_time_secs']
+    float_columns = ['retention_time_secs','inverse_k0']
     segment_df[float_columns] = segment_df[float_columns].apply(pd.to_numeric, downcast="float")    
     # save the segment
     # segment_name = '{}/segment-{}.pkl'.format(SEGMENTS_DIR, segment_id)
