@@ -778,6 +778,7 @@ for i in range(NUMBER_OF_MZ_SEGMENTS):
         {
             "rt_values": slice(rt_lower, rt_upper),
             "mz_values": slice(mz_lower, mz_upper+SEGMENT_EXTENSION),
+            "intensity_values": slice(args.minimum_point_intensity, None),
             "precursor_indices": 0,
         }
     ][['mz_values','scan_indices','frame_indices','rt_values','intensity_values']]
