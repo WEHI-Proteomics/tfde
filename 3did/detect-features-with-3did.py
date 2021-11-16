@@ -573,6 +573,7 @@ def find_features(segment_d):
                                             feature_d['scan_r_squared'] = scan_r_squared
                                             feature_d['rt_df'] = rt_df.to_json(orient='records')
                                             feature_d['rt_r_squared'] = rt_r_squared
+                                            feature_d['number_of_frames'] = len(base_peak_df.frame_id.unique())
                                             feature_d['voxels_processed'] = json.dumps(list(feature_d['voxels_processed']))
                                             # add it to the list
                                             features_l.append(feature_d)
