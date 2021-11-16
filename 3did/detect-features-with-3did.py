@@ -31,12 +31,6 @@ def find_filter_length(number_of_points):
     filter_lengths = [51,11,5]  # must be a positive odd number, greater than the polynomial order, and less than the number of points to be filtered
     return filter_lengths[next(x[0] for x in enumerate(filter_lengths) if x[1] < number_of_points)]
 
-# define a straight line to exclude the charge-1 cloud
-def scan_coords_for_single_charge_region(mz_lower, mz_upper):
-    scan_for_mz_lower = max(int(-1 * ((1.2 * mz_lower) - 1252)), 0)
-    scan_for_mz_upper = max(int(-1 * ((1.2 * mz_upper) - 1252)), 0)
-    return {'scan_for_mz_lower':scan_for_mz_lower, 'scan_for_mz_upper':scan_for_mz_upper}
-
 # calculate the intensity-weighted centroid
 # takes a numpy array of intensity, and another of mz
 def intensity_weighted_centroid(_int_f, _x_f):
@@ -629,6 +623,7 @@ parser.add_argument('-mw','--mz_width_per_segment', type=int, default=20, help='
 parser.add_argument('-rl','--rt_lower', type=int, default='1650', help='Lower limit for retention time.', required=False)
 parser.add_argument('-ru','--rt_upper', type=int, default='2200', help='Upper limit for retention time.', required=False)
 parser.add_argument('-minvi','--minimum_voxel_intensity', type=int, default='2500', help='The minimum voxel intensity to analyse.', required=False)
+parser.add_argument('-mi','--minimum_point_intensity', type=int, default='200', help='The minimum point intensity to include.', required=False)
 parser.add_argument('-ini','--ini_file', type=str, default='./tfde/pipeline/pasef-process-short-gradient.ini', help='Path to the config file.', required=False)
 parser.add_argument('-rm','--ray_mode', type=str, choices=['local','cluster'], help='The Ray mode to use.', required=True)
 parser.add_argument('-pc','--proportion_of_cores_to_use', type=float, default=0.9, help='Proportion of the machine\'s cores to use for this program.', required=False)
@@ -777,14 +772,12 @@ for i in range(NUMBER_OF_MZ_SEGMENTS):
     mz_upper=float(args.mz_lower+(i*args.mz_width_per_segment)+args.mz_width_per_segment)
     rt_lower=float(args.rt_lower)
     rt_upper=float(args.rt_upper)
-    scan_limit = scan_coords_for_single_charge_region(mz_lower=mz_lower, mz_upper=mz_upper)['scan_for_mz_upper']
     segment_id=i+1
     # extract the raw points for this segment
     segment_df = data[
         {
             "rt_values": slice(rt_lower, rt_upper),
             "mz_values": slice(mz_lower, mz_upper+SEGMENT_EXTENSION),
-            "scan_indices": slice(scan_limit, None),
             "precursor_indices": 0,
         }
     ][['mz_values','scan_indices','frame_indices','rt_values','intensity_values']]
@@ -798,7 +791,7 @@ for i in range(NUMBER_OF_MZ_SEGMENTS):
     # segment_name = '{}/segment-{}.pkl'.format(SEGMENTS_DIR, segment_id)
     # segment_df.to_pickle(segment_name)
     # segment_packages_l.append({'mz_lower':mz_lower, 'mz_upper':mz_upper, 'rt_lower':rt_lower, 'rt_upper':rt_upper, 'scan_limit':scan_limit, 'segment_id':segment_id, 'segment_name':segment_name})
-    segment_packages_l.append({'mz_lower':mz_lower, 'mz_upper':mz_upper, 'rt_lower':rt_lower, 'rt_upper':rt_upper, 'scan_limit':scan_limit, 'segment_id':segment_id, 'segment_df':segment_df})
+    segment_packages_l.append({'mz_lower':mz_lower, 'mz_upper':mz_upper, 'rt_lower':rt_lower, 'rt_upper':rt_upper, 'segment_id':segment_id, 'segment_df':segment_df})
 del data
 
 # find all the features
