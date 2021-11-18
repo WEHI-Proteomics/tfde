@@ -255,7 +255,10 @@ def calculate_r_squared(series_1, series_2):
     residuals = series_1 - series_2
     ss_res = np.sum(residuals**2)
     ss_tot = np.sum((series_1 - np.mean(series_1))**2)
-    r_squared = 1 - (ss_res / ss_tot)
+    if ss_tot == 0:
+        r_squared = 0
+    else:
+        r_squared = 1 - (ss_res / ss_tot)
     return r_squared
 
 # measure the R-squared value of the points. x and y are numpy arrays.
