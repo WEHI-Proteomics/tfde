@@ -110,3 +110,5 @@ Package.resolved
 # doit
 .doit.db.*
 
+*_shuffled.fasta
+
