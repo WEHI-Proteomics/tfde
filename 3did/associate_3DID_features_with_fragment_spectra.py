@@ -195,4 +195,4 @@ features_df['run_name'] = run_name
 features_df.to_feather('/media/big-ssd/experiments/P3856_YHE211/features-3did/exp-P3856_YHE211-run-P3856_YHE211_1_Slot1-1_1_5104-features-3did-assoc.feather'.format(expanduser('~')))
 
 number_features_inside_isol_windows = len(features_df.feature_id.unique())
-print('{} unique features inside isolation windows, {}% of features detected'.format(number_features_inside_isol_windows, round(number_features_inside_isol_windows/number_features_detected*100.0,1)
+print('{} unique features inside isolation windows, {}\% of features detected'.format(number_features_inside_isol_windows, round(number_features_inside_isol_windows/number_features_detected*100.0,1)))
