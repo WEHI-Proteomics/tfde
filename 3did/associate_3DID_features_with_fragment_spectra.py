@@ -183,7 +183,7 @@ if not ray.is_initialized():
 
 # associate the features with their fragment ions
 print("associating the features with their fragment ions")
-features_l = ray.get(associate_fragment_ions.remote(cuboid, features_df) for cuboid in precursor_cuboids_df.itertuples())
+features_l = ray.get([associate_fragment_ions.remote(cuboid, features_df) for cuboid in precursor_cuboids_df.itertuples()])
 
 # join the list of dataframes into a single dataframe
 features_df = pd.concat(features_l, axis=0, sort=False, ignore_index=True)
