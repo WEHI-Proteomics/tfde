@@ -8,6 +8,8 @@ from ms_deisotope import deconvolute_peaks, averagine, scoring
 from ms_deisotope.deconvolution import peak_retention_strategy
 import ray
 import multiprocessing as mp
+import sys
+
 
 
 # Mass of a proton in unified atomic mass units, or Da. For calculating the monoisotopic mass.
@@ -26,7 +28,7 @@ precursor_cuboids_df = pd.read_feather(precursor_cuboids_name)
 tdid_experiment_name = 'P3856'
 tdid_results_name = 'minvi-2000-2021-11-30-17-20-22'
 features_dir = '/media/big-ssd/results-{}-3did/{}/features-3did'.format(tdid_experiment_name, tdid_results_name)
-features_file = '{}/exp-{}-run-{}-features-3did-dedup.feather'.format(features_dir, tdid_experiment_name, run_name, suffix_to_process)
+features_file = '{}/exp-{}-run-{}-features-3did-dedup.feather'.format(features_dir, tdid_experiment_name, run_name)
 print('loading features from {}'.format(features_file))
 
 features_df = pd.read_feather(features_file)
@@ -37,7 +39,15 @@ min_charge = features_df.charge.min()
 max_charge = features_df.charge.max()
 print('charge range: {} to {}'.format(min_charge,max_charge))
 
-RAW_DATABASE_BASE_DIR = '/media/big-ssd/experiments/{}/raw-databases'.format(experiment_name)
+RAW_DATABASE_BASE_DIR = '/media/big-ssd/experiments/{}/raw-databases/denoised'.format(experiment_name)
+
+# check the raw database exists
+RAW_DATABASE_NAME = "{}/{}.d".format(RAW_DATABASE_BASE_DIR, run_name)
+if not os.path.exists(RAW_DATABASE_NAME):
+    print("The raw database is required but doesn't exist: {}".format(RAW_DATABASE_NAME))
+    sys.exit(1)
+
+
 
 # create the TimsTOF object
 RAW_HDF_FILE = '{}.hdf'.format(run_name)
