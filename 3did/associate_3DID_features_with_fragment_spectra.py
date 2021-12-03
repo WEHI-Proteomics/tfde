@@ -140,7 +140,7 @@ def process_cuboid_features(cuboid):
     features_subset_df = cuboid['features_subset_df']
 
     # add the precursor identifier
-    features_subset_df['precursor_cuboid_id'] = cuboid.precursor_cuboid_id
+    features_subset_df['precursor_cuboid_id'] = cuboid['precursor_cuboid_id']
 
     # resolve the fragment ions for this feature's charge
     features_subset_df['fragment_ions_l'] = features_subset_df.apply(lambda row: json.dumps(resolve_fragment_ions(row.charge, cuboid['ms2_points_df']).to_dict(orient='records')), axis=1)
