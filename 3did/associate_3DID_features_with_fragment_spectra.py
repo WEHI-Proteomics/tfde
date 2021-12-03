@@ -6,9 +6,14 @@ import os
 import numpy as np
 from ms_deisotope import deconvolute_peaks, averagine, scoring
 from ms_deisotope.deconvolution import peak_retention_strategy
+import ray
+import multiprocessing as mp
+
 
 # Mass of a proton in unified atomic mass units, or Da. For calculating the monoisotopic mass.
 PROTON_MASS = 1.00727647
+
+proportion_of_cores_to_use = 0.8
 
 experiment_name = 'P3856_YHE211'
 run_name = 'P3856_YHE211_1_Slot1-1_1_5104'
@@ -120,10 +125,34 @@ def resolve_fragment_ions(feature_charge, ms2_points_df):
     
     return deconvoluted_peaks_df.head(n=30)
 
+@ray.remote
+def process_cuboid_features(cuboid):
+    features_subset_df = cuboid['features_subset_df']
+
+    # add the precursor identifier
+    features_subset_df['precursor_cuboid_id'] = cuboid.precursor_cuboid_id
+
+    # resolve the fragment ions for this feature's charge
+    features_subset_df['fragment_ions_l'] = features_subset_df.apply(lambda row: json.dumps(resolve_fragment_ions(row.charge, cuboid['ms2_points_df']).to_dict(orient='records')), axis=1)
+
+    return features_subset_df
+
+# determine the number of workers based on the number of available cores and the proportion of the machine to be used
+def number_of_workers():
+    number_of_cores = mp.cpu_count()
+    number_of_workers = int(proportion_of_cores_to_use * number_of_cores)
+    return number_of_workers
+
 
 ############################
 
-features_with_fragments_l = []
+# set up Ray
+print("setting up Ray")
+if not ray.is_initialized():
+    ray.init(num_cpus=number_of_workers())
+
+print('preprocessing the cuboids')
+cuboids_l = []
 for cuboid in precursor_cuboids_df.itertuples():
     # determine the ms1 extent of the precursor cuboid
     mz_lower = cuboid.wide_mz_lower
@@ -153,14 +182,10 @@ for cuboid in precursor_cuboids_df.itertuples():
     features_subset_df = features_df[(features_df.monoisotopic_mz >= mz_lower) & (features_df.monoisotopic_mz <= mz_upper) & (features_df.rt_apex >= rt_lower) & (features_df.rt_apex <= rt_upper) & (features_df.scan_apex >= scan_lower) & (features_df.scan_apex <= scan_upper)].copy()
     
     if len(features_subset_df) > 0:
-        # add the precursor identifier
-        features_subset_df['precursor_cuboid_id'] = cuboid.precursor_cuboid_id
+        cuboids_l.append({'precursor_cuboid_id':cuboid.precursor_cuboid_id, 'features_subset_df':features_subset_df, 'ms2_points_df':ms2_points_df})
 
-        # resolve the fragment ions for this feature's charge
-        features_subset_df['fragment_ions_l'] = features_subset_df.apply(lambda row: json.dumps(resolve_fragment_ions(row.charge, ms2_points_df).to_dict(orient='records')), axis=1)
-        
-        # add these features to the list
-        features_with_fragments_l.append(features_subset_df)
+print('processing cuboid features')
+features_with_fragments_l = ray.get([process_cuboid_features.remote(cuboid=cuboid) for cuboid in cuboids_l])
 
 # join the list of dataframes into a single dataframe
 features_within_fragments_df = pd.concat(features_with_fragments_l, axis=0, sort=False, ignore_index=True)
