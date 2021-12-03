@@ -84,22 +84,22 @@ def task_classify_features():
         'verbosity': 2
     }
 
-# def task_remove_duplicate_features():
-#     # input
-#     FEATURES_DIR = "{experiment_dir}/features-3did".format(experiment_dir=EXPERIMENT_DIR)
-#     FEATURES_IDENT_FILE = '{features_dir}/exp-{experiment_name}-run-{run_name}-features-3did-ident.feather'.format(features_dir=FEATURES_DIR, experiment_name=config['experiment_name'], run_name=config['run_name'])
-#     # command
-#     cmd = 'python -u ../pipeline/remove-duplicate-features.py -eb {experiment_base} -en {experiment_name} -rn {run_name} -ini {INI_FILE} -pdm 3did'.format(experiment_base=config['experiment_base_dir'], experiment_name=config['experiment_name'], run_name=config['run_name'], INI_FILE=config['ini_file'])
-#     # output
-#     FEATURES_DEDUP_FILE = '{features_dir}/exp-{experiment_name}-run-{run_name}-features-3did-dedup.feather'.format(features_dir=FEATURES_DIR, experiment_name=config['experiment_name'], run_name=config['run_name'])
+def task_remove_duplicate_features():
+    # input
+    FEATURES_DIR = "{experiment_dir}/features-3did".format(experiment_dir=EXPERIMENT_DIR)
+    FEATURES_IDENT_FILE = '{features_dir}/exp-{experiment_name}-run-{run_name}-features-3did-ident.feather'.format(features_dir=FEATURES_DIR, experiment_name=config['experiment_name'], run_name=config['run_name'])
+    # command
+    cmd = 'python -u ../pipeline/remove-duplicate-features.py -eb {experiment_base} -en {experiment_name} -rn {run_name} -ini {INI_FILE} -pdm 3did'.format(experiment_base=config['experiment_base_dir'], experiment_name=config['experiment_name'], run_name=config['run_name'], INI_FILE=config['ini_file'])
+    # output
+    FEATURES_DEDUP_FILE = '{features_dir}/exp-{experiment_name}-run-{run_name}-features-3did-dedup.feather'.format(features_dir=FEATURES_DIR, experiment_name=config['experiment_name'], run_name=config['run_name'])
 
-#     return {
-#         'file_dep': [FEATURES_IDENT_FILE],
-#         'actions': [cmd],
-#         'targets': [FEATURES_DEDUP_FILE],
-#         'clean': ['rm {}'.format(FEATURES_DEDUP_FILE)],
-#         'verbosity': 2
-#     }
+    return {
+        'file_dep': [FEATURES_IDENT_FILE],
+        'actions': [cmd],
+        'targets': [FEATURES_DEDUP_FILE],
+        'clean': ['rm {}'.format(FEATURES_DEDUP_FILE)],
+        'verbosity': 2
+    }
 
 def task_make_copies():
     target_directory_name = ''
@@ -125,10 +125,10 @@ def task_make_copies():
 
     # input
     FEATURES_DIR = "{}/features-3did".format(EXPERIMENT_DIR)
-    FEATURES_IDENT_FILE = '{}/exp-{}-run-{}-features-3did-ident.feather'.format(FEATURES_DIR, config['experiment_name'], config['run_name'])
+    FEATURES_DEDUP_FILE = '{}/exp-{}-run-{}-features-3did-dedup.feather'.format(FEATURES_DIR, config['experiment_name'], config['run_name'])
 
     return {
-        'file_dep': [FEATURES_IDENT_FILE],
+        'file_dep': [FEATURES_DEDUP_FILE],
         'actions': [set_up_target_dir, CmdAction(create_features_cmd_string), finish_up],
         'verbosity': 2
     }
