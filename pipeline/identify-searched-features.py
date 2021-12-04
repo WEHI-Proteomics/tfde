@@ -131,7 +131,10 @@ del mapping_df
 FEATURES_DIR = '{}/features-{}'.format(EXPERIMENT_DIR, args.precursor_definition_method)
 df_l = []
 if not args.recalibration_mode:
-    files_l = glob.glob('{}/exp-{}-run-*-features-*-dedup.feather'.format(FEATURES_DIR, args.experiment_name))
+    if args.precursor_definition_method == '3did':
+        files_l = glob.glob('{}/exp-{}-run-*-features-assoc.feather'.format(FEATURES_DIR, args.experiment_name))
+    else:
+        files_l = glob.glob('{}/exp-{}-run-*-features-*-dedup.feather'.format(FEATURES_DIR, args.experiment_name))
 else:
     files_l = glob.glob('{}/exp-{}-run-*-features-*-recalibrated.feather'.format(FEATURES_DIR, args.experiment_name))
 
