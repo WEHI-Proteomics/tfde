@@ -204,9 +204,8 @@ features_within_fragments_df = pd.concat(features_with_fragments_l, axis=0, sort
 features_within_fragments_df['run_name'] = run_name
 
 # save it back to the de-dup file because that's what the next step expects
-features_within_fragments_df.to_feather('/media/big-ssd/experiments/P3856_YHE211/features-3did/exp-P3856_YHE211-run-P3856_YHE211_1_Slot1-1_1_5104-features-3did-dedup.feather')
-
-print('{} features'.format(len(features_within_fragments_df)))
+print('writing {} features with fragments to {}'.format(len(features_within_fragments_df), features_file))
+features_within_fragments_df.to_feather(features_file)
 
 number_features_inside_isol_windows = len(features_within_fragments_df.feature_id.unique())
 print('{} unique features inside isolation windows, {}% of features detected'.format(number_features_inside_isol_windows, round(number_features_inside_isol_windows/number_features_detected*100.0,1)))
