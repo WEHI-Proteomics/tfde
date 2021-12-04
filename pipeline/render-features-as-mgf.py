@@ -54,7 +54,10 @@ MGF_DIR = "{}/mgf-{}".format(EXPERIMENT_DIR, args.precursor_definition_method)
 
 # handle whether or not this is for recalibrated features
 if not args.recalibration_mode:
-    FEATURES_FILE = '{}/exp-{}-run-{}-features-{}-dedup.feather'.format(FEATURES_DIR, args.experiment_name, args.run_name, args.precursor_definition_method)
+    if args.precursor_definition_method == '3did':
+        FEATURES_FILE = '{}/exp-{}-run-{}-features-{}-assoc.feather'.format(FEATURES_DIR, args.experiment_name, args.run_name, args.precursor_definition_method)
+    else:
+        FEATURES_FILE = '{}/exp-{}-run-{}-features-{}-dedup.feather'.format(FEATURES_DIR, args.experiment_name, args.run_name, args.precursor_definition_method)
     # the monoisotopic m/z to use
     monoisotopic_mz_column_name = 'monoisotopic_mz'
     # output MGF
