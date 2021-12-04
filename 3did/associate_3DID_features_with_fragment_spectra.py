@@ -29,6 +29,7 @@ tdid_experiment_name = 'P3856'
 tdid_results_name = 'minvi-2000-2021-12-03-21-09-45'
 features_dir = '/media/big-ssd/results-{}-3did/{}/features-3did'.format(tdid_experiment_name, tdid_results_name)
 features_file = '{}/exp-{}-run-{}-features-3did-dedup.feather'.format(features_dir, tdid_experiment_name, run_name)
+output_features_file = '{}/exp-{}-run-{}-features-3did-assoc.feather'.format(features_dir, tdid_experiment_name, run_name)
 print('loading features from {}'.format(features_file))
 
 features_df = pd.read_feather(features_file)
@@ -204,8 +205,8 @@ features_within_fragments_df = pd.concat(features_with_fragments_l, axis=0, sort
 features_within_fragments_df['run_name'] = run_name
 
 # save it back to the de-dup file because that's what the next step expects
-print('writing {} features with fragments to {}'.format(len(features_within_fragments_df), features_file))
-features_within_fragments_df.to_feather(features_file)
+print('writing {} features with fragments to {}'.format(len(features_within_fragments_df), output_features_file))
+features_within_fragments_df.to_feather(output_features_file)
 
 number_features_inside_isol_windows = len(features_within_fragments_df.feature_id.unique())
 print('{} unique features inside isolation windows, {}% of features detected'.format(number_features_inside_isol_windows, round(number_features_inside_isol_windows/number_features_detected*100.0,1)))
