@@ -138,8 +138,9 @@ if not args.recalibration_mode:
 else:
     files_l = glob.glob('{}/exp-{}-run-*-features-*-recalibrated.feather'.format(FEATURES_DIR, args.experiment_name))
 
-print('loading the detected features and merging them with the identifications')
+print('loading the detected features from {} and merging them with the identifications'.format(FEATURES_DIR))
 for f in files_l:
+    print('--> {}'.format(f))
     df = pd.merge(pd.read_feather(f), percolator_df, how='inner', left_on=['run_name','feature_id'], right_on=['run_name','feature_id'])
     df_l.append(df)
 identifications_df = pd.concat(df_l, axis=0, sort=False, ignore_index=True)
