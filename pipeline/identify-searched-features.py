@@ -132,9 +132,9 @@ FEATURES_DIR = '{}/features-{}'.format(EXPERIMENT_DIR, args.precursor_definition
 df_l = []
 if not args.recalibration_mode:
     if args.precursor_definition_method == '3did':
-        files_l = glob.glob('{}/exp-{}-run-*-features-assoc.feather'.format(FEATURES_DIR, args.experiment_name))
+        files_l = glob.glob('{}/exp-{}-run-*-features-3did-assoc.feather'.format(FEATURES_DIR, args.experiment_name))
     else:
-        files_l = glob.glob('{}/exp-{}-run-*-features-*-dedup.feather'.format(FEATURES_DIR, args.experiment_name))
+        files_l = glob.glob('{}/exp-{}-run-*-features-pasef-dedup.feather'.format(FEATURES_DIR, args.experiment_name))
 else:
     files_l = glob.glob('{}/exp-{}-run-*-features-*-recalibrated.feather'.format(FEATURES_DIR, args.experiment_name))
 
