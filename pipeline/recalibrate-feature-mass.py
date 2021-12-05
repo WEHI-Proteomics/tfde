@@ -139,7 +139,10 @@ if len(idents_df) == 0:
 # for each run, produce a model that estimates the mass error from a feature's characteristics, and generate a revised feature file with adjusted mass, 
 # to get a smaller mass error on a second Comet search with tighter mass tolerance.
 FEATURES_DIR = '{}/features-{}'.format(EXPERIMENT_DIR, args.precursor_definition_method)
-feature_files = glob.glob("{}/exp-{}-run-*-features-{}-dedup.feather".format(FEATURES_DIR, args.experiment_name, args.precursor_definition_method))
+if args.precursor_definition_method == '3did':
+    feature_files = glob.glob("{}/exp-{}-run-*-features-3did-assoc.feather".format(FEATURES_DIR, args.experiment_name))
+else:
+    feature_files = glob.glob("{}/exp-{}-run-*-features-pasef-dedup.feather".format(FEATURES_DIR, args.experiment_name))
 features_l = []
 for f in feature_files:
     features_df = pd.read_feather(f)
