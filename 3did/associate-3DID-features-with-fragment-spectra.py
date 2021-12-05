@@ -20,7 +20,7 @@ proportion_of_cores_to_use = 0.8
 experiment_name = 'P3856_YHE211'
 run_name = 'P3856_YHE211_1_Slot1-1_1_5104'
 
-number_of_fragment_ions = 200
+number_of_fragment_ions = 150
 print('associating features with up to {} fragment ions'.format(number_of_fragment_ions))
 
 tfde_results_base_dir = '/media/data-4t-a/results-P3856_YHE211/2021-10-06-06-59-25/P3856_YHE211'
@@ -169,8 +169,8 @@ print('preprocessing the cuboids')
 cuboids_l = []
 for cuboid in precursor_cuboids_df.itertuples():
     # determine the ms1 extent of the precursor cuboid
-    mz_lower = cuboid.wide_mz_lower
-    mz_upper = cuboid.wide_mz_upper
+    mz_lower = cuboid.window_mz_lower
+    mz_upper = cuboid.window_mz_upper
     rt_lower = cuboid.wide_ms1_rt_lower
     rt_upper = cuboid.wide_ms1_rt_upper
     scan_lower = cuboid.wide_scan_lower
