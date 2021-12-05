@@ -134,7 +134,7 @@ def resolve_fragment_ions(feature_charge, ms2_points_df):
     deconvoluted_peaks_df.intensity = deconvoluted_peaks_df.intensity.astype(np.uint)
     deconvoluted_peaks_df = deconvoluted_peaks_df[(deconvoluted_peaks_df.intensity > 0)]
     
-    return deconvoluted_peaks_df.head(n=20)
+    return deconvoluted_peaks_df.head(n=100)
 
 @ray.remote
 def process_cuboid_features(cuboid):
