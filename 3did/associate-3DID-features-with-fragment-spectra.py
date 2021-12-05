@@ -20,6 +20,9 @@ proportion_of_cores_to_use = 0.8
 experiment_name = 'P3856_YHE211'
 run_name = 'P3856_YHE211_1_Slot1-1_1_5104'
 
+number_of_fragment_ions = 150
+print('associating features with up to {} fragment ions'.format(number_of_fragment_ions))
+
 tfde_results_base_dir = '/media/data-4t-a/results-P3856_YHE211/2021-10-06-06-59-25/P3856_YHE211'
 precursor_cuboids_name = '{}/precursor-cuboids-pasef/exp-{}-run-{}-precursor-cuboids-pasef.feather'.format(tfde_results_base_dir,experiment_name,run_name)
 
@@ -134,7 +137,7 @@ def resolve_fragment_ions(feature_charge, ms2_points_df):
     deconvoluted_peaks_df.intensity = deconvoluted_peaks_df.intensity.astype(np.uint)
     deconvoluted_peaks_df = deconvoluted_peaks_df[(deconvoluted_peaks_df.intensity > 0)]
     
-    return deconvoluted_peaks_df.head(n=150)
+    return deconvoluted_peaks_df.head(n=number_of_fragment_ions)
 
 @ray.remote
 def process_cuboid_features(cuboid):
