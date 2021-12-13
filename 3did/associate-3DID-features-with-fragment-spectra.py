@@ -23,13 +23,13 @@ run_name = 'P3856_YHE211_1_Slot1-1_1_5104'
 number_of_fragment_ions = 150
 print('associating features with up to {} fragment ions'.format(number_of_fragment_ions))
 
-tfde_results_base_dir = '/media/data-4t-a/results-P3856_YHE211/2021-10-06-06-59-25/P3856_YHE211'
+tfde_results_base_dir = '/media/big-ssd/experiments/P3856_YHE211'
 precursor_cuboids_name = '{}/precursor-cuboids-pasef/exp-{}-run-{}-precursor-cuboids-pasef.feather'.format(tfde_results_base_dir,experiment_name,run_name)
 
 precursor_cuboids_df = pd.read_feather(precursor_cuboids_name)
 
 tdid_experiment_name = 'P3856'
-tdid_results_name = 'minvi-2000-2021-11-30-17-20-22'
+tdid_results_name = 'minvi-1000-2021-12-05-01-06-49'
 features_dir = '/media/big-ssd/results-{}-3did/{}/{}/features-3did'.format(tdid_experiment_name, tdid_results_name, tdid_experiment_name)
 features_file = '{}/exp-{}-run-{}-features-3did-dedup.feather'.format(features_dir, tdid_experiment_name, run_name)
 output_features_file = '{}/exp-{}-run-{}-features-3did-assoc.feather'.format(features_dir, tdid_experiment_name, run_name)
