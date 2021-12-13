@@ -139,6 +139,7 @@ parser.add_argument('-ssm','--small_set_mode', action='store_true', help='A smal
 parser.add_argument('-rm','--ray_mode', type=str, choices=['cluster','join','local'], help='The Ray mode to use.', required=True)
 parser.add_argument('-ra','--redis_address', type=str, help='Address of the cluster to join.', required=False)
 parser.add_argument('-pc','--proportion_of_cores_to_use', type=float, default=0.9, help='Proportion of the machine\'s cores to use for this program.', required=False)
+parser.add_argument('-d','--denoised', action='store_true', help='Use the denoised version of the raw database.')
 args = parser.parse_args()
 
 # Print the arguments for the log
@@ -156,7 +157,11 @@ if not os.path.exists(EXPERIMENT_DIR):
     sys.exit(1)
 
 # check the raw database exists
-RAW_DATABASE_NAME = "{}/raw-databases/{}.d".format(EXPERIMENT_DIR, args.run_name)
+if args.denoised:
+    RAW_DATABASE_BASE_DIR = "{}/raw-databases/denoised".format(EXPERIMENT_DIR)
+else:
+    RAW_DATABASE_BASE_DIR = "{}/raw-databases".format(EXPERIMENT_DIR)
+RAW_DATABASE_NAME = "{}/{}.d".format(RAW_DATABASE_BASE_DIR, args.run_name)
 if not os.path.exists(RAW_DATABASE_NAME):
     print("The raw database is required but doesn't exist: {}".format(RAW_DATABASE_NAME))
     sys.exit(1)
