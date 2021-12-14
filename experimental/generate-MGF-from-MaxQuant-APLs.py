@@ -167,6 +167,7 @@ for group_name,group_df in allpeptides_df.groupby('Raw file'):
     features_file = '{}/exp-{}-run-{}-features-mq.feather'.format(FEATURES_DIR, args.experiment_name, group_name)
     print("saving {} features to {}".format(len(visualisation_l), features_file))
     features_df = pd.DataFrame(visualisation_l)
+    features_df['run_name'] = group_name
     features_df.reset_index(drop=True).to_feather(features_file)
 
     # write the metadata
