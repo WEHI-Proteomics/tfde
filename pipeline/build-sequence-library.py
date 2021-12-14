@@ -22,6 +22,7 @@ parser = argparse.ArgumentParser(description='Build a library of sequence attrib
 parser.add_argument('-eb','--experiment_base_dir', type=str, default='./experiments', help='Path to the experiments directory.', required=False)
 parser.add_argument('-en','--experiment_name', type=str, help='Name of the experiment.', required=True)
 parser.add_argument('-ini','--ini_file', type=str, default='./tfde/pipeline/pasef-process-short-gradient.ini', help='Path to the config file.', required=False)
+parser.add_argument('-pdm','--precursor_definition_method', type=str, choices=['pasef','3did','mq'], help='The method used to define the precursor cuboids.', required=True)
 args = parser.parse_args()
 
 # Print the arguments for the log
@@ -36,7 +37,7 @@ if not os.path.exists(EXPERIMENT_DIR):
     print("The experiment directory is required but doesn't exist: {}".format(EXPERIMENT_DIR))
     sys.exit(1)
 
-SEQUENCE_LIBRARY_DIR = "{}/sequence-library".format(EXPERIMENT_DIR)
+SEQUENCE_LIBRARY_DIR = "{}/sequence-library-{}".format(EXPERIMENT_DIR, args.precursor_definition_method)
 if os.path.exists(SEQUENCE_LIBRARY_DIR):
     shutil.rmtree(SEQUENCE_LIBRARY_DIR)
 os.makedirs(SEQUENCE_LIBRARY_DIR)
@@ -44,12 +45,12 @@ print("The sequence library directory was created: {}".format(SEQUENCE_LIBRARY_D
 
 SEQUENCE_LIBRARY_FILE_NAME = "{}/sequence-library.feather".format(SEQUENCE_LIBRARY_DIR)
 
-IDENTIFICATIONS_DIR = '{}/identifications-pasef'.format(EXPERIMENT_DIR)
+IDENTIFICATIONS_DIR = '{}/identifications-{}'.format(EXPERIMENT_DIR, args.precursor_definition_method)
 if not os.path.exists(IDENTIFICATIONS_DIR):
     print("The identifications directory is required but doesn't exist: {}".format(IDENTIFICATIONS_DIR))
     sys.exit(1)
 
-IDENTIFICATIONS_FILE = '{}/exp-{}-identifications-pasef-recalibrated.feather'.format(IDENTIFICATIONS_DIR, args.experiment_name)
+IDENTIFICATIONS_FILE = '{}/exp-{}-identifications-{}-recalibrated.feather'.format(IDENTIFICATIONS_DIR, args.experiment_name, args.precursor_definition_method)
 if not os.path.isfile(IDENTIFICATIONS_FILE):
     print("The identifications file doesn't exist: {}".format(IDENTIFICATIONS_FILE))
     sys.exit(1)
