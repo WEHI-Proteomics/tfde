@@ -2,8 +2,8 @@
 set -e  # exit on error
 
 # EXPERIMENT_BASE_DIR="/media/big-ssd/experiments"
-EXPERIMENT_BASE_DIR="/media/big-ssd/results-P3856-3did/minvi-2000-2021-11-30-17-20-22"
-EXPERIMENT_NAME="P3856"
+EXPERIMENT_BASE_DIR="/media/big-ssd/results-P3856_YHE211-3did/minvi-1000-2021-12-14-17-26-28"
+EXPERIMENT_NAME="P3856_YHE211"
 RUN_NAME="P3856_YHE211_1_Slot1-1_1_5104"
 
 echo "associate-3DID-features-with-fragment-spectra"
