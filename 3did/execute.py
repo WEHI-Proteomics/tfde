@@ -34,7 +34,7 @@ config = {
     'minvi': get_var('minvi', 3000)
     }
 
-# the names of the runs to process
+# use the denoised data
 if config['use_denoised_db'] == 'true':
     config['use_denoised_db_flag'] = '-d'
 else:
