@@ -30,7 +30,7 @@ parser.add_argument('-eb','--experiment_base_dir', type=str, default='./experime
 parser.add_argument('-en','--experiment_name', type=str, help='Name of the experiment.', required=True)
 parser.add_argument('-ff','--fasta_file_name', type=str, default='./tfde/fasta/Human_Yeast_Ecoli.fasta', help='File name of the FASTA file.', required=False)
 parser.add_argument('-pe','--protein_enzyme', type=str, default='trypsin', choices=['no_enzyme','elastase','pepsin','proteinasek','thermolysin','trypsinp','chymotrypsin','lys-n','lys-c','arg-c','asp-n','glu-c','trypsin'], help='Enzyme used for digestion. Passed to percolator.', required=False)
-parser.add_argument('-pdm','--precursor_definition_method', type=str, choices=['pasef','3did'], help='The method used to define the precursor cuboids.', required=True)
+parser.add_argument('-pdm','--precursor_definition_method', type=str, choices=['pasef','3did','mq'], help='The method used to define the precursor cuboids.', required=True)
 parser.add_argument('-ini','--ini_file', type=str, default='./tfde/pipeline/pasef-process-short-gradient.ini', help='Path to the config file.', required=False)
 parser.add_argument('-recal','--recalibration_mode', action='store_true', help='Use the recalibrated Comet output.')
 args = parser.parse_args()
@@ -133,6 +133,8 @@ df_l = []
 if not args.recalibration_mode:
     if args.precursor_definition_method == '3did':
         files_l = glob.glob('{}/exp-{}-run-*-features-3did-assoc.feather'.format(FEATURES_DIR, args.experiment_name))
+    elif args.precursor_definition_method == 'mq':
+        files_l = glob.glob('{}/exp-{}-run-*-features-mq.feather'.format(FEATURES_DIR, args.experiment_name))
     else:
         files_l = glob.glob('{}/exp-{}-run-*-features-pasef-dedup.feather'.format(FEATURES_DIR, args.experiment_name))
 else:
