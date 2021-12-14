@@ -126,6 +126,7 @@ for group_name,group_df in allpeptides_df.groupby('Raw file'):
     mgf_spectra = []
     visualisation_l = []
     mgf_file_name = '{}/{}.mgf'.format(MGF_DIR, group_name)
+    MGF_FILE = '{}/exp-{}-run-{}-features-mq.mgf'.format(MGF_DIR, args.experiment_name, group_name)
     file_apl_indexes_df = apl_indexes_df[(apl_indexes_df['raw_file'] == group_name)]
     for idx,row in group_df.iterrows():
         mq_index = row.msms_scan_number
@@ -157,10 +158,10 @@ for group_name,group_df in allpeptides_df.groupby('Raw file'):
         feature_spectra = collate_spectra_for_feature(ms1_d, ms2_peaks_df)
         mgf_spectra.append(feature_spectra)
     # generate the MGF for all the features
-    print("generating MGF: {}".format(mgf_file_name))
-    if os.path.isfile(mgf_file_name):
-        os.remove(mgf_file_name)
-    f = mgf.write(output=mgf_file_name, spectra=mgf_spectra)
+    print("generating MGF: {}".format(MGF_FILE))
+    if os.path.isfile(MGF_FILE):
+        os.remove(MGF_FILE)
+    f = mgf.write(output=MGF_FILE, spectra=mgf_spectra)
 
     # save the visualisation DF
     features_file = '{}/exp-{}-run-{}-features-mq.pkl'.format(FEATURES_DIR, args.experiment_name, group_name)
