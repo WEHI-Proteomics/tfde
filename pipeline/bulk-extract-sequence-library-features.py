@@ -36,6 +36,7 @@ parser.add_argument('-ssms','--small_set_mode_size', type=int, default='100', he
 parser.add_argument('-mpwrt','--max_peak_width_rt', type=int, default=10, help='Maximum peak width tolerance for the extraction from the estimated coordinate in RT.', required=False)
 parser.add_argument('-mpwccs','--max_peak_width_ccs', type=int, default=20, help='Maximum peak width tolerance for the extraction from the estimated coordinate in CCS.', required=False)
 parser.add_argument('-ini','--ini_file', type=str, default='./tfde/pipeline/pasef-process-short-gradient.ini', help='Path to the config file.', required=False)
+parser.add_argument('-d','--denoised', action='store_true', help='Use the denoised version of the raw database.')
 args = parser.parse_args()
 
 # print the arguments for the log
@@ -74,6 +75,11 @@ if args.small_set_mode:
 else:
     small_set_flags = ""
 
+if args.denoised:
+    denoised_flag = "-d"
+else:
+    denoised_flag = ""
+
 # set up the processing pool
 pool = Pool(processes=4)
 
@@ -84,7 +90,7 @@ for run_name in run_names_l:
     print("processing {}".format(run_name))
     LOG_FILE_NAME = "{}/extract-library-sequence-features-for-run-{}.log".format(LOG_DIR, run_name)
     current_directory = os.path.abspath(os.path.dirname(__file__))
-    cmd = "python -u {}/extract-library-sequence-features-for-run.py -eb {} -en {} -rn {} -ini {} -mpwrt {} -mpwccs {} {} > {} 2>&1".format(current_directory, args.experiment_base_dir, args.experiment_name, run_name, args.ini_file, args.max_peak_width_rt, args.max_peak_width_ccs, small_set_flags, LOG_FILE_NAME)
+    cmd = "python -u {}/extract-library-sequence-features-for-run.py -eb {} -en {} -rn {} -ini {} -mpwrt {} -mpwccs {} {} {} > {} 2>&1".format(current_directory, args.experiment_base_dir, args.experiment_name, run_name, args.ini_file, args.max_peak_width_rt, args.max_peak_width_ccs, small_set_flags, denoised_flag, LOG_FILE_NAME)
     extract_cmd_l.append(cmd)
 pool.map(run_process, extract_cmd_l)
 

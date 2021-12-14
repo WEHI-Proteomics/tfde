@@ -32,8 +32,9 @@ config = {
     'rt_upper': get_var('ru', 2200),
     'correct_for_saturation': get_var('cs', 'true'),
     'filter_by_mass_defect': get_var('fmdw', 'true'),
+    'use_denoised_db': get_var('dd', 'false'),
     'proportion_of_cores_to_use': get_var('pc', 0.8)
-    }
+}
 
 print('execution arguments: {}'.format(config))
 
@@ -55,6 +56,12 @@ if config['filter_by_mass_defect'] == 'true':
 else:
     config['fmdw_flag'] = ''
 
+# use the denoised data
+if config['use_denoised_db'] == 'true':
+    config['use_denoised_db_flag'] = '-d'
+else:
+    config['use_denoised_db_flag'] = ''
+
 EXPERIMENT_DIR = "{}/{}".format(config['experiment_base_dir'], config['experiment_name'])
 
 start_run = time.time()
@@ -73,7 +80,7 @@ def task_define_precursor_cuboids():
         RAW_DATABASE_NAME = "{}/raw-databases/{}.d/analysis.tdf".format(EXPERIMENT_DIR, run_name)
         depend_l.append(RAW_DATABASE_NAME)
         # command
-        cmd = 'python -u define-precursor-cuboids-pasef.py -eb {experiment_base} -en {experiment_name} -rn {run_name} -ini {INI_FILE} -rl {rl} -ru {ru} -rm cluster'.format(experiment_base=config['experiment_base_dir'], experiment_name=config['experiment_name'], run_name=run_name, INI_FILE=config['ini_file'], rl=int(config['rt_lower']), ru=int(config['rt_upper']))
+        cmd = 'python -u define-precursor-cuboids-pasef.py -eb {experiment_base} -en {experiment_name} -rn {run_name} -ini {INI_FILE} -rl {rl} -ru {ru} -rm cluster {denoised}'.format(experiment_base=config['experiment_base_dir'], experiment_name=config['experiment_name'], run_name=run_name, INI_FILE=config['ini_file'], rl=int(config['rt_lower']), ru=int(config['rt_upper']), denoised=config['use_denoised_db_flag'])
         cmd_l.append(cmd)
         # output
         CUBOIDS_FILE = '{}/exp-{}-run-{}-precursor-cuboids-{}.feather'.format(CUBOIDS_DIR, config['experiment_name'], run_name, config['precursor_definition_method'])
@@ -100,7 +107,7 @@ def task_detect_features():
             # input
             depend_l.append(CUBOIDS_FILE)
             # command
-            cmd = 'python -u detect-features.py -eb {experiment_base} -en {experiment_name} -rn {run_name} -ini {INI_FILE} -rm cluster -pc {proportion_of_cores_to_use} -rl {rl} -ru {ru} {cs} {fmdw}'.format(experiment_base=config['experiment_base_dir'], experiment_name=config['experiment_name'], run_name=run_name, INI_FILE=config['ini_file'], proportion_of_cores_to_use=config['proportion_of_cores_to_use'], rl=int(config['rt_lower']), ru=int(config['rt_upper']), cs=config['cs_flag'], fmdw=config['fmdw_flag'])
+            cmd = 'python -u detect-features.py -eb {experiment_base} -en {experiment_name} -rn {run_name} -ini {INI_FILE} -rm cluster -pc {proportion_of_cores_to_use} -rl {rl} -ru {ru} {cs} {fmdw} {denoised}'.format(experiment_base=config['experiment_base_dir'], experiment_name=config['experiment_name'], run_name=run_name, INI_FILE=config['ini_file'], proportion_of_cores_to_use=config['proportion_of_cores_to_use'], rl=int(config['rt_lower']), ru=int(config['rt_upper']), cs=config['cs_flag'], fmdw=config['fmdw_flag'], denoised=config['use_denoised_db_flag'])
             cmd_l.append(cmd)
             # output
             target_l.append(FEATURES_FILE)
@@ -403,7 +410,7 @@ def task_extract_features_for_library_sequences():
             ESTIMATOR_MODEL_FILE_NAME = "{}/run-{}-{}-estimator.pkl".format(COORDINATE_ESTIMATORS_DIR, run_name, dim)
             depend_l.append(ESTIMATOR_MODEL_FILE_NAME)
     # cmd
-    cmd = 'python -u bulk-extract-sequence-library-features.py -eb {experiment_base} -en {experiment_name} -rn {run_names} -ini {INI_FILE}'.format(experiment_base=config['experiment_base_dir'], experiment_name=config['experiment_name'], run_names=config['run_names'], INI_FILE=config['ini_file'])
+    cmd = 'python -u bulk-extract-sequence-library-features.py -eb {experiment_base} -en {experiment_name} -rn {run_names} -ini {INI_FILE} {denoised}'.format(experiment_base=config['experiment_base_dir'], experiment_name=config['experiment_name'], run_names=config['run_names'], INI_FILE=config['ini_file'], denoised=config['use_denoised_db_flag'])
     cmd_l.append(cmd)
     # output
     TARGET_DECOY_MODEL_DIR = "{}/target-decoy-models".format(EXPERIMENT_DIR)

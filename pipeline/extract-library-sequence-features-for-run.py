@@ -1101,6 +1101,7 @@ parser.add_argument('-sschr','--small_set_charge', type=int, help='The charge fo
 parser.add_argument('-mpwrt','--max_peak_width_rt', type=int, default=10, help='Maximum peak width tolerance for the extraction from the estimated coordinate in RT.', required=False)
 parser.add_argument('-mpwccs','--max_peak_width_ccs', type=int, default=20, help='Maximum peak width tolerance for the extraction from the estimated coordinate in CCS.', required=False)
 parser.add_argument('-ini','--ini_file', type=str, default='./tfde/pipeline/pasef-process-short-gradient.ini', help='Path to the config file.', required=False)
+parser.add_argument('-d','--denoised', action='store_true', help='Use the denoised version of the raw database.')
 args = parser.parse_args()
 
 # Print the arguments for the log
@@ -1141,7 +1142,10 @@ TOP_CCS_PROPORTION_TO_INCLUDE = cfg.getfloat('extraction','TOP_CCS_PROPORTION_TO
 TOP_RT_PROPORTION_TO_INCLUDE = cfg.getfloat('extraction','TOP_RT_PROPORTION_TO_INCLUDE')
 
 # check the raw database exists
-RAW_DATABASE_BASE_DIR = "{}/raw-databases".format(EXPERIMENT_DIR)
+if args.denoised:
+    RAW_DATABASE_BASE_DIR = "{}/raw-databases/denoised".format(EXPERIMENT_DIR)
+else:
+    RAW_DATABASE_BASE_DIR = "{}/raw-databases".format(EXPERIMENT_DIR)
 RAW_DATABASE_NAME = "{}/{}.d".format(RAW_DATABASE_BASE_DIR, args.run_name)
 if not os.path.exists(RAW_DATABASE_NAME):
     print("The raw database is required but doesn't exist: {}".format(RAW_DATABASE_NAME))

@@ -527,6 +527,7 @@ parser.add_argument('-rm','--ray_mode', type=str, choices=['local','cluster'], h
 parser.add_argument('-pc','--proportion_of_cores_to_use', type=float, default=0.9, help='Proportion of the machine\'s cores to use for this program.', required=False)
 parser.add_argument('-cs','--correct_for_saturation', action='store_true', help='Correct for saturation when calculating monoisotopic m/z and intensity.')
 parser.add_argument('-fmdw','--filter_by_mass_defect', action='store_true', help='Filter fragment ions by mass defect windows.')
+parser.add_argument('-d','--denoised', action='store_true', help='Use the denoised version of the raw database.')
 args = parser.parse_args()
 
 # Print the arguments for the log
@@ -544,7 +545,10 @@ if not os.path.exists(EXPERIMENT_DIR):
     sys.exit(1)
 
 # check the raw database exists
-RAW_DATABASE_BASE_DIR = "{}/raw-databases".format(EXPERIMENT_DIR)
+if args.denoised:
+    RAW_DATABASE_BASE_DIR = "{}/raw-databases/denoised".format(EXPERIMENT_DIR)
+else:
+    RAW_DATABASE_BASE_DIR = "{}/raw-databases".format(EXPERIMENT_DIR)
 RAW_DATABASE_NAME = "{}/{}.d".format(RAW_DATABASE_BASE_DIR, args.run_name)
 if not os.path.exists(RAW_DATABASE_NAME):
     print("The raw database is required but doesn't exist: {}".format(RAW_DATABASE_NAME))
