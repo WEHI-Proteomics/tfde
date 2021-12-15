@@ -26,6 +26,7 @@ print('associating features with up to {} fragment ions'.format(number_of_fragme
 tfde_results_base_dir = '/media/big-ssd/experiments/P3856_YHE211'
 precursor_cuboids_name = '{}/precursor-cuboids-pasef/exp-{}-run-{}-precursor-cuboids-pasef.feather'.format(tfde_results_base_dir,experiment_name,run_name)
 
+print('loading precursor cuboids from {}'.format(precursor_cuboids_name))
 precursor_cuboids_df = pd.read_feather(precursor_cuboids_name)
 
 tdid_experiment_name = 'P3856_YHE211'
