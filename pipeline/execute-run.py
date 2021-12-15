@@ -343,7 +343,7 @@ def task_build_sequence_library():
     IDENTIFICATIONS_FILE = '{}/exp-{}-identifications-pasef-recalibrated.feather'.format(IDENTIFICATIONS_DIR, config['experiment_name'])
     depend_l = [IDENTIFICATIONS_FILE]
     # cmd
-    cmd = 'python -u build-sequence-library.py -eb {experiment_base} -en {experiment_name} -ini {INI_FILE}'.format(experiment_base=config['experiment_base_dir'], experiment_name=config['experiment_name'], INI_FILE=config['ini_file'])
+    cmd = 'python -u build-sequence-library.py -eb {experiment_base} -en {experiment_name} -ini {INI_FILE} -pdm {precursor_definition_method}'.format(experiment_base=config['experiment_base_dir'], experiment_name=config['experiment_name'], INI_FILE=config['ini_file'], precursor_definition_method=config['precursor_definition_method'])
     cmd_l.append(cmd)
     # output
     SEQUENCE_LIBRARY_DIR = "{}/sequence-library".format(EXPERIMENT_DIR)
