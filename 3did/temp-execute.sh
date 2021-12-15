@@ -39,4 +39,4 @@ python -u ./tfde/pipeline/identify-searched-features.py -eb $EXPERIMENT_BASE_DIR
 
 echo ""
 echo "build-sequence-library"
-python -u ./tfde/pipeline/build-sequence-library.py -eb $EXPERIMENT_BASE_DIR -en $EXPERIMENT_NAME
+python -u ./tfde/pipeline/build-sequence-library.py -eb $EXPERIMENT_BASE_DIR -en $EXPERIMENT_NAME -pdm 3did
