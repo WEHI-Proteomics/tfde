@@ -10,6 +10,8 @@ from tensorflow.keras import layers
 from tensorflow.keras.layers.experimental import preprocessing
 import json
 import pandas as pd
+import configparser
+from configparser import ExtendedInterpolation
 
 
 #######################
@@ -17,6 +19,7 @@ parser = argparse.ArgumentParser(description='Use the trained model to classify 
 parser.add_argument('-eb','--experiment_base_dir', type=str, default='./experiments', help='Path to the experiments directory.', required=False)
 parser.add_argument('-en','--experiment_name', type=str, help='Name of the experiment.', required=True)
 parser.add_argument('-rn','--run_name', type=str, help='Name of the run.', required=True)
+parser.add_argument('-ini','--ini_file', type=str, default='./tfde/pipeline/pasef-process-short-gradient.ini', help='Path to the config file.', required=False)
 args = parser.parse_args()
 
 # Print the arguments for the log
@@ -70,11 +73,23 @@ features_df.fillna(0, inplace=True)
 with open(FEATURES_METADATA_FILE) as handle:
     features_metadata = json.load(handle)
 
+# check the INI file exists
+if not os.path.isfile(args.ini_file):
+    print("The configuration file doesn't exist: {}".format(args.ini_file))
+    sys.exit(1)
+
+# load the INI file
+cfg = configparser.ConfigParser(interpolation=ExtendedInterpolation())
+cfg.read(args.ini_file)
+
+# set up constants
+MINIMUM_PREDICTION_VALID_FEATURE = cfg.getfloat('3did','MINIMUM_PREDICTION_VALID_FEATURE')
+
 # use the model to predict their identifiability
 input_names = ['deconvolution_score','coelution_coefficient','mobility_coefficient','isotope_count']
 predictions = model.predict(features_df[input_names].to_numpy())
 features_df['prediction'] = predictions
-features_df['identification_predicted'] = features_df.apply(lambda row: row.prediction >= 0.5, axis=1)
+features_df['identification_predicted'] = features_df.apply(lambda row: row.prediction >= MINIMUM_PREDICTION_VALID_FEATURE, axis=1)
 
 # update the original detected features file with the predictions for later analysis
 print('updating {} features with predictions, {}% as identifiable: {}'.format(len(features_df), round(len(features_df[(features_df.identification_predicted == True)])/len(features_df)*100), FEATURES_FILE))
