@@ -2,7 +2,7 @@
 set -e  # exit on error
 
 # EXPERIMENT_BASE_DIR="/media/big-ssd/experiments"
-EXPERIMENT_BASE_DIR="/media/big-ssd/results-P3856_YHE211-3did/minvi-600-2021-12-16-16-21-50"
+EXPERIMENT_BASE_DIR="/media/big-ssd/results-P3856_YHE211-3did/minvi-2000-2021-12-17-03-11-51"
 EXPERIMENT_NAME="P3856_YHE211"
 RUN_NAME="P3856_YHE211_1_Slot1-1_1_5104"
 
