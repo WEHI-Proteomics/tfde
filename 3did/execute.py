@@ -72,7 +72,7 @@ def task_classify_features():
     FEATURES_DIR = '{experiment_dir}/features-3did'.format(experiment_dir=EXPERIMENT_DIR)
     FEATURES_FILE = '{features_dir}/exp-{experiment_name}-run-{run_name}-features-3did.feather'.format(features_dir=FEATURES_DIR, experiment_name=config['experiment_name'], run_name=config['run_name'])
     # command
-    cmd = 'python -u classify-detected-features.py -eb {experiment_base} -en {experiment_name} -rn {run_name}'.format(experiment_base=config['experiment_base_dir'], experiment_name=config['experiment_name'], run_name=config['run_name'])
+    cmd = 'python -u classify-detected-features.py -eb {experiment_base} -en {experiment_name} -rn {run_name} -ini {INI_FILE}'.format(experiment_base=config['experiment_base_dir'], experiment_name=config['experiment_name'], run_name=config['run_name'], INI_FILE=config['ini_file'])
     # output
     FEATURES_IDENT_FILE = '{features_dir}/exp-{experiment_name}-run-{run_name}-features-3did-ident.feather'.format(features_dir=FEATURES_DIR, experiment_name=config['experiment_name'], run_name=config['run_name'])
 
