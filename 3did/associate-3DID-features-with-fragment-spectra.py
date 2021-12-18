@@ -30,7 +30,7 @@ print('loading precursor cuboids from {}'.format(precursor_cuboids_name))
 precursor_cuboids_df = pd.read_feather(precursor_cuboids_name)
 
 tdid_experiment_name = 'P3856_YHE211'
-tdid_results_name = 'minvi-1000-2021-12-17-22-14-22'
+tdid_results_name = 'minvi-600-2021-12-19-02-35-34'
 features_dir = '/media/big-ssd/results-{}-3did/{}/{}/features-3did'.format(tdid_experiment_name, tdid_results_name, tdid_experiment_name)
 features_file = '{}/exp-{}-run-{}-features-3did-dedup.feather'.format(features_dir, tdid_experiment_name, run_name)
 output_features_file = '{}/exp-{}-run-{}-features-3did-assoc.feather'.format(features_dir, tdid_experiment_name, run_name)
