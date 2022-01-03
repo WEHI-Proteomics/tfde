@@ -135,7 +135,7 @@ for group_name,group_df in allpeptides_df.groupby('Raw file'):
         mz_upper = row.mz + (row.isotope_count * expected_spacing_mz)
         envelope = np.array([(row.mz,0),(mz_upper,0)])
         # put everything together
-        ms1_d = {'feature_id':idx+1,
+        ms1_d = {'feature_id':mq_index,
                  'monoisotopic_mass':row.Mass, 
                  'charge':row.charge_state, 
                  'monoisotopic_mz':row.mz, 
