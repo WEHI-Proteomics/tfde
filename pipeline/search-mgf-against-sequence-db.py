@@ -64,7 +64,10 @@ if not os.path.exists(MGF_DIR):
 if not args.recalibration_mode:
     MGF_FILE = '{}/exp-{}-run-{}-features-{}.mgf'.format(MGF_DIR, args.experiment_name, args.run_name, args.precursor_definition_method)
     COMET_OUTPUT_DIR = "{}/comet-output-{}".format(EXPERIMENT_DIR, args.precursor_definition_method)
-    COMET_PARAMS = INITIAL_SEARCH_PARAMETERS
+    if args.precursor_definition_method == 'mq':
+        COMET_PARAMS = RECALIBRATED_SEARCH_PARAMETERS  # to run the search with tighter ppm tolerances
+    else:
+        COMET_PARAMS = INITIAL_SEARCH_PARAMETERS
 else:
     MGF_FILE = '{}/exp-{}-run-{}-features-{}-recalibrated.mgf'.format(MGF_DIR, args.experiment_name, args.run_name, args.precursor_definition_method)
     COMET_OUTPUT_DIR = "{}/comet-output-{}-recalibrated".format(EXPERIMENT_DIR, args.precursor_definition_method)
