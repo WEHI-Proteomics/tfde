@@ -3,10 +3,10 @@ This is a repository for algorithms exploring targeted detection, extraction, an
 
 There are three approaches to feature detection here.
 
-#### Targeted Detection and Extraction Pipeline
+#### Targeted Feature Detection and Extraction Pipeline
 A DDA pipeline that detects peptide features using the instrument isolation windows as a starting point. Code is [here](https://github.com/WEHI-Proteomics/tfde/tree/master/pipeline).
 
-#### 3D intensity descent
+#### 3D Intensity Descent (3DID)
 Using the characteristic structure of peptides to detect and segment features for identification. Code is [here](https://github.com/WEHI-Proteomics/tfde/tree/master/3did).
 
 #### Feature detection with a YOLO-based CNN detector
