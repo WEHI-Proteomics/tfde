@@ -1,5 +1,5 @@
 # TFD/E
-This is a repository for algorithms exploring targeted detection, extraction, and characterisation of tryptic peptide features in [timsTOF](https://www.bruker.com/en/products-and-solutions/mass-spectrometry/timstof/timstof.html) data.
+This is a repository for algorithms exploring untargeted and targeted detection, extraction, and characterisation of tryptic peptide features in raw MS1 data produced by the [timsTOF](https://www.bruker.com/en/products-and-solutions/mass-spectrometry/timstof/timstof.html) mass spectrometer for LC-MS/MS proteomics experiments.
 
 There are three approaches to feature detection here.
 
