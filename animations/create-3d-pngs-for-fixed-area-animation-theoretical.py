@@ -113,10 +113,9 @@ for scene_idx,number_of_frames in enumerate(scenes):
         ax.w_zaxis.line.set_lw(0.)
         ax.set_zticks([])
 
-        # plt.gca().invert_yaxis()
-        plt.xlabel('m/z', fontsize=18)
-        plt.ylabel('CCS', fontsize=18)
-        plt.tick_params(labelsize=12)
+        plt.xlabel('m/z', fontsize=16)
+        plt.ylabel('CCS', fontsize=16)
+        plt.tick_params(labelsize=10)
 
         mz = 700.0
         mz_values = np.zeros((len(ccs_values),), dtype=float)+mz
