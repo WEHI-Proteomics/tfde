@@ -17,9 +17,9 @@ def func(x, a, x0, sigma):
 azimuth_d = {}
 azimuth_d[1] = 230
 azimuth_d[2] = 230
-azimuth_d[3] = np.arange(230, 180, -1.0)
+azimuth_d[3] = np.linspace(230, 180, num=50)
 azimuth_d[4] = 180
-azimuth_d[5] = np.arange(180, 270, 2.0)
+azimuth_d[5] = np.linspace(180, 270, num=100)
 
 # elevation values by scene
 elevation_d = {}
@@ -58,7 +58,6 @@ if os.path.exists(working_folder):
     shutil.rmtree(working_folder)
 os.makedirs(working_folder)
 
-azimuth = 230
 frame_counter = 0
 
 # m/z extent
@@ -76,7 +75,7 @@ std_dev_ccs = 20
 rt_lower = 200
 rt_upper = 300
 
-rt_values = np.arange(rt_lower, rt_upper, 1.0)
+rt_values = np.arange(rt_lower, rt_upper, 0.8)
 ccs_values = np.arange(scan_lower, scan_upper, 1.0)
 
 peak_rt = ((rt_upper-rt_lower)/2)+rt_lower
@@ -86,7 +85,7 @@ feature_intensity_values = func(rt_values, 1.0, peak_rt, std_dev_rt)
 intensity_threshold = 0.001
 
 # set up the number of frames in each scene
-scenes = [len(rt_values), int(len(rt_values)/2), len(azimuth_d[3]), 10, len(azimuth_d[5])]
+scenes = [len(rt_values), int(len(rt_values)/2), len(azimuth_d[3]), 40, len(azimuth_d[5])]
 
 for scene_idx,number_of_frames in enumerate(scenes):
     for frame_id in range(number_of_frames):
