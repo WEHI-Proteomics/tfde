@@ -1,9 +1,6 @@
 import matplotlib
 matplotlib.use("Agg")
-from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.pyplot as plt
-import sqlite3
-import pandas as pd
 import numpy as np
 import os
 import shutil
@@ -15,6 +12,43 @@ import shutil
 # Gaussian function
 def func(x, a, x0, sigma):
     return a*np.exp(-(x-x0)**2/(2*sigma**2))
+
+# azimuth values by scene
+azimuth_d = {}
+azimuth_d[1] = 230
+azimuth_d[2] = 230
+azimuth_d[3] = np.arange(230, 180, -1.0)
+azimuth_d[4] = np.arange(180, 270, 2.0)
+
+# elevation values by scene
+elevation_d = {}
+elevation_d[1] = 20
+elevation_d[2] = 20
+elevation_d[3] = np.linspace(20, 1, num=len(azimuth_d[3]))  # keyed to the number of azimuth values in the scene
+elevation_d[4] = 1
+
+
+def calculate_azimuth(scene, frame):
+    if type(azimuth_d[scene]) == int:
+        azimuth = azimuth_d[scene]
+    else:
+        azimuth = azimuth_d[scene][frame]
+    return azimuth
+
+def calculate_elevation(scene, frame):
+    if type(elevation_d[scene]) == int:
+        elevation = elevation_d[scene]
+    else:
+        elevation = elevation_d[scene][frame]
+    return elevation
+
+def calculate_feature_intensity(scene, frame):
+    if scene==1 or scene==2:
+        intensity = feature_intensity_values[frame]
+    else:
+        intensity = 1.0
+    return intensity
+
 
 # set a filename, run the logistic model, and create the plot
 working_folder = '/Users/darylwilding-mcbride/Downloads/peptide/frames'
@@ -49,80 +83,85 @@ std_dev_rt = 13
 feature_intensity_values = func(rt_values, 1.0, peak_rt, std_dev_rt)
 intensity_threshold = 0.001
 
-for frame_id,rt in enumerate(rt_values):
-    print("rendering frame {}".format(frame_counter))
+# set up the number of frames in each scene
+scenes = [len(rt_values), int(len(rt_values)/2), len(azimuth_d[3]), len(azimuth_d[4])]
 
-    fig = plt.figure()
-    fig.set_facecolor('whitesmoke')
-    ax = fig.add_subplot(111, projection='3d')
-    fig.set_figheight(15)
-    fig.set_figwidth(15)
-    ax.patch.set_facecolor('whitesmoke')
-    ax.w_xaxis.set_pane_color((0.3, 0.3, 0.3, 0.8))
-    ax.w_yaxis.set_pane_color((0.3, 0.3, 0.3, 0.8))
-    ax.w_zaxis.set_pane_color((0.1, 0.1, 0.1, 0.8))
+for scene_idx,number_of_frames in enumerate(scenes):
+    for frame_id in range(number_of_frames):
+        print("rendering frame {}".format(frame_counter))
 
-    ax.elev = 20.0
-    ax.azim = azimuth
-    ax.dist = 9.0
+        fig = plt.figure()
+        fig.set_facecolor('whitesmoke')
+        ax = fig.add_subplot(111, projection='3d')
+        fig.set_figheight(15)
+        fig.set_figwidth(15)
+        ax.patch.set_facecolor('whitesmoke')
+        ax.w_xaxis.set_pane_color((0.3, 0.3, 0.3, 0.8))
+        ax.w_yaxis.set_pane_color((0.3, 0.3, 0.3, 0.8))
+        ax.w_zaxis.set_pane_color((0.1, 0.1, 0.1, 0.8))
 
-    ax.set_xlim(left=mz_lower, right=mz_upper)
-    ax.set_ylim(bottom=scan_upper, top=scan_lower)
-    ax.set_zlim(bottom=0, top=1.0)
+        ax.elev = calculate_elevation(scene=scene_idx+1, frame=frame_id)
+        ax.azim = calculate_azimuth(scene=scene_idx+1, frame=frame_id)
+        ax.dist = 9.0
 
-    ax.w_zaxis.line.set_lw(0.)
-    ax.set_zticks([])
+        ax.set_xlim(left=mz_lower, right=mz_upper)
+        ax.set_ylim(bottom=scan_upper, top=scan_lower)
+        ax.set_zlim(bottom=0, top=1.0)
 
-    # plt.gca().invert_yaxis()
-    plt.xlabel('m/z', fontsize=18)
-    plt.ylabel('CCS', fontsize=18)
-    plt.tick_params(labelsize=12)
+        ax.w_zaxis.line.set_lw(0.)
+        ax.set_zticks([])
 
-    mz = 700.0
-    mz_values = np.zeros((len(ccs_values),), dtype=float)+mz
+        # plt.gca().invert_yaxis()
+        plt.xlabel('m/z', fontsize=18)
+        plt.ylabel('CCS', fontsize=18)
+        plt.tick_params(labelsize=12)
 
+        mz = 700.0
+        mz_values = np.zeros((len(ccs_values),), dtype=float)+mz
 
-    iso_intensity_values = feature_intensity_values[frame_id]*1.0
-    x = mz_values
-    y = ccs_values
-    z = func(y, iso_intensity_values, peak_ccs, std_dev_ccs)
-    idx = z > intensity_threshold
-    ax.scatter(x[idx], y[idx], z[idx], s=4**2, c=z[idx], cmap=plt.get_cmap('cool'), alpha=1.0)
+        feature_intensity = calculate_feature_intensity(scene=scene_idx+1, frame=frame_id)
 
-    iso_intensity_values = feature_intensity_values[frame_id]*0.8
-    nonzero_idx = iso_intensity_values > intensity_threshold
-    x = mz_values+0.5
-    y = ccs_values
-    z = func(y, iso_intensity_values, peak_ccs, std_dev_ccs)
-    idx = z > intensity_threshold
-    ax.scatter(x[idx], y[idx], z[idx], s=4**2, c=z[idx], cmap=plt.get_cmap('cool'), alpha=1.0)
+        iso_intensity_values = feature_intensity*1.0
+        x = mz_values
+        y = ccs_values
+        z = func(y, iso_intensity_values, peak_ccs, std_dev_ccs)
+        idx = z > intensity_threshold
+        ax.scatter(x[idx], y[idx], z[idx], s=4**2, c=z[idx], cmap=plt.get_cmap('cool'), alpha=1.0)
 
-    iso_intensity_values = feature_intensity_values[frame_id]*0.4
-    nonzero_idx = iso_intensity_values > intensity_threshold
-    x = mz_values+1.0
-    y = ccs_values
-    z = func(y, iso_intensity_values, peak_ccs, std_dev_ccs)
-    idx = z > intensity_threshold
-    ax.scatter(x[idx], y[idx], z[idx], s=4**2, c=z[idx], cmap=plt.get_cmap('cool'), alpha=1.0)
+        iso_intensity_values = feature_intensity*0.8
+        nonzero_idx = iso_intensity_values > intensity_threshold
+        x = mz_values+0.5
+        y = ccs_values
+        z = func(y, iso_intensity_values, peak_ccs, std_dev_ccs)
+        idx = z > intensity_threshold
+        ax.scatter(x[idx], y[idx], z[idx], s=4**2, c=z[idx], cmap=plt.get_cmap('cool'), alpha=1.0)
 
-    iso_intensity_values = feature_intensity_values[frame_id]*0.2
-    nonzero_idx = iso_intensity_values > intensity_threshold
-    x = mz_values+1.5
-    y = ccs_values
-    z = func(y, iso_intensity_values, peak_ccs, std_dev_ccs)
-    idx = z > intensity_threshold
-    ax.scatter(x[idx], y[idx], z[idx], s=4**2, c=z[idx], cmap=plt.get_cmap('cool'), alpha=1.0)
+        iso_intensity_values = feature_intensity*0.4
+        nonzero_idx = iso_intensity_values > intensity_threshold
+        x = mz_values+1.0
+        y = ccs_values
+        z = func(y, iso_intensity_values, peak_ccs, std_dev_ccs)
+        idx = z > intensity_threshold
+        ax.scatter(x[idx], y[idx], z[idx], s=4**2, c=z[idx], cmap=plt.get_cmap('cool'), alpha=1.0)
 
-    iso_intensity_values = feature_intensity_values[frame_id]*0.1
-    nonzero_idx = iso_intensity_values > intensity_threshold
-    x = mz_values+2.0
-    y = ccs_values
-    z = func(y, iso_intensity_values, peak_ccs, std_dev_ccs)
-    idx = z > intensity_threshold
-    ax.scatter(x[idx], y[idx], z[idx], s=4**2, c=z[idx], cmap=plt.get_cmap('cool'), alpha=1.0)
+        iso_intensity_values = feature_intensity*0.2
+        nonzero_idx = iso_intensity_values > intensity_threshold
+        x = mz_values+1.5
+        y = ccs_values
+        z = func(y, iso_intensity_values, peak_ccs, std_dev_ccs)
+        idx = z > intensity_threshold
+        ax.scatter(x[idx], y[idx], z[idx], s=4**2, c=z[idx], cmap=plt.get_cmap('cool'), alpha=1.0)
 
-    # fig.suptitle('frame id {}, retention time (secs) {}'.format(frame_id, round(frame_df.iloc[0].retention_time_secs, 1)), fontsize=16, x=0.5, y=0.85)
-    plt.savefig('{}/img-{:04d}.png'.format(working_folder, frame_counter), bbox_inches='tight', facecolor=fig.get_facecolor())
-    plt.close()
+        iso_intensity_values = feature_intensity*0.1
+        nonzero_idx = iso_intensity_values > intensity_threshold
+        x = mz_values+2.0
+        y = ccs_values
+        z = func(y, iso_intensity_values, peak_ccs, std_dev_ccs)
+        idx = z > intensity_threshold
+        ax.scatter(x[idx], y[idx], z[idx], s=4**2, c=z[idx], cmap=plt.get_cmap('cool'), alpha=1.0)
 
-    frame_counter += 1
+        # fig.suptitle('frame id {}, retention time (secs) {}'.format(frame_id, round(frame_df.iloc[0].retention_time_secs, 1)), fontsize=16, x=0.5, y=0.85)
+        plt.savefig('{}/img-{:04d}.png'.format(working_folder, frame_counter), bbox_inches='tight', facecolor=fig.get_facecolor())
+        plt.close()
+
+        frame_counter += 1
