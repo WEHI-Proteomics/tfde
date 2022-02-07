@@ -18,7 +18,8 @@ azimuth_d = {}
 azimuth_d[1] = 230
 azimuth_d[2] = 230
 azimuth_d[3] = np.arange(230, 180, -1.0)
-azimuth_d[4] = np.arange(180, 270, 2.0)
+azimuth_d[4] = 180
+azimuth_d[5] = np.arange(180, 270, 2.0)
 
 # elevation values by scene
 elevation_d = {}
@@ -26,6 +27,7 @@ elevation_d[1] = 20
 elevation_d[2] = 20
 elevation_d[3] = np.linspace(20, 1, num=len(azimuth_d[3]))  # keyed to the number of azimuth values in the scene
 elevation_d[4] = 1
+elevation_d[5] = 1
 
 
 def calculate_azimuth(scene, frame):
@@ -84,7 +86,7 @@ feature_intensity_values = func(rt_values, 1.0, peak_rt, std_dev_rt)
 intensity_threshold = 0.001
 
 # set up the number of frames in each scene
-scenes = [len(rt_values), int(len(rt_values)/2), len(azimuth_d[3]), len(azimuth_d[4])]
+scenes = [len(rt_values), int(len(rt_values)/2), len(azimuth_d[3]), 10, len(azimuth_d[5])]
 
 for scene_idx,number_of_frames in enumerate(scenes):
     for frame_id in range(number_of_frames):
@@ -106,7 +108,7 @@ for scene_idx,number_of_frames in enumerate(scenes):
 
         ax.set_xlim(left=mz_lower, right=mz_upper)
         ax.set_ylim(bottom=scan_upper, top=scan_lower)
-        ax.set_zlim(bottom=0, top=1.0)
+        ax.set_zlim(bottom=0, top=1.1)
 
         ax.w_zaxis.line.set_lw(0.)
         ax.set_zticks([])
