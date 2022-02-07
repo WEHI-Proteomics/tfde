@@ -33,17 +33,21 @@ mz_upper = 704
 scan_lower = 530
 scan_upper = 770
 
+peak_ccs = ((scan_upper - scan_lower) / 2) + scan_lower
+std_dev_ccs = 20
+
 # RT extent
 rt_lower = 200
 rt_upper = 300
-
 
 rt_values = np.arange(rt_lower, rt_upper, 1.0)
 ccs_values = np.arange(scan_lower, scan_upper, 1.0)
 
 peak_rt = ((rt_upper-rt_lower)/2)+rt_lower
-std_dev_rt = 15
+std_dev_rt = 13
+
 feature_intensity_values = func(rt_values, 1.0, peak_rt, std_dev_rt)
+intensity_threshold = 0.001
 
 for frame_id,rt in enumerate(rt_values):
     print("rendering frame {}".format(frame_counter))
@@ -77,10 +81,6 @@ for frame_id,rt in enumerate(rt_values):
     mz = 700.0
     mz_values = np.zeros((len(ccs_values),), dtype=float)+mz
 
-    intensity_threshold = 0.001
-
-    peak_ccs = ((scan_upper - scan_lower) / 2) + scan_lower
-    std_dev_ccs = 20
 
     iso_intensity_values = feature_intensity_values[frame_id]*1.0
     x = mz_values
