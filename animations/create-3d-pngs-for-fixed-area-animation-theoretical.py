@@ -42,7 +42,7 @@ rt_values = np.arange(rt_lower, rt_upper, 1.0)
 ccs_values = np.arange(scan_lower, scan_upper, 1.0)
 
 peak_rt = ((rt_upper-rt_lower)/2)+rt_lower
-std_dev_rt = 10
+std_dev_rt = 15
 feature_intensity_values = func(rt_values, 1.0, peak_rt, std_dev_rt)
 
 for frame_id,rt in enumerate(rt_values):
@@ -54,9 +54,9 @@ for frame_id,rt in enumerate(rt_values):
     fig.set_figheight(15)
     fig.set_figwidth(15)
     ax.patch.set_facecolor('whitesmoke')
-    ax.w_xaxis.set_pane_color((0.96, 0.96, 0.96, 0.8))
-    ax.w_yaxis.set_pane_color((0.96, 0.96, 0.96, 0.8))
-    ax.w_zaxis.set_pane_color((0.96, 0.96, 0.96, 0.8))
+    ax.w_xaxis.set_pane_color((0.3, 0.3, 0.3, 0.8))
+    ax.w_yaxis.set_pane_color((0.3, 0.3, 0.3, 0.8))
+    ax.w_zaxis.set_pane_color((0.1, 0.1, 0.1, 0.8))
 
     ax.elev = 20.0
     ax.azim = azimuth
@@ -66,12 +66,12 @@ for frame_id,rt in enumerate(rt_values):
     ax.set_ylim(bottom=scan_upper, top=scan_lower)
     ax.set_zlim(bottom=0, top=1.0)
 
+    ax.w_zaxis.line.set_lw(0.)
     ax.set_zticks([])
 
     # plt.gca().invert_yaxis()
     plt.xlabel('m/z', fontsize=18)
     plt.ylabel('CCS', fontsize=18)
-    # ax.set_zlabel('normalised intensity', fontsize=20)
     plt.tick_params(labelsize=12)
 
     mz = 700.0
