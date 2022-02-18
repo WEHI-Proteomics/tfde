@@ -103,7 +103,7 @@ for frame_id,frame_df in ms1_df.groupby('frame_id'):
         plt.xlabel('m/z', fontsize=20)
         plt.ylabel('normalised intensity', fontsize=20)
         plt.tick_params(labelsize=18)
-        ax.patch.set_facecolor('whitesmoke')
+        ax.patch.set_facecolor((0.1, 0.1, 0.1, 0.8))
 
         plt.xlim((args.mz_lower,args.mz_upper))
         plt.ylim((0,intensity_upper))
