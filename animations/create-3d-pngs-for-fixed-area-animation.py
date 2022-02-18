@@ -8,7 +8,6 @@ import shutil
 import argparse
 import sys
 import alphatims.bruker
-from cmcrameri import cm
 
 
 ###################################
@@ -103,9 +102,9 @@ for frame_id,frame_df in ms1_df.groupby('frame_id'):
         fig.set_figheight(15)
         fig.set_figwidth(15)
         ax.patch.set_facecolor('whitesmoke')
-        ax.w_xaxis.set_pane_color((0.3, 0.3, 0.3, 0.8))
-        ax.w_yaxis.set_pane_color((0.3, 0.3, 0.3, 0.8))
-        ax.w_zaxis.set_pane_color((0.4, 0.4, 0.4, 0.8))
+        ax.w_xaxis.set_pane_color((0.8, 0.8, 0.8, 0.8))
+        ax.w_yaxis.set_pane_color((0.8, 0.8, 0.8, 0.8))
+        ax.w_zaxis.set_pane_color((0.6, 0.6, 0.6, 0.8))
 
         ax.elev = 20.0
         ax.azim = azimuth
@@ -123,7 +122,7 @@ for frame_id,frame_df in ms1_df.groupby('frame_id'):
         # ax.set_zlabel('normalised intensity', fontsize=20)
         plt.tick_params(labelsize=12)
 
-        ax.scatter(frame_df.mz, frame_df.scan, frame_df.normalised_intensity, s=4**2, c=frame_df.normalised_intensity, cmap=cm.lajolla_r, alpha=1.0)
+        ax.scatter(frame_df.mz, frame_df.scan, frame_df.normalised_intensity, s=4**2, c=frame_df.normalised_intensity, cmap=plt.get_cmap('turbo'), alpha=1.0)
         # fig.suptitle('frame id {}, retention time (secs) {}'.format(frame_id, round(frame_df.iloc[0].retention_time_secs, 1)), fontsize=16, x=0.5, y=0.85)
         plt.savefig('{}/img-{:04d}.png'.format(working_folder, frame_counter), bbox_inches='tight', facecolor=fig.get_facecolor())
         plt.close()
