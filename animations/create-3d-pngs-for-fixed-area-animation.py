@@ -88,7 +88,8 @@ ms1_df[float_columns] = ms1_df[float_columns].apply(pd.to_numeric, downcast="flo
 print("loaded {} points".format(len(ms1_df)))
 
 ms1_df['normalised_intensity'] = ms1_df.intensity / ms1_df.intensity.max()
-ms1_df.sort_values(by=['frame_id','scan','mz'], ascending=[True,True,True], inplace=True)
+ms1_df = ms1_df[ms1_df.normalised_intensity >= 0.01].copy()
+ms1_df.sort_values(by=['frame_id','scan','mz'], ascending=[True,True,False], inplace=True)
 
 for frame_id,frame_df in ms1_df.groupby('frame_id'):
     if len(frame_df) > 0:
