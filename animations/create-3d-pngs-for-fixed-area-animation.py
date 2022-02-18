@@ -104,7 +104,7 @@ for frame_id,frame_df in ms1_df.groupby('frame_id'):
         ax.patch.set_facecolor('whitesmoke')
         ax.w_xaxis.set_pane_color((0.3, 0.3, 0.3, 0.8))
         ax.w_yaxis.set_pane_color((0.3, 0.3, 0.3, 0.8))
-        ax.w_zaxis.set_pane_color((0.1, 0.1, 0.1, 0.8))
+        ax.w_zaxis.set_pane_color((0.4, 0.4, 0.4, 0.8))
 
         ax.elev = 20.0
         ax.azim = azimuth
