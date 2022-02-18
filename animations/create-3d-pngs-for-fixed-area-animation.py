@@ -123,7 +123,7 @@ for frame_id,frame_df in ms1_df.groupby('frame_id'):
         # ax.set_zlabel('normalised intensity', fontsize=20)
         plt.tick_params(labelsize=12)
 
-        ax.scatter(frame_df.mz, frame_df.scan, frame_df.normalised_intensity, s=4**2, c=np.log2(frame_df.intensity), cmap=plt.get_cmap('cool'), alpha=1.0)
+        ax.scatter(frame_df.mz, frame_df.scan, frame_df.normalised_intensity, s=4**2, c=np.log2(frame_df.intensity), cmap=plt.get_cmap('cool'), alpha=0.5)
         # fig.suptitle('frame id {}, retention time (secs) {}'.format(frame_id, round(frame_df.iloc[0].retention_time_secs, 1)), fontsize=16, x=0.5, y=0.85)
         plt.savefig('{}/img-{:04d}.png'.format(working_folder, frame_counter), bbox_inches='tight', facecolor=fig.get_facecolor())
         plt.close()
