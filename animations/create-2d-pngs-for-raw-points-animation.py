@@ -5,7 +5,6 @@ import pandas as pd
 import numpy as np
 import os
 import shutil
-import colorcet as cc
 import argparse
 import sys
 import alphatims.bruker
@@ -22,7 +21,7 @@ parser.add_argument('-sl','--scan_lower', type=int, default='500', help='Lower l
 parser.add_argument('-su','--scan_upper', type=int, default='800', help='Upper limit for scan.', required=False)
 parser.add_argument('-ml','--mz_lower', type=int, default='695', help='Lower limit for m/z.', required=False)
 parser.add_argument('-mu','--mz_upper', type=int, default='740', help='Upper limit for m/z.', required=False)
-parser.add_argument('-od','--output_dir', type=str, help='Base directory for the tiles output.', required=False)
+parser.add_argument('-od','--output_dir', type=str, help='Base directory for the tiles output.', required=True)
 args = parser.parse_args()
 
 # Print the arguments for the log
