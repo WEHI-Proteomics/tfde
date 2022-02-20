@@ -89,7 +89,7 @@ ms1_df[float_columns] = ms1_df[float_columns].apply(pd.to_numeric, downcast="flo
 
 # calculate the camera movement
 number_of_frames = len(ms1_df.frame_id.unique())
-movement_proportion = 0.3
+movement_proportion = 0.2
 
 azimuths_a = np.linspace(270, 230, num=int(number_of_frames * movement_proportion))
 azimuths_b = np.zeros(number_of_frames-len(azimuths_a)) + 230
