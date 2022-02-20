@@ -32,7 +32,8 @@ for arg in vars(args):
 print(info)
 
 frame_counter = 0
-azimuth = 230
+
+
 
 # check the experiment directory exists
 EXPERIMENT_DIR = "{}/{}".format(args.experiment_base_dir, args.experiment_name)
@@ -86,6 +87,11 @@ ms1_df[int_columns] = ms1_df[int_columns].apply(pd.to_numeric, downcast="unsigne
 float_columns = ['retention_time_secs']
 ms1_df[float_columns] = ms1_df[float_columns].apply(pd.to_numeric, downcast="float")
 
+# calculate the camera movement
+number_of_frames = len(ms1_df.frame_id.unique())
+azimuths = np.linspace(180, 230, num=number_of_frames)
+elevations = np.linspace(1, 20, num=number_of_frames)
+
 print("loaded {} points".format(len(ms1_df)))
 
 ms1_df['normalised_intensity'] = ms1_df.intensity / ms1_df.intensity.max()
@@ -114,8 +120,8 @@ for frame_id,frame_df in ms1_df.groupby('frame_id'):
         ax.w_yaxis.set_pane_color((0.9, 0.9, 0.9, 0.8))
         ax.w_zaxis.set_pane_color((0.5, 0.5, 0.5, 0.8))
 
-        ax.elev = 20.0
-        ax.azim = azimuth
+        ax.elev = elevations[frame_counter]
+        ax.azim = azimuths[frame_counter]
         ax.dist = 9.0
 
         ax.set_xlim(left=args.mz_lower, right=args.mz_upper)
