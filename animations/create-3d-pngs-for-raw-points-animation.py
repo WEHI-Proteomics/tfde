@@ -104,7 +104,7 @@ elevations = np.concatenate([elevations_a,elevations_b])
 distance_final = 9
 distances_a = np.linspace(3, distance_final, num=int(number_of_frames * movement_proportion))
 distances_b = np.zeros(number_of_frames-len(distances_a)) + distance_final
-distances = np.concatenate([distances_a,distances_a])
+distances = np.concatenate([distances_a,distances_b])
 
 print("loaded {} points".format(len(ms1_df)))
 
