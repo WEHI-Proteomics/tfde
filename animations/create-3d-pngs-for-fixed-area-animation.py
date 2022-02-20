@@ -89,7 +89,12 @@ ms1_df[float_columns] = ms1_df[float_columns].apply(pd.to_numeric, downcast="flo
 print("loaded {} points".format(len(ms1_df)))
 
 ms1_df['normalised_intensity'] = ms1_df.intensity / ms1_df.intensity.max()
-ms1_df.sort_values(by=['frame_id','mz'], ascending=[True,False], inplace=True)
+
+BIN_SIZE_MZ = 0.2
+mz_bins = pd.interval_range(start=ms1_df.mz.min(), end=ms1_df.mz.max()+(BIN_SIZE_MZ*2), freq=BIN_SIZE_MZ, closed='left')
+ms1_df['mz_bin'] = pd.cut(ms1_df.mz, bins=mz_bins)
+
+ms1_df.sort_values(by=['frame_id','mz_bin','intensity'], ascending=[True,False,True], inplace=True)
 
 norm = colors.LogNorm(vmin=ms1_df.intensity.min(), vmax=ms1_df.intensity.max(), clip=True)
 
