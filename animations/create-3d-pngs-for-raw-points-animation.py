@@ -91,13 +91,20 @@ ms1_df[float_columns] = ms1_df[float_columns].apply(pd.to_numeric, downcast="flo
 number_of_frames = len(ms1_df.frame_id.unique())
 movement_proportion = 0.2
 
-azimuths_a = np.linspace(270, 230, num=int(number_of_frames * movement_proportion))
-azimuths_b = np.zeros(number_of_frames-len(azimuths_a)) + 230
+azimuth_final = 230
+azimuths_a = np.linspace(270, azimuth_final, num=int(number_of_frames * movement_proportion))
+azimuths_b = np.zeros(number_of_frames-len(azimuths_a)) + azimuth_final
 azimuths = np.concatenate([azimuths_a,azimuths_b])
 
-elevations_a = np.linspace(0, 20, num=int(number_of_frames * movement_proportion))
-elevations_b = np.zeros(number_of_frames-len(elevations_a)) + 20
+elevation_final = 20
+elevations_a = np.linspace(0, elevation_final, num=int(number_of_frames * movement_proportion))
+elevations_b = np.zeros(number_of_frames-len(elevations_a)) + elevation_final
 elevations = np.concatenate([elevations_a,elevations_b])
+
+distance_final = 9
+distances_a = np.linspace(0, distance_final, num=int(number_of_frames * movement_proportion))
+distances_b = np.zeros(number_of_frames-len(distances_a)) + distance_final
+distances = np.concatenate([distances_a,distances_a])
 
 print("loaded {} points".format(len(ms1_df)))
 
@@ -129,7 +136,7 @@ for frame_id,frame_df in ms1_df.groupby('frame_id'):
 
         ax.elev = elevations[frame_counter]
         ax.azim = azimuths[frame_counter]
-        ax.dist = 9.0
+        ax.dist = distances[frame_counter]
 
         ax.set_xlim(left=args.mz_lower, right=args.mz_upper)
         ax.set_ylim(bottom=args.scan_upper, top=args.scan_lower)
