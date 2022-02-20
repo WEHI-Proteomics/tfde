@@ -1,6 +1,7 @@
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+from matplotlib import colors
 import pandas as pd
 import numpy as np
 import os
@@ -89,6 +90,8 @@ print("loaded {} points".format(len(ms1_df)))
 ms1_df['normalised_intensity'] = ms1_df.intensity / ms1_df.intensity.max()
 ms1_df.sort_values(by=['frame_id','mz'], ascending=True, inplace=True)
 
+norm = colors.LogNorm(vmin=ms1_df.intensity.min(), vmax=ms1_df.intensity.max(), clip=True)
+
 intensity_upper = 1.0
 
 for frame_id,frame_df in ms1_df.groupby('frame_id'):
@@ -99,11 +102,11 @@ for frame_id,frame_df in ms1_df.groupby('frame_id'):
 
         f, ax = plt.subplots()
         f.set_facecolor('whitesmoke')
-        plt.scatter(frame_df.mz, frame_df.normalised_intensity, s=5**2, c=np.log2(frame_df.intensity), cmap=plt.get_cmap('turbo'), alpha=1.0, edgecolors='face')
+        plt.scatter(frame_df.mz, frame_df.normalised_intensity, s=5**2, c=norm(frame_df.intensity), cmap=plt.get_cmap('turbo'), alpha=1.0, edgecolors='face')
         plt.xlabel('m/z', fontsize=20)
         plt.ylabel('normalised intensity', fontsize=20)
         plt.tick_params(labelsize=18)
-        ax.patch.set_facecolor((0.8, 0.8, 0.8, 0.8))
+        ax.patch.set_facecolor((0.9, 0.9, 0.9, 0.8))
 
         plt.xlim((args.mz_lower,args.mz_upper))
         plt.ylim((0,intensity_upper))
