@@ -99,11 +99,11 @@ for frame_id,frame_df in ms1_df.groupby('frame_id'):
 
         f, ax = plt.subplots()
         f.set_facecolor('whitesmoke')
-        plt.scatter(frame_df.mz, frame_df.normalised_intensity, s=5**2, c=np.log2(frame_df.intensity), cmap=plt.get_cmap('cool'), alpha=1.0, edgecolors='face')
+        plt.scatter(frame_df.mz, frame_df.normalised_intensity, s=5**2, c=np.log2(frame_df.intensity), cmap=plt.get_cmap('turbo'), alpha=1.0, edgecolors='face')
         plt.xlabel('m/z', fontsize=20)
         plt.ylabel('normalised intensity', fontsize=20)
         plt.tick_params(labelsize=18)
-        ax.patch.set_facecolor((0.1, 0.1, 0.1, 0.8))
+        ax.patch.set_facecolor((0.8, 0.8, 0.8, 0.8))
 
         plt.xlim((args.mz_lower,args.mz_upper))
         plt.ylim((0,intensity_upper))
