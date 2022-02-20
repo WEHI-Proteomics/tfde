@@ -89,7 +89,7 @@ ms1_df[float_columns] = ms1_df[float_columns].apply(pd.to_numeric, downcast="flo
 
 # calculate the camera movement
 number_of_frames = len(ms1_df.frame_id.unique())
-azimuths = np.linspace(180, 230, num=number_of_frames)
+azimuths = np.linspace(270, 230, num=number_of_frames)
 elevations = np.linspace(1, 20, num=number_of_frames)
 
 print("loaded {} points".format(len(ms1_df)))
