@@ -103,7 +103,7 @@ for frame_id,frame_df in ms1_df.groupby('frame_id'):
         fig.set_figwidth(15)
         ax.patch.set_facecolor('whitesmoke')
         ax.w_xaxis.set_pane_color((0.8, 0.8, 0.8, 0.8))
-        ax.w_yaxis.set_pane_color((0.65, 0.65, 0.65, 0.8))
+        ax.w_yaxis.set_pane_color((0.9, 0.9, 0.9, 0.8))
         ax.w_zaxis.set_pane_color((0.5, 0.5, 0.5, 0.8))
 
         ax.elev = 20.0
