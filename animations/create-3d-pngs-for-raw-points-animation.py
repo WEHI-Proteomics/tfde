@@ -91,18 +91,21 @@ ms1_df[float_columns] = ms1_df[float_columns].apply(pd.to_numeric, downcast="flo
 number_of_frames = len(ms1_df.frame_id.unique())
 movement_proportion = 0.2
 
+azimuth_initial = 270
 azimuth_final = 230
-azimuths_a = np.linspace(270, azimuth_final, num=int(number_of_frames * movement_proportion))
+azimuths_a = np.linspace(azimuth_initial, azimuth_final, num=int(number_of_frames * movement_proportion))
 azimuths_b = np.zeros(number_of_frames-len(azimuths_a)) + azimuth_final
 azimuths = np.concatenate([azimuths_a,azimuths_b])
 
+elevation_initial = 5
 elevation_final = 20
-elevations_a = np.linspace(0, elevation_final, num=int(number_of_frames * movement_proportion))
+elevations_a = np.linspace(elevation_initial, elevation_final, num=int(number_of_frames * movement_proportion))
 elevations_b = np.zeros(number_of_frames-len(elevations_a)) + elevation_final
 elevations = np.concatenate([elevations_a,elevations_b])
 
+distance_initial = 5
 distance_final = 9
-distances_a = np.linspace(3, distance_final, num=int(number_of_frames * movement_proportion))
+distances_a = np.linspace(distance_initial, distance_final, num=int(number_of_frames * movement_proportion))
 distances_b = np.zeros(number_of_frames-len(distances_a)) + distance_final
 distances = np.concatenate([distances_a,distances_b])
 
