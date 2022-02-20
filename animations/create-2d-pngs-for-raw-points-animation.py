@@ -88,7 +88,7 @@ ms1_df[float_columns] = ms1_df[float_columns].apply(pd.to_numeric, downcast="flo
 print("loaded {} points".format(len(ms1_df)))
 
 ms1_df['normalised_intensity'] = ms1_df.intensity / ms1_df.intensity.max()
-ms1_df.sort_values(by=['frame_id','mz'], ascending=True, inplace=True)
+ms1_df.sort_values(by=['frame_id','intensity'], ascending=True, inplace=True)
 
 norm = colors.LogNorm(vmin=ms1_df.intensity.min(), vmax=ms1_df.intensity.max(), clip=True)
 
