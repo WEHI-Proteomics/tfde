@@ -103,7 +103,7 @@ elevations_a = np.linspace(elevation_initial, elevation_final, num=int(number_of
 elevations_b = np.zeros(number_of_frames-len(elevations_a)) + elevation_final
 elevations = np.concatenate([elevations_a,elevations_b])
 
-distance_initial = 5
+distance_initial = 9
 distance_final = 9
 distances_a = np.linspace(distance_initial, distance_final, num=int(number_of_frames * movement_proportion))
 distances_b = np.zeros(number_of_frames-len(distances_a)) + distance_final
