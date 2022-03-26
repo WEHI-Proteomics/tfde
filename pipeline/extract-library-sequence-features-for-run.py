@@ -1102,6 +1102,7 @@ parser.add_argument('-mpwrt','--max_peak_width_rt', type=int, default=10, help='
 parser.add_argument('-mpwccs','--max_peak_width_ccs', type=int, default=20, help='Maximum peak width tolerance for the extraction from the estimated coordinate in CCS.', required=False)
 parser.add_argument('-ini','--ini_file', type=str, default='./tfde/pipeline/pasef-process-short-gradient.ini', help='Path to the config file.', required=False)
 parser.add_argument('-d','--denoised', action='store_true', help='Use the denoised version of the raw database.')
+parser.add_argument('-pdm','--precursor_definition_method', type=str, choices=['pasef','3did','mq'], default='pasef', help='The method used to define the precursor cuboids.', required=False)
 args = parser.parse_args()
 
 # Print the arguments for the log
@@ -1177,7 +1178,7 @@ if not os.path.exists(COORDINATE_ESTIMATORS_DIR):
     sys.exit(1)
 
 # load the sequence library
-SEQUENCE_LIBRARY_DIR = "{}/sequence-library".format(EXPERIMENT_DIR)
+SEQUENCE_LIBRARY_DIR = "{}/sequence-library-{}".format(EXPERIMENT_DIR, args.precursor_definition_method)
 SEQUENCE_LIBRARY_FILE_NAME = "{}/sequence-library.feather".format(SEQUENCE_LIBRARY_DIR)
 if not os.path.isfile(SEQUENCE_LIBRARY_FILE_NAME):
     print("The sequences library file doesn't exist: {}".format(SEQUENCE_LIBRARY_FILE_NAME))
