@@ -401,7 +401,7 @@ def task_extract_features_for_library_sequences():
     cmd_l = []
     target_l = []
     # input
-    SEQUENCE_LIBRARY_DIR = "{}/sequence-library".format(EXPERIMENT_DIR)
+    SEQUENCE_LIBRARY_DIR = "{}/sequence-library-{}".format(EXPERIMENT_DIR, config['precursor_definition_method'])
     SEQUENCE_LIBRARY_FILE_NAME = "{}/sequence-library.feather".format(SEQUENCE_LIBRARY_DIR)
     depend_l = [SEQUENCE_LIBRARY_FILE_NAME]
     COORDINATE_ESTIMATORS_DIR = "{}/coordinate-estimators".format(EXPERIMENT_DIR)
