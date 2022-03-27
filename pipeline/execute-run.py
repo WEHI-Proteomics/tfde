@@ -188,14 +188,14 @@ def task_search_mgf():
         cmd = 'python -u search-mgf-against-sequence-db.py -eb {experiment_base} -en {experiment_name} -rn {run_name} -ini {INI_FILE} -ff {fasta_name} -pdm {precursor_definition_method}'.format(experiment_base=config['experiment_base_dir'], experiment_name=config['experiment_name'], run_name=run_name, INI_FILE=config['ini_file'], fasta_name=config['fasta_file_name'], precursor_definition_method=config['precursor_definition_method'])
         cmd_l.append(cmd)
         # output
-        comet_output = '{experiment_base}/comet-output-pasef/{run_name}.comet.log.txt'.format(experiment_base=EXPERIMENT_DIR, run_name=run_name)
+        comet_output = '{experiment_base}/comet-output-{pdm}/{run_name}.comet.log.txt'.format(experiment_base=EXPERIMENT_DIR, pdm=config['precursor_definition_method'], run_name=run_name)
         target_l.append(comet_output)
 
     return {
         'file_dep': depend_l,
         'actions': cmd_l,
         'targets': target_l,
-        'clean': ['rm -rf {experiment_base}/comet-output-pasef'.format(experiment_base=EXPERIMENT_DIR)],
+        'clean': ['rm -rf {experiment_base}/comet-output-{}'.format(experiment_base=EXPERIMENT_DIR), config['precursor_definition_method']],
         'verbosity': 2
     }
 
@@ -205,7 +205,7 @@ def task_identify_searched_features():
     target_l = []
     # input
     for run_name in run_names_l:
-        comet_output = '{experiment_base}/comet-output-pasef/{run_name}.comet.log.txt'.format(experiment_base=EXPERIMENT_DIR, run_name=run_name)
+        comet_output = '{experiment_base}/comet-output-{pdm}/{run_name}.comet.log.txt'.format(experiment_base=EXPERIMENT_DIR, pdm=config['precursor_definition_method'], run_name=run_name)
         depend_l.append(comet_output)
     # cmd
     cmd = 'python -u identify-searched-features.py -eb {experiment_base} -en {experiment_name} -ini {INI_FILE} -ff {fasta_name} -pdm {precursor_definition_method}'.format(experiment_base=config['experiment_base_dir'], experiment_name=config['experiment_name'], INI_FILE=config['ini_file'], fasta_name=config['fasta_file_name'], precursor_definition_method=config['precursor_definition_method'])
@@ -219,7 +219,7 @@ def task_identify_searched_features():
         'file_dep': depend_l,
         'actions': cmd_l,
         'targets': target_l,
-        'clean': ['rm -rf {}'.format(IDENTIFICATIONS_DIR), 'rm -rf {experiment_base}/percolator-output-pasef'.format(experiment_base=EXPERIMENT_DIR)],
+        'clean': ['rm -rf {}'.format(IDENTIFICATIONS_DIR), 'rm -rf {experiment_base}/percolator-output-{pdm}'.format(experiment_base=EXPERIMENT_DIR, pdm=config['precursor_definition_method'])],
         'verbosity': 2
     }
 
@@ -294,14 +294,14 @@ def task_search_mgf_recalibrated():
         cmd = 'python -u search-mgf-against-sequence-db.py -eb {experiment_base} -en {experiment_name} -rn {run_name} -ini {INI_FILE} -ff {fasta_name} -pdm {precursor_definition_method} -recal'.format(experiment_base=config['experiment_base_dir'], experiment_name=config['experiment_name'], run_name=run_name, INI_FILE=config['ini_file'], fasta_name=config['fasta_file_name'], precursor_definition_method=config['precursor_definition_method'])
         cmd_l.append(cmd)
         # output
-        comet_output = '{experiment_base}/comet-output-pasef-recalibrated/{run_name}.comet.log.txt'.format(experiment_base=EXPERIMENT_DIR, run_name=run_name)
+        comet_output = '{experiment_base}/comet-output-{pdm}-recalibrated/{run_name}.comet.log.txt'.format(experiment_base=EXPERIMENT_DIR, pdm=config['precursor_definition_method'], run_name=run_name)
         target_l.append(comet_output)
 
     return {
         'file_dep': depend_l,
         'actions': cmd_l,
         'targets': target_l,
-        'clean': ['rm -rf {experiment_base}/comet-output-pasef-recalibrated'.format(experiment_base=EXPERIMENT_DIR)],
+        'clean': ['rm -rf {experiment_base}/comet-output-{pdm}-recalibrated'.format(experiment_base=EXPERIMENT_DIR, pdm=config['precursor_definition_method'])],
         'verbosity': 2
     }
 
@@ -311,7 +311,7 @@ def task_identify_searched_features_recalibrated():
     target_l = []
     # input
     for run_name in run_names_l:
-        comet_output = '{experiment_base}/comet-output-pasef-recalibrated/{run_name}.comet.log.txt'.format(experiment_base=EXPERIMENT_DIR, run_name=run_name)
+        comet_output = '{experiment_base}/comet-output-{pdm}-recalibrated/{run_name}.comet.log.txt'.format(experiment_base=EXPERIMENT_DIR, pdm=config['precursor_definition_method'], run_name=run_name)
         depend_l.append(comet_output)
     # cmd
     cmd = 'python -u identify-searched-features.py -eb {experiment_base} -en {experiment_name} -ini {INI_FILE} -ff {fasta_name} -pdm {precursor_definition_method} -recal'.format(experiment_base=config['experiment_base_dir'], experiment_name=config['experiment_name'], INI_FILE=config['ini_file'], fasta_name=config['fasta_file_name'], precursor_definition_method=config['precursor_definition_method'])
@@ -325,7 +325,7 @@ def task_identify_searched_features_recalibrated():
         'file_dep': depend_l,
         'actions': cmd_l,
         'targets': target_l,
-        'clean': ['rm -rf {}'.format(IDENTIFICATIONS_DIR), 'rm -rf {experiment_base}/percolator-output-pasef-recalibrated'.format(experiment_base=EXPERIMENT_DIR)],
+        'clean': ['rm -rf {}'.format(IDENTIFICATIONS_DIR), 'rm -rf {experiment_base}/percolator-output-{pdm}-recalibrated'.format(experiment_base=EXPERIMENT_DIR, pdm=config['precursor_definition_method'])],
         'verbosity': 2
     }
 
@@ -339,14 +339,14 @@ def task_build_sequence_library():
     cmd_l = []
     target_l = []
     # input
-    IDENTIFICATIONS_DIR = '{}/identifications-pasef'.format(EXPERIMENT_DIR)
-    IDENTIFICATIONS_FILE = '{}/exp-{}-identifications-pasef-recalibrated.feather'.format(IDENTIFICATIONS_DIR, config['experiment_name'])
+    IDENTIFICATIONS_DIR = '{}/identifications-{}'.format(EXPERIMENT_DIR, config['precursor_definition_method'])
+    IDENTIFICATIONS_FILE = '{}/exp-{}-identifications-{}-recalibrated.feather'.format(IDENTIFICATIONS_DIR, config['experiment_name'], config['precursor_definition_method'])
     depend_l = [IDENTIFICATIONS_FILE]
     # cmd
     cmd = 'python -u build-sequence-library.py -eb {experiment_base} -en {experiment_name} -ini {INI_FILE} -pdm {precursor_definition_method}'.format(experiment_base=config['experiment_base_dir'], experiment_name=config['experiment_name'], INI_FILE=config['ini_file'], precursor_definition_method=config['precursor_definition_method'])
     cmd_l.append(cmd)
     # output
-    SEQUENCE_LIBRARY_DIR = "{}/sequence-library".format(EXPERIMENT_DIR)
+    SEQUENCE_LIBRARY_DIR = "{}/sequence-library-{}".format(EXPERIMENT_DIR, config['precursor_definition_method'])
     SEQUENCE_LIBRARY_FILE_NAME = "{}/sequence-library.feather".format(SEQUENCE_LIBRARY_DIR)
     target_l.append(SEQUENCE_LIBRARY_FILE_NAME)
 
@@ -368,10 +368,10 @@ def task_build_coordinate_estimators():
     cmd_l = []
     target_l = []
     # input
-    SEQUENCE_LIBRARY_DIR = "{}/sequence-library".format(EXPERIMENT_DIR)
+    SEQUENCE_LIBRARY_DIR = "{}/sequence-library-{}".format(EXPERIMENT_DIR, config['precursor_definition_method'])
     SEQUENCE_LIBRARY_FILE_NAME = "{}/sequence-library.feather".format(SEQUENCE_LIBRARY_DIR)
-    IDENTIFICATIONS_DIR = '{}/identifications-pasef'.format(EXPERIMENT_DIR)
-    IDENTIFICATIONS_FILE = '{}/exp-{}-identifications-pasef-recalibrated.feather'.format(IDENTIFICATIONS_DIR, config['experiment_name'])
+    IDENTIFICATIONS_DIR = '{}/identifications-{}'.format(EXPERIMENT_DIR, config['precursor_definition_method'])
+    IDENTIFICATIONS_FILE = '{}/exp-{}-identifications-{}-recalibrated.feather'.format(IDENTIFICATIONS_DIR, config['experiment_name'], config['precursor_definition_method'])
     depend_l = [SEQUENCE_LIBRARY_FILE_NAME,IDENTIFICATIONS_FILE]
     # cmd
     cmd = 'python -u build-run-coordinate-estimators.py -eb {experiment_base} -en {experiment_name} -ini {INI_FILE} -snmp'.format(experiment_base=config['experiment_base_dir'], experiment_name=config['experiment_name'], INI_FILE=config['ini_file'])
@@ -493,8 +493,8 @@ def task_summarise_results():
     cmd_l = []
     target_l = []
     # input
-    IDENTIFICATIONS_DIR = '{}/identifications-pasef'.format(EXPERIMENT_DIR)
-    IDENTIFICATIONS_FILE = '{}/exp-{}-identifications-pasef-recalibrated.feather'.format(IDENTIFICATIONS_DIR, config['experiment_name'])
+    IDENTIFICATIONS_DIR = '{}/identifications-{}'.format(EXPERIMENT_DIR, config['precursor_definition_method'])
+    IDENTIFICATIONS_FILE = '{}/exp-{}-identifications-{}-recalibrated.feather'.format(IDENTIFICATIONS_DIR, config['experiment_name'], config['precursor_definition_method'])
     EXTRACTED_FEATURES_DB_NAME = '{}/extracted-features/extracted-features.sqlite'.format(EXPERIMENT_DIR)
     depend_l = [IDENTIFICATIONS_FILE,EXTRACTED_FEATURES_DB_NAME]
     # cmd
