@@ -195,7 +195,7 @@ def task_search_mgf():
         'file_dep': depend_l,
         'actions': cmd_l,
         'targets': target_l,
-        'clean': ['rm -rf {experiment_base}/comet-output-{}'.format(experiment_base=EXPERIMENT_DIR), config['precursor_definition_method']],
+        'clean': ['rm -rf {experiment_base}/comet-output-{pdm}'.format(experiment_base=EXPERIMENT_DIR, pdm=config['precursor_definition_method'])],
         'verbosity': 2
     }
 
