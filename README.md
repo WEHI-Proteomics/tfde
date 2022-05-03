@@ -34,6 +34,8 @@ Follow the installation instructions [here](https://www.tensorflow.org/install).
 2. Install the required packages with `pip install -r ./tfde/requirements.txt`.
 
 ## Usage
+
+#### TFD/E
 1. Create a directory for the group of experiments. For example, `/media/big-ssd/experiments`. This is called the experiment base directory. All the intermediate artefacts and results produced by the pipeline will be stored in subdirectories created automatically under this directory.  
 2. Under the experiment base directory, create a directory for each experiment. For example, `P3856_YHE010` for the human-only data.  
 3. The pipeline expects the raw `.d` directories to be in a directory called `raw-databases` under the experiment directoy. Either copy the `.d` directories here, or save storage by creating symlinks to them. For example, the .d directories have been downloaded to `/media/timstof-output`, the symlinks can be created like this:  
@@ -42,3 +44,9 @@ Follow the installation instructions [here](https://www.tensorflow.org/install).
 4. Edit the `./tfde/pipeline/bulk-run.sh` bash script to process the groups of technical replicates of the experiment. These are the runs that will be used to build the peptide library and from which the library peptides will be extracted. Be sure to specify the experiment base directory with the `-eb` flag, which has the value `/media/big-ssd/experiments` by default.  
 5. Execute the pipeline with `./tfde/pipeline/bulk-run.sh`. Progress information is printed to stdout. Analysis will take a number of hours, depending on the complexity of the samples, the number of runs in the experiment, the length of the LC gradient, and the computing resources of the machine. It's convenient to use a command like this for long-running processes: `nohup ./tfde/pipeline/bulk-run.sh > tfde.log 2>&1 &`.
 6. The results are stored in a SQLite database called `results.sqlite` in the `summarised-results` directory. This database includes the peptides identified and extracted, the runs from which they were identified and extracted, and the proteins inferred. Examples of how to extract data from the results schema are in the `notebooks` directory.
+
+#### 3DID
+1. 3DID uses the TFD/E experiments directory structure, but has its own execute command. So from step 4 in the TFD/E instructions, replace with the following.
+2. Edit the `./tfde/3did/variable-minvi.sh` bash script to analyse a run from the experiment at different threshold depth specified by the `minvi` parameter.
+3. Execute with `./tfde/3did/variable-minvi.sh`.
+4. The results are copied to a subdirectory under `/media/big-ssd` by default. Within this structure, the results are stored in a Feather file called `{features_dir}/exp-{experiment_name}-run-{run_name}-features-3did-dedup.feather`. Examples of how to extract data from this file are in the `notebooks` directory.
