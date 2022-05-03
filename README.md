@@ -40,5 +40,5 @@ Follow the installation instructions [here](https://www.tensorflow.org/install).
     1. `cd /media/big-ssd/experiments/P3856_YHE010/raw-databases`
     2. `ln -s /media/timstof-output/* .`
 4. Edit the `./tfde/pipeline/bulk-run.sh` bash script to process the groups of technical replicates of the experiment. These are the runs that will be used to build the peptide library and from which the library peptides will be extracted. Be sure to specify the experiment base directory with the `-eb` flag, which has the value `/media/big-ssd/experiments` by default.  
-5. Execute the pipeline with `./tfde/pipeline/bulk-run.sh`. Progress information is printed to stdout. Analysis will take a number of hours, depending on the complexity of the samples, the length of the LC gradient, and the computing resources of the machine. It's convenient to use a command like this for long-running processes: `nohup ./tfde/pipeline/bulk-run.sh > tfde.log 2>&1 &`.
+5. Execute the pipeline with `./tfde/pipeline/bulk-run.sh`. Progress information is printed to stdout. Analysis will take a number of hours, depending on the complexity of the samples, the number of runs in the experiment, the length of the LC gradient, and the computing resources of the machine. It's convenient to use a command like this for long-running processes: `nohup ./tfde/pipeline/bulk-run.sh > tfde.log 2>&1 &`.
 
