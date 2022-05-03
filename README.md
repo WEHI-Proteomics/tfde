@@ -22,16 +22,16 @@ The code has been tested with the runs deposited to the ProteomeXchange Consorti
 The code has been tested on a PC with a 12-core Intel i7 6850K processor and 64 GB of memory running Ubuntu 20.04. It will run faster with more cores and more memory that will allow it to increase the parallelism. The pipeline will automatically detect the hardware environment and utilise resources up the specified `proportion_of_cores_to_use` value.
 
 #### Conda
-1. Follow the installation instructions [here](https://www.anaconda.com/products/distribution)
-2. `conda create -n [name] python=3.8`
-3. `conda activate [name]`
+1. Follow the installation instructions [here](https://www.anaconda.com/products/distribution).
+2. Create a Python 3.8 environment with `conda create -n [name] python=3.8`
+3. Activate the environment with `conda activate [name]`
 
 #### TensorFlow
-Follow the installation instructions [here](https://www.tensorflow.org/install)
+Follow the installation instructions [here](https://www.tensorflow.org/install).
 
 #### TFD/E
-1. Clone the repository with `git clone git@github.com:WEHI-Proteomics/tfde.git`
-2. Install the required packages with `pip install -r ./tfde/requirements.txt`
+1. Clone the repository with `git clone git@github.com:WEHI-Proteomics/tfde.git`.
+2. Install the required packages with `pip install -r ./tfde/requirements.txt`.
 
 ## Usage
 1. Create a directory for the group of experiments. For example, `/media/big-ssd/experiments`. This is called the experiment base directory. All the intermediate artefacts and results produced by the pipeline will be stored in subdirectories created automatically under this directory.  
