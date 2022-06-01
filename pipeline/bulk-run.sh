@@ -30,15 +30,15 @@ set -e
 # doit -f ./tfde/pipeline/execute-run.py pc=0.8 cs=true fmdw=false en=P3856 rn=P3856_YHE211_1_Slot1-1_1_5104 rl=1650 ru=2200 ff="/home/daryl/tfde/fasta/Human_Yeast_Ecoli.fasta"
 # echo
 
-# echo "P3856, cs false, fmdw false"
-# doit -f ./tfde/pipeline/execute-run.py clean en=P3856
-# doit -f ./tfde/pipeline/execute-run.py pc=0.8 cs=false fmdw=false en=P3856 rn=P3856_YHE211_1_Slot1-1_1_5104 rl=1650 ru=2200 ff="/home/daryl/tfde/fasta/Human_Yeast_Ecoli.fasta"
-# echo
+echo "P3856, cs false, fmdw false"
+doit -f ./tfde/pipeline/execute-run.py clean en=P3856_YHE211
+doit -f ./tfde/pipeline/execute-run.py pc=0.8 cs=false fmdw=false en=P3856_YHE211 rn=P3856_YHE211_1_Slot1-1_1_5104 rl=1650 ru=2200 ff="/home/daryl/tfde/fasta/Human_Yeast_Ecoli.fasta"
+echo
 
-# echo "P3856, cs false, fmdw true"
-# doit -f ./tfde/pipeline/execute-run.py clean en=P3856
-# doit -f ./tfde/pipeline/execute-run.py pc=0.8 cs=false fmdw=true en=P3856 rn=P3856_YHE211_1_Slot1-1_1_5104 rl=1650 ru=2200 ff="/home/daryl/tfde/fasta/Human_Yeast_Ecoli.fasta"
-# echo
+echo "P3856, cs false, fmdw true"
+doit -f ./tfde/pipeline/execute-run.py clean en=P3856_YHE211
+doit -f ./tfde/pipeline/execute-run.py pc=0.8 cs=false fmdw=true en=P3856_YHE211 rn=P3856_YHE211_1_Slot1-1_1_5104 rl=1650 ru=2200 ff="/home/daryl/tfde/fasta/Human_Yeast_Ecoli.fasta"
+echo
 
 
 ###############################################################
@@ -54,10 +54,10 @@ set -e
 # doit -f ./tfde/pipeline/execute-run.py pc=0.8 cs=true fmdw=true en=P3856_YHE114 rn=P3856_YHE114_1_Slot1-1_1_5115,P3856_YHE114_2_Slot1-1_1_5116,P3856_YHE114_3_Slot1-1_1_5117,P3856_YHE114_4_Slot1-1_1_5118,P3856_YHE114_5_Slot1-1_1_5119,P3856_YHE114_6_Slot1-1_1_5120,P3856_YHE114_7_Slot1-1_1_5121,P3856_YHE114_8_Slot1-1_1_5122,P3856_YHE114_9_Slot1-1_1_5123,P3856_YHE114_10_Slot1-1_1_5124 rl=0 ru=3000 ff="/home/daryl/tfde/fasta/Human_Yeast_Ecoli.fasta" ini='/home/daryl/tfde/pipeline/pasef-process-short-gradient.ini'
 # echo
 
-echo "P3856_YHE010"
-doit -f ./tfde/pipeline/execute-run.py clean en=P3856_YHE010
-doit -f ./tfde/pipeline/execute-run.py pc=0.8 cs=true fmdw=true en=P3856_YHE010 rn=P3856_YHE010_10_Slot1-1_1_5102,P3856_YHE010_2_Slot1-1_1_5094,P3856_YHE010_4_Slot1-1_1_5096,P3856_YHE010_6_Slot1-1_1_5098,P3856_YHE010_8_Slot1-1_1_5100,P3856_YHE010_1_Slot1-1_1_5093,P3856_YHE010_3_Slot1-1_1_5095,P3856_YHE010_5_Slot1-1_1_5097,P3856_YHE010_7_Slot1-1_1_5099,P3856_YHE010_9_Slot1-1_1_5101 rl=0 ru=3000 ff="/home/daryl/tfde/fasta/Human_Yeast_Ecoli.fasta" ini='/home/daryl/tfde/pipeline/pasef-process-short-gradient.ini'
-echo
+# echo "P3856_YHE010"
+# doit -f ./tfde/pipeline/execute-run.py clean en=P3856_YHE010
+# doit -f ./tfde/pipeline/execute-run.py pc=0.8 cs=true fmdw=true en=P3856_YHE010 rn=P3856_YHE010_10_Slot1-1_1_5102,P3856_YHE010_2_Slot1-1_1_5094,P3856_YHE010_4_Slot1-1_1_5096,P3856_YHE010_6_Slot1-1_1_5098,P3856_YHE010_8_Slot1-1_1_5100,P3856_YHE010_1_Slot1-1_1_5093,P3856_YHE010_3_Slot1-1_1_5095,P3856_YHE010_5_Slot1-1_1_5097,P3856_YHE010_7_Slot1-1_1_5099,P3856_YHE010_9_Slot1-1_1_5101 rl=0 ru=3000 ff="/home/daryl/tfde/fasta/Human_Yeast_Ecoli.fasta" ini='/home/daryl/tfde/pipeline/pasef-process-short-gradient.ini'
+# echo
 
 # echo "P3830_YUPS1"
 # doit -f ./tfde/pipeline/execute-run.py clean en=P3830_YUPS1
