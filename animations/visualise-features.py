@@ -72,15 +72,9 @@ MACOS_FONT_PATH = '/Library/Fonts/Arial.ttf'
 TILES_BASE_DIR = '{}/{}-feature-tiles-{}'.format(args.tiles_base_dir, args.feature_mode, args.precursor_definition_method)
 
 EXPERIMENT_DIR = '{}/{}'.format(args.experiment_base_dir, args.experiment_name)
-CONVERTED_DATABASE_NAME = '{}/converted-databases/exp-{}-run-{}-converted.sqlite'.format(EXPERIMENT_DIR, args.experiment_name, args.run_name)
 
 if not os.path.exists(EXPERIMENT_DIR):
     print("The experiment directory is required but doesn't exist: {}".format(EXPERIMENT_DIR))
-    sys.exit(1)
-
-# check the converted databases directory exists
-if not os.path.isfile(CONVERTED_DATABASE_NAME):
-    print("The converted database is required but doesn't exist: {}".format(CONVERTED_DATABASE_NAME))
     sys.exit(1)
 
 if args.feature_mode == 'detected':
