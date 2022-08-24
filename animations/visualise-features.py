@@ -4,11 +4,11 @@ from matplotlib import colors, pyplot as plt
 import os
 from PIL import Image, ImageFont, ImageDraw, ImageEnhance
 import shutil
-import sqlite3
 import sys
 import json
 import argparse
 import pickle
+import alphatims.bruker
 
 
 def pixel_x_from_mz(mz):
@@ -27,7 +27,7 @@ parser = argparse.ArgumentParser(description='Generate a tile for each frame, an
 parser.add_argument('-eb','--experiment_base_dir', type=str, default='./experiments', help='Path to the experiments directory.', required=False)
 parser.add_argument('-en','--experiment_name', type=str, help='Name of the experiment.', required=True)
 parser.add_argument('-rn','--run_name', type=str, help='Name of the run.', required=True)
-parser.add_argument('-pdm','--precursor_definition_method', type=str, choices=['pasef','3did','mq'], default='none', help='The method used to define the precursor cuboids.', required=False)
+parser.add_argument('-pdm','--precursor_definition_method', type=str, choices=['none','pasef','3did','mq'], default='none', help='The method used to define the precursor cuboids.', required=False)
 parser.add_argument('-fm','--feature_mode', type=str, choices=['detected','identified','none'], default='detected', help='The mode for the features to be displayed.', required=False)
 parser.add_argument('-rl','--rt_lower', type=float, default='1650', help='Lower limit for retention time.', required=False)
 parser.add_argument('-ru','--rt_upper', type=float, default='2200', help='Upper limit for retention time.', required=False)
@@ -135,11 +135,47 @@ limits = {'MZ_MIN': args.mz_lower, 'MZ_MAX': args.mz_upper, 'SCAN_MIN': args.sca
 PIXELS_PER_MZ = args.pixels_x / (limits['MZ_MAX'] - limits['MZ_MIN'])
 PIXELS_PER_SCAN = args.pixels_y / (limits['SCAN_MAX'] - limits['SCAN_MIN'])
 
-print('loading raw data from {}'.format(CONVERTED_DATABASE_NAME))
-db_conn = sqlite3.connect(CONVERTED_DATABASE_NAME)
-raw_df = pd.read_sql_query("select frame_id,mz,scan,intensity,retention_time_secs from frames where frame_type == {} and mz >= {} and mz <= {} and scan >= {} and scan <= {} and retention_time_secs >= {} and retention_time_secs <= {}".format(FRAME_TYPE_MS1, limits['MZ_MIN'], limits['MZ_MAX'], limits['SCAN_MIN'], limits['SCAN_MAX'], limits['RT_MIN'], limits['RT_MAX']), db_conn)
-db_conn.close()
+# check the raw database
+RAW_DATABASE_BASE_DIR = "{}/raw-databases".format(EXPERIMENT_DIR)
+RAW_DATABASE_NAME = "{}/{}.d".format(RAW_DATABASE_BASE_DIR, args.run_name)
+if not os.path.exists(RAW_DATABASE_NAME):
+    print("The raw database is required but doesn't exist: {}".format(RAW_DATABASE_NAME))
+    sys.exit(1)
 
+# create the TimsTOF object
+RAW_HDF_FILE = '{}.hdf'.format(args.run_name)
+RAW_HDF_PATH = '{}/{}'.format(RAW_DATABASE_BASE_DIR, RAW_HDF_FILE)
+if not os.path.isfile(RAW_HDF_PATH):
+    print('{} doesn\'t exist so loading the raw data from {}'.format(RAW_HDF_PATH, RAW_DATABASE_NAME))
+    data = alphatims.bruker.TimsTOF(RAW_DATABASE_NAME)
+    print('saving to {}'.format(RAW_HDF_PATH))
+    _ = data.save_as_hdf(
+        directory=RAW_DATABASE_BASE_DIR,
+        file_name=RAW_HDF_FILE,
+        overwrite=True
+    )
+else:
+    print('loading raw data from {}'.format(RAW_HDF_PATH))
+    data = alphatims.bruker.TimsTOF(RAW_HDF_PATH)
+
+print('loading the raw points')
+# load the ms1 points for this cuboid
+raw_df = data[
+    {
+        "rt_values": slice(float(args.rt_lower), float(args.rt_upper)),
+        "mz_values": slice(float(args.mz_lower), float(args.mz_upper)),
+        "scan_indices": slice(int(args.scan_lower), int(args.scan_upper+1)),
+        "precursor_indices": 0,  # ms1 frames only
+    }
+][['mz_values','scan_indices','frame_indices','rt_values','intensity_values']]
+raw_df.rename(columns={'mz_values':'mz', 'scan_indices':'scan', 'frame_indices':'frame_id', 'rt_values':'retention_time_secs', 'intensity_values':'intensity'}, inplace=True)
+# downcast the data types to minimise the memory used
+int_columns = ['frame_id','scan','intensity']
+raw_df[int_columns] = raw_df[int_columns].apply(pd.to_numeric, downcast="unsigned")
+float_columns = ['retention_time_secs']
+raw_df[float_columns] = raw_df[float_columns].apply(pd.to_numeric, downcast="float")
+
+# add the pixel coordinates
 raw_df['pixel_x'] = raw_df.apply(lambda row: pixel_x_from_mz(row.mz), axis=1)
 raw_df['pixel_y'] = raw_df.apply(lambda row: pixel_y_from_scan(row.scan), axis=1)
 
