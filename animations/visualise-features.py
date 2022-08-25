@@ -43,6 +43,8 @@ parser.add_argument('-maxpi','--maximum_pixel_intensity', type=int, default='250
 parser.add_argument('-ccsm','--ccs_marker_each', type=int, default='50', help='Marker period for the CCS dimension.', required=False)
 parser.add_argument('-mzm','--mz_marker_each', type=int, default='1', help='Marker period for the m/z dimension.', required=False)
 parser.add_argument('-ofl','--omit_feature_labels', action='store_true', help='Don\'t label individual features.')
+parser.add_argument('-oib','--omit_info_box', action='store_true', help='Don\'t include the tile info box in the top-right corner.')
+parser.add_argument('-ibb','--include_bounding_box', action='store_true', help='Include the bounding box to highlight a region.')
 parser.add_argument('-if','--image_format', type=str, choices=['png','tiff'], default='png', help='The file format of the images.', required=False)
 args = parser.parse_args()
 
@@ -246,20 +248,22 @@ for group_name,group_df in pixel_intensity_df.groupby(['frame_id'], as_index=Fal
         draw.line((marker_x,0, marker_x,5), fill='lawngreen', width=1)
 
     # draw the bounding box
-    x0 = pixel_x_from_mz(700.)
-    x1 = pixel_x_from_mz(720.)
-    y0 = pixel_y_from_scan(550)
-    y1 = pixel_y_from_scan(750)
-    draw.rectangle(xy=[(x0, y0), (x1, y1)], fill=None, outline='darkorange', width=3)
+    if args.include_bounding_box:
+        x0 = pixel_x_from_mz(700.)
+        x1 = pixel_x_from_mz(720.)
+        y0 = pixel_y_from_scan(550)
+        y1 = pixel_y_from_scan(750)
+        draw.rectangle(xy=[(x0, y0), (x1, y1)], fill=None, outline='darkorange', width=3)
 
     # draw the tile info
-    info_box_x_inset = 200
-    info_box_y_inset = 24
-    space_per_line = 12
-    draw.rectangle(xy=[(args.pixels_x-info_box_x_inset, info_box_y_inset), (args.pixels_x, 3*space_per_line)], fill=(20,20,20), outline=None)
-    draw.text((args.pixels_x-info_box_x_inset, (0*space_per_line)+info_box_y_inset), 'feature detection: {}'.format(args.precursor_definition_method.upper()), font=feature_label_font, fill='lawngreen')
-    draw.text((args.pixels_x-info_box_x_inset, (1*space_per_line)+info_box_y_inset), 'run: {}'.format(args.run_name), font=feature_label_font, fill='lawngreen')
-    draw.text((args.pixels_x-info_box_x_inset, (2*space_per_line)+info_box_y_inset), '{} secs'.format(round(tile_rt,1)), font=feature_label_font, fill='lawngreen')
+    if not args.omit_info_box:
+        info_box_x_inset = 200
+        info_box_y_inset = 24
+        space_per_line = 12
+        draw.rectangle(xy=[(args.pixels_x-info_box_x_inset, info_box_y_inset), (args.pixels_x, 3*space_per_line)], fill=(20,20,20), outline=None)
+        draw.text((args.pixels_x-info_box_x_inset, (0*space_per_line)+info_box_y_inset), 'feature detection: {}'.format(args.precursor_definition_method.upper()), font=feature_label_font, fill='lawngreen')
+        draw.text((args.pixels_x-info_box_x_inset, (1*space_per_line)+info_box_y_inset), 'run: {}'.format(args.run_name), font=feature_label_font, fill='lawngreen')
+        draw.text((args.pixels_x-info_box_x_inset, (2*space_per_line)+info_box_y_inset), '{} secs'.format(round(tile_rt,1)), font=feature_label_font, fill='lawngreen')
 
     # find the intersecting precursor cuboids for this tile; can be partial overlap in the m/z and scan dimensions
     intersecting_features_df = features_df[
