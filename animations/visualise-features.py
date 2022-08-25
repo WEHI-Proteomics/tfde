@@ -43,6 +43,7 @@ parser.add_argument('-maxpi','--maximum_pixel_intensity', type=int, default='250
 parser.add_argument('-ccsm','--ccs_marker_each', type=int, default='50', help='Marker period for the CCS dimension.', required=False)
 parser.add_argument('-mzm','--mz_marker_each', type=int, default='1', help='Marker period for the m/z dimension.', required=False)
 parser.add_argument('-ofl','--omit_feature_labels', action='store_true', help='Don\'t label individual features.')
+parser.add_argument('-if','--image_format', type=str, choices=['png','tiff'], default='png', help='The file format of the images.', required=False)
 args = parser.parse_args()
 
 # Print the arguments for the log
@@ -275,7 +276,7 @@ for group_name,group_df in pixel_intensity_df.groupby(['frame_id'], as_index=Fal
             draw.text((x0, y0-(1*space_per_line)), 'charge {}+'.format(feature.charge), font=feature_label_font, fill='lawngreen')
 
     # save the tile
-    tile_file_name = '{}/tile-{:05d}.png'.format(TILES_BASE_DIR, tile_id)
+    tile_file_name = '{}/tile-{:05d}.{}'.format(TILES_BASE_DIR, tile_id, args.image_format)
     tile.save(tile_file_name, dpi=(300, 300))
     tile_id += 1
 
