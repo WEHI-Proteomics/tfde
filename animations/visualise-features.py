@@ -226,6 +226,9 @@ for group_name,group_df in pixel_intensity_df.groupby(['frame_id'], as_index=Fal
     # get a drawing context for the bounding boxes
     draw = ImageDraw.Draw(tile)
 
+    # make text smooth
+    draw.fontmode = 'L'
+
     # draw the CCS markers
     range_l = round(limits['SCAN_MIN'] / args.ccs_marker_each) * args.ccs_marker_each
     range_u = round(limits['SCAN_MAX'] / args.ccs_marker_each) * args.ccs_marker_each
