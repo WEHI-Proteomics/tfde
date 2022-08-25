@@ -276,7 +276,7 @@ for group_name,group_df in pixel_intensity_df.groupby(['frame_id'], as_index=Fal
 
     # save the tile
     tile_file_name = '{}/tile-{:05d}.png'.format(TILES_BASE_DIR, tile_id)
-    tile.save(tile_file_name)
+    tile.save(tile_file_name, dpi=(300, 300))
     tile_id += 1
 
     print('.', end='', flush=True)
