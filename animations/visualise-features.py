@@ -181,7 +181,7 @@ print('intensity range {}..{}'.format(pixel_intensity_df.intensity.min(), pixel_
 # create the colour map to convert intensity to colour
 colour_map = plt.get_cmap('ocean')
 # colour_map = cm.batlow
-norm = colors.LogNorm(vmin=args.minimum_pixel_intensity, vmax=args.maximum_pixel_intensity, clip=True)  # aiming to get good colour variation in the lower range, and clipping everything else
+norm = colors.Normalize(vmin=args.minimum_pixel_intensity, vmax=args.maximum_pixel_intensity, clip=True)  # aiming to get good colour variation in the lower range, and clipping everything else
 
 # calculate the colour to represent the intensity
 colours_l = []
