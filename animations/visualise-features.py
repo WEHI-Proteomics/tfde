@@ -242,6 +242,13 @@ for group_name,group_df in pixel_intensity_df.groupby(['frame_id'], as_index=Fal
         draw.text((marker_x-10, 8), str(round(marker_mz)), font=feature_label_font, fill='lawngreen')
         draw.line((marker_x,0, marker_x,5), fill='lawngreen', width=1)
 
+    # draw the bounding box
+    x0 = pixel_x_from_mz(700.)
+    x1 = pixel_x_from_mz(720.)
+    y0 = pixel_y_from_scan(550)
+    y1 = pixel_y_from_scan(750)
+    draw.rectangle(xy=[(x0, y0), (x1, y1)], fill=None, outline='deepskyblue')
+
     # draw the tile info
     info_box_x_inset = 200
     info_box_y_inset = 24
