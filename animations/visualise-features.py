@@ -253,7 +253,7 @@ for group_name,group_df in pixel_intensity_df.groupby(['frame_id'], as_index=Fal
     draw.rectangle(xy=[(x0, y0), (x1, y1)], fill=None, outline='darkorange', width=3)
 
     # draw the tile info
-    info_box_x_inset = 200
+    info_box_x_inset = 150
     info_box_y_inset = 24
     space_per_line = 12
     draw.rectangle(xy=[(args.pixels_x-info_box_x_inset, info_box_y_inset), (args.pixels_x, 3*space_per_line)], fill=(20,20,20), outline=None)
