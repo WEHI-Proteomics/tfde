@@ -219,7 +219,7 @@ for group_name,group_df in pixel_intensity_df.groupby(['frame_id'], as_index=Fal
         tile_im_array[y,x,:] = c
 
     # create an image of the intensity array
-    tile = Image.fromarray(tile_im_array, 'RGB')
+    tile = Image.fromarray(tile_im_array, mode='RGB')
     enhancer_object = ImageEnhance.Brightness(tile)
     tile = enhancer_object.enhance(1.1)
 
@@ -227,7 +227,7 @@ for group_name,group_df in pixel_intensity_df.groupby(['frame_id'], as_index=Fal
     draw = ImageDraw.Draw(tile)
 
     # make text smooth
-    draw.fontmode = 'L'
+    draw.fontmode = '1'
 
     # draw the CCS markers
     range_l = round(limits['SCAN_MIN'] / args.ccs_marker_each) * args.ccs_marker_each
