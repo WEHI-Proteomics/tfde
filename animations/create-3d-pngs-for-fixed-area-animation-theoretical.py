@@ -75,6 +75,9 @@ std_dev_ccs = 20
 rt_lower = 200
 rt_upper = 300
 
+# marker size
+marker_size = 1**2
+
 rt_values = np.arange(rt_lower, rt_upper, 0.8)
 ccs_values = np.arange(scan_lower, scan_upper, 1.0)
 
@@ -94,8 +97,8 @@ for scene_idx,number_of_frames in enumerate(scenes):
         fig = plt.figure()
         fig.set_facecolor('whitesmoke')
         ax = fig.add_subplot(111, projection='3d')
-        fig.set_figheight(15)
-        fig.set_figwidth(15)
+        fig.set_figheight(5)
+        fig.set_figwidth(5)
         ax.patch.set_facecolor('whitesmoke')
         ax.w_xaxis.set_pane_color((0.3, 0.3, 0.3, 0.8))
         ax.w_yaxis.set_pane_color((0.3, 0.3, 0.3, 0.8))
@@ -112,8 +115,8 @@ for scene_idx,number_of_frames in enumerate(scenes):
         ax.w_zaxis.line.set_lw(0.)
         ax.set_zticks([])
 
-        plt.xlabel('m/z', fontsize=16)
-        plt.ylabel('CCS', fontsize=16)
+        plt.xlabel('m/z', fontsize=12)
+        plt.ylabel('CCS', fontsize=12)
         plt.tick_params(labelsize=10)
 
         mz = 700.0
@@ -126,7 +129,7 @@ for scene_idx,number_of_frames in enumerate(scenes):
         y = ccs_values
         z = func(y, iso_intensity_values, peak_ccs, std_dev_ccs)
         idx = z > intensity_threshold
-        ax.scatter(x[idx], y[idx], z[idx], s=4**2, c=z[idx], cmap=plt.get_cmap('cool'), alpha=1.0)
+        ax.scatter(x[idx], y[idx], z[idx], s=marker_size, c=z[idx], cmap=plt.get_cmap('cool'), alpha=1.0)
 
         iso_intensity_values = feature_intensity*0.8
         nonzero_idx = iso_intensity_values > intensity_threshold
@@ -134,7 +137,7 @@ for scene_idx,number_of_frames in enumerate(scenes):
         y = ccs_values
         z = func(y, iso_intensity_values, peak_ccs, std_dev_ccs)
         idx = z > intensity_threshold
-        ax.scatter(x[idx], y[idx], z[idx], s=4**2, c=z[idx], cmap=plt.get_cmap('cool'), alpha=1.0)
+        ax.scatter(x[idx], y[idx], z[idx], s=marker_size, c=z[idx], cmap=plt.get_cmap('cool'), alpha=1.0)
 
         iso_intensity_values = feature_intensity*0.4
         nonzero_idx = iso_intensity_values > intensity_threshold
@@ -142,7 +145,7 @@ for scene_idx,number_of_frames in enumerate(scenes):
         y = ccs_values
         z = func(y, iso_intensity_values, peak_ccs, std_dev_ccs)
         idx = z > intensity_threshold
-        ax.scatter(x[idx], y[idx], z[idx], s=4**2, c=z[idx], cmap=plt.get_cmap('cool'), alpha=1.0)
+        ax.scatter(x[idx], y[idx], z[idx], s=marker_size, c=z[idx], cmap=plt.get_cmap('cool'), alpha=1.0)
 
         iso_intensity_values = feature_intensity*0.2
         nonzero_idx = iso_intensity_values > intensity_threshold
@@ -150,7 +153,7 @@ for scene_idx,number_of_frames in enumerate(scenes):
         y = ccs_values
         z = func(y, iso_intensity_values, peak_ccs, std_dev_ccs)
         idx = z > intensity_threshold
-        ax.scatter(x[idx], y[idx], z[idx], s=4**2, c=z[idx], cmap=plt.get_cmap('cool'), alpha=1.0)
+        ax.scatter(x[idx], y[idx], z[idx], s=marker_size, c=z[idx], cmap=plt.get_cmap('cool'), alpha=1.0)
 
         iso_intensity_values = feature_intensity*0.1
         nonzero_idx = iso_intensity_values > intensity_threshold
@@ -158,10 +161,10 @@ for scene_idx,number_of_frames in enumerate(scenes):
         y = ccs_values
         z = func(y, iso_intensity_values, peak_ccs, std_dev_ccs)
         idx = z > intensity_threshold
-        ax.scatter(x[idx], y[idx], z[idx], s=4**2, c=z[idx], cmap=plt.get_cmap('cool'), alpha=1.0)
+        ax.scatter(x[idx], y[idx], z[idx], s=marker_size, c=z[idx], cmap=plt.get_cmap('cool'), alpha=1.0)
 
-        # fig.suptitle('frame id {}, retention time (secs) {}'.format(frame_id, round(frame_df.iloc[0].retention_time_secs, 1)), fontsize=16, x=0.5, y=0.85)
-        plt.savefig('{}/img-{:04d}.png'.format(working_folder, frame_counter), bbox_inches='tight', facecolor=fig.get_facecolor())
+        # plt.savefig('{}/img-{:04d}.png'.format(working_folder, frame_counter), bbox_inches='tight', facecolor=fig.get_facecolor())
+        plt.savefig('{}/img-{:04d}.tiff'.format(working_folder, frame_counter), bbox_inches='tight', facecolor=fig.get_facecolor(), dpi=600)
         plt.close()
 
         frame_counter += 1
