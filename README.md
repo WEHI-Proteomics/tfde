@@ -16,10 +16,10 @@ A DDA analysis pipeline where the first phase processes one or more runs at a ti
 ## Installation
 
 #### Data requirements
-The code has been tested with the runs deposited to the ProteomeXchange Consortium via the PRIDE partner repository with the dataset identifier PXD030706 and 10.6019/PXD030706. Other timsTOF raw data should work.
+The code has been tested with the runs deposited to the ProteomeXchange Consortium via the PRIDE partner repository with the dataset identifier PXD030706 and 10.6019/PXD030706 [here](https://proteomecentral.proteomexchange.org/cgi/GetDataset?ID=PXD030706). Other timsTOF raw data should work as well.
 
 #### Hardware requirements
-The code has been tested on a PC with a 12-core Intel i7 6850K processor and 64 GB of memory running Ubuntu 20.04. It will run faster with more cores and more memory that will allow it to increase the parallelism. The pipeline will automatically detect the hardware environment and utilise resources up the specified `proportion_of_cores_to_use` value.
+The code has been tested on a PC with a 12-core Intel i7 6850K processor and 64 GB of memory running Ubuntu 20.04. It will run faster with more cores and more memory that will allow it to increase the parallelism. The pipeline will automatically detect the hardware environment and utilise resources according to the specified `proportion_of_cores_to_use` value.
 
 #### Conda
 1. Follow the installation instructions [here](https://www.anaconda.com/products/distribution).
