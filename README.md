@@ -2,7 +2,7 @@
 This is a repository for algorithms exploring untargeted and targeted detection, extraction, and characterisation of tryptic peptide features in raw MS1 data produced by the [timsTOF](https://www.bruker.com/en/products-and-solutions/mass-spectrometry/timstof/timstof.html) mass spectrometer for LC-MS/MS proteomics experiments.
 
 ## Peptide feature detectors
-There are three approaches to peptide feature detection for the timsTOF in this repository.
+There are two approaches to peptide feature detection for the timsTOF in this repository.
 
 #### Targeted Feature Detection and Extraction Pipeline
 A DDA analysis pipeline where the first phase processes one or more runs at a time and detects peptide features using the instrument isolation windows as a starting point (targeted feature detection). It builds a library of peptides identified in at least one run. The second phase uses the peptide library to build machine learning models that predict the 3D coordinates for each peptide in the library. It then extracts them and decoys to control the FDR (targeted extraction). Code is [here](https://github.com/WEHI-Proteomics/tfde/tree/master/pipeline).
@@ -46,7 +46,7 @@ Follow the installation instructions [here](https://www.tensorflow.org/install).
 6. The results are stored in a SQLite database called `results.sqlite` in the `summarised-results` directory. This database includes the peptides identified and extracted, the runs from which they were identified and extracted, and the proteins inferred. Examples of how to extract data from the results schema are in the `notebooks` directory.
 
 #### 3DID
-1. 3DID uses the TFD/E experiments directory structure, but has its own execute command. So from step 4 in the TFD/E instructions, replace with the following.
+1. 3DID uses the TFD/E experiments directory structure, but has [its own execute command](https://github.com/WEHI-Proteomics/tfde/blob/master/3did/execute.py). So from step 4 in the TFD/E instructions, replace with the following.
 2. Edit the `./tfde/3did/variable-minvi.sh` bash script to analyse a run from the experiment at different threshold depth specified by the `minvi` parameter.
 3. Execute with `./tfde/3did/variable-minvi.sh`.
 4. The results are copied to a subdirectory under `/media/big-ssd` by default. Within this structure, the results are stored in a Feather file called `{features_dir}/exp-{experiment_name}-run-{run_name}-features-3did-dedup.feather`. Examples of how to extract data from this file are in the `notebooks` directory.
