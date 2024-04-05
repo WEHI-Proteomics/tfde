@@ -627,8 +627,8 @@ parser.add_argument('-rn','--run_name', type=str, help='Name of the run.', requi
 parser.add_argument('-ml','--mz_lower', type=int, default='100', help='Lower limit for m/z.', required=False)
 parser.add_argument('-mu','--mz_upper', type=int, default='1700', help='Upper limit for m/z.', required=False)
 parser.add_argument('-mw','--mz_width_per_segment', type=int, default=20, help='Width in Da of the m/z processing window per segment.', required=False)
-parser.add_argument('-rl','--rt_lower', type=int, default='1650', help='Lower limit for retention time.', required=False)
-parser.add_argument('-ru','--rt_upper', type=int, default='2200', help='Upper limit for retention time.', required=False)
+parser.add_argument('-rl','--rt_lower', type=int, help='Lower limit for retention time.', required=False)
+parser.add_argument('-ru','--rt_upper', type=int, help='Upper limit for retention time.', required=False)
 parser.add_argument('-minvi','--minimum_voxel_intensity', type=int, default='2500', help='The minimum voxel intensity to analyse.', required=False)
 parser.add_argument('-mi','--minimum_point_intensity', type=int, default='200', help='The minimum point intensity to include.', required=False)
 parser.add_argument('-ini','--ini_file', type=str, default='./tfde/pipeline/pasef-process-short-gradient.ini', help='Path to the config file.', required=False)
@@ -767,18 +767,44 @@ else:
     print('loading raw data from {}'.format(RAW_HDF_PATH))
     data = alphatims.bruker.TimsTOF(RAW_HDF_PATH)
 
+# set the retention time to the whole scope of the data if no arguments have been provided
+if args.rt_lower is None:
+    RT_LOWER = 1.0
+    info.append(('rt_lower', RT_LOWER))
+else:
+    RT_LOWER = args.rt_lower
+if args.rt_upper is None:
+    RT_UPPER = data.rt_max_value
+    info.append(('rt_upper', RT_UPPER))
+else:
+    RT_UPPER = args.rt_upper
+
+# set the m/z range to the whole scope of the data if no arguments have been provided
+if args.mz_lower is None:
+    MZ_LOWER = data.mz_min_value
+    info.append(('mz_lower', MZ_LOWER))
+else:
+    MZ_LOWER = args.mz_lower
+if args.mz_upper is None:
+    MZ_UPPER = data.mz_max_value
+    info.append(('mz_upper', MZ_UPPER))
+else:
+    MZ_UPPER = args.mz_upper
+
+print('region of analysis: {}-{} m/z, {}-{} secs'.format(MZ_LOWER, MZ_UPPER, RT_LOWER, RT_UPPER))
+
 # calculate the segments
-mz_range = args.mz_upper - args.mz_lower
+mz_range = MZ_UPPER - MZ_LOWER
 NUMBER_OF_MZ_SEGMENTS = (mz_range // args.mz_width_per_segment) + (mz_range % args.mz_width_per_segment > 0)  # thanks to https://stackoverflow.com/a/23590097/1184799
 
 # split the raw data into segments
 print('segmenting the raw data')
 segment_packages_l = []
 for i in range(NUMBER_OF_MZ_SEGMENTS):
-    mz_lower=float(args.mz_lower+(i*args.mz_width_per_segment))
-    mz_upper=float(args.mz_lower+(i*args.mz_width_per_segment)+args.mz_width_per_segment)
-    rt_lower=float(args.rt_lower)
-    rt_upper=float(args.rt_upper)
+    mz_lower=float(MZ_LOWER+(i*args.mz_width_per_segment))
+    mz_upper=float(MZ_LOWER+(i*args.mz_width_per_segment)+args.mz_width_per_segment)
+    rt_lower=float(RT_LOWER)
+    rt_upper=float(RT_UPPER)
     segment_id=i+1
     # extract the raw points for this segment
     segment_df = data[
