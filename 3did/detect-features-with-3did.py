@@ -768,24 +768,24 @@ else:
     data = alphatims.bruker.TimsTOF(RAW_HDF_PATH)
 
 # set the retention time to the whole scope of the data if no arguments have been provided
-if args.rt_lower is None:
+if (args.rt_lower is None) or (args.rt_lower == -1):
     RT_LOWER = 1.0
     info.append(('rt_lower', RT_LOWER))
 else:
     RT_LOWER = args.rt_lower
-if args.rt_upper is None:
+if (args.rt_upper is None) or (args.rt_upper == -1):
     RT_UPPER = data.rt_max_value
     info.append(('rt_upper', RT_UPPER))
 else:
     RT_UPPER = args.rt_upper
 
 # set the m/z range to the whole scope of the data if no arguments have been provided
-if args.mz_lower is None:
+if (args.mz_lower is None) or (args.mz_lower == -1):
     MZ_LOWER = data.mz_min_value
     info.append(('mz_lower', MZ_LOWER))
 else:
     MZ_LOWER = args.mz_lower
-if args.mz_upper is None:
+if (args.mz_upper is None) or (args.mz_upper == -1):
     MZ_UPPER = data.mz_max_value
     info.append(('mz_upper', MZ_UPPER))
 else:
