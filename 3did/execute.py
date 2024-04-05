@@ -27,8 +27,8 @@ config = {
     'ini_file': get_var('ini', ini_file),
     'proportion_of_cores_to_use': get_var('pc', 0.8),
     'mz_width_per_segment': get_var('mw', 20),
-    'rt_lower': get_var('rl', 1),
-    'rt_upper': get_var('ru', 500),
+    'rt_lower': get_var('rl', None),
+    'rt_upper': get_var('ru', None),
     'use_denoised_db': get_var('dd', 'false'),
     'min_intensity': get_var('mi', 50),
     'minvi': get_var('minvi', 3000)
