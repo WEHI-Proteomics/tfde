@@ -5,13 +5,14 @@ doit==0.33.1
 keras==2.8.0
 keras_nightly==2.5.0.dev2021032900
 matplotlib==3.5.1
-ms_deisotope==0.0.38
+ms_deisotope
 numpy==1.19.5
 pandas==1.3.1
 PeakUtils==1.3.3
 Pillow==9.1.0
 pyteomics==4.5
-ray==1.5.2
+ray[default]
+prometheus_client<0.14
 scikit_learn==1.0.2
 scipy==1.8.0
 tensorflow==2.5.0
