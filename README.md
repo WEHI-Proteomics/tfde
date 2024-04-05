@@ -47,6 +47,13 @@ Follow the installation instructions [here](https://www.tensorflow.org/install).
 
 #### 3DID
 1. 3DID uses the TFD/E experiments directory structure, but has [its own execute command](https://github.com/WEHI-Proteomics/tfde/blob/master/3did/execute.py). So from step 4 in the TFD/E instructions, replace with the following.
-2. Edit the `./tfde/3did/variable-minvi.sh` bash script to analyse a run from the experiment at different threshold depth specified by the `minvi` parameter.
-3. Execute with `./tfde/3did/variable-minvi.sh`.
-4. The results are copied to a subdirectory under `/media/big-ssd` by default. Within this structure, the results are stored in a Feather file called `{features_dir}/exp-{experiment_name}-run-{run_name}-features-3did-dedup.feather`. Examples of how to extract data from this file are in the `notebooks` directory.
+- Edit the `./tfde/3did/variable-minvi.sh` bash script to analyse a run from the experiment at different threshold depth specified by the `minvi` parameter.
+- Execute with `./tfde/3did/variable-minvi.sh`.
+- The results are copied to a subdirectory under `/media/big-ssd` by default. Within this structure, the results are stored in a Feather file called `{features_dir}/exp-{experiment_name}-run-{run_name}-features-3did-dedup.feather`. Examples of how to extract data from this file are in the `notebooks` directory.
+2. The feature classification step required a pre-trained model to be present. To train the model, use the `train the feature classifier` notebook. The notebook uses TensorFlow and CUDA, so your CUDA environment should be set up beforehand. These days it's much easier to set up CUDA using a Docker container.
+
+#### How to cite
+If you find TFD/E or 3DID useful, please cite our papers.
+1. Wilding-McBride D, Dagley LF, Spall SK, Infusini G, Webb AI. Simplifying MS1 and MS2 spectra to achieve lower mass error, more dynamic range, and higher peptide identification confidence on the Bruker timsTOF Pro. PLOS ONE. 2022;17(7):e0271025. doi:10.1371/journal.pone.0271025
+2. Wilding-McBride D, Infusini G, Webb AI. Predicting coordinates of peptide features in raw timsTOF data with machine learning for targeted extraction reduces missing values in label-free DDA LC-MS/MS proteomics experiments. Published online May 2, 2022:2022.04.25.489464. doi:10.1101/2022.04.25.489464
+3. Wilding-McBride D, Webb AI. A de novo MS1 feature detector for the Bruker timsTOF Pro. PLOS ONE. 2022;17(11):e0277122. doi:10.1371/journal.pone.0277122
