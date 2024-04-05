@@ -8,7 +8,7 @@ import os
 # This is the set of tasks to run 3DID on a raw instrument database
 
 # To run from a clean state:
-# doit -f ./tfde/3did/execute.py clean en=P3856 rn=P3856_YHE211_1_Slot1-1_1_5104
+# doit -f ./tfde/3did/execute.py clean eb=/mnt/scratch-1/daryl/experiments en=P3856 rn=P3856_YHE211_1_Slot1-1_1_5104
 # doit -f ./tfde/3did/execute.py pc=0.8 en=P3856_YHE211 rn=P3856_YHE211_1_Slot1-1_1_5104 minvi=600 mw=10 rl=10 ru=3000 dd=true mi=50
 
 # To run a single task, for example 'classify_features':
