@@ -47,7 +47,7 @@ Follow the installation instructions [here](https://www.tensorflow.org/install).
 
 #### 3DID
 1. 3DID uses the TFD/E experiments directory structure, but has [its own execute command](https://github.com/WEHI-Proteomics/tfde/blob/master/3did/execute.py). So from step 4 in the TFD/E instructions, replace with the following.
-- Edit the `./tfde/3did/variable-minvi.sh` bash script to analyse a run from the experiment at different threshold depth specified by the `minvi` parameter. Alternatively, you can use the `execute.py` script directly. **Note the defaults for the retention time limits (`rl` and `ru`) and set these to suit your region of interest.**
+- Edit the `./tfde/3did/variable-minvi.sh` bash script to analyse a run from the experiment at different threshold depth specified by the `minvi` parameter. Alternatively, you can use the `execute.py` script directly.
 - Execute with `./tfde/3did/variable-minvi.sh`.
 - The results are copied to a subdirectory under `/media/big-ssd` by default. Within this structure, the results are stored in a Feather file called `{features_dir}/exp-{experiment_name}-run-{run_name}-features-3did-dedup.feather`. Examples of how to extract data from this file are in the `notebooks` directory.
 2. The feature classification step required a pre-trained model to be present. To train the model, use the `train the feature classifier` notebook. The notebook uses TensorFlow and CUDA, so your CUDA environment should be set up beforehand. These days it's much easier to set up CUDA using a Docker container.
