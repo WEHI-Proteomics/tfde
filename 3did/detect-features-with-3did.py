@@ -624,11 +624,11 @@ parser = argparse.ArgumentParser(description='Find all the features in a run wit
 parser.add_argument('-eb','--experiment_base_dir', type=str, default='./experiments', help='Path to the experiments directory.', required=False)
 parser.add_argument('-en','--experiment_name', type=str, help='Name of the experiment.', required=True)
 parser.add_argument('-rn','--run_name', type=str, help='Name of the run.', required=True)
-parser.add_argument('-ml','--mz_lower', type=int, help='Lower limit for m/z. If not specified, use the lowest m/z in the data.', required=False)
-parser.add_argument('-mu','--mz_upper', type=int, help='Upper limit for m/z. If not specified, use the highest m/z in the data.', required=False)
+parser.add_argument('-ml','--mz_lower', type=float, help='Lower limit for m/z. If not specified, use the lowest m/z in the data.', required=False)
+parser.add_argument('-mu','--mz_upper', type=float, help='Upper limit for m/z. If not specified, use the highest m/z in the data.', required=False)
 parser.add_argument('-mw','--mz_width_per_segment', type=int, default=20, help='Width in Da of the m/z processing window per segment.', required=False)
-parser.add_argument('-rl','--rt_lower', type=int, help='Lower limit for retention time. If not specified, use the lowest RT in the data.', required=False)
-parser.add_argument('-ru','--rt_upper', type=int, help='Upper limit for retention time. If not specified, use the highest RT in the data.', required=False)
+parser.add_argument('-rl','--rt_lower', type=int, help='Lower limit for retention time in seconds. If not specified, use the lowest RT in the data.', required=False)
+parser.add_argument('-ru','--rt_upper', type=int, help='Upper limit for retention time in seconds. If not specified, use the highest RT in the data.', required=False)
 parser.add_argument('-minvi','--minimum_voxel_intensity', type=int, default='2500', help='The minimum voxel intensity to analyse.', required=False)
 parser.add_argument('-mi','--minimum_point_intensity', type=int, default='200', help='The minimum point intensity to include.', required=False)
 parser.add_argument('-ini','--ini_file', type=str, default='./tfde/pipeline/pasef-process-short-gradient.ini', help='Path to the config file.', required=False)
@@ -794,7 +794,7 @@ else:
 print('region of analysis: {}-{} m/z, {}-{} secs'.format(MZ_LOWER, MZ_UPPER, RT_LOWER, RT_UPPER))
 
 # calculate the segments
-mz_range = MZ_UPPER - MZ_LOWER
+mz_range = int(MZ_UPPER - MZ_LOWER)
 NUMBER_OF_MZ_SEGMENTS = (mz_range // args.mz_width_per_segment) + (mz_range % args.mz_width_per_segment > 0)  # thanks to https://stackoverflow.com/a/23590097/1184799
 
 # split the raw data into segments
