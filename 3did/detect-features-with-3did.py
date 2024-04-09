@@ -791,7 +791,7 @@ if (args.mz_upper is None) or (args.mz_upper == -1):
 else:
     MZ_UPPER = args.mz_upper
 
-print('region of analysis: {}-{} m/z, {}-{} secs'.format(MZ_LOWER, MZ_UPPER, RT_LOWER, RT_UPPER))
+print('region of analysis: {}-{} m/z, {}-{} secs'.format(round(MZ_LOWER,2), round(MZ_UPPER,2), round(RT_LOWER,2), round(RT_UPPER,2)))
 
 # calculate the segments
 mz_range = int(MZ_UPPER - MZ_LOWER)
